@@ -1,5 +1,5 @@
 # Spectyr
-
+🔗 [Live Demo](https://spectyr.dev)
 A SIEM simulation built for training cybersecurity analysts. It generates security event logs, injects attack scenarios into normal traffic, and lets you practice detecting, triaging, and reporting threats in a SOC-style interface.
 
 <!-- ![Spectyr](./assets/spectyr-demo.png) -->
