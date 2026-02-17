@@ -37,7 +37,7 @@ A SIEM simulation built for training cybersecurity analysts. It generates securi
 
 ### Alert Generation
 
-Hit **Start Training** and the simulator starts producing logs from different sources (Sysmon, Windows Security, Firewall, Proxy, DNS). After a few benign logs, an attack chain gets injected into the stream. False positives are mixed in to keep you on your toes.
+Hit **Start Training** and the simulator starts producing logs from different sources (Sysmon, Windows Security, Firewall, Proxy, DNS). After a few benign logs, an attack chain gets injected into the stream.
 
 <!-- ![Events Tab](./assets/events-tab.png) -->
 
@@ -49,7 +49,7 @@ Related attack logs are grouped together by `scenario_id` so you can investigate
 
 ### Triage Reviews
 
-After you classify a scenario, you get a breakdown of what happened:
+After you classify a scenario, you get to review the learning details:
 
 - **MITRE ATT&CK mapping** with technique ID, tactic, and a link to the MITRE page
 - **Explanation** of the attack technique
@@ -59,7 +59,7 @@ After you classify a scenario, you get a breakdown of what happened:
 
 ### Incident Reports
 
-You can write up incident reports with fields for title, description, severity, MITRE tactic, kill chain phase, affected hosts, mitigation steps, and status. Reports can be edited, deleted, or exported as PDF.
+You can write up incident reports with fields for title, description, severity, MITRE tactic, kill chain phase, affected hosts, mitigation steps, and status.
 
 <!-- ![Reports Tab](./assets/reports-tab.png) -->
 
