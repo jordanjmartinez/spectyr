@@ -1,6 +1,4 @@
 # Spectyr
-🔗 [Live Demo](https://spectyr.dev)
-
 A SIEM simulation built for training cybersecurity analysts. It generates security event logs, injects attack scenarios into normal traffic, and lets you practice detecting, triaging, and reporting threats in a SOC-style interface.
 
 <!-- ![Spectyr](./assets/spectyr-demo.png) -->
@@ -61,14 +59,7 @@ You can write up incident reports with fields for title, description, severity, 
 
 ### Performance Scoring
 
-Your report card tracks correct/wrong classifications, flag accuracy, and overall accuracy percentage. Graded on an A-F scale:
+Your report card tracks correct/wrong classifications, flag accuracy, and overall accuracy percentage.
 
-| Grade | Accuracy |
-|-------|----------|
-| A     | >= 90%   |
-| B     | 80-89%   |
-| C     | 70-79%   |
-| D     | 60-69%   |
-| F     | < 60%    |
 
 <!-- ![Analytics](./assets/analytics.png) -->
