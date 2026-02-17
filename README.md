@@ -3,6 +3,12 @@ A SIEM simulation built for training cybersecurity analysts. It generates securi
 
 <!-- ![Spectyr](./assets/spectyr-demo.png) -->
 
+## Live Demo
+
+[spectyr.dev](https://spectyr.dev)
+
+---
+
 ## Features
 
 ### Campaign System
