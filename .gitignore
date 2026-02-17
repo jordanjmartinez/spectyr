@@ -13,6 +13,7 @@ backend/logs/test_output.json
 # IDE / OS
 .DS_Store
 .claude/
+CLAUDE.md
 
 # Windows artifacts
 nul
