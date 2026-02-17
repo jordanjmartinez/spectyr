@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API_BASE_URL from '../config';
 import AlertTable from '../components/AlertTable';
 import GroupedAlerts from '../components/GroupedAlerts';
 import Analytics from '../components/Analytics';
@@ -46,7 +47,7 @@ const Dashboard = () => {
 
   const handleSimulateEvents = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/fake-events');
+      const res = await fetch(`${API_BASE_URL}/api/fake-events`);
       const data = await res.json();
       const logCount = Array.isArray(data) ? data.length : 0;
 
@@ -66,7 +67,7 @@ const Dashboard = () => {
     setShowDifficultyModal(false);
     setAnalystName(name);
     try {
-      await fetch('http://localhost:5000/api/start-simulator', {
+      await fetch(`${API_BASE_URL}/api/start-simulator`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ game_mode: mode, analyst_name: name })
@@ -79,7 +80,7 @@ const Dashboard = () => {
   const handleTimeout = async () => {
     // Get the current level's category for the failure message
     try {
-      const res = await fetch('http://localhost:5000/api/current-level');
+      const res = await fetch(`${API_BASE_URL}/api/current-level`);
       const data = await res.json();
       setFailureCategory(data.category || 'Unknown');
     } catch (err) {
@@ -106,7 +107,7 @@ const Dashboard = () => {
   const handleResetSimulator = async () => {
     setIsResetting(true);
     try {
-      await fetch('http://localhost:5000/api/reset-simulator', {
+      await fetch(`${API_BASE_URL}/api/reset-simulator`, {
         method: 'POST',
       });
       setResetTrigger(prev => prev + 1);

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import API_BASE_URL from '../config';
 
 const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncident }) => {
   const [alerts, setAlerts] = useState([]);
@@ -25,7 +26,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
   ];
 
   const fetchAlerts = () => {
-    fetch('http://localhost:5000/api/fake-events')
+    fetch(`${API_BASE_URL}/api/fake-events`)
       .then(res => res.json())
       .then(data => {
         setAlerts([...data].reverse());
@@ -34,14 +35,14 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
   };
 
   const fetchGameState = () => {
-    fetch('http://localhost:5000/api/game-state')
+    fetch(`${API_BASE_URL}/api/game-state`)
       .then(res => res.json())
       .then(data => setGameMode(data.game_mode))
       .catch(err => console.error('Error fetching game state:', err));
   };
 
   const fetchScenarioHint = () => {
-    fetch('http://localhost:5000/api/current-scenario')
+    fetch(`${API_BASE_URL}/api/current-scenario`)
       .then(res => res.json())
       .then(data => {
         if (data && data.hint) {
@@ -86,7 +87,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
     setFlaggingIds(prev => new Set([...prev, eventId]));
 
     try {
-      const res = await fetch('http://localhost:5000/api/flag-event', {
+      const res = await fetch(`${API_BASE_URL}/api/flag-event`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ event_id: eventId, flagged: shouldFlag })

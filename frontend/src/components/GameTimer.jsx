@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import API_BASE_URL from '../config';
 
 const GameTimer = ({ onTimeout }) => {
   const [gameState, setGameState] = useState(null);
@@ -6,7 +7,7 @@ const GameTimer = ({ onTimeout }) => {
 
   const fetchGameState = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/game-state');
+      const res = await fetch(`${API_BASE_URL}/api/game-state`);
       const data = await res.json();
       setGameState(data);
 

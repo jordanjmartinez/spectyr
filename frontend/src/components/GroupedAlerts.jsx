@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import API_BASE_URL from '../config';
 import confetti from 'canvas-confetti';
 import CategorySelector from '../components/CategorySelector';
 
@@ -16,7 +17,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
   const [gameStarted, setGameStarted] = useState(false);
 
   const fetchGroupedAlerts = () => {
-    fetch('http://localhost:5000/api/grouped-alerts')
+    fetch(`${API_BASE_URL}/api/grouped-alerts`)
       .then(res => res.json())
       .then(data => {
         setGroups(prevGroups => {
@@ -34,14 +35,14 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
 
 
   const fetchCurrentLevel = () => {
-    fetch("http://localhost:5000/api/current-level")
+    fetch(`${API_BASE_URL}/api/current-level`)
       .then(res => res.json())
       .then(data => setCurrentLevel(data))
       .catch(err => console.error("Failed to fetch current level", err));
   };
 
   const fetchGameState = () => {
-    fetch("http://localhost:5000/api/game-state")
+    fetch(`${API_BASE_URL}/api/game-state`)
       .then(res => res.json())
       .then(data => setGameStarted(!!data.analyst_name))
       .catch(err => console.error("Failed to fetch game state", err));
@@ -149,7 +150,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
     setSubmittingIds(updatedSet);
 
     try {
-      const res = await fetch('http://localhost:5000/api/resume', {
+      const res = await fetch(`${API_BASE_URL}/api/resume`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

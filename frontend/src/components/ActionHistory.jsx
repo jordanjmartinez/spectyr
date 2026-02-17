@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import API_BASE_URL from '../config';
 
 const ActionHistory = ({ history }) => {
   const [triageReviews, setTriageReviews] = useState({});
@@ -15,7 +16,7 @@ const ActionHistory = ({ history }) => {
         if (triageReviews[label]) continue; // Already fetched
 
         try {
-          const response = await fetch(`http://localhost:5000/api/triage-review/${label}`);
+          const response = await fetch(`${API_BASE_URL}/api/triage-review/${label}`);
           if (response.ok) {
             const data = await response.json();
             setTriageReviews(prev => ({ ...prev, [label]: data }));

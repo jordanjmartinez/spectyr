@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import API_BASE_URL from '../config';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import IncidentReportForm from '../components/IncidentReportForm';
@@ -19,7 +20,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
 
   const fetchReports = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/reports");
+      const res = await fetch(`${API_BASE_URL}/api/reports`);
       const data = await res.json();
       setReports(data.reverse());
     } catch (err) {
@@ -44,7 +45,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
   const handleStatusChange = async (report, newStatus) => {
     try {
       const updated = { ...report, status: newStatus };
-      const res = await fetch(`http://localhost:5000/api/reports/${report.id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/reports/${report.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated),
@@ -64,7 +65,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
   const handleSeverityChange = async (report, newSeverity) => {
     try {
       const updated = { ...report, severity: newSeverity };
-      const res = await fetch(`http://localhost:5000/api/reports/${report.id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/reports/${report.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated),
@@ -83,7 +84,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
 
   const handleDeleteReport = async (reportId) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/reports/${reportId}`, {
+      const res = await fetch(`${API_BASE_URL}/api/reports/${reportId}`, {
         method: 'DELETE',
       });
       if (res.ok) {
@@ -491,7 +492,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
               initialData={editReport}
               onSubmit={async (updated) => {
                 try {
-                  const res = await fetch(`http://localhost:5000/api/reports/${updated.id}`, {
+                  const res = await fetch(`${API_BASE_URL}/api/reports/${updated.id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(updated),
@@ -524,7 +525,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
               initialData={{}}
               onSubmit={async (formData) => {
                 try {
-                  const res = await fetch('http://localhost:5000/api/reports', {
+                  const res = await fetch(`${API_BASE_URL}/api/reports`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(formData),
