@@ -11,7 +11,7 @@ import FailureModal from '../components/FailureModal';
 const Dashboard = () => {
   const [alertCount, setAlertCount] = useState(0);
   const [reportCount, setReportCount] = useState(0);
-  const [view, setView] = useState("grouped");
+  const [view, setView] = useState("table");
   const [resetTrigger, setResetTrigger] = useState(0);
   const [showResetModal, setShowResetModal] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
