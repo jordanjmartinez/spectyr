@@ -12,14 +12,14 @@ A SIEM simulation built for training cybersecurity analysts. It generates securi
 
 **Categories:**
 
-- Malware (USB-based, Ransomware)
-- Phishing (Typosquatting, Spearphishing)
-- Command & Control (HTTPS Beaconing, DNS Tunneling)
-- Lateral Movement (Recon/Port Scanning, Credential Gathering)
-- Brute Force (Dictionary Attack, Password Spraying)
-- Data Exfiltration (Archive Upload)
-- Insider Threat (Data Staging, Shadow IT)
-- Defense Evasion (Disabling Security Tools, Log Clearing)
+- Malware
+- Phishing
+- Command & Control
+- Lateral Movement
+- Brute Force
+- Data Exfiltration
+- Insider Threat
+- Defense Evasion
 
 <!-- ![Campaign](./assets/campaign.png) -->
 
