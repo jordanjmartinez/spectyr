@@ -31,7 +31,7 @@ A SIEM simulation built for training cybersecurity analysts. It generates securi
 ### Game Modes
 
 - **Training**: No time limit. Take as long as you need to work through each scenario.
-- **Hardcore**: Timed countdown that scales with difficulty. 1 wrong classification or 3 wrong flags resets you to Level 1.
+- **Hardcore**: Timed countdown that scales with difficulty. Stop the threat actors before time runs out.
 
 <!-- ![Game Modes](./assets/game-modes.png) -->
 
