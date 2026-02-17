@@ -6,17 +6,15 @@ A full-stack **Security Information and Event Management (SIEM)** simulation pla
 
 1. [Introduction](#introduction)
 2. [Features](#features)
-3. [Tech Stack](#tech-stack)
-4. [Installation & Setup](#installation--setup)
-5. [Use Cases](#use-cases)
+3. [Use Cases](#use-cases)
 
 ---
 
 ## Introduction
 
-**Spectyr** is a SIEM simulation that replicates a real-world **Security Operations Center (SOC)** environment. It generates realistic security event logs from multiple sources, injects coordinated attack scenarios, and challenges analysts to detect, triage, and report threats — all within an interactive, dark-mode interface designed to mirror production SIEM platforms.
+**Spectyr** is a SIEM simulation that replicates a real-world **Security Operations Center (SOC)** environment. It generates realistic security event logs from multiple sources, injects coordinated attack scenarios, and challenges analysts to detect, triage, and report threats in an interactive, dark-mode interface designed to mirror production SIEM platforms.
 
-The platform is built for cybersecurity analyst training, blue team skill development, and hands-on portfolio projects in a home lab environment.
+The platform is built for cybersecurity analyst training, blue team skill development, and hands-on portfolio projects.
 
 ---
 
@@ -43,8 +41,8 @@ Spectyr features a 5-level progressive campaign where each level presents a rand
 
 ### Game Modes
 
-- **Training Mode** — Unlimited time with continuous feedback. Ideal for learning SOC workflows at your own pace.
-- **Hardcore Mode** — A 2-minute countdown timer per level with single-strike penalties. Designed to simulate the pressure of a real-time SOC environment.
+- **Training Mode**: Unlimited time with continuous feedback. Ideal for learning SOC workflows at your own pace.
+- **Hardcore Mode**: A timed countdown that scales with difficulty (2 minutes at Level 1, up to 4 minutes at Level 5). Misclassifying a threat category results in immediate failure. Accumulating 3 incorrect flags also ends the run. Both reset the campaign back to Level 1.
 
 <!-- ![Game Modes](./assets/game-modes.png) -->
 
@@ -52,7 +50,7 @@ Spectyr features a 5-level progressive campaign where each level presents a rand
 
 ### Simulated Live Alert Generation
 
-Clicking **Simulate Events** generates a stream of security event logs from various sources (Sysmon, Windows Security, Firewall, Proxy, DNS), simulating normal background traffic observed in a real SIEM environment.
+Clicking **Start Training** generates a stream of security event logs from various sources (Sysmon, Windows Security, Firewall, Proxy, DNS), simulating normal background traffic observed in a real SIEM environment.
 
 After several benign logs are generated, a coordinated attack scenario is injected among the normal traffic. False positives are intentionally mixed in to test the analyst's ability to differentiate between legitimate threats and benign activity.
 
@@ -60,20 +58,15 @@ After several benign logs are generated, a coordinated attack scenario is inject
 
 ---
 
-### Grouped Threat Patterns & Analyst Triage
+### Incident Grouping & Category Classification
 
-Related logs are automatically grouped into threat scenarios using a shared `scenario_id`, enabling detailed investigation of grouped threat patterns over isolated alerts.
+Related logs are automatically grouped into threat scenarios using a shared `scenario_id`, enabling investigation of grouped threat patterns over isolated alerts.
 
 - Groups are formed based on predefined attack sequences (e.g., initial access > command execution > data exfiltration)
-- Each group is labeled with a **Notable Event** type and **severity level**
-- Analysts can take decisive actions — **Investigate**, **Escalate**, or **Dismiss**:
-  - **Investigate** — Opens the incident report workflow
-  - **Escalate** — Flags the scenario as a confirmed threat
-  - **Dismiss** — Marks the scenario as a false positive
+- Each group is labeled with a **Notable Event** type
+- Analysts classify each incident by selecting an attack category through the **Choose Category** action, testing their ability to correctly identify the type of threat
 
-The **Patterns Tab** includes a toggle between **Active Threats** (unresolved) and **Past Incidents** (resolved).
-
-<!-- ![Patterns Tab](./assets/patterns-tab.png) -->
+<!-- ![Incidents Tab](./assets/incidents-tab.png) -->
 
 ---
 
@@ -81,9 +74,9 @@ The **Patterns Tab** includes a toggle between **Active Threats** (unresolved) a
 
 After an analyst resolves a scenario, Spectyr presents an educational **Triage Review** that includes:
 
-- **MITRE ATT&CK mapping** — Technique ID, name, tactic, and direct link to the MITRE knowledge base
-- **Attack explanation** — What the attack technique is and how it works
-- **Response actions** — SOC playbook steps for handling the threat in a real environment
+- **MITRE ATT&CK mapping**: Technique ID, name, tactic, and direct link to the MITRE knowledge base
+- **Attack explanation**: What the attack technique is and how it works
+- **Response actions**: SOC playbook steps for handling the threat in a real environment
 
 <!-- ![Triage Review](./assets/triage-review.png) -->
 
@@ -94,25 +87,24 @@ After an analyst resolves a scenario, Spectyr presents an educational **Triage R
 Analysts can submit detailed incident reports capturing investigation results, threat classification, and remediation steps.
 
 Report fields include:
-- Title, Description, Severity, Category
+- Title, Description, Severity
+- MITRE Tactic, Kill Chain Phase
 - Affected Hosts, Mitigation Steps, Status
 
-Reports are stored in the **Reports Tab** where analysts can view, edit, delete, and **export reports as PDF** for documentation and tracking.
+Reports are stored in the **Reports** tab where analysts can view, edit, delete, and **export reports as PDF** for documentation and tracking.
 
 <!-- ![Reports Tab](./assets/reports-tab.png) -->
 
 ---
 
-### Threat Analytics & Performance Scoring
-
-A real-time analytics dashboard displays total alerts, critical alert counts, severity breakdowns, and analyst performance metrics.
+### Performance Scoring
 
 The **Analyst Report Card** tracks:
-- Dismissed False Positives
-- Escalated True Threats
-- Correct Investigations
-- Misclassified Alerts
-- Total Actions
+- Correct Classifications
+- Misclassifications
+- Classification Accuracy
+- Correct Flags / Wrong Flags
+- Flag Accuracy
 
 **Performance Grade** uses an A-F scale:
 
@@ -125,49 +117,6 @@ The **Analyst Report Card** tracks:
 | F     | < 60%    |
 
 <!-- ![Analytics](./assets/analytics.png) -->
-
----
-
-## Tech Stack
-
-- **Backend**: Python, Flask, Faker (event generation), flask-cors
-- **Frontend**: React, Tailwind CSS, Recharts (analytics charts), jsPDF (PDF export), react-toastify (notifications)
-- **Data Storage**: NDJSON flat files
-
----
-
-## Installation & Setup
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/jordanjmartinez/spectyr.git
-cd spectyr
-```
-
-### 2. Set Up the Backend
-
-```bash
-cd backend
-pip install -r requirements.txt
-python app.py
-```
-
-The backend runs on `http://localhost:5000`.
-
-### 3. Set Up the Frontend
-
-```bash
-cd frontend
-npm install
-npm start
-```
-
-The frontend runs on `http://localhost:3000`.
-
-### 4. Launch the Simulator
-
-Open your browser and navigate to [http://localhost:3000](http://localhost:3000).
 
 ---
 
