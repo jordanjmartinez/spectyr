@@ -1,30 +1,16 @@
 # Spectyr
 
-A full-stack **Security Information and Event Management (SIEM)** simulation platform for training cybersecurity analysts and blue team professionals.
+A SIEM simulation built for training cybersecurity analysts. It generates security event logs, injects attack scenarios into normal traffic, and lets you practice detecting, triaging, and reporting threats in a SOC-style interface.
 
-## Table of Contents
-
-1. [Introduction](#introduction)
-2. [Features](#features)
-3. [Use Cases](#use-cases)
-
----
-
-## Introduction
-
-**Spectyr** is a SIEM simulation that replicates a real-world **Security Operations Center (SOC)** environment. It generates realistic security event logs from multiple sources, injects coordinated attack scenarios, and challenges analysts to detect, triage, and report threats in an interactive, dark-mode interface designed to mirror production SIEM platforms.
-
-The platform is built for cybersecurity analyst training, blue team skill development, and hands-on portfolio projects.
-
----
+<!-- ![Spectyr](./assets/spectyr-demo.png) -->
 
 ## Features
 
 ### Campaign System
 
-Spectyr features a 5-level progressive campaign where each level presents a randomly selected attack scenario from a pool of three possible categories. Difficulty increases as analysts advance through levels, introducing more complex multi-step attack chains.
+5 levels, each with a randomly selected attack scenario from a pool of three categories. The scenarios get harder as you go.
 
-**Attack categories include:**
+**Categories:**
 
 - Malware (USB-based, Ransomware)
 - Phishing (Typosquatting, Spearphishing)
@@ -37,76 +23,44 @@ Spectyr features a 5-level progressive campaign where each level presents a rand
 
 <!-- ![Campaign](./assets/campaign.png) -->
 
----
-
 ### Game Modes
 
-- **Training Mode**: Unlimited time with continuous feedback. Ideal for learning SOC workflows at your own pace.
-- **Hardcore Mode**: A timed countdown that scales with difficulty (2 minutes at Level 1, up to 4 minutes at Level 5). Misclassifying a threat category results in immediate failure. Accumulating 3 incorrect flags also ends the run. Both reset the campaign back to Level 1.
+- **Training**: No time limit. Take as long as you need to work through each scenario.
+- **Hardcore**: Timed countdown that scales with difficulty (2 min at Level 1, up to 4 min at Level 5). One wrong category classification and you're done. 3 wrong flags and you're done. Either one resets you back to Level 1.
 
 <!-- ![Game Modes](./assets/game-modes.png) -->
 
----
+### Alert Generation
 
-### Simulated Live Alert Generation
-
-Clicking **Start Training** generates a stream of security event logs from various sources (Sysmon, Windows Security, Firewall, Proxy, DNS), simulating normal background traffic observed in a real SIEM environment.
-
-After several benign logs are generated, a coordinated attack scenario is injected among the normal traffic. False positives are intentionally mixed in to test the analyst's ability to differentiate between legitimate threats and benign activity.
+Hit **Start Training** and the simulator starts producing logs from different sources (Sysmon, Windows Security, Firewall, Proxy, DNS). After a few benign logs, an attack chain gets injected into the stream. False positives are mixed in to keep you on your toes.
 
 <!-- ![Events Tab](./assets/events-tab.png) -->
 
----
+### Incident Grouping & Classification
 
-### Incident Grouping & Category Classification
-
-Related logs are automatically grouped into threat scenarios using a shared `scenario_id`, enabling investigation of grouped threat patterns over isolated alerts.
-
-- Groups are formed based on predefined attack sequences (e.g., initial access > command execution > data exfiltration)
-- Each group is labeled with a **Notable Event** type
-- Analysts classify each incident by selecting an attack category through the **Choose Category** action, testing their ability to correctly identify the type of threat
+Related attack logs are grouped together by `scenario_id` so you can investigate them as a single incident instead of chasing individual alerts. Each group shows a Notable Event label. Your job is to classify it by picking the correct attack category.
 
 <!-- ![Incidents Tab](./assets/incidents-tab.png) -->
 
----
+### Triage Reviews
 
-### Triage Reviews & MITRE ATT&CK Integration
+After you classify a scenario, you get a breakdown of what happened:
 
-After an analyst resolves a scenario, Spectyr presents an educational **Triage Review** that includes:
-
-- **MITRE ATT&CK mapping**: Technique ID, name, tactic, and direct link to the MITRE knowledge base
-- **Attack explanation**: What the attack technique is and how it works
-- **Response actions**: SOC playbook steps for handling the threat in a real environment
+- **MITRE ATT&CK mapping** with technique ID, tactic, and a link to the MITRE page
+- **Explanation** of the attack technique
+- **Response actions** you'd take in a real SOC
 
 <!-- ![Triage Review](./assets/triage-review.png) -->
 
----
+### Incident Reports
 
-### Incident Reporting & PDF Export
-
-Analysts can submit detailed incident reports capturing investigation results, threat classification, and remediation steps.
-
-Report fields include:
-- Title, Description, Severity
-- MITRE Tactic, Kill Chain Phase
-- Affected Hosts, Mitigation Steps, Status
-
-Reports are stored in the **Reports** tab where analysts can view, edit, delete, and **export reports as PDF** for documentation and tracking.
+You can write up incident reports with fields for title, description, severity, MITRE tactic, kill chain phase, affected hosts, mitigation steps, and status. Reports can be edited, deleted, or exported as PDF.
 
 <!-- ![Reports Tab](./assets/reports-tab.png) -->
 
----
-
 ### Performance Scoring
 
-The **Analyst Report Card** tracks:
-- Correct Classifications
-- Misclassifications
-- Classification Accuracy
-- Correct Flags / Wrong Flags
-- Flag Accuracy
-
-**Performance Grade** uses an A-F scale:
+Your report card tracks correct/wrong classifications, flag accuracy, and overall accuracy percentage. Graded on an A-F scale:
 
 | Grade | Accuracy |
 |-------|----------|
@@ -117,17 +71,3 @@ The **Analyst Report Card** tracks:
 | F     | < 60%    |
 
 <!-- ![Analytics](./assets/analytics.png) -->
-
----
-
-## Use Cases
-
-**Spectyr** is built for cybersecurity students, entry-level analysts, and anyone looking to gain hands-on experience with real-world SOC workflows.
-
-Whether you're preparing for a blue team role or building a cybersecurity portfolio, this platform helps you practice threat detection, incident triage, and reporting in a controlled, interactive environment.
-
-- Practice analyst workflows in a simulated SOC environment
-- Demonstrate threat detection and incident response skills
-- Train new blue team members or students in realistic triage scenarios
-- Showcase SOC analyst capabilities in a portfolio project
-- Learn MITRE ATT&CK techniques through interactive triage reviews
