@@ -209,8 +209,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
               </span>
               <span className="text-lg font-semibold text-white">{currentLevel.ticket_title}</span>
             </div>
-            <span className="text-sm text-gray-500">
-              {currentLevel.progress} completed
+            <span className="text-sm text-gray-400">
+              {Object.keys(currentLevel.level_results || {}).length} / {currentLevel.total_levels} completed
             </span>
           </div>
           <p className="text-gray-300 text-base leading-relaxed">
