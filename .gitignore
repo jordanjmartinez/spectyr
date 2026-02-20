@@ -10,6 +10,9 @@ backend/logs/analyst_actions.ndjson
 backend/logs/incident_reports.ndjson
 backend/logs/test_output.json
 
+# Per-session log directories
+backend/logs/*/
+
 # IDE / OS
 .DS_Store
 .claude/

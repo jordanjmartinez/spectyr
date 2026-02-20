@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import API_BASE_URL from '../config';
+import { apiFetch } from '../api';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import IncidentReportForm from '../components/IncidentReportForm';
@@ -20,7 +20,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
 
   const fetchReports = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/reports`);
+      const res = await apiFetch('/api/reports');
       const data = await res.json();
       setReports(data.reverse());
     } catch (err) {
@@ -45,7 +45,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
   const handleStatusChange = async (report, newStatus) => {
     try {
       const updated = { ...report, status: newStatus };
-      const res = await fetch(`${API_BASE_URL}/api/reports/${report.id}`, {
+      const res = await apiFetch(`/api/reports/${report.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated),
@@ -65,7 +65,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
   const handleSeverityChange = async (report, newSeverity) => {
     try {
       const updated = { ...report, severity: newSeverity };
-      const res = await fetch(`${API_BASE_URL}/api/reports/${report.id}`, {
+      const res = await apiFetch(`/api/reports/${report.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated),
@@ -84,7 +84,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
 
   const handleDeleteReport = async (reportId) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/reports/${reportId}`, {
+      const res = await apiFetch(`/api/reports/${reportId}`, {
         method: 'DELETE',
       });
       if (res.ok) {
@@ -186,7 +186,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
       <h2 className="text-2xl font-semibold text-white">
         Incident Reports <span className="text-gray-500 font-normal">({filteredReports.length})</span>
       </h2>
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+      <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={() => setShowNewReport(true)}
           className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
@@ -240,28 +240,27 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
           >
             {/* Card Header - Clickable to expand */}
             <div
-              className="flex justify-between items-start cursor-pointer"
+              className="flex flex-col sm:flex-row sm:justify-between sm:items-start cursor-pointer"
               onClick={() => toggleRow(index)}
             >
-              <div className="flex-1 min-w-0">
-                {/* Title */}
-                <h3 className="text-base sm:text-xl font-bold text-white truncate pr-2 sm:pr-4">
+              {/* Left column on desktop: title + metadata */}
+              <div className="sm:flex-1 sm:min-w-0">
+                <h3 className="text-base sm:text-xl font-bold text-white sm:truncate sm:pr-4">
                   {report.title || 'Untitled Report'}
                 </h3>
-
-                {/* Metadata row */}
-                <div className="flex items-center gap-3 mt-1 flex-wrap">
-                  <span className="text-gray-500 text-xs">
+                {/* Desktop metadata — below title */}
+                <div className="hidden sm:flex items-center gap-3 mt-1 whitespace-nowrap">
+                  <span className="text-white text-sm">
                     {new Date(report.timestamp).toLocaleDateString('en-GB')} at {new Date(report.timestamp).toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' })}
                   </span>
                   <span className="text-gray-600">|</span>
-                  <span className="text-gray-500 text-xs">Assigned to:</span>
-                  <span className="text-gray-300 text-xs">{(report.owner && report.owner !== 'Unassigned') ? report.owner : (analystName || 'Unknown')}</span>
+                  <span className="text-white text-sm">Assigned to:</span>
+                  <span className="text-white text-sm">{(report.owner && report.owner !== 'Unassigned') ? report.owner : (analystName || 'Unknown')}</span>
                 </div>
               </div>
 
-              {/* Right side - Badges, Actions and chevron */}
-              <div className="flex items-center gap-1 sm:gap-2 ml-2 sm:ml-4 flex-shrink-0 flex-wrap">
+              {/* Badges, Actions and chevron */}
+              <div className="flex items-center gap-1 sm:gap-2 mt-2 sm:mt-0 sm:ml-4 sm:flex-shrink-0">
                 {/* Severity badge */}
                 <div className="relative">
                   <button
@@ -395,6 +394,16 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
+
+              {/* Mobile metadata — after badges */}
+              <div className="flex sm:hidden items-center gap-3 mt-1 whitespace-nowrap">
+                <span className="text-white text-sm">
+                  {new Date(report.timestamp).toLocaleDateString('en-GB')} at {new Date(report.timestamp).toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <span className="text-gray-600">|</span>
+                <span className="text-white text-sm">Assigned to:</span>
+                <span className="text-white text-sm">{(report.owner && report.owner !== 'Unassigned') ? report.owner : (analystName || 'Unknown')}</span>
+              </div>
             </div>
 
             {/* Expandable Content */}
@@ -404,42 +413,42 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
               }`}
             >
               <div className="overflow-hidden min-h-0">
-                <div className="mt-4 border-t border-gray-700 pt-4">
+                <div className="mt-4 border-t border-gray-700 pt-4" style={{ fontFamily: "'Open Sans', sans-serif" }}>
                   {/* 4-column metadata row */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                     <div>
-                      <span className="text-xs uppercase text-gray-400 tracking-wider font-medium">Severity</span>
+                      <span className="text-sm text-gray-400 font-medium">Severity</span>
                       <p className="text-gray-300 mt-1 text-sm">{report.severity || '—'}</p>
                     </div>
                     <div>
-                      <span className="text-xs uppercase text-gray-400 tracking-wider font-medium">Status</span>
+                      <span className="text-sm text-gray-400 font-medium">Status</span>
                       <p className="text-gray-300 mt-1 text-sm">{report.status || 'Open'}</p>
                     </div>
                     <div>
-                      <span className="text-xs uppercase text-gray-400 tracking-wider font-medium">MITRE Tactic</span>
+                      <span className="text-sm text-gray-400 font-medium">MITRE Tactic</span>
                       <p className="text-gray-300 mt-1 text-sm">{report.mitre_tactic || '—'}</p>
                     </div>
                     <div>
-                      <span className="text-xs uppercase text-gray-400 tracking-wider font-medium">Kill Chain</span>
+                      <span className="text-sm text-gray-400 font-medium">Kill Chain</span>
                       <p className="text-gray-300 mt-1 text-sm">{report.kill_chain || '—'}</p>
                     </div>
                   </div>
 
                   {/* Description */}
                   <div className="mb-4">
-                    <span className="text-xs uppercase text-gray-400 tracking-wider font-medium">What was observed?</span>
+                    <span className="text-sm text-gray-400 font-medium">What was observed?</span>
                     <p className="text-gray-300 mt-2 leading-relaxed text-sm">{report.description || '—'}</p>
                   </div>
 
                   {/* Affected Systems */}
                   <div className="mb-4">
-                    <span className="text-xs uppercase text-gray-400 tracking-wider font-medium">Affected Systems</span>
+                    <span className="text-sm text-gray-400 font-medium">Affected Systems</span>
                     <p className="text-gray-300 mt-2 text-sm font-mono">{report.affected_hosts || '—'}</p>
                   </div>
 
                   {/* Recommended Actions */}
                   <div>
-                    <span className="text-xs uppercase text-gray-400 tracking-wider font-medium">Recommended Actions</span>
+                    <span className="text-sm text-gray-400 font-medium">Recommended Actions</span>
                     <p className="text-gray-300 mt-2 leading-relaxed text-sm">{report.mitigation || '—'}</p>
                   </div>
                 </div>
@@ -492,7 +501,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
               initialData={editReport}
               onSubmit={async (updated) => {
                 try {
-                  const res = await fetch(`${API_BASE_URL}/api/reports/${updated.id}`, {
+                  const res = await apiFetch(`/api/reports/${updated.id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(updated),
@@ -525,7 +534,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
               initialData={{}}
               onSubmit={async (formData) => {
                 try {
-                  const res = await fetch(`${API_BASE_URL}/api/reports`, {
+                  const res = await apiFetch('/api/reports', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(formData),

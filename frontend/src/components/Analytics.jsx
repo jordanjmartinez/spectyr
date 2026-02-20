@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import API_BASE_URL from '../config';
+import { apiFetch } from '../api';
 import AnalystReportCard from '../components/AnalystReportCard';
 import PerformanceGrade from './PerformanceGrade';
 import CampaignProgress from './CampaignProgress';
@@ -11,21 +11,21 @@ const Analytics = () => {
   const [actionHistory, setActionHistory] = useState([]);
 
   const fetchReportCard = () => {
-    fetch(`${API_BASE_URL}/api/analytics/report_card`)
+    apiFetch('/api/analytics/report_card')
       .then((res) => res.json())
       .then((data) => setReport(data))
       .catch((err) => console.error("Failed to load report card:", err));
   };
 
   const fetchLevelData = () => {
-    fetch(`${API_BASE_URL}/api/current-level`)
+    apiFetch('/api/current-level')
       .then((res) => res.json())
       .then((data) => setLevelData(data))
       .catch((err) => console.error("Failed to load level data:", err));
   };
 
   const fetchActionHistory = () => {
-    fetch(`${API_BASE_URL}/api/analytics/action_history`)
+    apiFetch('/api/analytics/action_history')
       .then((res) => res.json())
       .then((data) => setActionHistory(data))
       .catch((err) => console.error("Failed to load action history:", err));

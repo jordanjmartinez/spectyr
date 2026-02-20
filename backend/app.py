@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 from threading import Thread
 import os
@@ -7,33 +7,129 @@ import uuid
 import random
 import time
 import copy
+import shutil
 from datetime import datetime, timezone, timedelta
 from faker import Faker
 import threading
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True, origins=[
+    "http://localhost:3000",
+    "https://spectyr.dev",
+    "https://www.spectyr.dev"
+])
 
-FAKE_LOG_PATH = os.path.join("logs", "generated_logs.ndjson")
-SCENARIO_PATH = os.path.join("logs", "simulated_attack_logs.ndjson")
-ACTION_LOG_PATH = os.path.join("logs", "analyst_actions.ndjson")
-REPORTS_FILE = os.path.join("logs", "incident_reports.ndjson")
-os.makedirs("logs", exist_ok=True)
+LOG_DIR = "logs"
+SCENARIO_PATH = os.path.join(LOG_DIR, "simulated_attack_logs.ndjson")
+os.makedirs(LOG_DIR, exist_ok=True)
 
 fake = Faker()
 
-current_scenario = None
-paused = False
-current_level = 0
-game_mode = "training"  # "training" or "hardcore"
-timer_start = None  # Timestamp when timer started (hardcore mode)
 TIMER_DURATIONS = {1: 120, 2: 150, 3: 180, 4: 210, 5: 240}
 
-def get_timer_duration():
-    return TIMER_DURATIONS.get(current_level, 120)
-analyst_name = None  # Current analyst name
-flag_strikes = 0  # Wrong flag counter for hardcore mode (3 strikes = game over)
-selected_level_option = None  # Randomly selected scenario for current level
+def get_timer_duration(level):
+    return TIMER_DURATIONS.get(level, 120)
+
+# --- Session Management ---
+SESSION_COOKIE_NAME = "spectyr_session"
+SESSION_TTL_SECONDS = 1800  # 30 minutes
+IS_PRODUCTION = os.environ.get("FLASK_ENV") == "production" or os.environ.get("SPECTYR_PROD")
+
+sessions = {}
+sessions_lock = threading.Lock()
+
+def create_session():
+    """Create a new session with fresh state."""
+    session_id = str(uuid.uuid4())
+    session_dir = os.path.join(LOG_DIR, session_id)
+    os.makedirs(session_dir, exist_ok=True)
+
+    paths = {
+        "generated_logs": os.path.join(session_dir, "generated_logs.ndjson"),
+        "analyst_actions": os.path.join(session_dir, "analyst_actions.ndjson"),
+        "incident_reports": os.path.join(session_dir, "incident_reports.ndjson"),
+    }
+    for p in paths.values():
+        open(p, "a").close()
+
+    session = {
+        "id": session_id,
+        "paths": paths,
+        "session_dir": session_dir,
+        "current_scenario": None,
+        "paused": True,
+        "current_level": 0,
+        "game_mode": "training",
+        "timer_start": None,
+        "analyst_name": None,
+        "flag_strikes": 0,
+        "selected_level_option": None,
+        "last_active": datetime.now(timezone.utc),
+    }
+    with sessions_lock:
+        sessions[session_id] = session
+    return session
+
+def get_session():
+    """Get existing session or create a new one."""
+    session_id = request.cookies.get(SESSION_COOKIE_NAME)
+    with sessions_lock:
+        if session_id and session_id in sessions:
+            sessions[session_id]["last_active"] = datetime.now(timezone.utc)
+            return sessions[session_id]
+    return create_session()
+
+def set_session_cookie(response, session):
+    """Attach the session cookie to the response."""
+    response.set_cookie(
+        SESSION_COOKIE_NAME,
+        session["id"],
+        httponly=True,
+        samesite="Lax",
+        secure=bool(IS_PRODUCTION),
+        max_age=SESSION_TTL_SECONDS,
+        path="/"
+    )
+    return response
+
+@app.before_request
+def load_session():
+    if request.method == "OPTIONS":
+        return
+    g.session = get_session()
+
+@app.after_request
+def attach_session_cookie(response):
+    if hasattr(g, "session"):
+        set_session_cookie(response, g.session)
+    return response
+
+def session_cleanup_thread():
+    """Remove sessions idle for more than SESSION_TTL_SECONDS."""
+    while True:
+        time.sleep(60)
+        now = datetime.now(timezone.utc)
+        expired_ids = []
+        with sessions_lock:
+            for sid, session in sessions.items():
+                elapsed = (now - session["last_active"]).total_seconds()
+                if elapsed > SESSION_TTL_SECONDS:
+                    expired_ids.append(sid)
+        for sid in expired_ids:
+            with sessions_lock:
+                session = sessions.pop(sid, None)
+            if session:
+                session_dir = session.get("session_dir")
+                if session_dir and os.path.exists(session_dir):
+                    try:
+                        shutil.rmtree(session_dir)
+                        print(f"[CLEANUP] Removed session {sid[:8]}", flush=True)
+                    except Exception as e:
+                        print(f"[CLEANUP ERROR] {sid[:8]}: {e}", flush=True)
+
+_cleanup = threading.Thread(target=session_cleanup_thread, daemon=True)
+_cleanup.name = "SessionCleanup"
+_cleanup.start()
 
 with open(SCENARIO_PATH, "r") as f:
     all_scenarios = [json.loads(line) for line in f if line.strip()]
@@ -1673,8 +1769,7 @@ def generate_normal_event(scenario_id=None):
         "process_id": random.randint(1000, 65535),
         "parent_process_id": random.randint(500, 5000),
     }
-def log_writer(interval=1):
-    global current_scenario, paused, current_level, game_mode, timer_start, selected_level_option
+def log_writer(session, interval=1):
     count = 0
 
     # Randomize when attack is injected (position in the log stream)
@@ -1688,36 +1783,42 @@ def log_writer(interval=1):
     pending_scenario_info = None  # Store scenario info until all logs are written
     trailing_logs_remaining = 0  # Normal logs to generate after last attack before pausing
 
+    fake_log_path = session["paths"]["generated_logs"]
+
     while True:
-        if paused:
-            print("[PAUSED] Waiting for analyst action...", flush=True)
+        # Exit if session was cleaned up
+        if session["id"] not in sessions:
+            print(f"[SESSION EXPIRED] Thread for {session['id'][:8]} exiting.", flush=True)
+            return
+
+        if session["paused"]:
             time.sleep(1)
             continue
 
         # Check if we've completed all levels
-        if current_level >= len(CAMPAIGN_LEVELS):
+        if session["current_level"] >= len(CAMPAIGN_LEVELS):
             print("[CAMPAIGN COMPLETE] All levels finished!", flush=True)
-            paused = True
+            session["paused"] = True
             time.sleep(1)
             continue
 
         # Check if we're in trailing logs phase (after all attacks written)
         if trailing_logs_remaining > 0 and pending_scenario_info:
             normal_log = generate_normal_event()
-            with open(FAKE_LOG_PATH, "a") as f:
+            with open(fake_log_path, "a") as f:
                 f.write(json.dumps(normal_log) + "\n")
             trailing_logs_remaining -= 1
 
             # If done with trailing logs, now pause
             if trailing_logs_remaining == 0:
-                current_scenario = pending_scenario_info
+                session["current_scenario"] = pending_scenario_info
                 pending_scenario_info = None
-                paused = True
+                session["paused"] = True
 
                 # Start timer in hardcore mode
-                if game_mode == "hardcore":
-                    timer_start = datetime.now(timezone.utc)
-                    print(f"[TIMER] Started - {get_timer_duration()} seconds to respond!", flush=True)
+                if session["game_mode"] == "hardcore":
+                    session["timer_start"] = datetime.now(timezone.utc)
+                    print(f"[TIMER] Started - {get_timer_duration(session['current_level'])} seconds to respond!", flush=True)
 
                 # Reset for next level with new random positions
                 count = 0
@@ -1731,7 +1832,7 @@ def log_writer(interval=1):
         if attack_queue and logs_since_last_attack >= next_attack_gap:
             attack_log = attack_queue.pop(0)
             print(f"[SCENARIO] {attack_log.get('event_type', 'N/A')} | {attack_log.get('message', '')[:60]}...", flush=True)
-            with open(FAKE_LOG_PATH, "a") as f:
+            with open(fake_log_path, "a") as f:
                 f.write(json.dumps(attack_log) + "\n")
             logs_since_last_attack = 0
             next_attack_gap = random.randint(2, 3)
@@ -1742,14 +1843,15 @@ def log_writer(interval=1):
                 trailing_logs_remaining = random.randint(2, max(3, total_logs_target - count))
                 continue
 
-        if count == inject_at and not attack_queue and selected_level_option:
+        if count == inject_at and not attack_queue and session["selected_level_option"]:
             # Use the already-selected scenario (selected at start or level advance)
-            level_config = CAMPAIGN_LEVELS[current_level]
+            level_config = CAMPAIGN_LEVELS[session["current_level"]]
+            selected = session["selected_level_option"]
 
-            print(f"\n[INJECTING] Level {level_config['level']} - {selected_level_option['ticket_title']}", flush=True)
-            print(f"[CATEGORY] {selected_level_option['category']}", flush=True)
+            print(f"\n[INJECTING] Level {level_config['level']} - {selected['ticket_title']}", flush=True)
+            print(f"[CATEGORY] {selected['category']}", flush=True)
 
-            scenario_label = selected_level_option["scenario_label"]
+            scenario_label = selected["scenario_label"]
             scenario_id = generate_scenario_id()
 
             # Get the attack chain for this scenario
@@ -1804,8 +1906,8 @@ def log_writer(interval=1):
                 log["scenario_id"] = scenario_id
                 log["status"] = "active"
                 log["level"] = level_config["level"]
-                log["level_name"] = selected_level_option["ticket_title"]
-                log["category"] = selected_level_option["category"]
+                log["level_name"] = selected["ticket_title"]
+                log["category"] = selected["category"]
                 log["flagged"] = False  # Player must investigate
                 if "source_type" not in log or not log["source_type"]:
                     log["source_type"] = get_source_type(log.get("detected_by", "Unknown"))
@@ -1818,14 +1920,14 @@ def log_writer(interval=1):
 
             # Store scenario info to set after all logs are written
             pending_scenario_info = {
-                "label": selected_level_option["scenario_label"],
+                "label": selected["scenario_label"],
                 "logs": threat_logs,
                 "scenario_id": scenario_id,
                 "level": level_config["level"],
-                "level_name": selected_level_option["ticket_title"],
-                "storyline": selected_level_option["storyline"],
-                "hint": selected_level_option["hint"],
-                "category": selected_level_option["category"]
+                "level_name": selected["ticket_title"],
+                "storyline": selected["storyline"],
+                "hint": selected["hint"],
+                "category": selected["category"]
             }
 
             count += 1
@@ -1833,7 +1935,7 @@ def log_writer(interval=1):
 
         # Generate normal traffic log
         normal_log = generate_normal_event()
-        with open(FAKE_LOG_PATH, "a") as f:
+        with open(fake_log_path, "a") as f:
             f.write(json.dumps(normal_log) + "\n")
         logs_since_last_attack += 1
         count += 1
@@ -1841,10 +1943,11 @@ def log_writer(interval=1):
 
 @app.route('/api/fake-events', methods=['GET'])
 def get_fake_events():
+    s = g.session
     seen_ids = set()
     unique_logs = []
     try:
-        with open(FAKE_LOG_PATH, "r") as f:
+        with open(s["paths"]["generated_logs"], "r") as f:
             for line in f:
                 if not line.strip():
                     continue
@@ -1858,18 +1961,18 @@ def get_fake_events():
 
 @app.route("/api/reset-simulator", methods=["POST"])
 def reset_simulator():
-    global current_scenario, paused, current_level, game_mode, timer_start, analyst_name, flag_strikes, selected_level_option
+    s = g.session
 
-    paused = True
-    current_scenario = None
-    current_level = 0
-    game_mode = "training"
-    timer_start = None
-    analyst_name = None
-    flag_strikes = 0
-    selected_level_option = None
+    s["paused"] = True
+    s["current_scenario"] = None
+    s["current_level"] = 0
+    s["game_mode"] = "training"
+    s["timer_start"] = None
+    s["analyst_name"] = None
+    s["flag_strikes"] = 0
+    s["selected_level_option"] = None
 
-    for filepath in [FAKE_LOG_PATH, ACTION_LOG_PATH, REPORTS_FILE]:
+    for filepath in [s["paths"]["generated_logs"], s["paths"]["analyst_actions"], s["paths"]["incident_reports"]]:
         with open(filepath, "w") as f:
             f.truncate(0)
 
@@ -1879,18 +1982,18 @@ def reset_simulator():
 
 @app.route("/api/current-level", methods=["GET"])
 def get_current_level():
-    global current_level
+    s = g.session
 
     # Build level results from action history
     level_results = {}
-    if os.path.exists(ACTION_LOG_PATH):
-        with open(ACTION_LOG_PATH, "r") as f:
+    if os.path.exists(s["paths"]["analyst_actions"]):
+        with open(s["paths"]["analyst_actions"], "r") as f:
             actions = [json.loads(line) for line in f if line.strip()]
 
         # Get scenario info from logs
         scenario_info = {}
-        if os.path.exists(FAKE_LOG_PATH):
-            with open(FAKE_LOG_PATH, "r") as f:
+        if os.path.exists(s["paths"]["generated_logs"]):
+            with open(s["paths"]["generated_logs"], "r") as f:
                 for line in f:
                     if line.strip():
                         log = json.loads(line)
@@ -1939,7 +2042,7 @@ def get_current_level():
             else:
                 level_results[level_key] = "incorrect"
 
-    if current_level >= len(CAMPAIGN_LEVELS):
+    if s["current_level"] >= len(CAMPAIGN_LEVELS):
         return jsonify({
             "completed": True,
             "total_levels": len(CAMPAIGN_LEVELS),
@@ -1947,15 +2050,15 @@ def get_current_level():
             "message": "Congratulations! You've completed all levels!"
         })
 
-    level_config = CAMPAIGN_LEVELS[current_level]
+    level_config = CAMPAIGN_LEVELS[s["current_level"]]
 
     # Use selected_level_option if available (randomized scenario), otherwise show placeholder
-    if selected_level_option:
-        ticket_id = selected_level_option.get("ticket_id", "TKT-0000")
-        ticket_title = selected_level_option.get("ticket_title", "Unknown")
-        storyline = selected_level_option.get("storyline", "")
-        hint = selected_level_option.get("hint", "")
-        category = selected_level_option.get("category", "Unknown")
+    if s["selected_level_option"]:
+        ticket_id = s["selected_level_option"].get("ticket_id", "TKT-0000")
+        ticket_title = s["selected_level_option"].get("ticket_title", "Unknown")
+        storyline = s["selected_level_option"].get("storyline", "")
+        hint = s["selected_level_option"].get("hint", "")
+        category = s["selected_level_option"].get("category", "Unknown")
     else:
         # No scenario selected yet - return null so frontend hides the card
         ticket_id = None
@@ -1974,7 +2077,7 @@ def get_current_level():
         "category": category,
         "category_pool": level_config.get("category_pool", []),
         "total_levels": len(CAMPAIGN_LEVELS),
-        "progress": f"{current_level}/{len(CAMPAIGN_LEVELS)}",
+        "progress": f"{s['current_level']}/{len(CAMPAIGN_LEVELS)}",
         "level_results": level_results
     })
 
@@ -1982,7 +2085,8 @@ def get_current_level():
 
 @app.route('/api/analytics', methods=['GET'])
 def get_analytics():
-    if not os.path.exists(FAKE_LOG_PATH):
+    s = g.session
+    if not os.path.exists(s["paths"]["generated_logs"]):
         return jsonify({
             "total_alerts": 0,
             "critical_alerts": 0,
@@ -1990,7 +2094,7 @@ def get_analytics():
             "weekly_alerts": []
         })
 
-    with open(FAKE_LOG_PATH, "r") as f:
+    with open(s["paths"]["generated_logs"], "r") as f:
         logs = [json.loads(line) for line in f if line.strip()]
 
     total = len(logs)
@@ -2017,17 +2121,18 @@ def get_analytics():
 
 @app.route("/api/analytics/report_card", methods=["GET"])
 def get_analyst_report_card():
+    s = g.session
     try:
         # Handle missing files gracefully
         actions = []
         all_logs = []
 
-        if os.path.exists(ACTION_LOG_PATH):
-            with open(ACTION_LOG_PATH, "r") as f:
+        if os.path.exists(s["paths"]["analyst_actions"]):
+            with open(s["paths"]["analyst_actions"], "r") as f:
                 actions = [json.loads(line) for line in f if line.strip()]
 
-        if os.path.exists(FAKE_LOG_PATH):
-            with open(FAKE_LOG_PATH, "r") as f:
+        if os.path.exists(s["paths"]["generated_logs"]):
+            with open(s["paths"]["generated_logs"], "r") as f:
                 all_logs = [json.loads(line) for line in f if line.strip()]
 
         # Build lookup: scenario_id -> category
@@ -2093,16 +2198,17 @@ def get_analyst_report_card():
 @app.route("/api/analytics/action_history", methods=["GET"])
 def get_action_history():
     """Returns detailed history of analyst actions with correctness feedback."""
+    s = g.session
     try:
         actions = []
         all_logs = []
 
-        if os.path.exists(ACTION_LOG_PATH):
-            with open(ACTION_LOG_PATH, "r") as f:
+        if os.path.exists(s["paths"]["analyst_actions"]):
+            with open(s["paths"]["analyst_actions"], "r") as f:
                 actions = [json.loads(line) for line in f if line.strip()]
 
-        if os.path.exists(FAKE_LOG_PATH):
-            with open(FAKE_LOG_PATH, "r") as f:
+        if os.path.exists(s["paths"]["generated_logs"]):
+            with open(s["paths"]["generated_logs"], "r") as f:
                 all_logs = [json.loads(line) for line in f if line.strip()]
 
         # Build lookups
@@ -2172,12 +2278,13 @@ def get_triage_review(scenario_label):
 
 @app.route("/api/current-scenario", methods=["GET"])
 def get_current_scenario():
-    return jsonify(current_scenario if current_scenario else {})
+    s = g.session
+    return jsonify(s["current_scenario"] if s["current_scenario"] else {})
 
 @app.route("/api/flag-event", methods=["POST"])
 def flag_event():
     """Flag or unflag an individual event as suspicious."""
-    global game_mode, flag_strikes
+    s = g.session
     data = request.json
     event_id = data.get("event_id")
     flagged = data.get("flagged", True)
@@ -2185,11 +2292,11 @@ def flag_event():
     if not event_id:
         return jsonify({"error": "Missing event_id"}), 400
 
-    if not os.path.exists(FAKE_LOG_PATH):
+    if not os.path.exists(s["paths"]["generated_logs"]):
         return jsonify({"error": "No logs found"}), 404
 
     # Read all logs
-    with open(FAKE_LOG_PATH, "r") as f:
+    with open(s["paths"]["generated_logs"], "r") as f:
         all_logs = [json.loads(line) for line in f if line.strip()]
 
     # Find the event
@@ -2222,15 +2329,15 @@ def flag_event():
             "is_normal_traffic": is_normal_traffic,
             "correct": not is_normal_traffic
         }
-        with open(ACTION_LOG_PATH, "a") as f:
+        with open(s["paths"]["analyst_actions"], "a") as f:
             f.write(json.dumps(flag_action) + "\n")
 
     # Handle wrong flag in hardcore mode (3 strikes system)
-    if flagged and is_normal_traffic and game_mode == "hardcore":
-        flag_strikes += 1
-        print(f"[STRIKE] Wrong flag! Strike {flag_strikes}/3", flush=True)
-        if flag_strikes >= 3:
-            flag_strikes = 0  # Reset for next game
+    if flagged and is_normal_traffic and s["game_mode"] == "hardcore":
+        s["flag_strikes"] += 1
+        print(f"[STRIKE] Wrong flag! Strike {s['flag_strikes']}/3", flush=True)
+        if s["flag_strikes"] >= 3:
+            s["flag_strikes"] = 0  # Reset for next game
             return jsonify({
                 "status": "hardcore_failure",
                 "failure_reason": "3 wrong flags - Game Over!",
@@ -2241,7 +2348,7 @@ def flag_event():
     all_logs[target_index]["flagged"] = flagged
 
     # Write back all logs
-    with open(FAKE_LOG_PATH, "w") as f:
+    with open(s["paths"]["generated_logs"], "w") as f:
         for log in all_logs:
             f.write(json.dumps(log) + "\n")
 
@@ -2264,16 +2371,17 @@ def flag_event():
             "all_flagged": all_flagged
         },
         "is_normal_traffic": is_normal_traffic,
-        "strikes": flag_strikes if game_mode == "hardcore" else None
+        "strikes": s["flag_strikes"] if s["game_mode"] == "hardcore" else None
     })
 
 @app.route("/api/scenario-progress", methods=["GET"])
 def get_scenario_progress():
     """Get flagging progress for all active scenarios."""
-    if not os.path.exists(FAKE_LOG_PATH):
+    s = g.session
+    if not os.path.exists(s["paths"]["generated_logs"]):
         return jsonify({"scenarios": []})
 
-    with open(FAKE_LOG_PATH, "r") as f:
+    with open(s["paths"]["generated_logs"], "r") as f:
         all_logs = [json.loads(line) for line in f if line.strip()]
 
     # Group by scenario and calculate progress
@@ -2309,7 +2417,7 @@ def get_scenario_progress():
 
 @app.route("/api/resume", methods=["POST"])
 def resume_generation():
-    global current_scenario, paused, current_level, timer_start, game_mode, selected_level_option
+    s = g.session
     data = request.json
     action = data.get("analyst_action")
     scenario_id = data.get("scenario_id")
@@ -2325,8 +2433,8 @@ def resume_generation():
 
     existing_category = None
 
-    if os.path.exists(FAKE_LOG_PATH):
-        with open(FAKE_LOG_PATH, "r") as f:
+    if os.path.exists(s["paths"]["generated_logs"]):
+        with open(s["paths"]["generated_logs"], "r") as f:
             all_logs = [json.loads(line) for line in f if line.strip()]
 
         for log in all_logs:
@@ -2353,7 +2461,7 @@ def resume_generation():
                 log["analyst_action"] = action
             updated_logs.append(log)
 
-        with open(FAKE_LOG_PATH, "w") as f:
+        with open(s["paths"]["generated_logs"], "w") as f:
             for log in updated_logs:
                 f.write(json.dumps(log) + "\n")
 
@@ -2370,7 +2478,7 @@ def resume_generation():
         action_log["correct_category"] = existing_category
         action_log["category_correct"] = category_correct
 
-    with open(ACTION_LOG_PATH, "a") as f:
+    with open(s["paths"]["analyst_actions"], "a") as f:
         f.write(json.dumps(action_log) + "\n")
 
     # Determine if answer was wrong for hardcore mode failure
@@ -2383,18 +2491,18 @@ def resume_generation():
         failure_reason = f"Wrong category: selected {selected_category}, was {existing_category}"
 
     # Handle hardcore mode failure
-    if answer_wrong and game_mode == "hardcore":
+    if answer_wrong and s["game_mode"] == "hardcore":
         print(f"\n[HARDCORE FAILURE] {failure_reason}", flush=True)
         print(f"[HARDCORE] Resetting to Level 1...", flush=True)
 
         # Reset game state - stay paused until user selects difficulty again
-        current_level = 0
-        timer_start = None
-        current_scenario = None
-        paused = True
+        s["current_level"] = 0
+        s["timer_start"] = None
+        s["current_scenario"] = None
+        s["paused"] = True
 
         # Clear log files
-        for path in [FAKE_LOG_PATH, ACTION_LOG_PATH, REPORTS_FILE]:
+        for path in [s["paths"]["generated_logs"], s["paths"]["analyst_actions"], s["paths"]["incident_reports"]]:
             if os.path.exists(path):
                 os.remove(path)
 
@@ -2406,12 +2514,12 @@ def resume_generation():
         })
 
     # Check if all incidents for current level are resolved
-    if os.path.exists(FAKE_LOG_PATH):
-        with open(FAKE_LOG_PATH, "r") as f:
+    if os.path.exists(s["paths"]["generated_logs"]):
+        with open(s["paths"]["generated_logs"], "r") as f:
             all_logs = [json.loads(line) for line in f if line.strip()]
 
         # Get current level number
-        current_level_num = CAMPAIGN_LEVELS[current_level]["level"] if current_level < len(CAMPAIGN_LEVELS) else None
+        current_level_num = CAMPAIGN_LEVELS[s["current_level"]]["level"] if s["current_level"] < len(CAMPAIGN_LEVELS) else None
 
         # Find all active incidents for current level
         active_for_level = [
@@ -2426,32 +2534,33 @@ def resume_generation():
 
         if len(active_scenarios) == 0:
             # All incidents resolved - advance to next level
-            current_level += 1
-            timer_start = None  # Reset timer for next level
-            if current_level < len(CAMPAIGN_LEVELS):
+            s["current_level"] += 1
+            s["timer_start"] = None  # Reset timer for next level
+            if s["current_level"] < len(CAMPAIGN_LEVELS):
                 # Select next scenario immediately so Scenario Card shows
-                next_level = CAMPAIGN_LEVELS[current_level]
-                selected_level_option = select_level_scenarios(next_level)
+                next_level = CAMPAIGN_LEVELS[s["current_level"]]
+                s["selected_level_option"] = select_level_scenarios(next_level)
                 print(f"[LEVEL UP] Advancing to Level {next_level['level']}", flush=True)
-                print(f"[SCENARIO SELECTED] {selected_level_option['ticket_title']} ({selected_level_option['category']})", flush=True)
+                print(f"[SCENARIO SELECTED] {s['selected_level_option']['ticket_title']} ({s['selected_level_option']['category']})", flush=True)
             else:
-                selected_level_option = None
+                s["selected_level_option"] = None
                 print("[CAMPAIGN COMPLETE] All levels finished!", flush=True)
-            paused = False  # Unpause to allow next level injection
+            s["paused"] = False  # Unpause to allow next level injection
         else:
             print(f"[WAITING] {len(active_scenarios)} incident(s) still active for this level", flush=True)
             # Stay paused - don't inject new scenarios until all are resolved
 
-    current_scenario = None
+    s["current_scenario"] = None
     return jsonify({"status": "action logged", "action": action})
 
 
 @app.route('/api/grouped-alerts', methods=['GET'])
 def get_grouped_alerts():
-    if not os.path.exists(FAKE_LOG_PATH):
+    s = g.session
+    if not os.path.exists(s["paths"]["generated_logs"]):
         return jsonify([])
 
-    with open(FAKE_LOG_PATH, "r") as f:
+    with open(s["paths"]["generated_logs"], "r") as f:
         logs = [json.loads(line) for line in f if line.strip()]
 
     grouped = {}
@@ -2511,7 +2620,7 @@ def get_grouped_alerts():
 
 @app.route("/api/reports", methods=["POST"])
 def submit_report():
-    global current_scenario, paused, current_level, selected_level_option
+    s = g.session
 
     data = request.json
     scenario_id = data.get("scenario_id")
@@ -2524,8 +2633,8 @@ def submit_report():
     correct_category = None
     scenario_label = None
 
-    if os.path.exists(FAKE_LOG_PATH):
-        with open(FAKE_LOG_PATH, "r") as f:
+    if os.path.exists(s["paths"]["generated_logs"]):
+        with open(s["paths"]["generated_logs"], "r") as f:
             for line in f:
                 log = json.loads(line)
                 if log.get("scenario_id") == scenario_id:
@@ -2546,12 +2655,12 @@ def submit_report():
 
     print(f"[REPORT] scenario_id={scenario_id}, submitted={submitted_category}, correct={correct_category}, match={is_correct}", flush=True)
 
-    with open(REPORTS_FILE, "a") as f:
+    with open(s["paths"]["incident_reports"], "a") as f:
         f.write(json.dumps(data) + "\n")
 
     if scenario_id:
-        if os.path.exists(FAKE_LOG_PATH):
-            with open(FAKE_LOG_PATH, "r") as f:
+        if os.path.exists(s["paths"]["generated_logs"]):
+            with open(s["paths"]["generated_logs"], "r") as f:
                 logs = [json.loads(line) for line in f if line.strip()]
 
             for log in logs:
@@ -2559,13 +2668,13 @@ def submit_report():
                     log["status"] = "investigating"
                     log["analyst_action"] = "investigate"
 
-            with open(FAKE_LOG_PATH, "w") as f:
+            with open(s["paths"]["generated_logs"], "w") as f:
                 for log in logs:
                     f.write(json.dumps(log) + "\n")
 
         label = "unknown"
-        if scenario_id and os.path.exists(FAKE_LOG_PATH):
-            with open(FAKE_LOG_PATH, "r") as f:
+        if scenario_id and os.path.exists(s["paths"]["generated_logs"]):
+            with open(s["paths"]["generated_logs"], "r") as f:
                 for line in f:
                     log = json.loads(line)
                     if log.get("scenario_id") == scenario_id:
@@ -2578,43 +2687,45 @@ def submit_report():
             "action": "investigate",
             "label": label
         }
-        with open(ACTION_LOG_PATH, "a") as f:
+        with open(s["paths"]["analyst_actions"], "a") as f:
             f.write(json.dumps(action_log) + "\n")
 
         # Advance to next level
-        current_level += 1
-        selected_level_option = None  # Reset so new level selects fresh scenario
-        if current_level < len(CAMPAIGN_LEVELS):
-            next_level = CAMPAIGN_LEVELS[current_level]
+        s["current_level"] += 1
+        s["selected_level_option"] = None  # Reset so new level selects fresh scenario
+        if s["current_level"] < len(CAMPAIGN_LEVELS):
+            next_level = CAMPAIGN_LEVELS[s["current_level"]]
             print(f"[LEVEL UP] Advancing to Level {next_level['level']} (categories: {next_level.get('category_pool', [])})", flush=True)
         else:
             print("[CAMPAIGN COMPLETE] All levels finished!", flush=True)
 
-        current_scenario = None
-        paused = False
+        s["current_scenario"] = None
+        s["paused"] = False
 
     return jsonify({"message": "Report submitted and scenario resolved"}), 200
 
 
 @app.route("/api/reports", methods=["GET"])
 def get_reports():
-    if not os.path.exists(REPORTS_FILE):
+    s = g.session
+    if not os.path.exists(s["paths"]["incident_reports"]):
         return jsonify([])
-    with open(REPORTS_FILE, "r") as f:
+    with open(s["paths"]["incident_reports"], "r") as f:
         reports = [json.loads(line) for line in f if line.strip()]
     return jsonify(reports)
 
 
 @app.route('/api/reports/<report_id>', methods=['DELETE'])
 def delete_report(report_id):
+    s = g.session
     try:
-        if not os.path.exists(REPORTS_FILE):
+        if not os.path.exists(s["paths"]["incident_reports"]):
             return jsonify({'error': 'Report storage not found'}), 404
 
         remaining_reports = []
         found = False
 
-        with open(REPORTS_FILE, 'r') as f:
+        with open(s["paths"]["incident_reports"], 'r') as f:
             for line in f:
                 if not line.strip():
                     continue
@@ -2627,7 +2738,7 @@ def delete_report(report_id):
         if not found:
             return jsonify({'error': 'Report not found'}), 404
 
-        with open(REPORTS_FILE, 'w') as f:
+        with open(s["paths"]["incident_reports"], 'w') as f:
             for report in remaining_reports:
                 f.write(json.dumps(report) + '\n')
 
@@ -2640,15 +2751,16 @@ def delete_report(report_id):
 
 @app.route('/api/reports/<report_id>', methods=['PUT'])
 def update_report(report_id):
+    s = g.session
     try:
-        if not os.path.exists(REPORTS_FILE):
+        if not os.path.exists(s["paths"]["incident_reports"]):
             return jsonify({'error': 'Report storage not found'}), 404
 
         updated_data = request.json
-        updated_data['id'] = report_id 
+        updated_data['id'] = report_id
         updated_reports = []
 
-        with open(REPORTS_FILE, 'r') as f:
+        with open(s["paths"]["incident_reports"], 'r') as f:
             for line in f:
                 if not line.strip():
                     continue
@@ -2658,7 +2770,7 @@ def update_report(report_id):
                 else:
                     updated_reports.append(report)
 
-        with open(REPORTS_FILE, 'w') as f:
+        with open(s["paths"]["incident_reports"], 'w') as f:
             for report in updated_reports:
                 f.write(json.dumps(report) + '\n')
 
@@ -2672,46 +2784,46 @@ def update_report(report_id):
 @app.route('/api/game-state', methods=['GET'])
 def get_game_state():
     """Returns current game state including mode, timer, etc."""
-    global timer_start, game_mode, paused, current_level, analyst_name
+    s = g.session
 
     timer_remaining = None
     timer_expired = False
 
-    if game_mode == "hardcore" and timer_start:
-        elapsed = (datetime.now(timezone.utc) - timer_start).total_seconds()
-        duration = get_timer_duration()
+    if s["game_mode"] == "hardcore" and s["timer_start"]:
+        elapsed = (datetime.now(timezone.utc) - s["timer_start"]).total_seconds()
+        duration = get_timer_duration(s["current_level"])
         timer_remaining = max(0, duration - elapsed)
         timer_expired = timer_remaining <= 0
 
     return jsonify({
-        "game_mode": game_mode,
+        "game_mode": s["game_mode"],
         "timer_remaining": timer_remaining,
         "timer_expired": timer_expired,
-        "timer_duration": get_timer_duration(),
-        "paused": paused,
-        "current_level": current_level,
-        "analyst_name": analyst_name
+        "timer_duration": get_timer_duration(s["current_level"]),
+        "paused": s["paused"],
+        "current_level": s["current_level"],
+        "analyst_name": s["analyst_name"]
     })
 
 
 @app.route('/api/game-timeout', methods=['POST'])
 def handle_game_timeout():
     """Handle timeout in hardcore mode - reset to level 1."""
-    global current_level, paused, timer_start, current_scenario
+    s = g.session
 
-    if game_mode != "hardcore":
+    if s["game_mode"] != "hardcore":
         return jsonify({"error": "Not in hardcore mode"}), 400
 
     print(f"\n[TIMEOUT] Time's up! Resetting to Level 1...", flush=True)
 
     # Reset game state - stay paused until user selects difficulty again
-    current_level = 0
-    timer_start = None
-    current_scenario = None
-    paused = True
+    s["current_level"] = 0
+    s["timer_start"] = None
+    s["current_scenario"] = None
+    s["paused"] = True
 
     # Clear log files
-    for path in [FAKE_LOG_PATH, ACTION_LOG_PATH, REPORTS_FILE]:
+    for path in [s["paths"]["generated_logs"], s["paths"]["analyst_actions"], s["paths"]["incident_reports"]]:
         if os.path.exists(path):
             os.remove(path)
 
@@ -2720,42 +2832,42 @@ def handle_game_timeout():
 
 @app.route('/api/start-simulator', methods=['POST'])
 def start_simulator():
-    global paused, game_mode, timer_start, analyst_name, selected_level_option, current_level
+    s = g.session
 
     data = request.json or {}
-    selected_mode = data.get("game_mode", "training")
-    game_mode = selected_mode
-    timer_start = None  # Reset timer
-    analyst_name = data.get("analyst_name")
+    s["game_mode"] = data.get("game_mode", "training")
+    s["timer_start"] = None
+    s["analyst_name"] = data.get("analyst_name")
 
-    print(f"\n[GAME MODE] Starting in {game_mode.upper()} mode", flush=True)
-    if analyst_name:
-        print(f"[ANALYST] {analyst_name}", flush=True)
+    print(f"\n[GAME MODE] Starting in {s['game_mode'].upper()} mode (session {s['id'][:8]})", flush=True)
+    if s["analyst_name"]:
+        print(f"[ANALYST] {s['analyst_name']}", flush=True)
 
     # Select scenario for current level immediately so Scenario Card shows
-    if current_level < len(CAMPAIGN_LEVELS):
-        level_config = CAMPAIGN_LEVELS[current_level]
-        selected_level_option = select_level_scenarios(level_config)
-        print(f"[SCENARIO SELECTED] {selected_level_option['ticket_title']} ({selected_level_option['category']})", flush=True)
+    if s["current_level"] < len(CAMPAIGN_LEVELS):
+        level_config = CAMPAIGN_LEVELS[s["current_level"]]
+        s["selected_level_option"] = select_level_scenarios(level_config)
+        print(f"[SCENARIO SELECTED] {s['selected_level_option']['ticket_title']} ({s['selected_level_option']['category']})", flush=True)
 
+    thread_name = f"LogWriter-{s['id']}"
     running_threads = [t.name for t in threading.enumerate()]
-    thread_exists = "LogWriter" in running_threads
+    thread_exists = thread_name in running_threads
 
     # If thread exists and is paused, just unpause it
-    if thread_exists and paused:
-        paused = False
-        return jsonify({"message": "Simulator resumed", "game_mode": game_mode}), 200
+    if thread_exists and s["paused"]:
+        s["paused"] = False
+        return jsonify({"message": "Simulator resumed", "game_mode": s["game_mode"]}), 200
 
     # If thread doesn't exist, start it
     if not thread_exists:
-        paused = False
-        thread = threading.Thread(target=log_writer, kwargs={"interval": 1}, daemon=True)
-        thread.name = "LogWriter"
+        s["paused"] = False
+        thread = threading.Thread(target=log_writer, args=(s,), kwargs={"interval": 1}, daemon=True)
+        thread.name = thread_name
         thread.start()
-        return jsonify({"message": "Simulator started", "game_mode": game_mode}), 200
+        return jsonify({"message": "Simulator started", "game_mode": s["game_mode"]}), 200
 
     # Thread exists and not paused - already running
-    return jsonify({"message": "Simulator already running", "game_mode": game_mode}), 200
+    return jsonify({"message": "Simulator already running", "game_mode": s["game_mode"]}), 200
 
 
 if __name__ == '__main__':

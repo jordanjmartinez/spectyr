@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import API_BASE_URL from '../config';
+import { apiFetch } from '../api';
 import confetti from 'canvas-confetti';
 import CategorySelector from '../components/CategorySelector';
 
@@ -17,7 +17,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
   const [gameStarted, setGameStarted] = useState(false);
 
   const fetchGroupedAlerts = () => {
-    fetch(`${API_BASE_URL}/api/grouped-alerts`)
+    apiFetch('/api/grouped-alerts')
       .then(res => res.json())
       .then(data => {
         setGroups(prevGroups => {
@@ -35,14 +35,14 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
 
 
   const fetchCurrentLevel = () => {
-    fetch(`${API_BASE_URL}/api/current-level`)
+    apiFetch('/api/current-level')
       .then(res => res.json())
       .then(data => setCurrentLevel(data))
       .catch(err => console.error("Failed to fetch current level", err));
   };
 
   const fetchGameState = () => {
-    fetch(`${API_BASE_URL}/api/game-state`)
+    apiFetch('/api/game-state')
       .then(res => res.json())
       .then(data => setGameStarted(!!data.analyst_name))
       .catch(err => console.error("Failed to fetch game state", err));
@@ -150,7 +150,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
     setSubmittingIds(updatedSet);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/resume`, {
+      const res = await apiFetch('/api/resume', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -304,7 +304,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
             >
               <div className="overflow-hidden min-h-0">
                 <div className="mt-4 border-t border-gray-700 pt-4">
-                  <div className="overflow-x-auto mobile-scroll-wrapper">
+                  <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper">
                     <table className="w-full min-w-[700px] log-text text-left text-gray-300 border-separate border-spacing-0">
                       <thead>
                         <tr className="text-sm uppercase text-gray-400 tracking-wider">

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import API_BASE_URL from '../config';
+import { apiFetch } from '../api';
 
 const StatCards = () => {
   const [stats, setStats] = useState({
@@ -10,7 +10,7 @@ const StatCards = () => {
 
   useEffect(() => {
     const fetchStats = () => {
-      fetch(`${API_BASE_URL}/api/analytics`)
+      apiFetch('/api/analytics')
         .then(res => res.json())
         .then(data => setStats(data))
         .catch(err => console.error('Error fetching stats:', err));

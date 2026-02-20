@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import API_BASE_URL from '../config';
+import { apiFetch } from '../api';
 
 const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncident }) => {
   const [alerts, setAlerts] = useState([]);
@@ -26,7 +26,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
   ];
 
   const fetchAlerts = () => {
-    fetch(`${API_BASE_URL}/api/fake-events`)
+    apiFetch('/api/fake-events')
       .then(res => res.json())
       .then(data => {
         setAlerts([...data].reverse());
@@ -35,14 +35,14 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
   };
 
   const fetchGameState = () => {
-    fetch(`${API_BASE_URL}/api/game-state`)
+    apiFetch('/api/game-state')
       .then(res => res.json())
       .then(data => setGameMode(data.game_mode))
       .catch(err => console.error('Error fetching game state:', err));
   };
 
   const fetchScenarioHint = () => {
-    fetch(`${API_BASE_URL}/api/current-scenario`)
+    apiFetch('/api/current-scenario')
       .then(res => res.json())
       .then(data => {
         if (data && data.hint) {
@@ -87,7 +87,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
     setFlaggingIds(prev => new Set([...prev, eventId]));
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/flag-event`, {
+      const res = await apiFetch('/api/flag-event', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ event_id: eventId, flagged: shouldFlag })
@@ -397,7 +397,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
           <p className="font-mono text-sm text-gray-400">&gt; No matching logs for "{searchTerm}"</p>
         </div>
       ) : (
-        <div className="overflow-x-auto mobile-scroll-wrapper">
+        <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper">
           <table className="w-full min-w-[800px] log-text text-left text-gray-300 border-separate border-spacing-0">
             <thead>
               <tr className="text-sm uppercase text-gray-400 tracking-wider">
