@@ -251,7 +251,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
         <div className="bg-[#161b22] p-6 rounded-xl">
           <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
             <img src="/ghost_incident.png" alt="Ghost Analyzing" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
-            <p className="font-mono text-sm text-gray-400">&gt; Nothing flagged yet. Classify threats in Events to populate this view.</p>
+            <p className="font-mono text-sm text-gray-400 text-center sm:text-left">&gt; Nothing flagged yet. Classify threats in Events to populate this view.</p>
           </div>
         </div>
       )}
