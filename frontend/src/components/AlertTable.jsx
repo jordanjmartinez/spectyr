@@ -349,8 +349,8 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
-            <div className="flex items-center gap-1 text-sm mb-2 sm:mb-0">
+          <div className="flex flex-row justify-between items-center mb-4">
+            <div className="flex items-center gap-1 text-sm">
               <button
                 onClick={() => changePage(currentPage - 1)}
                 disabled={currentPage === 1}
@@ -404,8 +404,8 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
                 <th className="px-4 py-3 font-medium w-[100px]">Time</th>
                 <th className="px-4 py-3 font-medium w-[140px]">Event Type</th>
                 <th className="px-4 py-3 font-medium w-[110px] whitespace-nowrap">Source Type</th>
-                <th className="px-4 py-3 font-medium w-[120px]">Source IP</th>
-                <th className="px-4 py-3 font-medium w-[120px]">Dest IP</th>
+                <th className="px-4 py-3 font-medium w-[120px] whitespace-nowrap">Source IP</th>
+                <th className="px-4 py-3 font-medium w-[120px] whitespace-nowrap">Dest IP</th>
                 <th className="px-4 py-3 font-medium">Message</th>
                 <th className="px-4 py-3 font-medium w-10"></th>
                 <th className="px-4 py-3 font-medium w-10"></th>
