@@ -33,7 +33,7 @@ def get_timer_duration(level):
 # --- Session Management ---
 SESSION_COOKIE_NAME = "spectyr_session"
 SESSION_TTL_SECONDS = 1800  # 30 minutes
-IS_PRODUCTION = os.environ.get("FLASK_ENV") == "production" or os.environ.get("SPECTYR_PROD")
+IS_PRODUCTION = os.environ.get("FLASK_ENV") == "production" or os.environ.get("SPECTYR_PROD") or os.environ.get("RENDER")
 
 sessions = {}
 sessions_lock = threading.Lock()
