@@ -142,7 +142,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
       </div>
 
       <div style="margin-bottom: 20px;">
-        <p style="margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase; color: #666; letter-spacing: 0.5px; font-weight: 500;">What was observed?</p>
+        <p style="margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase; color: #666; letter-spacing: 0.5px; font-weight: 500;">Description</p>
         <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #333;">${report.description || '—'}</p>
       </div>
 
@@ -244,8 +244,8 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
               onClick={() => toggleRow(index)}
             >
               {/* Left column on desktop: title + metadata */}
-              <div className="sm:flex-1 sm:min-w-0">
-                <h3 className="text-base sm:text-xl font-bold text-white sm:truncate sm:pr-4">
+              <div className="min-w-0 sm:flex-1">
+                <h3 className="text-base sm:text-[1.35rem] font-bold text-white truncate pr-2 sm:pr-4" style={{ fontFamily: "'Open Sans', sans-serif" }}>
                   {report.title || 'Untitled Report'}
                 </h3>
                 {/* Desktop metadata — below title */}
@@ -254,8 +254,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
                     {new Date(report.timestamp).toLocaleDateString('en-GB')} at {new Date(report.timestamp).toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' })}
                   </span>
                   <span className="text-gray-600">|</span>
-                  <span className="text-white text-sm">Assigned to:</span>
-                  <span className="text-white text-sm">{(report.owner && report.owner !== 'Unassigned') ? report.owner : (analystName || 'Unknown')}</span>
+                  <span className="text-white text-sm">Assigned to: {(report.owner && report.owner !== 'Unassigned') ? report.owner : (analystName || 'Unknown')}</span>
                 </div>
               </div>
 
@@ -401,8 +400,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
                   {new Date(report.timestamp).toLocaleDateString('en-GB')} at {new Date(report.timestamp).toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' })}
                 </span>
                 <span className="text-gray-600">|</span>
-                <span className="text-white text-sm">Assigned to:</span>
-                <span className="text-white text-sm">{(report.owner && report.owner !== 'Unassigned') ? report.owner : (analystName || 'Unknown')}</span>
+                <span className="text-white text-sm">Assigned to: {(report.owner && report.owner !== 'Unassigned') ? report.owner : (analystName || 'Unknown')}</span>
               </div>
             </div>
 
@@ -436,20 +434,20 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
 
                   {/* Description */}
                   <div className="mb-4">
-                    <span className="text-sm text-gray-400 font-medium">What was observed?</span>
-                    <p className="text-gray-300 mt-2 leading-relaxed text-sm">{report.description || '—'}</p>
+                    <span className="text-sm text-gray-400 font-medium">Description</span>
+                    <p className="text-gray-300 mt-2 leading-relaxed text-sm break-words">{report.description || '—'}</p>
                   </div>
 
                   {/* Affected Systems */}
                   <div className="mb-4">
                     <span className="text-sm text-gray-400 font-medium">Affected Systems</span>
-                    <p className="text-gray-300 mt-2 text-sm font-mono">{report.affected_hosts || '—'}</p>
+                    <p className="text-gray-300 mt-2 text-sm font-mono break-words">{report.affected_hosts || '—'}</p>
                   </div>
 
                   {/* Recommended Actions */}
                   <div>
                     <span className="text-sm text-gray-400 font-medium">Recommended Actions</span>
-                    <p className="text-gray-300 mt-2 leading-relaxed text-sm">{report.mitigation || '—'}</p>
+                    <p className="text-gray-300 mt-2 leading-relaxed text-sm break-words">{report.mitigation || '—'}</p>
                   </div>
                 </div>
               </div>

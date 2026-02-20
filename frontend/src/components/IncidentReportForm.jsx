@@ -92,7 +92,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
   ];
 
   return (
-    <div className={`text-white ${inline ? 'w-full' : 'p-8 w-full max-w-2xl bg-[#161b22] rounded-xl border border-gray-700 shadow-2xl'}`}>
+    <div className={`text-white ${inline ? 'w-full' : 'p-8 w-full max-w-2xl bg-[#161b22] rounded-xl border border-gray-700 shadow-2xl'}`} style={{ fontFamily: "'Open Sans', sans-serif" }}>
 
       
       <div className="space-y-6">
