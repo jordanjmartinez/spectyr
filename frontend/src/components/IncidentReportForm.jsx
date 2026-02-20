@@ -136,7 +136,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
         </div>
 
         {/* MITRE Tactic & Kill Chain - Side by side dropdowns */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm text-gray-300 mb-2">MITRE Tactic</label>
             <select
@@ -210,7 +210,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
 
             <div>
               <label className="block text-sm text-gray-300 mb-2">Status</label>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {['Open', 'In Progress', 'Escalated', 'Resolved'].map(status => (
                   <button
                     key={status}

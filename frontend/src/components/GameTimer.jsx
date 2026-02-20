@@ -52,9 +52,9 @@ const GameTimer = ({ onTimeout }) => {
           : 'bg-gray-800/80 border-gray-600'
       }`}
     >
-      <img src="/hacker_fav.png" alt="" className="w-14 h-14" />
+      <img src="/hacker_fav.png" alt="" className="w-10 h-10 sm:w-14 sm:h-14" />
       <span
-        className={`text-3xl tracking-widest ${
+        className={`text-2xl sm:text-3xl tracking-widest ${
           isCritical ? 'text-red-400' : isLow ? 'text-yellow-400' : 'text-white'
         }`}
         style={{ fontFamily: "'Share Tech Mono', monospace" }}

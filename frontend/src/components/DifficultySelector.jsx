@@ -32,12 +32,12 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-6 items-start">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 items-start">
           {/* Training Mode */}
           <button
             onClick={() => handleSelect('training')}
             disabled={!isNameValid}
-            className={`group relative bg-[#21262d] border-2 rounded-xl p-6 text-center transition-all duration-200 ${
+            className={`group relative bg-[#21262d] border-2 rounded-xl p-4 sm:p-6 text-center transition-all duration-200 ${
               isNameValid
                 ? 'border-gray-600 hover:border-gray-400 cursor-pointer'
                 : 'border-gray-700 opacity-50 cursor-not-allowed'
@@ -45,7 +45,7 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
           >
             <div className="flex flex-col items-center mb-3">
               <h4 className="text-lg font-semibold text-white mb-2">Training</h4>
-              <img src="/ghost-searching.png" alt="Training" className="w-24 h-28 object-contain" />
+              <img src="/ghost-searching.png" alt="Training" className="w-20 h-24 sm:w-24 sm:h-28 object-contain" />
             </div>
             <ul className="space-y-2 text-sm text-gray-400">
               <li>No time pressure</li>
@@ -58,7 +58,7 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
           <button
             onClick={() => handleSelect('hardcore')}
             disabled={!isNameValid}
-            className={`group relative bg-[#21262d] border-2 rounded-xl p-6 text-center transition-all duration-200 ${
+            className={`group relative bg-[#21262d] border-2 rounded-xl p-4 sm:p-6 text-center transition-all duration-200 ${
               isNameValid
                 ? 'border-gray-600 hover:border-gray-400 cursor-pointer'
                 : 'border-gray-700 opacity-50 cursor-not-allowed'
@@ -66,7 +66,7 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
           >
             <div className="flex flex-col items-center mb-3">
               <h4 className="text-lg font-semibold text-white mb-2">Hardcore</h4>
-              <img src="/ghost_hacker.png" alt="Hardcore" className="w-28 h-28 object-contain" />
+              <img src="/ghost_hacker.png" alt="Hardcore" className="w-20 h-24 sm:w-28 sm:h-28 object-contain" />
             </div>
             <ul className="space-y-2 text-sm text-gray-400">
               <li>Clock is ticking</li>

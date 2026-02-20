@@ -85,7 +85,7 @@ const CategorySelector = ({ onSelect, onCancel, scenarioInfo }) => {
         </div>
 
         {/* Category Grid */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {ATTACK_CATEGORIES.map((category) => (
               <button

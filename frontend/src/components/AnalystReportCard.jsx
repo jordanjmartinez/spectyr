@@ -5,12 +5,12 @@ const AnalystReportCard = ({ report }) => {
 
   if (!hasActivity) {
     return (
-      <div className="bg-[#161b22] p-6 rounded-2xl border border-gray-700 shadow-md h-full">
+      <div className="bg-[#161b22] p-4 sm:p-6 rounded-2xl border border-gray-700 shadow-md h-full">
         <h2 className="text-2xl font-semibold text-white mb-4">Report Card</h2>
 
         {/* Empty State */}
         <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
-          <img src="/ghost_report.png" alt="Ghost with Report" className="w-40 h-40 opacity-90 mb-3" />
+          <img src="/ghost_report.png" alt="Ghost with Report" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
           <p className="font-mono text-sm text-gray-400">&gt; No data yet. Scores populate after each level.</p>
         </div>
       </div>

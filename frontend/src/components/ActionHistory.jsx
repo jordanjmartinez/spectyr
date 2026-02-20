@@ -36,10 +36,10 @@ const ActionHistory = ({ history }) => {
 
   if (!history || history.length === 0) {
     return (
-      <div className="bg-[#161b22] p-6 rounded-2xl border border-gray-700 shadow-md">
+      <div className="bg-[#161b22] p-4 sm:p-6 rounded-2xl border border-gray-700 shadow-md">
         <h2 className="text-2xl font-semibold text-white mb-4">Triage Review</h2>
         <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
-          <img src="/ghost_analytics.png" alt="Ghost Analyzing" className="w-40 h-40 opacity-90 mb-3" />
+          <img src="/ghost_analytics.png" alt="Ghost Analyzing" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
           <p className="font-mono text-sm text-gray-400">&gt; Your triage decisions and learning details appear here.</p>
         </div>
       </div>
@@ -85,7 +85,7 @@ const ActionHistory = ({ history }) => {
                         </svg>
                       )}
                     </span>
-                    <span className="text-lg text-gray-400">
+                    <span className="text-sm sm:text-lg text-gray-400">
                       You chose: <span className="text-white">{item.user_choice}</span>
                       <span className="text-gray-600 mx-2">|</span>
                       Answer: <span className="text-white">{item.true_category}</span>

@@ -6,8 +6,8 @@ const FailureModal = ({ onRestart }) => {
       <div className="absolute inset-0 bg-black/70" />
       <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl text-center">
         <div className="flex items-center justify-center gap-3 mb-4">
-          <img src="/hacker_fav.png" alt="" className="w-14 h-14" />
-          <h3 className="text-2xl font-bold text-white">You've Been Hacked..</h3>
+          <img src="/hacker_fav.png" alt="" className="w-10 h-10 sm:w-14 sm:h-14" />
+          <h3 className="text-xl sm:text-2xl font-bold text-white">You've Been Hacked..</h3>
         </div>
         <p className="text-gray-400 mb-6">The threat slipped through your defenses before you could respond.</p>
         <div className="flex justify-center">

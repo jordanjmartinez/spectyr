@@ -201,13 +201,13 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
     <div className="space-y-4">
       {/* Scenario Card - only show when a scenario is actually assigned */}
       {gameStarted && currentLevel && !currentLevel.completed && currentLevel.ticket_title && (
-        <div className="bg-[#161b22] border border-gray-700 rounded-xl p-5 mb-6 shadow">
-          <div className="flex items-center justify-between mb-3">
+        <div className="bg-[#161b22] border border-gray-700 rounded-xl p-4 sm:p-5 mb-6 shadow">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
             <div className="flex items-center gap-3">
               <span className="inline-flex items-center bg-gray-800/80 text-gray-200 text-xs px-2.5 py-1 rounded-md uppercase font-semibold tracking-wider border border-gray-700">
                 Level {currentLevel.current_level}
               </span>
-              <span className="text-lg font-semibold text-white">{currentLevel.ticket_title}</span>
+              <span className="text-base sm:text-lg font-semibold text-white">{currentLevel.ticket_title}</span>
             </div>
             <span className="text-sm text-gray-400">
               {Object.keys(currentLevel.level_results || {}).length} / {currentLevel.total_levels} completed
@@ -221,13 +221,13 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
 
       {/* Training Complete Banner */}
       {gameStarted && currentLevel && currentLevel.completed && (
-        <div className="bg-[#161b22] border border-gray-700 rounded-xl p-5 mb-6 shadow">
+        <div className="bg-[#161b22] border border-gray-700 rounded-xl p-4 sm:p-5 mb-6 shadow">
           <h2 className="text-2xl font-semibold text-white mb-4">Mission Complete</h2>
           <div className="flex flex-col items-center text-center">
             <img
               src="/ghost-celebrate.png"
               alt="Ghost Celebrating"
-              className="w-40 h-40 opacity-90 mb-3"
+              className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3"
             />
             <p className="font-mono text-sm text-gray-400 mb-4">&gt; You've completed all {currentLevel.total_levels} levels. Reset the simulator to play again.</p>
             <button
@@ -250,7 +250,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
       {filteredGroups.length === 0 && (
         <div className="bg-[#161b22] p-6 rounded-xl">
           <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
-            <img src="/ghost_incident.png" alt="Ghost Analyzing" className="w-40 h-40 opacity-90 mb-3" />
+            <img src="/ghost_incident.png" alt="Ghost Analyzing" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
             <p className="font-mono text-sm text-gray-400">&gt; Nothing flagged yet. Classify threats in Events to populate this view.</p>
           </div>
         </div>
@@ -261,7 +261,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
         return (
           <div
             key={groupKey}
-            className={`bg-[#161b22] border border-gray-700 p-4 rounded-xl shadow transition-all duration-300 ease-in-out ${
+            className={`bg-[#161b22] border border-gray-700 p-3 sm:p-4 rounded-xl shadow transition-all duration-300 ease-in-out ${
               disappearingId === group.scenario_id ? 'opacity-0 scale-95' : 'opacity-100'
             }`}
           >
@@ -304,8 +304,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
             >
               <div className="overflow-hidden min-h-0">
                 <div className="mt-4 border-t border-gray-700 pt-4">
-                  <div className="overflow-hidden">
-                    <table className="w-full log-text text-left text-gray-300 border-separate border-spacing-0">
+                  <div className="overflow-x-auto mobile-scroll-wrapper">
+                    <table className="w-full min-w-[700px] log-text text-left text-gray-300 border-separate border-spacing-0">
                       <thead>
                         <tr className="text-sm uppercase text-gray-400 tracking-wider">
                           <th className="px-4 py-3 font-medium w-[100px]">Time</th>

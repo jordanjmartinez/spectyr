@@ -237,7 +237,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
     const end = Math.min(totalPages - 1, currentPage + visibleRange);
 
     const buttonClass = (isActive) =>
-      `w-8 h-8 flex items-center justify-center rounded-lg text-sm transition-colors ${
+      `w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg text-xs sm:text-sm transition-colors ${
         isActive
           ? 'bg-gray-700 text-white font-medium border border-gray-600'
           : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
@@ -276,7 +276,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
   const noSearchResults = !noAlertsLoaded && filteredAlerts.length === 0;
 
   return (
-    <div className="bg-[#161b22] p-6 rounded-xl">
+    <div className="bg-[#161b22] p-3 sm:p-6 rounded-xl">
       {!noAlertsLoaded && (
         <>
           <div className="mb-4">
@@ -388,17 +388,17 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
 
       {noAlertsLoaded ? (
         <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
-          <img src="/ghost-mascot.png" alt="Ghost" className="w-40 h-40 opacity-90 mb-3" />
+          <img src="/ghost-mascot.png" alt="Ghost" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
           <p className="font-mono text-sm text-gray-400">&gt; Click Start Training to begin.</p>
         </div>
       ) : noSearchResults ? (
         <div className="flex flex-col items-center justify-center py-12">
-          <img src="/ghost-searching.png" alt="Ghost Searching" className="w-40 h-40 opacity-90 mb-3" />
+          <img src="/ghost-searching.png" alt="Ghost Searching" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
           <p className="font-mono text-sm text-gray-400">&gt; No matching logs for "{searchTerm}"</p>
         </div>
       ) : (
-        <div className="overflow-hidden">
-          <table className="w-full log-text text-left text-gray-300 border-separate border-spacing-0">
+        <div className="overflow-x-auto mobile-scroll-wrapper">
+          <table className="w-full min-w-[800px] log-text text-left text-gray-300 border-separate border-spacing-0">
             <thead>
               <tr className="text-sm uppercase text-gray-400 tracking-wider">
                 <th className="px-4 py-3 font-medium w-[100px]">Time</th>

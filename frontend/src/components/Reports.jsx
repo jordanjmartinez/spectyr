@@ -186,10 +186,10 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
       <h2 className="text-2xl font-semibold text-white">
         Incident Reports <span className="text-gray-500 font-normal">({filteredReports.length})</span>
       </h2>
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
         <button
           onClick={() => setShowNewReport(true)}
-          className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
+          className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
         >
           Create Report
         </button>
@@ -227,7 +227,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
       {filteredReports.length === 0 ? (
         <div className="bg-[#161b22] p-6 rounded-xl">
           <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
-            <img src="/ghost-reports.png" alt="Ghost" className="w-40 h-40 opacity-90 mb-3" />
+            <img src="/ghost-reports.png" alt="Ghost" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
             <p className="font-mono text-sm text-gray-400">&gt; Complete a triage to document incidents here.</p>
           </div>
         </div>
@@ -245,7 +245,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
             >
               <div className="flex-1 min-w-0">
                 {/* Title */}
-                <h3 className="text-xl font-bold text-white truncate pr-4">
+                <h3 className="text-base sm:text-xl font-bold text-white truncate pr-2 sm:pr-4">
                   {report.title || 'Untitled Report'}
                 </h3>
 
@@ -261,7 +261,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
               </div>
 
               {/* Right side - Badges, Actions and chevron */}
-              <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+              <div className="flex items-center gap-1 sm:gap-2 ml-2 sm:ml-4 flex-shrink-0 flex-wrap">
                 {/* Severity badge */}
                 <div className="relative">
                   <button
@@ -354,9 +354,9 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
                     setEditReport(report);
                   }}
                   title="Edit"
-                  className="p-2 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition"
+                  className="p-1.5 sm:p-2 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
                 </button>
@@ -366,9 +366,9 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
                     handleExportPDF(report);
                   }}
                   title="Export PDF"
-                  className="p-2 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition"
+                  className="p-1.5 sm:p-2 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </button>
@@ -378,9 +378,9 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
                     setDeleteConfirmId(report.id);
                   }}
                   title="Delete"
-                  className="p-2 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition"
+                  className="p-1.5 sm:p-2 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                 </button>

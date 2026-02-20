@@ -6,8 +6,8 @@ const CampaignProgress = ({ levelData }) => {
   const { completed, current_level, total_levels, ticket_title, level_results = {} } = levelData;
 
   return (
-    <div className="bg-[#161b22] p-6 rounded-2xl border border-gray-700 shadow-md">
-      <div className="flex items-center justify-between mb-6">
+    <div className="bg-[#161b22] p-4 sm:p-6 rounded-2xl border border-gray-700 shadow-md">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
         <h2 className="text-2xl font-semibold text-white">Level Progress</h2>
         <span className="text-sm text-gray-400">
           {Object.keys(level_results).length} / {total_levels} completed
@@ -33,7 +33,7 @@ const CampaignProgress = ({ levelData }) => {
             <React.Fragment key={level}>
               <div className="flex flex-col items-center">
                 <div
-                  className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold leading-none transition-all border-4 ${
+                  className={`w-9 h-9 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-sm sm:text-lg font-bold leading-none transition-all border-4 ${
                     isCompleted
                       ? isCorrect
                         ? "border-emerald-500 bg-emerald-700 text-white"
@@ -47,15 +47,15 @@ const CampaignProgress = ({ levelData }) => {
                 >
                   {isCompleted ? (
                     isCorrect ? (
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                     ) : isPartial ? (
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
                       </svg>
                     ) : (
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     )
