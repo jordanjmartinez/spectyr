@@ -85,7 +85,7 @@ def set_session_cookie(response, session):
         SESSION_COOKIE_NAME,
         session["id"],
         httponly=True,
-        samesite="Lax",
+        samesite="None" if IS_PRODUCTION else "Lax",
         secure=bool(IS_PRODUCTION),
         max_age=SESSION_TTL_SECONDS,
         path="/"
