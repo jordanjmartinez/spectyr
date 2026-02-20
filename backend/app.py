@@ -13,7 +13,7 @@ from faker import Faker
 import threading
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True, origins=[
+CORS(app, supports_credentials=True, expose_headers=["X-Session-ID"], origins=[
     "http://localhost:3000",
     "https://spectyr.dev",
     "https://www.spectyr.dev"
@@ -72,7 +72,7 @@ def create_session():
 
 def get_session():
     """Get existing session or create a new one."""
-    session_id = request.cookies.get(SESSION_COOKIE_NAME)
+    session_id = request.headers.get('X-Session-ID') or request.cookies.get(SESSION_COOKIE_NAME)
     with sessions_lock:
         if session_id and session_id in sessions:
             sessions[session_id]["last_active"] = datetime.now(timezone.utc)
@@ -80,7 +80,8 @@ def get_session():
     return create_session()
 
 def set_session_cookie(response, session):
-    """Attach the session cookie to the response."""
+    """Attach the session cookie and header to the response."""
+    response.headers['X-Session-ID'] = session["id"]
     response.set_cookie(
         SESSION_COOKIE_NAME,
         session["id"],
