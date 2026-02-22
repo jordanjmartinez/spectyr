@@ -324,17 +324,14 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
                               onClick={() => toggleLogRow(log.id)}
                             >
                               <td className="px-4 py-4 whitespace-nowrap">
-                                <div className="flex flex-col">
-                                  <span className="text-gray-300">{new Date(log.timestamp).toLocaleDateString('en-GB')}</span>
-                                  <span className="text-xs text-gray-500">
-                                    {new Date(log.timestamp).toLocaleTimeString('en-GB', {
-                                      hour12: false,
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                      second: '2-digit'
-                                    })}
-                                  </span>
-                                </div>
+                                <span className="text-gray-300">
+                                  {new Date(log.timestamp).toLocaleTimeString('en-GB', {
+                                    hour12: false,
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    second: '2-digit'
+                                  })}
+                                </span>
                               </td>
                               <td className="px-4 py-4 font-medium text-gray-200">
                                 {log.event_type}

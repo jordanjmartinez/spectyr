@@ -286,7 +286,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
               </svg>
               <input
                 type="text"
-                placeholder="Search events..."
+                placeholder="Search logs..."
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
@@ -294,7 +294,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
                   setCurrentPage(1);
                 }}
                 maxLength={300}
-                className="w-full pl-10 pr-10 py-2 rounded-md bg-transparent border border-gray-700 text-white text-sm placeholder-gray-500 focus:border-gray-500 focus:outline-none transition-colors"
+                className="w-full pl-10 pr-10 py-2 rounded-md bg-transparent border border-gray-700 text-white text-base placeholder-gray-500 focus:border-gray-500 focus:outline-none transition-colors"
               />
               {searchTerm && (
                 <button
@@ -432,16 +432,11 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
                       <td className={`px-4 py-4 whitespace-nowrap border-l-4 ${
                         hintLevel === 2 && alert.label !== 'normal_traffic' ? 'border-l-blue-500' : 'border-l-transparent'
                       }`}>
-                        <div className="flex flex-col">
-                          <span className="text-gray-300">
-                            {alert.timestamp ? new Date(alert.timestamp).toLocaleDateString('en-GB') : '—'}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            {alert.timestamp ? new Date(alert.timestamp).toLocaleTimeString('en-GB', {
-                              hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
-                            }) : ''}
-                          </span>
-                        </div>
+                        <span className="text-gray-300">
+                          {alert.timestamp ? new Date(alert.timestamp).toLocaleTimeString('en-GB', {
+                            hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
+                          }) : '—'}
+                        </span>
                       </td>
                       <td className="px-4 py-4 font-medium text-gray-200" title={alert.event_type || '—'}>
                         {alert.event_type || '—'}

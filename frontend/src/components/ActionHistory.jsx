@@ -100,7 +100,7 @@ const ActionHistory = ({ history }) => {
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
                       className="inline-flex items-center gap-2 bg-gray-800 text-gray-300 text-xs px-3 py-1.5 rounded-md border border-gray-600 hover:bg-gray-700 transition-colors"
-                      style={{ fontFamily: "'Consolas', sans-serif" }}
+                      style={{ fontFamily: "'JetBrains Mono', sans-serif" }}
                     >
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" fill="none"/>
