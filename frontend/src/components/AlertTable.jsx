@@ -12,6 +12,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
   const [hintLevel, setHintLevel] = useState(0);
   const [scenarioHint, setScenarioHint] = useState('');
   const [gameMode, setGameMode] = useState(null);
+  const [isPaused, setIsPaused] = useState(true);
   const scenarioIdRef = useRef(null);
 
   const searchFields = [
@@ -37,7 +38,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
   const fetchGameState = () => {
     apiFetch('/api/game-state')
       .then(res => res.json())
-      .then(data => setGameMode(data.game_mode))
+      .then(data => { setGameMode(data.game_mode); setIsPaused(data.paused); })
       .catch(err => console.error('Error fetching game state:', err));
   };
 
@@ -52,9 +53,9 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
           }
           setScenarioHint(data.hint);
         } else {
-          setHintLevel(0);
           setScenarioHint('');
           scenarioIdRef.current = null;
+          // Don't reset hintLevel here — only reset on scenario change (above)
         }
       })
       .catch(() => {});
@@ -311,40 +312,49 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
               )}
             </div>
             {searchTerm && (
-              <p className="text-xs text-gray-500 mt-2">
-                Showing {filteredAlerts.length} of {alerts.length} events
+              <p className="text-sm text-gray-500 mt-2">
+                {filteredAlerts.length} matches
               </p>
             )}
           </div>
 
-          {gameMode === 'training' && (
-            <div className="flex items-start gap-3 mb-3">
-              {/* Left side: hint text, always flex-1 to push button right */}
-              <div className="flex-1">
-                {hintLevel >= 1 && scenarioHint && (
-                  <p className="text-base text-gray-300">
-                    <span className="font-medium text-white">Hint:</span> {scenarioHint}
-                  </p>
-                )}
+          {gameMode === 'training' && scenarioHint && (() => {
+            const hintReady = isPaused && Boolean(scenarioHint);
+            return (
+              <div className="flex items-start gap-3 mb-3">
+                {/* Left side: hint text or scanning label */}
+                <div className="flex-1">
+                  {!hintReady && (
+                    <p className="text-sm text-gray-500 italic">Scanning logs...</p>
+                  )}
+                  {hintReady && hintLevel >= 1 && (
+                    <p className="text-base text-gray-300">
+                      <span className="font-medium text-white">Hint:</span> {scenarioHint}
+                    </p>
+                  )}
+                </div>
+                {/* Button always on right */}
+                <button
+                  onClick={() => hintReady && setHintLevel(prev => (prev + 1) % 3)}
+                  disabled={!hintReady}
+                  className={`w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-md transition ${
+                    !hintReady
+                      ? 'text-gray-600 opacity-40 cursor-not-allowed'
+                      : hintLevel === 0
+                      ? 'text-gray-500 hover:text-gray-300'
+                      : hintLevel === 1
+                      ? 'text-white'
+                      : 'text-blue-500'
+                  }`}
+                  title={!hintReady ? 'Scanning logs...' : hintLevel === 0 ? 'Show hint' : hintLevel === 1 ? 'Show answer' : 'Hide hints'}
+                >
+                  <svg className="w-5 h-5" fill={hintReady && hintLevel > 0 ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                </button>
               </div>
-              {/* Button always on right */}
-              <button
-                onClick={() => setHintLevel(prev => (prev + 1) % 3)}
-                className={`w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-md transition ${
-                  hintLevel === 0
-                    ? 'text-gray-500 hover:text-gray-300'
-                    : hintLevel === 1
-                    ? 'text-white'
-                    : 'text-blue-500'
-                }`}
-                title={hintLevel === 0 ? 'Show hint' : hintLevel === 1 ? 'Show answer' : 'Hide hints'}
-              >
-                <svg className="w-5 h-5" fill={hintLevel > 0 ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-              </button>
-            </div>
-          )}
+            );
+          })()}
 
           <div className="flex flex-row justify-between items-center mb-4">
             <div className="flex items-center gap-1 text-sm">
