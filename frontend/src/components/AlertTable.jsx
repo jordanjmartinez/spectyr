@@ -318,10 +318,19 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
           </div>
 
           {gameMode === 'training' && (
-            <div className="flex justify-end mb-2">
+            <div className="flex items-start gap-3 mb-3">
+              {/* Left side: hint text, always flex-1 to push button right */}
+              <div className="flex-1">
+                {hintLevel >= 1 && scenarioHint && (
+                  <p className="text-base text-gray-300">
+                    <span className="font-medium text-white">Hint:</span> {scenarioHint}
+                  </p>
+                )}
+              </div>
+              {/* Button always on right */}
               <button
                 onClick={() => setHintLevel(prev => (prev + 1) % 3)}
-                className={`w-8 h-8 flex items-center justify-center rounded-md transition ${
+                className={`w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-md transition ${
                   hintLevel === 0
                     ? 'text-gray-500 hover:text-gray-300'
                     : hintLevel === 1
@@ -336,18 +345,6 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
               </button>
             </div>
           )}
-
-          <div className={`grid transition-all duration-300 ease-in-out ${
-            hintLevel >= 1 && scenarioHint ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-          }`}>
-            <div className="overflow-hidden min-h-0">
-              <div className="mb-3 px-4 py-3 bg-transparent border border-gray-700 rounded-lg">
-                <p className="text-base text-gray-300">
-                  <span className="font-medium text-white">Hint:</span> {scenarioHint}
-                </p>
-              </div>
-            </div>
-          </div>
 
           <div className="flex flex-row justify-between items-center mb-4">
             <div className="flex items-center gap-1 text-sm">
