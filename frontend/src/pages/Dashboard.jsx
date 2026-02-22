@@ -218,7 +218,7 @@ const Dashboard = () => {
           </div>
 
           <div className={view === "reports" ? "block" : "hidden"}>
-            <Reports setReportCount={setReportCount} reportCount={reportCount} analystName={analystName} />
+            <Reports setReportCount={setReportCount} reportCount={reportCount} analystName={analystName} resetTrigger={resetTrigger} />
           </div>
         </div>
       </div>

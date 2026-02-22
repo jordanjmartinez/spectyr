@@ -7,7 +7,7 @@ import IncidentReportForm from '../components/IncidentReportForm';
 const STATUS_OPTIONS = ['Open', 'In Progress', 'Resolved', 'Closed'];
 const SEVERITY_OPTIONS = ['Critical', 'High', 'Medium', 'Low'];
 
-const Reports = ({ setReportCount, reportCount, analystName }) => {
+const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => {
   const [reports, setReports] = useState([]);
   const [expandedIndex, setExpandedIndex] = useState(null);
   const [editReport, setEditReport] = useState(null);
@@ -31,7 +31,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
 
   useEffect(() => {
     fetchReports();
-  }, []);
+  }, [resetTrigger]);
 
   useEffect(() => {
     if (setReportCount) {

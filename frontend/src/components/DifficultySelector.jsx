@@ -27,7 +27,7 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
             type="text"
             value={analystName}
             onChange={(e) => setAnalystName(e.target.value)}
-            placeholder="Your name"
+            placeholder="Your Name"
             className="w-full px-4 py-2 text-sm font-medium rounded-md bg-[#21262d] border border-gray-600 text-gray-300 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition"
           />
         </div>
