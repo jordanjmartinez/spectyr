@@ -32,7 +32,7 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 items-start">
+        <div className="grid grid-cols-2 gap-4 mb-6 items-start">
           {/* Training Mode */}
           <button
             onClick={() => handleSelect('training')}
