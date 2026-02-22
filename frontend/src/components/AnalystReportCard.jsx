@@ -25,9 +25,9 @@ const AnalystReportCard = ({ report }) => {
     <div className="bg-[#161b22] p-6 rounded-2xl border border-gray-700 shadow-md h-full">
       <h2 className="text-2xl font-semibold text-white mb-4">Report Card</h2>
 
-      <table className="w-full text-base mt-8" style={{ fontFamily: "'Open Sans', sans-serif" }}>
+      <table className="w-full text-lg mt-8">
         <thead>
-          <tr className="text-base text-gray-500 tracking-wider">
+          <tr className="text-lg text-gray-500 tracking-wider">
             <th className="text-left pb-3 font-medium">Category</th>
             <th className="text-center pb-3 font-medium w-16">Score</th>
           </tr>

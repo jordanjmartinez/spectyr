@@ -92,14 +92,14 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
   ];
 
   return (
-    <div className={`text-white ${inline ? 'w-full' : 'p-8 w-full max-w-2xl bg-[#161b22] rounded-xl border border-gray-700 shadow-2xl'}`} style={{ fontFamily: "'Open Sans', sans-serif" }}>
+    <div className={`text-white ${inline ? 'w-full' : 'p-8 w-full max-w-2xl bg-[#161b22] rounded-xl border border-gray-700 shadow-2xl'}`}>
 
       
       <div className="space-y-6">
 
         {/* Title - Clean underline style */}
         <div>
-          <label className="block text-sm text-gray-300 mb-2">Title{errors.title && <span className="text-red-400"> *</span>}</label>
+          <label className="block text-base text-gray-300 mb-2">Title{errors.title && <span className="text-red-400"> *</span>}</label>
           <input
             name="title"
             value={formData.title}
@@ -111,7 +111,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
 
         {/* Severity - Pill selection */}
         <div>
-          <label className="block text-sm text-gray-300 mb-3">Severity{errors.severity && <span className="text-red-400"> *</span>}</label>
+          <label className="block text-base text-gray-300 mb-3">Severity{errors.severity && <span className="text-red-400"> *</span>}</label>
           <div className="flex flex-wrap gap-2">
             {severities.map(sev => (
               <button
@@ -123,7 +123,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
                     setErrors(prev => ({ ...prev, severity: null }));
                   }
                 }}
-                className={`px-3 py-1.5 text-sm rounded-full border transition-all ${
+                className={`px-3 py-1.5 text-base rounded-full border transition-all ${
                   formData.severity === sev
                     ? 'bg-[#21262d] text-white border-gray-600'
                     : 'bg-[#161b22] text-gray-400 border-gray-700 hover:bg-[#30363d]'
@@ -138,7 +138,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
         {/* MITRE Tactic & Kill Chain - Side by side dropdowns */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm text-gray-300 mb-2">MITRE Tactic</label>
+            <label className="block text-base text-gray-300 mb-2">MITRE Tactic</label>
             <select
               name="mitre_tactic"
               value={formData.mitre_tactic}
@@ -153,7 +153,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
             </select>
           </div>
           <div>
-            <label className="block text-sm text-gray-300 mb-2">Kill Chain</label>
+            <label className="block text-base text-gray-300 mb-2">Kill Chain</label>
             <select
               name="kill_chain"
               value={formData.kill_chain}
@@ -171,7 +171,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
 
         {/* Description - Clean textarea */}
         <div>
-          <label className="block text-sm text-gray-300 mb-2">Description{errors.description && <span className="text-red-400"> *</span>}</label>
+          <label className="block text-base text-gray-300 mb-2">Description{errors.description && <span className="text-red-400"> *</span>}</label>
           <textarea
             name="description"
             value={formData.description}
@@ -186,7 +186,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
         {isEditing && (
           <>
             <div>
-              <label className="block text-sm text-gray-300 mb-2">Affected Systems</label>
+              <label className="block text-base text-gray-300 mb-2">Affected Systems</label>
               <input
                 name="affected_hosts"
                 value={formData.affected_hosts}
@@ -197,7 +197,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
             </div>
 
             <div>
-              <label className="block text-sm text-gray-300 mb-2">Mitigation</label>
+              <label className="block text-base text-gray-300 mb-2">Mitigation</label>
               <textarea
                 name="mitigation"
                 value={formData.mitigation}
@@ -209,14 +209,14 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
             </div>
 
             <div>
-              <label className="block text-sm text-gray-300 mb-2">Status</label>
+              <label className="block text-base text-gray-300 mb-2">Status</label>
               <div className="flex flex-wrap gap-2">
                 {['Open', 'In Progress', 'Escalated', 'Resolved'].map(status => (
                   <button
                     key={status}
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, status }))}
-                    className={`px-3 py-1.5 text-sm rounded-full border transition-all ${
+                    className={`px-3 py-1.5 text-base rounded-full border transition-all ${
                       formData.status === status
                         ? 'bg-[#21262d] text-white border-gray-600'
                         : 'bg-[#161b22] text-gray-400 border-gray-700 hover:bg-[#30363d]'
@@ -234,14 +234,14 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
         <div className="flex justify-end gap-3 pt-6">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
+            className="px-4 py-2 text-base font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className={`px-4 py-2 text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 ${
+            className={`px-4 py-2 text-base font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 ${
               isSubmitting
                 ? 'bg-[#21262d] text-gray-500 border-gray-700 cursor-not-allowed'
                 : 'bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600'

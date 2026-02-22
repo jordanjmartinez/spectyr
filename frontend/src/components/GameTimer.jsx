@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '../api';
 
-const GameTimer = ({ onTimeout }) => {
+const GameTimer = ({ onTimeout, disabled }) => {
   const [gameState, setGameState] = useState(null);
   const [timeRemaining, setTimeRemaining] = useState(null);
 
@@ -18,13 +18,13 @@ const GameTimer = ({ onTimeout }) => {
       }
 
       // Check for timeout
-      if (data.timer_expired && data.game_mode === 'hardcore') {
+      if (data.timer_expired && data.game_mode === 'hardcore' && !disabled) {
         onTimeout?.();
       }
     } catch (err) {
       console.error('Failed to fetch game state', err);
     }
-  }, [onTimeout]);
+  }, [onTimeout, disabled]);
 
   useEffect(() => {
     fetchGameState();
@@ -44,7 +44,7 @@ const GameTimer = ({ onTimeout }) => {
 
   return (
     <div
-      className={`flex items-center gap-3 px-3 py-2 rounded-xl border-2 ${
+      className={`self-start flex items-center gap-3 px-3 py-2 rounded-xl border-2 ${
         isCritical
           ? 'bg-red-500/30 border-red-500 animate-pulse'
           : isLow

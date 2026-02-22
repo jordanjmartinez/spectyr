@@ -16,6 +16,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
   const [severityDropdownId, setSeverityDropdownId] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [activeTab, setActiveTab] = useState('open');
+  const [, setTick] = useState(0);
 
 
   const fetchReports = async () => {
@@ -37,6 +38,23 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
       setReportCount(reports.length);
     }
   }, [reports, setReportCount]);
+
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const getRelativeTime = (timestamp) => {
+    const diffMs = Date.now() - new Date(timestamp);
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+    return new Date(timestamp).toLocaleDateString('en-GB');
+  };
 
   const toggleRow = (index) => {
     setExpandedIndex(expandedIndex === index ? null : index);
@@ -245,21 +263,21 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
             >
               {/* Left column on desktop: title + metadata */}
               <div className="min-w-0 sm:flex-1">
-                <h3 className="text-base sm:text-[1.35rem] font-bold text-white truncate pr-2 sm:pr-4" style={{ fontFamily: "'Open Sans', sans-serif" }}>
+                <h3 className="text-lg sm:text-xl font-bold text-white truncate pr-2 sm:pr-4">
                   {report.title || 'Untitled Report'}
                 </h3>
                 {/* Desktop metadata — below title */}
                 <div className="hidden sm:flex items-center gap-3 mt-1 whitespace-nowrap">
-                  <span className="text-white text-sm">
-                    {new Date(report.timestamp).toLocaleDateString('en-GB')} at {new Date(report.timestamp).toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' })}
-                  </span>
+                  <span className="text-white text-base">Created {getRelativeTime(report.timestamp)}</span>
                   <span className="text-gray-600">|</span>
-                  <span className="text-white text-sm">Assigned to: {(report.owner && report.owner !== 'Unassigned') ? report.owner : (analystName || 'Unknown')}</span>
+                  <span className="text-white text-base">{(report.owner && report.owner !== 'Unassigned') ? report.owner : (analystName || '—')}</span>
                 </div>
               </div>
 
               {/* Badges, Actions and chevron */}
-              <div className="flex items-center gap-2 mt-2 sm:mt-0 sm:ml-4 w-full sm:w-auto sm:flex-shrink-0">
+              <div className="flex items-center justify-between sm:justify-start gap-2 mt-2 sm:mt-0 sm:ml-4 w-full sm:w-auto sm:flex-shrink-0">
+                {/* Left group: badges */}
+                <div className="flex items-center gap-2">
                 {/* Severity badge */}
                 <div className="relative">
                   <button
@@ -267,7 +285,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
                       e.stopPropagation();
                       setSeverityDropdownId(severityDropdownId === report.id ? null : report.id);
                     }}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md border transition cursor-pointer hover:bg-gray-700 uppercase tracking-wider bg-gray-800/80 text-gray-200 border-gray-700"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 text-sm font-semibold rounded border transition cursor-pointer hover:bg-gray-700 bg-[#161b22] text-gray-400 border-gray-700"
                   >
                     {report.severity || 'Unset'}
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -283,7 +301,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
                           setSeverityDropdownId(null);
                         }}
                       />
-                      <div className="absolute right-0 top-full mt-1 z-20 bg-[#21262d] border border-gray-600 rounded-md shadow-lg py-1 flex flex-col min-w-[100px]">
+                      <div className="absolute right-0 top-full mt-1 z-20 bg-[#161b22] border border-gray-700 rounded py-1 flex flex-col min-w-[100px]">
                         {SEVERITY_OPTIONS.map((severity) => (
                           <button
                             key={severity}
@@ -292,7 +310,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
                               handleSeverityChange(report, severity);
                             }}
                             className={`text-left px-3 py-1.5 text-sm hover:bg-gray-700 transition whitespace-nowrap ${
-                              report.severity === severity ? 'text-white bg-gray-700' : 'text-gray-300'
+                              report.severity === severity ? 'text-white bg-gray-700' : 'text-gray-400'
                             }`}
                           >
                             {severity}
@@ -310,7 +328,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
                       e.stopPropagation();
                       setStatusDropdownId(statusDropdownId === report.id ? null : report.id);
                     }}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md border transition cursor-pointer hover:bg-gray-700 uppercase tracking-wider bg-gray-800/80 text-gray-200 border-gray-700"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 text-sm font-semibold rounded border transition cursor-pointer hover:bg-gray-700 bg-[#161b22] text-gray-400 border-gray-700"
                   >
                     {report.status || 'Open'}
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -326,7 +344,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
                           setStatusDropdownId(null);
                         }}
                       />
-                      <div className="absolute right-0 top-full mt-1 z-20 bg-[#21262d] border border-gray-600 rounded-md shadow-lg py-1 flex flex-col min-w-[100px]">
+                      <div className="absolute right-0 top-full mt-1 z-20 bg-[#161b22] border border-gray-700 rounded py-1 flex flex-col min-w-[100px]">
                         {STATUS_OPTIONS.map((status) => (
                           <button
                             key={status}
@@ -335,7 +353,7 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
                               handleStatusChange(report, status);
                             }}
                             className={`text-left px-3 py-1.5 text-sm hover:bg-gray-700 transition whitespace-nowrap ${
-                              report.status === status ? 'text-white bg-gray-700' : 'text-gray-300'
+                              report.status === status ? 'text-white bg-gray-700' : 'text-gray-400'
                             }`}
                           >
                             {status}
@@ -345,16 +363,19 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
                     </>
                   )}
                 </div>
+                </div>{/* end left group */}
 
+                {/* Right group: action buttons + chevron */}
+                <div className="flex items-center justify-between sm:justify-start sm:gap-2">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     setEditReport(report);
                   }}
                   title="Edit"
-                  className="p-1.5 sm:p-2 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition"
+                  className="p-2.5 sm:p-2 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition"
                 >
-                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
                 </button>
@@ -364,9 +385,9 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
                     handleExportPDF(report);
                   }}
                   title="Export PDF"
-                  className="p-1.5 sm:p-2 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition"
+                  className="p-2.5 sm:p-2 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition"
                 >
-                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </button>
@@ -376,14 +397,14 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
                     setDeleteConfirmId(report.id);
                   }}
                   title="Delete"
-                  className="p-1.5 sm:p-2 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition"
+                  className="p-2.5 sm:p-2 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition"
                 >
-                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                 </button>
                 <svg
-                  className={`w-5 h-5 ml-auto sm:ml-0 text-gray-500 hover:text-white transition-transform duration-300 ease-in-out ${
+                  className={`w-5 h-5 sm:ml-0 text-gray-500 hover:text-white transition-transform duration-300 ease-in-out ${
                     expandedIndex === index ? 'rotate-180' : 'rotate-0'
                   }`}
                   fill="none"
@@ -392,15 +413,14 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
+                </div>{/* end right group */}
               </div>
 
               {/* Mobile metadata — after badges */}
               <div className="flex sm:hidden items-center gap-3 mt-1 whitespace-nowrap">
-                <span className="text-white text-sm">
-                  {new Date(report.timestamp).toLocaleDateString('en-GB')} at {new Date(report.timestamp).toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' })}
-                </span>
+                <span className="text-white text-base">Created {getRelativeTime(report.timestamp)}</span>
                 <span className="text-gray-600">|</span>
-                <span className="text-white text-sm">Assigned to: {(report.owner && report.owner !== 'Unassigned') ? report.owner : (analystName || 'Unknown')}</span>
+                <span className="text-white text-base">{(report.owner && report.owner !== 'Unassigned') ? report.owner : (analystName || '—')}</span>
               </div>
             </div>
 
@@ -411,43 +431,43 @@ const Reports = ({ setReportCount, reportCount, analystName }) => {
               }`}
             >
               <div className="overflow-hidden min-h-0">
-                <div className="mt-4 border-t border-gray-700 pt-4" style={{ fontFamily: "'Open Sans', sans-serif" }}>
+                <div className="mt-4 border-t border-gray-700 pt-4">
                   {/* 4-column metadata row */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                     <div>
-                      <span className="text-sm text-gray-400 font-medium">Severity</span>
-                      <p className="text-gray-300 mt-1 text-sm">{report.severity || '—'}</p>
+                      <span className="text-base text-gray-400 font-medium">Severity</span>
+                      <p className="text-gray-300 mt-1 text-base">{report.severity || '—'}</p>
                     </div>
                     <div>
-                      <span className="text-sm text-gray-400 font-medium">Status</span>
-                      <p className="text-gray-300 mt-1 text-sm">{report.status || 'Open'}</p>
+                      <span className="text-base text-gray-400 font-medium">Status</span>
+                      <p className="text-gray-300 mt-1 text-base">{report.status || 'Open'}</p>
                     </div>
                     <div>
-                      <span className="text-sm text-gray-400 font-medium">MITRE Tactic</span>
-                      <p className="text-gray-300 mt-1 text-sm">{report.mitre_tactic || '—'}</p>
+                      <span className="text-base text-gray-400 font-medium">MITRE Tactic</span>
+                      <p className="text-gray-300 mt-1 text-base">{report.mitre_tactic || '—'}</p>
                     </div>
                     <div>
-                      <span className="text-sm text-gray-400 font-medium">Kill Chain</span>
-                      <p className="text-gray-300 mt-1 text-sm">{report.kill_chain || '—'}</p>
+                      <span className="text-base text-gray-400 font-medium">Kill Chain</span>
+                      <p className="text-gray-300 mt-1 text-base">{report.kill_chain || '—'}</p>
                     </div>
                   </div>
 
                   {/* Description */}
                   <div className="mb-4">
-                    <span className="text-sm text-gray-400 font-medium">Description</span>
-                    <p className="text-gray-300 mt-2 leading-relaxed text-sm break-words">{report.description || '—'}</p>
+                    <span className="text-base text-gray-400 font-medium">Description</span>
+                    <p className="text-gray-300 mt-2 leading-relaxed text-base break-words">{report.description || '—'}</p>
                   </div>
 
                   {/* Affected Systems */}
                   <div className="mb-4">
-                    <span className="text-sm text-gray-400 font-medium">Affected Systems</span>
-                    <p className="text-gray-300 mt-2 text-sm font-mono break-words">{report.affected_hosts || '—'}</p>
+                    <span className="text-base text-gray-400 font-medium">Affected Systems</span>
+                    <p className="text-gray-300 mt-2 text-base font-mono break-words">{report.affected_hosts || '—'}</p>
                   </div>
 
                   {/* Recommended Actions */}
                   <div>
-                    <span className="text-sm text-gray-400 font-medium">Recommended Actions</span>
-                    <p className="text-gray-300 mt-2 leading-relaxed text-sm break-words">{report.mitigation || '—'}</p>
+                    <span className="text-base text-gray-400 font-medium">Recommended Actions</span>
+                    <p className="text-gray-300 mt-2 leading-relaxed text-base break-words">{report.mitigation || '—'}</p>
                   </div>
                 </div>
               </div>

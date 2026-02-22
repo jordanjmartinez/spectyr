@@ -358,9 +358,12 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
               >
                 Prev
               </button>
-              <div className="flex items-center gap-1 mx-1">
+              <div className="hidden sm:flex items-center gap-1 mx-1">
                 {renderPaginationButtons()}
               </div>
+              <span className="flex sm:hidden px-2 text-sm text-gray-400">
+                {currentPage} / {totalPages}
+              </span>
               <button
                 onClick={() => changePage(currentPage + 1)}
                 disabled={currentPage === totalPages}

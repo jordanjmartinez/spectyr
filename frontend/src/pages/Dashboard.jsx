@@ -128,7 +128,7 @@ const Dashboard = () => {
             <h1 className="text-2xl sm:text-4xl font-bold text-white mb-1 sm:mb-2">SIEM Dashboard</h1>
             <p className="text-sm sm:text-lg text-gray-400">Real-time alert monitoring and log analysis</p>
           </div>
-          <GameTimer onTimeout={handleTimeout} />
+          {!showFailureModal && <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />}
         </header>
 
         <div className="bg-[#161b22] rounded-xl p-3 sm:p-6">

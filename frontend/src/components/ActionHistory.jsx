@@ -86,9 +86,9 @@ const ActionHistory = ({ history }) => {
                       )}
                     </span>
                     <span className="text-sm sm:text-lg text-gray-400">
-                      You chose: <span className="text-white">{item.user_choice}</span>
+                      Your Call: <span className="text-white">{item.user_choice}</span>
                       <span className="text-gray-600 mx-2">|</span>
-                      Answer: <span className="text-white">{item.true_category}</span>
+                      Correct: <span className="text-white">{item.true_category}</span>
                     </span>
                   </div>
 
@@ -137,10 +137,10 @@ const ActionHistory = ({ history }) => {
                       {/* What Is It - Educational explanation */}
                       {review.what_is_it && (
                         <div className="pb-5">
-                          <h4 className="text-xl text-white font-semibold mb-2" style={{ fontFamily: "'Open Sans', sans-serif" }}>
+                          <h4 className="text-xl text-white font-semibold mb-2">
                             What is {review.what_is_it.title}?
                           </h4>
-                          <p className="text-sm text-gray-200 font-medium" style={{ fontFamily: "'Open Sans', sans-serif", lineHeight: '1.7' }}>
+                          <p className="text-base text-gray-200 font-medium" style={{ lineHeight: '1.7' }}>
                             {review.what_is_it.description}
                           </p>
                         </div>
@@ -167,12 +167,12 @@ const ActionHistory = ({ history }) => {
                       {/* Response Actions */}
                       {review.response_actions && review.response_actions.length > 0 && (
                         <div className="pt-5">
-                          <h4 className="text-xl text-white font-semibold mb-2" style={{ fontFamily: "'Open Sans', sans-serif" }}>
+                          <h4 className="text-xl text-white font-semibold mb-2">
                             Response Actions
                           </h4>
-                          <ol className="space-y-2 list-decimal list-inside text-sm" style={{ fontFamily: "'Open Sans', sans-serif", lineHeight: '1.7' }}>
+                          <ol className="space-y-2 list-decimal list-inside text-base" style={{ lineHeight: '1.7' }}>
                             {review.response_actions.map((action, i) => (
-                              <li key={i} className="text-sm text-gray-200 font-medium">
+                              <li key={i} className="text-base text-gray-200 font-medium">
                                 {action}
                               </li>
                             ))}

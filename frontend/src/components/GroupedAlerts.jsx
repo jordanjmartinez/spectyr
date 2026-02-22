@@ -271,7 +271,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
                   <span className="inline-flex items-center gap-1.5 bg-gray-800/80 text-gray-200 text-xs px-2.5 py-1 rounded-md uppercase font-semibold tracking-wider border border-gray-700">
                     🕵️ Notable Event
                   </span>
-                  <span className="text-gray-500 text-sm">{group.log_count} {group.log_count === 1 ? 'Event' : 'Events'}</span>
+                  <span className="text-white text-sm">{group.log_count} {group.log_count === 1 ? 'Event' : 'Events'}</span>
                 </div>
                 {group.status === 'classified' && group.analyst_category && (
                   <p className="text-sm text-gray-400 mt-1">
@@ -311,8 +311,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
                           <th className="px-4 py-3 font-medium w-[100px]">Time</th>
                           <th className="px-4 py-3 font-medium w-[140px]">Event Type</th>
                           <th className="px-4 py-3 font-medium w-[110px] whitespace-nowrap">Source Type</th>
-                          <th className="px-4 py-3 font-medium w-[120px]">Source IP</th>
-                          <th className="px-4 py-3 font-medium w-[120px]">Dest IP</th>
+                          <th className="px-4 py-3 font-medium w-[120px] whitespace-nowrap">Source IP</th>
+                          <th className="px-4 py-3 font-medium w-[120px] whitespace-nowrap">Dest IP</th>
                           <th className="px-4 py-3 font-medium">Message</th>
                         </tr>
                       </thead>
