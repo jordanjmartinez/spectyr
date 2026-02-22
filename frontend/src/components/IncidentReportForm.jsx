@@ -247,7 +247,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
                 : 'bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600'
             }`}
           >
-            {isSubmitting ? 'Saving...' : 'Save Report'}
+            {isSubmitting ? 'Saving...' : 'Save Case'}
           </button>
         </div>
       </div>

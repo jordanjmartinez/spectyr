@@ -172,7 +172,7 @@ const Dashboard = () => {
                   : "border-transparent text-gray-400 hover:text-white"
               }`}
             >
-              Grade
+              Analytics
             </button>
             <button
               onClick={() => setView("reports")}
@@ -182,7 +182,7 @@ const Dashboard = () => {
                   : "border-transparent text-gray-400 hover:text-white"
               }`}
             >
-              Reports
+              Cases
             </button>
           </div>
 
@@ -233,7 +233,7 @@ const Dashboard = () => {
           <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl">
             <h3 className="text-lg font-semibold text-white text-center mb-4">Reset Training</h3>
             <p className="text-gray-400 mb-6 text-center">
-              This will clear all logs, incidents, and reports. Your progress will be reset to Level 1. This action cannot be undone.
+              This will clear all logs, incidents, and cases. Your progress will be reset to Level 1. This action cannot be undone.
             </p>
             <div className="flex justify-center gap-3">
               <button
