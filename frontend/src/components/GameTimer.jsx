@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { apiFetch } from '../api';
 
 const GameTimer = ({ onTimeout, disabled }) => {
   const [gameState, setGameState] = useState(null);
   const [timeRemaining, setTimeRemaining] = useState(null);
+  const hasTriggeredTimeoutRef = useRef(false);
 
   const fetchGameState = useCallback(async () => {
     try {
@@ -17,9 +18,14 @@ const GameTimer = ({ onTimeout, disabled }) => {
         setTimeRemaining(null);
       }
 
-      // Check for timeout
+      // Check for timeout — gate with ref to prevent firing multiple times
       if (data.timer_expired && data.game_mode === 'hardcore' && !disabled) {
-        onTimeout?.();
+        if (!hasTriggeredTimeoutRef.current) {
+          hasTriggeredTimeoutRef.current = true;
+          onTimeout?.();
+        }
+      } else if (!data.timer_expired) {
+        hasTriggeredTimeoutRef.current = false; // reset after game reset
       }
     } catch (err) {
       console.error('Failed to fetch game state', err);
