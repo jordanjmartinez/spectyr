@@ -207,14 +207,14 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
       <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={() => setShowNewReport(true)}
-          className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
+          className="inline-flex items-center justify-center px-4 py-2 text-sm sm:text-base font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
         >
           Create Case
         </button>
         <div className="flex rounded-md border border-gray-700 overflow-hidden">
           <button
             onClick={() => setActiveTab('open')}
-            className={`px-4 py-2 text-sm font-medium transition ${
+            className={`px-4 py-2 text-sm sm:text-base font-medium transition ${
               activeTab === 'open'
                 ? 'bg-[#21262d] text-white'
                 : 'bg-transparent text-gray-400 hover:bg-[#21262d]'
@@ -224,7 +224,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
           </button>
           <button
             onClick={() => setActiveTab('closed')}
-            className={`px-4 py-2 text-sm font-medium transition border-l border-gray-700 ${
+            className={`px-4 py-2 text-sm sm:text-base font-medium transition border-l border-gray-700 ${
               activeTab === 'closed'
                 ? 'bg-[#21262d] text-white'
                 : 'bg-transparent text-gray-400 hover:bg-[#21262d]'
