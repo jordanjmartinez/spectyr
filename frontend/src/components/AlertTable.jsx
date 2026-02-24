@@ -13,6 +13,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
   const [scenarioHint, setScenarioHint] = useState('');
   const [gameMode, setGameMode] = useState(null);
   const [isPaused, setIsPaused] = useState(true);
+  const [scenarioProgress, setScenarioProgress] = useState({ flagged: 0, total: 0 });
   const scenarioIdRef = useRef(null);
 
   const searchFields = [
@@ -54,8 +55,21 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
           setScenarioHint(data.hint);
         } else {
           setScenarioHint('');
+          setHintLevel(0);
           scenarioIdRef.current = null;
-          // Don't reset hintLevel here — only reset on scenario change (above)
+        }
+      })
+      .catch(() => {});
+  };
+
+  const fetchScenarioProgress = () => {
+    if (!scenarioIdRef.current) return;
+    apiFetch('/api/scenario-progress')
+      .then(res => res.json())
+      .then(data => {
+        const match = (data.scenarios || []).find(s => s.scenario_id === scenarioIdRef.current);
+        if (match) {
+          setScenarioProgress({ flagged: match.flagged_count, total: match.total_count });
         }
       })
       .catch(() => {});
@@ -65,10 +79,12 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
     fetchAlerts();
     fetchGameState();
     fetchScenarioHint();
+    fetchScenarioProgress();
     const interval = setInterval(() => {
       fetchAlerts();
       fetchGameState();
       fetchScenarioHint();
+      fetchScenarioProgress();
     }, 2000);
     return () => clearInterval(interval);
   }, []);
@@ -79,6 +95,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
     setAlertCount(0);
     setHintLevel(0);
     setScenarioHint('');
+    setScenarioProgress({ flagged: 0, total: 0 });
     scenarioIdRef.current = null;
     fetchAlerts();
     setCurrentPage(1);
@@ -108,6 +125,14 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
       setAlerts(prev => prev.map(a =>
         a.id === eventId ? { ...a, flagged: shouldFlag } : a
       ));
+
+      // Update scenario progress immediately from response
+      if (data.scenario_progress) {
+        setScenarioProgress({
+          flagged: data.scenario_progress.flagged_count,
+          total: data.scenario_progress.total_count
+        });
+      }
 
       // Notify parent when a new incident is ready
       if (data.scenario_progress?.all_flagged && onNewIncident) {
@@ -328,8 +353,11 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
                     <p className="text-sm text-gray-500 italic">Scanning logs...</p>
                   )}
                   {hintReady && hintLevel >= 1 && (
-                    <p className="text-base text-gray-300">
-                      <span className="font-medium text-white">Hint:</span> {scenarioHint}
+                    <p className="text-base text-gray-300 flex items-center gap-2">
+                      <span className="font-semibold tabular-nums text-white">
+                        {scenarioProgress.flagged}/{scenarioProgress.total}
+                      </span>
+                      <span className="text-gray-400">Events</span>
                     </p>
                   )}
                 </div>
@@ -445,7 +473,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
                           }) : '—'}
                         </span>
                       </td>
-                      <td className="px-4 py-4 font-medium text-gray-200" title={alert.event_type || '—'}>
+                      <td className="px-4 py-4 font-medium text-gray-200 whitespace-nowrap" title={alert.event_type || '—'}>
                         {alert.event_type || '—'}
                       </td>
                       <td className="px-4 py-4 text-gray-200">
