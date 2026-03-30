@@ -200,21 +200,21 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
 
   // Header component used in both states
   const Header = () => (
-    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
-      <h2 className="text-2xl font-semibold text-white">
+    <div className="flex flex-row items-center justify-between mb-6 gap-2 sm:gap-3">
+      <h2 className="text-xl sm:text-2xl font-semibold text-white whitespace-nowrap">
         Cases <span className="text-gray-500 font-normal">({filteredReports.length})</span>
       </h2>
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         <button
           onClick={() => setShowNewReport(true)}
-          className="inline-flex items-center justify-center px-4 py-2 text-sm sm:text-base font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
+          className="inline-flex items-center justify-center px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
         >
           Create Case
         </button>
         <div className="flex rounded-md border border-gray-700 overflow-hidden">
           <button
             onClick={() => setActiveTab('open')}
-            className={`px-4 py-2 text-sm sm:text-base font-medium transition ${
+            className={`px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-medium transition ${
               activeTab === 'open'
                 ? 'bg-[#21262d] text-white'
                 : 'bg-transparent text-gray-400 hover:bg-[#21262d]'
@@ -224,7 +224,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
           </button>
           <button
             onClick={() => setActiveTab('closed')}
-            className={`px-4 py-2 text-sm sm:text-base font-medium transition border-l border-gray-700 ${
+            className={`px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-medium transition border-l border-gray-700 ${
               activeTab === 'closed'
                 ? 'bg-[#21262d] text-white'
                 : 'bg-transparent text-gray-400 hover:bg-[#21262d]'

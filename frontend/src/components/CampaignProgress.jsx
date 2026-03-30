@@ -8,7 +8,7 @@ const CampaignProgress = ({ levelData }) => {
   return (
     <div className="bg-[#161b22] p-4 sm:p-6 rounded-2xl border border-gray-700 shadow-md">
       <div className="flex items-center justify-between mb-4 sm:mb-6">
-        <h2 className="text-2xl font-semibold text-white">Level Progress</h2>
+        <h2 className="text-xl sm:text-2xl font-semibold text-white">Level Progress</h2>
         <span className="text-sm text-gray-400">
           {Object.keys(level_results).length} / {total_levels} Completed
         </span>

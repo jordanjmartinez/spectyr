@@ -50,7 +50,7 @@ const PerformanceGrade = ({ report }) => {
 
   return (
     <div className="bg-[#161b22] p-4 sm:p-6 rounded-2xl border border-gray-700 shadow-md">
-      <h2 className="text-2xl font-semibold text-white mb-4">Grade</h2>
+      <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Grade</h2>
 
       {/* Grade Circle */}
       <div className="relative w-44 h-44 sm:w-56 sm:h-56 mx-auto border-dashed border-2 border-gray-700 rounded-full p-2">

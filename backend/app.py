@@ -105,6 +105,10 @@ def attach_session_cookie(response):
         set_session_cookie(response, g.session)
     return response
 
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    return jsonify({"status": "ok"}), 200
+
 def session_cleanup_thread():
     """Remove sessions idle for more than SESSION_TTL_SECONDS."""
     while True:

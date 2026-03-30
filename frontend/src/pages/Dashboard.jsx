@@ -123,10 +123,10 @@ const Dashboard = () => {
     <div className="min-h-screen bg-[#0d1117] text-white py-8 px-4 sm:px-8 lg:px-16">
       <div className="max-w-7xl mx-auto space-y-8">
 
-        <header className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+        <header className="flex flex-row justify-between items-start gap-2 sm:gap-4">
           <div>
-            <h1 className="text-2xl sm:text-4xl font-bold text-white mb-1 sm:mb-2">SIEM Dashboard</h1>
-            <p className="text-sm sm:text-lg text-gray-400">Real-time alert monitoring and log analysis</p>
+            <h1 className="text-xl sm:text-4xl font-bold text-white mb-1 sm:mb-2">SIEM Dashboard</h1>
+            <p className="text-xs sm:text-lg text-gray-400">Real-time alert monitoring and log analysis</p>
           </div>
           {!showFailureModal && <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />}
         </header>
@@ -191,20 +191,20 @@ const Dashboard = () => {
           </div>
 
           <div className={view === "table" ? "block" : "hidden"}>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
-              <h2 className="text-2xl font-semibold text-white">
+            <div className="flex flex-row items-center justify-between mb-6 gap-2 sm:gap-3">
+              <h2 className="text-xl sm:text-2xl font-semibold text-white whitespace-nowrap">
                 Events <span className="text-gray-500 font-normal">({alertCount})</span>
               </h2>
               <div className="flex items-center gap-2 sm:gap-4">
                 <button
                   onClick={handleSimulateEvents}
-                  className="inline-flex items-center px-3 sm:px-4 py-2 text-sm sm:text-base font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 transition focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  className="inline-flex items-center px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 transition focus:outline-none focus:ring-2 focus:ring-gray-500"
                 >
                   Start Training
                 </button>
                 <button
                   onClick={() => setShowResetModal(true)}
-                  className="inline-flex items-center px-3 sm:px-4 py-2 text-sm sm:text-base font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 transition focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  className="inline-flex items-center px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 transition focus:outline-none focus:ring-2 focus:ring-gray-500"
                 >
                   Clear Logs
                 </button>

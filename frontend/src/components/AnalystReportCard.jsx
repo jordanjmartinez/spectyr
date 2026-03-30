@@ -6,7 +6,7 @@ const AnalystReportCard = ({ report }) => {
   if (!hasActivity) {
     return (
       <div className="bg-[#161b22] p-4 sm:p-6 rounded-2xl border border-gray-700 shadow-md h-full">
-        <h2 className="text-2xl font-semibold text-white mb-4">Report Card</h2>
+        <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Report Card</h2>
 
         {/* Empty State */}
         <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
@@ -23,7 +23,7 @@ const AnalystReportCard = ({ report }) => {
 
   return (
     <div className="bg-[#161b22] p-6 rounded-2xl border border-gray-700 shadow-md h-full">
-      <h2 className="text-2xl font-semibold text-white mb-4">Report Card</h2>
+      <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Report Card</h2>
 
       <table className="w-full text-lg mt-8">
         <thead>

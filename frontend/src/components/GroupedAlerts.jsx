@@ -242,7 +242,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
 
       {!(gameStarted && currentLevel && currentLevel.completed) && (<>
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-2 sm:space-y-0">
-        <h2 className="text-2xl font-semibold text-white">
+        <h2 className="text-xl sm:text-2xl font-semibold text-white">
           Incidents <span className="text-gray-500 font-normal">({filteredGroups.length})</span>
         </h2>
       </div>
