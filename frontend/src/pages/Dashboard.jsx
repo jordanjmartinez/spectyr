@@ -104,6 +104,21 @@ const Dashboard = () => {
     await handleResetSimulator();
   };
 
+  const handleFailureRetry = async () => {
+    setShowFailureModal(false);
+    setFailureType(null);
+    await handleResetSimulator();
+    try {
+      await apiFetch('/api/start-simulator', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ game_mode: 'hardcore', analyst_name: analystName })
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleResetSimulator = async () => {
     setIsResetting(true);
     try {
@@ -123,12 +138,8 @@ const Dashboard = () => {
     <div className="min-h-screen bg-[#0d1117] text-white py-8 px-4 sm:px-8 lg:px-16">
       <div className="max-w-7xl mx-auto space-y-8">
 
-        <header className="flex flex-row justify-between items-start gap-2 sm:gap-4">
-          <div>
-            <h1 className="text-xl sm:text-4xl font-bold text-white mb-1 sm:mb-2">SIEM Dashboard</h1>
-            <p className="text-xs sm:text-lg text-gray-400">Real-time alert monitoring and log analysis</p>
-          </div>
-          {!showFailureModal && <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />}
+        <header className="flex justify-end">
+          <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />
         </header>
 
         <div className="bg-[#161b22] rounded-xl p-3 sm:p-6">
@@ -138,10 +149,10 @@ const Dashboard = () => {
                 setView("grouped");
                 setIncidentBadge(0);
               }}
-              className={`flex-1 min-w-0 text-center py-3 sm:py-4 text-sm sm:text-lg font-medium whitespace-nowrap border-b-2 transition-all duration-200 relative ${
+              className={`flex-1 min-w-0 text-center py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 ${
                 view === "grouped"
-                  ? "border-gray-300 text-white"
-                  : "border-transparent text-gray-400 hover:text-white"
+                  ? "text-white font-medium"
+                  : "text-gray-400 font-medium hover:text-white"
               }`}
             >
               <span className="relative inline-flex items-center gap-1.5">
@@ -156,30 +167,30 @@ const Dashboard = () => {
             </button>
             <button
               onClick={() => setView("table")}
-              className={`flex-1 min-w-0 text-center py-3 sm:py-4 text-sm sm:text-lg font-medium whitespace-nowrap border-b-2 transition-all duration-200 ${
+              className={`flex-1 min-w-0 text-center py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 ${
                 view === "table"
-                  ? "border-gray-300 text-white"
-                  : "border-transparent text-gray-400 hover:text-white"
+                  ? "text-white font-medium"
+                  : "text-gray-400 font-medium hover:text-white"
               }`}
             >
               Events
             </button>
             <button
               onClick={() => setView("analytics")}
-              className={`flex-1 min-w-0 text-center py-3 sm:py-4 text-sm sm:text-lg font-medium whitespace-nowrap border-b-2 transition-all duration-200 ${
+              className={`flex-1 min-w-0 text-center py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 ${
                 view === "analytics"
-                  ? "border-gray-300 text-white"
-                  : "border-transparent text-gray-400 hover:text-white"
+                  ? "text-white font-medium"
+                  : "text-gray-400 font-medium hover:text-white"
               }`}
             >
               Analytics
             </button>
             <button
               onClick={() => setView("reports")}
-              className={`flex-1 min-w-0 text-center py-3 sm:py-4 text-sm sm:text-lg font-medium whitespace-nowrap border-b-2 transition-all duration-200 ${
+              className={`flex-1 min-w-0 text-center py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 ${
                 view === "reports"
-                  ? "border-gray-300 text-white"
-                  : "border-transparent text-gray-400 hover:text-white"
+                  ? "text-white font-medium"
+                  : "text-gray-400 font-medium hover:text-white"
               }`}
             >
               Cases
@@ -241,7 +252,7 @@ const Dashboard = () => {
                 disabled={isResetting}
                 className="px-4 py-2 text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-300 border border-gray-600 transition disabled:opacity-50"
               >
-                Cancel
+                No, go back
               </button>
               <button
                 onClick={handleResetSimulator}
@@ -257,7 +268,7 @@ const Dashboard = () => {
                     Resetting...
                   </>
                 ) : (
-                  'Clear Logs'
+                  'Yes, reset it'
                 )}
               </button>
             </div>
@@ -302,7 +313,8 @@ const Dashboard = () => {
         <FailureModal
           category={failureCategory}
           failureType={failureType}
-          onRestart={handleFailureRestart}
+          onRetry={handleFailureRetry}
+          onQuit={handleFailureRestart}
         />
       )}
     </div>
