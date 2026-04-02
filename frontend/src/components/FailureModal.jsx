@@ -54,7 +54,7 @@ const FailureModal = ({ onRetry, onQuit }) => {
         </div>
 
         {/* Hacker image */}
-        <img src="/retro_hacker.png" alt="Hacker" className="w-28 h-28 sm:w-36 sm:h-36 mx-auto mb-6 opacity-90" />
+        <img src="/hacker_icon.jpeg" alt="Hacker" className="w-28 h-28 sm:w-36 sm:h-36 mx-auto mb-6 opacity-90" />
 
         {/* Terminal message */}
         <p
