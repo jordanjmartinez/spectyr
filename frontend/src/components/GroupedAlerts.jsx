@@ -204,10 +204,10 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
         <div className="bg-[#161b22] border border-gray-700 rounded-xl p-4 sm:p-5 mb-6 shadow">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
             <div className="flex items-center gap-3 flex-wrap">
-              <span className="inline-flex items-center flex-shrink-0 bg-gray-800/80 text-gray-200 text-xs px-2.5 py-1 rounded-md uppercase font-semibold tracking-wider border border-gray-700">
+              <span className="text-base sm:text-lg font-semibold text-white">{currentLevel.ticket_title}</span>
+              <span className="text-gray-400 text-sm tracking-wider font-medium">
                 Level {currentLevel.current_level}
               </span>
-              <span className="text-base sm:text-lg font-semibold text-white">{currentLevel.ticket_title}</span>
             </div>
           </div>
           <p className="text-gray-300 text-base leading-relaxed">
@@ -265,10 +265,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
             <div className="flex justify-between items-start cursor-pointer" onClick={() => toggleGroup(groupKey)}>
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
-                  <span className="inline-flex items-center gap-1.5 bg-gray-800/80 text-gray-200 text-xs px-2.5 py-1 rounded-md uppercase font-semibold tracking-wider border border-gray-700">
-                    🕵️ Notable Event
-                  </span>
-                  <span className="text-white text-sm">{group.log_count} {group.log_count === 1 ? 'Event' : 'Events'}</span>
+                  <h3 className="text-base sm:text-lg font-semibold text-white">🕵️ Notable Event</h3>
+                  <span className="text-gray-400 text-sm">{group.log_count} {group.log_count === 1 ? 'Event' : 'Events'}</span>
                 </div>
                 {group.status === 'classified' && group.analyst_category && (
                   <p className="text-sm text-gray-400 mt-1">
@@ -305,12 +303,12 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
                     <table className="w-full min-w-[700px] log-text text-left text-gray-300 border-separate border-spacing-0">
                       <thead>
                         <tr className="text-sm uppercase text-gray-400 tracking-wider">
-                          <th className="px-4 py-3 font-medium w-[100px]">Time</th>
-                          <th className="px-4 py-3 font-medium w-[140px]">Event Type</th>
-                          <th className="px-4 py-3 font-medium w-[110px] whitespace-nowrap">Source Type</th>
-                          <th className="px-4 py-3 font-medium w-[120px] whitespace-nowrap">Source IP</th>
-                          <th className="px-4 py-3 font-medium w-[120px] whitespace-nowrap">Dest IP</th>
-                          <th className="px-4 py-3 font-medium">Message</th>
+                          <th className="px-4 py-3 font-medium w-[100px] whitespace-nowrap">Time</th>
+                          <th className="px-4 py-3 font-medium w-[140px] whitespace-nowrap">Event Type</th>
+                          <th className="px-4 py-3 font-medium w-[110px] whitespace-nowrap">Src Type</th>
+                          <th className="px-4 py-3 font-medium w-[120px] whitespace-nowrap">Src IP</th>
+                          <th className="px-4 py-3 font-medium w-[120px] whitespace-nowrap">Dst IP</th>
+                          <th className="px-4 py-3 font-medium whitespace-nowrap">Message</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-700">

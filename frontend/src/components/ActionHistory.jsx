@@ -65,11 +65,6 @@ const ActionHistory = ({ history }) => {
                 <div>
                   {/* Tags and Details */}
                   <div className="flex items-center gap-2 mb-3 flex-wrap">
-                    {item.level && (
-                      <span className="inline-flex items-center bg-gray-800/80 text-gray-200 text-xs px-2.5 py-1 rounded-md uppercase font-semibold tracking-wider border border-gray-700">
-                        Level {item.level}
-                      </span>
-                    )}
                     <span className={`w-8 h-8 rounded-full flex items-center justify-center ${
                       item.correct
                         ? "bg-emerald-500/20 text-emerald-400 border-2 border-emerald-500/30"
@@ -90,6 +85,11 @@ const ActionHistory = ({ history }) => {
                       <span className="text-gray-600 mx-2">|</span>
                       Correct: <span className="text-white">{item.true_category}</span>
                     </span>
+                    {item.level && (
+                      <span className="text-gray-400 text-sm tracking-wider font-medium ml-1">
+                        Level {item.level}
+                      </span>
+                    )}
                   </div>
 
                   {/* MITRE ATT&CK Badge */}
