@@ -7,12 +7,12 @@ const Navbar = () => {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <nav className="bg-[#0d1117] text-white px-4 py-3 sm:px-6 sm:py-4 shadow-md flex items-center">
+    <nav className="bg-[#0d1117] text-white px-4 pt-0 pb-3 sm:px-6 sm:pt-0 sm:pb-4 shadow-md flex items-center">
       <div className="flex items-center gap-3">
         <img
           src="/spectyr_logo.png"
           alt="Spectyr"
-          className="h-8 w-8 sm:h-12 sm:w-12 object-contain"
+          className="h-14 w-14 sm:h-20 sm:w-20 object-contain"
         />
         <span
           className="text-3xl sm:text-5xl tracking-wider text-white"

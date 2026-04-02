@@ -19,9 +19,9 @@ const FailureModal = ({ onRetry, onQuit }) => {
         {/* Glitch title */}
         <div className="relative mb-6">
           <h1
-            className="text-4xl sm:text-6xl font-black tracking-widest text-gray-100 select-none"
+            className="text-4xl sm:text-5xl font-black tracking-widest text-gray-100 select-none"
             style={{
-              fontFamily: "'Share Tech Mono', monospace",
+              fontFamily: "'Aldrich', sans-serif",
               textShadow: '1px 0 rgba(0,255,255,0.3), -1px 0 rgba(255,0,255,0.3)',
               animation: 'glitch 4s infinite',
             }}
@@ -30,9 +30,9 @@ const FailureModal = ({ onRetry, onQuit }) => {
           </h1>
           {/* Subtle chromatic layers */}
           <h1
-            className="absolute top-0 left-0 w-full text-4xl sm:text-6xl font-black tracking-widest text-cyan-400 select-none opacity-0"
+            className="absolute top-0 left-0 w-full text-4xl sm:text-5xl font-black tracking-widest text-cyan-400 select-none opacity-0"
             style={{
-              fontFamily: "'Share Tech Mono', monospace",
+              fontFamily: "'Aldrich', sans-serif",
               clipPath: 'polygon(0 0, 100% 0, 100% 45%, 0 45%)',
               animation: 'glitch-top 4s infinite',
             }}
@@ -41,9 +41,9 @@ const FailureModal = ({ onRetry, onQuit }) => {
             SYSTEM COMPROMISED
           </h1>
           <h1
-            className="absolute top-0 left-0 w-full text-4xl sm:text-6xl font-black tracking-widest text-fuchsia-400 select-none opacity-0"
+            className="absolute top-0 left-0 w-full text-4xl sm:text-5xl font-black tracking-widest text-fuchsia-400 select-none opacity-0"
             style={{
-              fontFamily: "'Share Tech Mono', monospace",
+              fontFamily: "'Aldrich', sans-serif",
               clipPath: 'polygon(0 55%, 100% 55%, 100% 100%, 0 100%)',
               animation: 'glitch-bottom 4s infinite',
             }}
@@ -59,7 +59,7 @@ const FailureModal = ({ onRetry, onQuit }) => {
         {/* Terminal message */}
         <p
           className="text-gray-400 text-base sm:text-lg mb-8 tracking-wide"
-          style={{ fontFamily: "'Share Tech Mono', monospace" }}
+          style={{ fontFamily: "'JetBrains Mono', sans-serif" }}
         >
           &gt; The attacker is already inside.
         </p>

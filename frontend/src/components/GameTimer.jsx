@@ -63,7 +63,7 @@ const GameTimer = ({ onTimeout, disabled }) => {
         className={`text-2xl sm:text-3xl tracking-widest ${
           isCritical ? 'text-red-400' : isLow ? 'text-yellow-400' : 'text-white'
         }`}
-        style={{ fontFamily: "'Share Tech Mono', monospace" }}
+        style={{ fontFamily: "'JetBrains Mono', sans-serif" }}
       >
         {minutes}:{seconds.toString().padStart(2, '0')}
       </span>
