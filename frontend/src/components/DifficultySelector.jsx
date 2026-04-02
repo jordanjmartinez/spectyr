@@ -77,7 +77,7 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
             <ul className="space-y-2 text-sm text-gray-400">
               <li>Clock is ticking</li>
               <li>No room for error</li>
-              <li>For seasoned veterans</li>
+              <li>Prove your skills</li>
             </ul>
           </button>
         </div>

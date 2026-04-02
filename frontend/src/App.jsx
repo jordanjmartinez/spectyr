@@ -6,8 +6,33 @@ import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
 import Analytics from './components/Analytics';
 
+const LOADING_MESSAGES = [
+  "Initializing SPECTYR...",
+  "Scanning threat feeds...",
+  "Calibrating detection engines...",
+  "Deploying honeypots...",
+  "Bribing the firewall...",
+  "Convincing the intern to stop clicking links...",
+  "Almost there...",
+];
+
 function App() {
   const [backendReady, setBackendReady] = useState(false);
+  const [messageIndex, setMessageIndex] = useState(0);
+
+  useEffect(() => {
+    if (backendReady) return;
+    const interval = setInterval(() => {
+      setMessageIndex(prev => {
+        if (prev >= LOADING_MESSAGES.length - 1) {
+          clearInterval(interval);
+          return prev;
+        }
+        return prev + 1;
+      });
+    }, 7000);
+    return () => clearInterval(interval);
+  }, [backendReady]);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,11 +67,17 @@ function App() {
         <h1 className="text-4xl tracking-wider mb-4" style={{ fontFamily: "'Aldrich', sans-serif" }}>
           SPECTYR
         </h1>
-        <p className="text-gray-400 text-lg mb-6">Initializing SPECTYR...</p>
-        <div className="flex gap-1.5">
-          <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:0ms]" />
-          <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:150ms]" />
-          <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:300ms]" />
+        <p className="text-gray-400 text-lg mb-8">{LOADING_MESSAGES[messageIndex]}</p>
+        {/* Progress bar */}
+        <div className="w-64 sm:w-80 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-[2000ms] ease-out"
+            style={{
+              width: backendReady ? '100%' : `${((messageIndex + 1) / LOADING_MESSAGES.length) * 85}%`,
+              background: '#9ca3af',
+              boxShadow: `0 0 ${8 + messageIndex * 2}px rgba(156, 163, 175, ${0.3 + messageIndex * 0.08})`,
+            }}
+          />
         </div>
       </div>
     );
