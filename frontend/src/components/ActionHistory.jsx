@@ -85,11 +85,12 @@ const ActionHistory = ({ history }) => {
                       <span className="text-gray-600 mx-2">|</span>
                       Correct: <span className="text-white">{item.true_category}</span>
                     </span>
-                    {item.level && (
-                      <span className="text-gray-400 text-sm tracking-wider font-medium ml-1">
+                    {item.level && (<>
+                      <span className="text-gray-600 mx-2">|</span>
+                      <span className="text-gray-400 text-sm tracking-wider font-medium">
                         Level {item.level}
                       </span>
-                    )}
+                    </>)}
                   </div>
 
                   {/* MITRE ATT&CK Badge */}
