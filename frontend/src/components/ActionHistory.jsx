@@ -80,7 +80,7 @@ const ActionHistory = ({ history }) => {
                         </svg>
                       )}
                     </span>
-                    <span className="text-sm sm:text-lg text-gray-400">
+                    <span className="text-xs sm:text-base text-gray-400">
                       Your Call: <span className="text-white">{item.user_choice}</span>
                       <span className="text-gray-600 mx-2">|</span>
                       Correct: <span className="text-white">{item.true_category}</span>

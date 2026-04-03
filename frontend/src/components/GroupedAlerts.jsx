@@ -15,6 +15,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
   const [submittingIds, setSubmittingIds] = useState(new Set());
   const [currentLevel, setCurrentLevel] = useState(null);
   const [gameStarted, setGameStarted] = useState(false);
+  const [analystName, setAnalystName] = useState('');
 
   const fetchGroupedAlerts = () => {
     apiFetch('/api/grouped-alerts')
@@ -44,7 +45,10 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
   const fetchGameState = () => {
     apiFetch('/api/game-state')
       .then(res => res.json())
-      .then(data => setGameStarted(!!data.analyst_name))
+      .then(data => {
+        setGameStarted(!!data.analyst_name);
+        if (data.analyst_name) setAnalystName(data.analyst_name);
+      })
       .catch(err => console.error("Failed to fetch game state", err));
   };
 
@@ -220,19 +224,19 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
       {/* Training Complete Banner */}
       {gameStarted && currentLevel && currentLevel.completed && (
         <div className="bg-[#161b22] border border-gray-700 rounded-xl p-4 sm:p-5 mb-6 shadow">
-          <h2 className="text-2xl font-semibold text-white mb-4">Mission Complete</h2>
+          <h2 className="text-2xl font-semibold text-white mb-4 pb-4 border-b border-gray-700">Mission Complete{analystName ? `, ${analystName}` : ''}</h2>
           <div className="flex flex-col items-center text-center">
             <img
               src="/ghost-celebrate.png"
               alt="Ghost Celebrating"
               className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3"
             />
-            <p className="font-mono text-sm text-gray-400 mb-4">&gt; You've completed all {currentLevel.total_levels} levels. Reset the simulator to play again.</p>
+            <p className="font-mono text-sm text-gray-400 mb-4">&gt; You've completed your training. The threats never stood a chance.</p>
             <button
               onClick={onReset}
               className="px-4 py-2 text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600"
             >
-              Reset
+              Train Again
             </button>
           </div>
         </div>
