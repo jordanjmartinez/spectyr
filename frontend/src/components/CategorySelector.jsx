@@ -108,7 +108,7 @@ const CategorySelector = ({ onSelect, onCancel, scenarioInfo }) => {
         <div className="px-6 py-4 border-t border-gray-700 flex justify-end">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white bg-[#21262d] hover:bg-[#30363d] border border-gray-600 rounded-md transition-colors"
+            className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-gray-400 hover:text-white bg-[#21262d] hover:bg-[#30363d] border border-gray-600 rounded-md transition-colors"
           >
             Cancel
           </button>

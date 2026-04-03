@@ -123,7 +123,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
                     setErrors(prev => ({ ...prev, severity: null }));
                   }
                 }}
-                className={`px-3 py-1.5 text-base rounded-full border transition-all ${
+                className={`px-3 py-1.5 text-sm rounded-full border transition-all ${
                   formData.severity === sev
                     ? 'bg-[#21262d] text-white border-gray-600'
                     : 'bg-[#161b22] text-gray-400 border-gray-700 hover:bg-[#30363d]'
@@ -211,12 +211,12 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
             <div>
               <label className="block text-base text-gray-300 mb-2">Status</label>
               <div className="flex flex-wrap gap-2">
-                {['Open', 'In Progress', 'Escalated', 'Resolved'].map(status => (
+                {['Open', 'Escalated'].map(status => (
                   <button
                     key={status}
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, status }))}
-                    className={`px-3 py-1.5 text-base rounded-full border transition-all ${
+                    className={`px-3 py-1.5 text-sm rounded-full border transition-all ${
                       formData.status === status
                         ? 'bg-[#21262d] text-white border-gray-600'
                         : 'bg-[#161b22] text-gray-400 border-gray-700 hover:bg-[#30363d]'
@@ -234,14 +234,14 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
         <div className="flex justify-end gap-3 pt-6">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-base font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
+            className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className={`px-4 py-2 text-base font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 ${
+            className={`px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 ${
               isSubmitting
                 ? 'bg-[#21262d] text-gray-500 border-gray-700 cursor-not-allowed'
                 : 'bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600'

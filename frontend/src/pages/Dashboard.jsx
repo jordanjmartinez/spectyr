@@ -250,14 +250,14 @@ const Dashboard = () => {
               <button
                 onClick={() => setShowResetModal(false)}
                 disabled={isResetting}
-                className="px-4 py-2 text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-300 border border-gray-600 transition disabled:opacity-50"
+                className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-300 border border-gray-600 transition disabled:opacity-50"
               >
                 No, go back
               </button>
               <button
                 onClick={handleResetSimulator}
                 disabled={isResetting}
-                className="px-4 py-2 text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-300 border border-gray-600 transition disabled:opacity-50 inline-flex items-center gap-2"
+                className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-300 border border-gray-600 transition disabled:opacity-50 inline-flex items-center gap-2"
               >
                 {isResetting ? (
                   <>
@@ -291,7 +291,7 @@ const Dashboard = () => {
             <div className="flex justify-center">
               <button
                 onClick={() => setShowSimulateModal(false)}
-                className="px-4 py-2 text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-300 border border-gray-600 transition"
+                className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-300 border border-gray-600 transition"
               >
                 Got it
               </button>

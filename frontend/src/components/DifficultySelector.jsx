@@ -34,7 +34,7 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-6 items-start">
+        <div className="grid grid-cols-2 gap-4 mb-6 items-stretch">
           {/* Training Mode */}
           <button
             onClick={() => setSelectedMode('training')}
@@ -49,7 +49,9 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
           >
             <div className="flex flex-col items-center mb-3">
               <h4 className="text-lg font-semibold text-white mb-2">Training</h4>
-              <img src="/ghost-searching.png" alt="Training" className="w-20 h-24 sm:w-24 sm:h-28 object-contain" />
+              <div className="h-24 sm:h-28 flex items-center justify-center">
+                <img src="/ghost-searching.png" alt="Training" className="w-20 h-24 sm:w-24 sm:h-28 object-contain" />
+              </div>
             </div>
             <ul className="space-y-2 text-sm text-gray-400">
               <li>No time pressure</li>
@@ -72,12 +74,14 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
           >
             <div className="flex flex-col items-center mb-3">
               <h4 className="text-lg font-semibold text-white mb-2">Hardcore</h4>
-              <img src="/ghost_hacker.png" alt="Hardcore" className="w-20 h-24 sm:w-28 sm:h-28 object-contain" />
+              <div className="h-24 sm:h-28 flex items-center justify-center">
+                <img src="/ghost_hacker.png" alt="Hardcore" className="w-20 h-24 sm:w-24 sm:h-28 object-contain" />
+              </div>
             </div>
             <ul className="space-y-2 text-sm text-gray-400">
               <li>Clock is ticking</li>
               <li>No room for error</li>
-              <li>Prove your skills</li>
+              <li>For seasoned analysts</li>
             </ul>
           </button>
         </div>
@@ -85,14 +89,14 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
         <div className="flex justify-center gap-3">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-300 border border-gray-600 transition"
+            className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-300 border border-gray-600 transition"
           >
             Cancel
           </button>
           <button
             onClick={handleStart}
             disabled={!canStart}
-            className={`px-4 py-2 text-sm font-medium rounded-md border transition ${
+            className={`px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition ${
               canStart
                 ? 'bg-[#21262d] hover:bg-[#30363d] text-gray-300 border-gray-600 cursor-pointer'
                 : 'bg-[#21262d] text-gray-500 border-gray-700 opacity-50 cursor-not-allowed'

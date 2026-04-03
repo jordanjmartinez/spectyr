@@ -6,9 +6,9 @@ const CampaignProgress = ({ levelData }) => {
   const { completed, current_level, total_levels, ticket_title, level_results = {} } = levelData;
 
   return (
-    <div className="bg-[#161b22] p-4 sm:p-6 rounded-2xl border border-gray-700 shadow-md">
-      <div className="flex items-center justify-between mb-4 sm:mb-6">
-        <h2 className="text-xl sm:text-2xl font-semibold text-white">Level Progress</h2>
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl sm:text-2xl font-semibold text-white">Mission Progress</h2>
       </div>
 
       {/* Level stepper */}

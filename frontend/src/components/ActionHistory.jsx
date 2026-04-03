@@ -36,7 +36,7 @@ const ActionHistory = ({ history }) => {
 
   if (!history || history.length === 0) {
     return (
-      <div className="bg-[#161b22] p-4 sm:p-6 rounded-2xl border border-gray-700 shadow-md">
+      <div>
         <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Post-Incident Review</h2>
         <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
           <img src="/ghost_analytics.png" alt="Ghost Analyzing" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
@@ -47,7 +47,7 @@ const ActionHistory = ({ history }) => {
   }
 
   return (
-    <div className="bg-[#161b22] p-6 rounded-2xl border border-gray-700 shadow-md">
+    <div>
       <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Post-Incident Review</h2>
 
       <div className="divide-y divide-gray-800">

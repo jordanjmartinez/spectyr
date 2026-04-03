@@ -4,8 +4,13 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import IncidentReportForm from '../components/IncidentReportForm';
 
-const STATUS_OPTIONS = ['Open', 'In Progress', 'Resolved', 'Closed'];
+const STATUS_OPTIONS = ['Open', 'Closed'];
 const SEVERITY_OPTIONS = ['Critical', 'High', 'Medium', 'Low'];
+
+const getReportNumber = (id) => {
+  const hash = id.replace(/-/g, '').slice(0, 8);
+  return 1000 + (parseInt(hash, 16) % 24001);
+};
 
 const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => {
   const [reports, setReports] = useState([]);
@@ -146,8 +151,8 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
           <p style="margin: 0; font-size: 14px; font-weight: 500;">${report.status || 'Open'}</p>
         </div>
         <div>
-          <p style="margin: 0 0 4px 0; font-size: 11px; text-transform: uppercase; color: #666; letter-spacing: 0.5px;">Owner</p>
-          <p style="margin: 0; font-size: 14px; ${report.owner === 'Unassigned' || !report.owner ? 'font-style: italic; color: #999;' : ''}">${report.owner || 'Unassigned'}</p>
+          <p style="margin: 0 0 4px 0; font-size: 11px; text-transform: uppercase; color: #666; letter-spacing: 0.5px;">Case ID</p>
+          <p style="margin: 0; font-size: 14px;">#${getReportNumber(report.id)}</p>
         </div>
         <div>
           <p style="margin: 0 0 4px 0; font-size: 11px; text-transform: uppercase; color: #666; letter-spacing: 0.5px;">MITRE Tactic</p>
@@ -258,169 +263,161 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
           >
             {/* Card Header - Clickable to expand */}
             <div
-              className="flex flex-col sm:flex-row sm:justify-between sm:items-start cursor-pointer"
+              className="cursor-pointer"
               onClick={() => toggleRow(index)}
             >
-              {/* Left column on desktop: title + metadata */}
-              <div className="min-w-0 sm:flex-1">
-                <h3 className="text-lg sm:text-xl font-bold text-white truncate pr-2 sm:pr-4">
+              {/* Row 1: Title + chevron */}
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg sm:text-xl font-bold text-white truncate pr-2">
                   {report.title || 'Untitled Report'}
                 </h3>
-                {/* Desktop metadata — below title */}
-                <div className="hidden sm:flex items-center gap-3 mt-1 whitespace-nowrap">
-                  <span className="text-white text-base">Created {getRelativeTime(report.timestamp)}</span>
-                  <span className="text-gray-600">|</span>
-                  <span className="text-white text-base">{(report.owner && report.owner !== 'Unassigned') ? report.owner : (analystName || '—')}</span>
-                </div>
-              </div>
-
-              {/* Badges, Actions and chevron */}
-              <div className="flex items-center justify-between sm:justify-start gap-2 mt-2 sm:mt-0 sm:ml-4 w-full sm:w-auto sm:flex-shrink-0">
-                {/* Left group: badges */}
-                <div className="flex items-center gap-2">
-                {/* Severity badge */}
-                <div className="relative">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSeverityDropdownId(severityDropdownId === report.id ? null : report.id);
-                    }}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 text-sm font-semibold rounded border transition cursor-pointer hover:bg-gray-700 bg-[#161b22] text-gray-400 border-gray-700"
-                  >
-                    {report.severity || 'Unset'}
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  {severityDropdownId === report.id && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-10"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSeverityDropdownId(null);
-                        }}
-                      />
-                      <div className="absolute right-0 top-full mt-1 z-20 bg-[#161b22] border border-gray-700 rounded py-1 flex flex-col min-w-[100px]">
-                        {SEVERITY_OPTIONS.map((severity) => (
-                          <button
-                            key={severity}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSeverityChange(report, severity);
-                            }}
-                            className={`text-left px-3 py-1.5 text-sm hover:bg-gray-700 transition whitespace-nowrap ${
-                              report.severity === severity ? 'text-white bg-gray-700' : 'text-gray-400'
-                            }`}
-                          >
-                            {severity}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Status badge */}
-                <div className="relative">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setStatusDropdownId(statusDropdownId === report.id ? null : report.id);
-                    }}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 text-sm font-semibold rounded border transition cursor-pointer hover:bg-gray-700 bg-[#161b22] text-gray-400 border-gray-700"
-                  >
-                    {report.status || 'Open'}
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  {statusDropdownId === report.id && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-10"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setStatusDropdownId(null);
-                        }}
-                      />
-                      <div className="absolute right-0 top-full mt-1 z-20 bg-[#161b22] border border-gray-700 rounded py-1 flex flex-col min-w-[100px]">
-                        {STATUS_OPTIONS.map((status) => (
-                          <button
-                            key={status}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleStatusChange(report, status);
-                            }}
-                            className={`text-left px-3 py-1.5 text-sm hover:bg-gray-700 transition whitespace-nowrap ${
-                              report.status === status ? 'text-white bg-gray-700' : 'text-gray-400'
-                            }`}
-                          >
-                            {status}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-                </div>{/* end left group */}
-
-                {/* Right group: action buttons + chevron */}
-                <div className="flex items-center justify-between sm:justify-start sm:gap-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditReport(report);
-                  }}
-                  title="Edit"
-                  className="p-2.5 sm:p-2 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition"
-                >
-                  <svg className="w-5 h-5 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleExportPDF(report);
-                  }}
-                  title="Export PDF"
-                  className="p-2.5 sm:p-2 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition"
-                >
-                  <svg className="w-5 h-5 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDeleteConfirmId(report.id);
-                  }}
-                  title="Delete"
-                  className="p-2.5 sm:p-2 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition"
-                >
-                  <svg className="w-5 h-5 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
                 <svg
-                  className={`w-5 h-5 sm:ml-0 text-gray-500 hover:text-white transition-transform duration-300 ease-in-out ${
+                  className={`w-5 h-5 flex-shrink-0 sm:hidden text-gray-500 hover:text-white transition-transform duration-300 ease-in-out ${
                     expandedIndex === index ? 'rotate-180' : 'rotate-0'
                   }`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
-                </div>{/* end right group */}
               </div>
 
-              {/* Mobile metadata — after badges */}
-              <div className="flex sm:hidden items-center gap-3 mt-1 whitespace-nowrap">
-                <span className="text-white text-base">Created {getRelativeTime(report.timestamp)}</span>
+              {/* Row 2: Metadata + badges + action icons */}
+              {/* Row 2: metadata */}
+              <div className="flex items-center gap-3 mt-2 whitespace-nowrap">
+                <span className="text-white text-sm sm:text-base">Created {getRelativeTime(report.timestamp)}</span>
                 <span className="text-gray-600">|</span>
-                <span className="text-white text-base">{(report.owner && report.owner !== 'Unassigned') ? report.owner : (analystName || '—')}</span>
+                <span className="text-white text-sm sm:text-base">#{getReportNumber(report.id)}</span>
+              </div>
+
+              {/* Row 3: badges left, actions right */}
+              <div className="flex items-center justify-between mt-2">
+                <div className="flex items-center gap-2">
+                  {/* Severity badge */}
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSeverityDropdownId(severityDropdownId === report.id ? null : report.id);
+                      }}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-sm font-semibold rounded border transition cursor-pointer hover:bg-gray-700 bg-[#161b22] text-gray-400 border-gray-700"
+                    >
+                      {report.severity || 'Unset'}
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    {severityDropdownId === report.id && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-10"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSeverityDropdownId(null);
+                          }}
+                        />
+                        <div className="absolute right-0 top-full mt-1 z-20 bg-[#161b22] border border-gray-700 rounded py-1 flex flex-col min-w-[100px]">
+                          {SEVERITY_OPTIONS.map((severity) => (
+                            <button
+                              key={severity}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSeverityChange(report, severity);
+                              }}
+                              className={`text-left px-3 py-1.5 text-sm hover:bg-gray-700 transition whitespace-nowrap ${
+                                report.severity === severity ? 'text-white bg-gray-700' : 'text-gray-400'
+                              }`}
+                            >
+                              {severity}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Status badge */}
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setStatusDropdownId(statusDropdownId === report.id ? null : report.id);
+                      }}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-sm font-semibold rounded border transition cursor-pointer hover:bg-gray-700 bg-[#161b22] text-gray-400 border-gray-700"
+                    >
+                      {report.status || 'Open'}
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    {statusDropdownId === report.id && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-10"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setStatusDropdownId(null);
+                          }}
+                        />
+                        <div className="absolute right-0 top-full mt-1 z-20 bg-[#161b22] border border-gray-700 rounded py-1 flex flex-col min-w-[100px]">
+                          {STATUS_OPTIONS.map((status) => (
+                            <button
+                              key={status}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStatusChange(report, status);
+                              }}
+                              className={`text-left px-3 py-1.5 text-sm hover:bg-gray-700 transition whitespace-nowrap ${
+                                report.status === status ? 'text-white bg-gray-700' : 'text-gray-400'
+                              }`}
+                            >
+                              {status}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>{/* end badges */}
+
+                {/* Right: action buttons */}
+                <div className="flex items-center gap-0 sm:gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditReport(report);
+                    }}
+                    title="Edit"
+                    className="p-2.5 sm:p-2.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition"
+                  >
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleExportPDF(report);
+                    }}
+                    title="Export PDF"
+                    className="p-2.5 sm:p-2.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition"
+                  >
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteConfirmId(report.id);
+                    }}
+                    title="Delete"
+                    className="p-2.5 sm:p-2.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition"
+                  >
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>{/* end action buttons */}
               </div>
             </div>
 
@@ -492,15 +489,15 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
             <div className="flex justify-center gap-3">
               <button
                 onClick={() => setDeleteConfirmId(null)}
-                className="px-4 py-2 text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-300 border border-gray-600 transition"
+                className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-300 border border-gray-600 transition"
               >
-                Cancel
+                No, go back
               </button>
               <button
                 onClick={() => handleDeleteReport(deleteConfirmId)}
-                className="px-4 py-2 text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-300 border border-gray-600 transition"
+                className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-300 border border-gray-600 transition"
               >
-                Delete
+                Yes, delete it
               </button>
             </div>
           </div>

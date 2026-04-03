@@ -234,7 +234,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
             <p className="font-mono text-sm text-gray-400 mb-4">&gt; You've completed your training. The threats never stood a chance.</p>
             <button
               onClick={onReset}
-              className="px-4 py-2 text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600"
+              className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600"
             >
               Train Again
             </button>
@@ -378,7 +378,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
                       setCategoryScenario(group);
                       setShowCategorySelector(true);
                     }}
-                    className={`inline-flex items-center gap-2 px-4 py-2 text-base font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 ${
+                    className={`inline-flex items-center gap-2 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 ${
                       submittingIds.has(group.scenario_id)
                         ? 'bg-[#161b22] text-gray-500 border-gray-700 cursor-not-allowed'
                         : 'bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600'
