@@ -207,14 +207,14 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
       <div className="flex items-center gap-2 sm:gap-3">
         <button
           onClick={() => setShowNewReport(true)}
-          className="inline-flex items-center justify-center px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
+          className="inline-flex items-center justify-center px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-base font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
         >
           Create Case
         </button>
         <div className="flex rounded-md border border-gray-700 overflow-hidden">
           <button
             onClick={() => setActiveTab('open')}
-            className={`px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-medium transition ${
+            className={`px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-base font-medium transition ${
               activeTab === 'open'
                 ? 'bg-[#21262d] text-white'
                 : 'bg-transparent text-gray-400 hover:bg-[#21262d]'
@@ -224,7 +224,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
           </button>
           <button
             onClick={() => setActiveTab('closed')}
-            className={`px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-medium transition border-l border-gray-700 ${
+            className={`px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-base font-medium transition border-l border-gray-700 ${
               activeTab === 'closed'
                 ? 'bg-[#21262d] text-white'
                 : 'bg-transparent text-gray-400 hover:bg-[#21262d]'

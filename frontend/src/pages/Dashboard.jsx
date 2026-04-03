@@ -209,13 +209,13 @@ const Dashboard = () => {
               <div className="flex items-center gap-2 sm:gap-4">
                 <button
                   onClick={handleSimulateEvents}
-                  className="inline-flex items-center px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 transition focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  className="inline-flex items-center px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-base font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 transition focus:outline-none focus:ring-2 focus:ring-gray-500"
                 >
                   Start Training
                 </button>
                 <button
                   onClick={() => setShowResetModal(true)}
-                  className="inline-flex items-center px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 transition focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  className="inline-flex items-center px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-base font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 transition focus:outline-none focus:ring-2 focus:ring-gray-500"
                 >
                   Clear Logs
                 </button>
