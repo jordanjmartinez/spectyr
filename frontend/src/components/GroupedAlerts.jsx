@@ -205,6 +205,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-base sm:text-lg font-semibold text-white">{currentLevel.ticket_title}</span>
+              <span className="text-gray-600">|</span>
               <span className="text-gray-400 text-sm tracking-wider font-medium">
                 Level {currentLevel.current_level}
               </span>
