@@ -5,7 +5,7 @@ import html2canvas from 'html2canvas';
 import IncidentReportForm from '../components/IncidentReportForm';
 
 const STATUS_OPTIONS = ['Open', 'Closed'];
-const SEVERITY_OPTIONS = ['Critical', 'High', 'Medium', 'Low'];
+const SEVERITY_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
 
 const getReportNumber = (id) => {
   const hash = id.replace(/-/g, '').slice(0, 8);
@@ -20,7 +20,10 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
   const [statusDropdownId, setStatusDropdownId] = useState(null);
   const [severityDropdownId, setSeverityDropdownId] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
-  const [activeTab, setActiveTab] = useState('open');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterOpen, setFilterOpen] = useState(true);
+  const [filterClosed, setFilterClosed] = useState(false);
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [, setTick] = useState(0);
 
 
@@ -155,11 +158,11 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
           <p style="margin: 0; font-size: 14px;">#${getReportNumber(report.id)}</p>
         </div>
         <div>
-          <p style="margin: 0 0 4px 0; font-size: 11px; text-transform: uppercase; color: #666; letter-spacing: 0.5px;">MITRE Tactic</p>
+          <p style="margin: 0 0 4px 0; font-size: 11px; text-transform: uppercase; color: #666; letter-spacing: 0.5px;">MITRE ATT&CK</p>
           <p style="margin: 0; font-size: 14px;">${report.mitre_tactic || '—'}</p>
         </div>
         <div>
-          <p style="margin: 0 0 4px 0; font-size: 11px; text-transform: uppercase; color: #666; letter-spacing: 0.5px;">Kill Chain</p>
+          <p style="margin: 0 0 4px 0; font-size: 11px; text-transform: uppercase; color: #666; letter-spacing: 0.5px;">Kill Chain Phase</p>
           <p style="margin: 0; font-size: 14px;">${report.kill_chain || '—'}</p>
         </div>
       </div>
@@ -175,7 +178,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
           <p style="margin: 0; font-size: 13px; font-family: monospace; color: #333;">${report.affected_hosts || '—'}</p>
         </div>
         <div>
-          <p style="margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase; color: #666; letter-spacing: 0.5px; font-weight: 500;">Recommended Actions</p>
+          <p style="margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase; color: #666; letter-spacing: 0.5px; font-weight: 500;">Mitigation Steps</p>
           <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #333;">${report.mitigation || '—'}</p>
         </div>
       </div>
@@ -198,53 +201,118 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
     document.body.removeChild(element);
   };
 
-  // Filter reports based on active tab
-  const filteredReports = activeTab === 'open'
-    ? reports.filter(r => r.status !== 'Closed')
-    : reports.filter(r => r.status === 'Closed');
+  // Filter reports based on status filters and search
+  const filteredReports = reports.filter(r => {
+    // Status filter
+    const isOpen = r.status !== 'Closed';
+    const isClosed = r.status === 'Closed';
+    if (filterOpen && !filterClosed && !isOpen) return false;
+    if (filterClosed && !filterOpen && !isClosed) return false;
+    if (!filterOpen && !filterClosed) return false;
 
-  // Header component used in both states
-  const Header = () => (
-    <div className="flex flex-row items-center justify-between mb-6 gap-2 sm:gap-3">
-      <h2 className="text-xl sm:text-2xl font-semibold text-white whitespace-nowrap">
-        Cases <span className="text-gray-500 font-normal">({filteredReports.length})</span>
-      </h2>
-      <div className="flex items-center gap-2 sm:gap-3">
-        <button
-          onClick={() => setShowNewReport(true)}
-          className="inline-flex items-center justify-center px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
-        >
-          Create Case
-        </button>
-        <div className="flex rounded-md border border-gray-700 overflow-hidden">
+    // Search filter
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    const reportNumber = `#${getReportNumber(r.id)}`;
+    return (
+      (r.title || '').toLowerCase().includes(term) ||
+      reportNumber.toLowerCase().includes(term) ||
+      (r.severity || '').toLowerCase().includes(term) ||
+      (r.status || '').toLowerCase().includes(term) ||
+      (r.description || '').toLowerCase().includes(term) ||
+      (r.mitre_tactic || '').toLowerCase().includes(term) ||
+      (r.kill_chain || '').toLowerCase().includes(term)
+    );
+  });
+
+  // Header section
+  const header = (
+    <div className="flex flex-col gap-3 mb-6">
+      <div className="flex flex-row items-center justify-between gap-2 sm:gap-3">
+        <h2 className="text-xl sm:text-2xl font-semibold text-white whitespace-nowrap">
+          Cases <span className="text-gray-500 font-normal">({filteredReports.length})</span>
+        </h2>
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
-            onClick={() => setActiveTab('open')}
-            className={`px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition ${
-              activeTab === 'open'
-                ? 'bg-[#21262d] text-white'
-                : 'bg-transparent text-gray-400 hover:bg-[#21262d]'
-            }`}
+            onClick={() => setShowNewReport(true)}
+            className="inline-flex items-center justify-center px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
           >
-            Open
+            New Case
           </button>
-          <button
-            onClick={() => setActiveTab('closed')}
-            className={`px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition border-l border-gray-700 ${
-              activeTab === 'closed'
-                ? 'bg-[#21262d] text-white'
-                : 'bg-transparent text-gray-400 hover:bg-[#21262d]'
-            }`}
-          >
-            Closed
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+              className="inline-flex items-center justify-center gap-1 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              Filter
+            </button>
+            {showFilterDropdown && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setShowFilterDropdown(false)}
+                />
+                <div className="absolute right-0 top-full mt-1 z-20 bg-[#161b22] border border-gray-700 rounded py-1 flex flex-col min-w-[100px] sm:min-w-[120px]">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFilterOpen(!filterOpen);
+                    }}
+                    className="flex items-center gap-2 text-left px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm hover:bg-gray-700 transition text-gray-400"
+                  >
+                    <span className={`w-3 h-3 sm:w-3.5 sm:h-3.5 rounded border ${filterOpen ? 'bg-gray-300 border-gray-300' : 'border-gray-600'}`} />
+                    Open
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFilterClosed(!filterClosed);
+                    }}
+                    className="flex items-center gap-2 text-left px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm hover:bg-gray-700 transition text-gray-400"
+                  >
+                    <span className={`w-3 h-3 sm:w-3.5 sm:h-3.5 rounded border ${filterClosed ? 'bg-gray-300 border-gray-300' : 'border-gray-600'}`} />
+                    Closed
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
+      {reports.length > 0 && (
+        <div className="relative">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search cases..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            maxLength={300}
+            className="w-full pl-10 pr-10 py-2 rounded-md bg-transparent border border-gray-700 text-white text-sm placeholder-gray-500 focus:border-gray-500 focus:outline-none transition-colors"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 
   return (
     <>
-      <Header />
+      {header}
 
 
       {filteredReports.length === 0 ? (
@@ -271,14 +339,6 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
                 <h3 className="text-lg sm:text-xl font-bold text-white truncate pr-2">
                   {report.title || 'Untitled Report'}
                 </h3>
-                <svg
-                  className={`w-5 h-5 flex-shrink-0 sm:hidden text-gray-500 hover:text-white transition-transform duration-300 ease-in-out ${
-                    expandedIndex === index ? 'rotate-180' : 'rotate-0'
-                  }`}
-                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
               </div>
 
               {/* Row 2: Metadata + badges + action icons */}
@@ -429,42 +489,38 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
             >
               <div className="overflow-hidden min-h-0">
                 <div className="mt-4 border-t border-gray-700 pt-4">
-                  {/* 4-column metadata row */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                  {/* 3-column metadata row */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                     <div>
-                      <span className="text-base text-gray-400 font-medium">Severity</span>
-                      <p className="text-gray-300 mt-1 text-base">{report.severity || '—'}</p>
+                      <span className="text-sm sm:text-base text-gray-400 font-medium">Severity</span>
+                      <p className="text-gray-300 mt-1 text-sm sm:text-base">{report.severity || '—'}</p>
                     </div>
                     <div>
-                      <span className="text-base text-gray-400 font-medium">Status</span>
-                      <p className="text-gray-300 mt-1 text-base">{report.status || 'Open'}</p>
+                      <span className="text-sm sm:text-base text-gray-400 font-medium">MITRE ATT&CK</span>
+                      <p className="text-gray-300 mt-1 text-sm sm:text-base">{report.mitre_tactic || '—'}</p>
                     </div>
                     <div>
-                      <span className="text-base text-gray-400 font-medium">MITRE Tactic</span>
-                      <p className="text-gray-300 mt-1 text-base">{report.mitre_tactic || '—'}</p>
-                    </div>
-                    <div>
-                      <span className="text-base text-gray-400 font-medium">Kill Chain</span>
-                      <p className="text-gray-300 mt-1 text-base">{report.kill_chain || '—'}</p>
+                      <span className="text-sm sm:text-base text-gray-400 font-medium">Kill Chain Phase</span>
+                      <p className="text-gray-300 mt-1 text-sm sm:text-base">{report.kill_chain || '—'}</p>
                     </div>
                   </div>
 
                   {/* Description */}
                   <div className="mb-4">
-                    <span className="text-base text-gray-400 font-medium">Description</span>
-                    <p className="text-gray-300 mt-2 leading-relaxed text-base break-words">{report.description || '—'}</p>
+                    <span className="text-sm sm:text-base text-gray-400 font-medium">Description</span>
+                    <p className="text-gray-300 mt-2 leading-relaxed text-sm sm:text-base break-words">{report.description || '—'}</p>
                   </div>
 
                   {/* Affected Systems */}
                   <div className="mb-4">
-                    <span className="text-base text-gray-400 font-medium">Affected Systems</span>
-                    <p className="text-gray-300 mt-2 text-base font-mono break-words">{report.affected_hosts || '—'}</p>
+                    <span className="text-sm sm:text-base text-gray-400 font-medium">Affected Systems</span>
+                    <p className={`text-gray-300 mt-2 text-sm sm:text-base break-words ${report.affected_hosts ? 'font-mono' : ''}`}>{report.affected_hosts || '—'}</p>
                   </div>
 
-                  {/* Recommended Actions */}
+                  {/* Mitigation Steps */}
                   <div>
-                    <span className="text-base text-gray-400 font-medium">Recommended Actions</span>
-                    <p className="text-gray-300 mt-2 leading-relaxed text-base break-words">{report.mitigation || '—'}</p>
+                    <span className="text-sm sm:text-base text-gray-400 font-medium">Mitigation Steps</span>
+                    <p className="text-gray-300 mt-2 leading-relaxed text-sm sm:text-base break-words">{report.mitigation || '—'}</p>
                   </div>
                 </div>
               </div>
@@ -511,7 +567,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
             className="absolute inset-0 bg-black/70"
             onClick={() => setEditReport(null)}
           />
-          <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-2xl mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-3 sm:p-5 w-full max-w-xl mx-2 sm:mx-4 shadow-2xl">
             <IncidentReportForm
               initialData={editReport}
               onSubmit={async (updated) => {
@@ -544,7 +600,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
             className="absolute inset-0 bg-black/70"
             onClick={() => setShowNewReport(false)}
           />
-          <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-2xl mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-3 sm:p-5 w-full max-w-xl mx-2 sm:mx-4 shadow-2xl">
             <IncidentReportForm
               initialData={{}}
               onSubmit={async (formData) => {

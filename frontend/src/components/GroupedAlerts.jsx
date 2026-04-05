@@ -207,15 +207,15 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
       {gameStarted && currentLevel && !currentLevel.completed && currentLevel.ticket_title && (
         <div className="bg-[#161b22] border border-gray-700 rounded-xl p-4 sm:p-5 mb-6 shadow">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-base sm:text-lg font-semibold text-white">{currentLevel.ticket_title}</span>
-              <span className="text-gray-600">|</span>
-              <span className="text-gray-400 text-sm tracking-wider font-medium">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+              <span className="text-gray-400 text-xs sm:text-sm tracking-wider font-medium">
                 Level {currentLevel.current_level}
               </span>
+              <span className="text-gray-600 hidden sm:inline">|</span>
+              <span className="text-sm sm:text-lg font-semibold text-white">{currentLevel.ticket_title}</span>
             </div>
           </div>
-          <p className="text-gray-300 text-base leading-relaxed">
+          <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
             {currentLevel.storyline}
           </p>
         </div>

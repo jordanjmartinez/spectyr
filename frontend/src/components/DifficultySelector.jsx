@@ -75,7 +75,7 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
             <div className="flex flex-col items-center mb-3">
               <h4 className="text-lg font-semibold text-white mb-2">Hardcore</h4>
               <div className="h-24 sm:h-28 flex items-center justify-center">
-                <img src="/ghost_hacker.png" alt="Hardcore" className="w-20 h-24 sm:w-24 sm:h-28 object-contain" />
+                <img src="/ghost_hacker.png" alt="Hardcore" className="w-24 h-28 sm:w-28 sm:h-32 object-contain" />
               </div>
             </div>
             <ul className="space-y-2 text-sm text-gray-400">

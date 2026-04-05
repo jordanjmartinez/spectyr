@@ -563,21 +563,21 @@ CAMPAIGN_LEVELS = [
             "Malware": {
                 "scenario_label": "malware_usb",
                 "ticket_id": "TKT-4821",
-                "ticket_title": "Found USB Device",
+                "ticket_title": "Suspicious process from removable media",
                 "storyline": "A USB drive was discovered in the parking lot by an employee this morning. Against policy, they connected it to their workstation to identify the owner. Minutes later, the endpoint started generating unusual alerts.",
                 "hint": "Look for removable media events followed by suspicious file execution and persistence mechanisms."
             },
             "Phishing": {
                 "scenario_label": "phishing_1",
                 "ticket_id": "TKT-4822",
-                "ticket_title": "Password Reset Email",
+                "ticket_title": "Credential submission to untrusted domain",
                 "storyline": "An employee received a Microsoft 365 password reset email and clicked the link. The page looked like a normal Microsoft sign-in, but the employee hesitated before entering their credentials. The proxy logged the connection but didn't block it.",
                 "hint": "Compare the sender domain and any linked URLs against the legitimate service. Look for subtle misspellings or unusual subdomains."
             },
             "Defense Evasion": {
                 "scenario_label": "defense_evasion",
                 "ticket_id": "TKT-4827",
-                "ticket_title": "Windows Defender Offline",
+                "ticket_title": "Endpoint protection service disabled",
                 "storyline": "A workstation's security settings were modified outside of a scheduled maintenance window. There are no open change requests or IT tickets associated with this activity. Review the log and determine if this was authorized.",
                 "hint": "Look for processes that disabled security tools, service stops, or registry modifications."
             }
@@ -591,21 +591,21 @@ CAMPAIGN_LEVELS = [
             "Lateral Movement": {
                 "scenario_label": "lateral_movement_1",
                 "ticket_id": "TKT-4825",
-                "ticket_title": "Nmap Detected",
+                "ticket_title": "Internal port scan from single host",
                 "storyline": "A workstation ran a network scanning tool targeting the file server. The firewall is now showing denied connections on multiple ports from the same source. The user is not part of the IT security team.",
                 "hint": "Correlate scanning activity with denied connections to internal hosts."
             },
             "Command & Control": {
                 "scenario_label": "c2_http",
                 "ticket_id": "TKT-4826",
-                "ticket_title": "Suspicious Outbound Connection",
+                "ticket_title": "Outbound connection to rare external host",
                 "storyline": "The DNS server flagged a query for a domain that closely resembles Microsoft's login portal. Shortly after, the proxy logged an outbound HTTPS tunnel to an external IP address. No one in the department reported any issues accessing Microsoft services.",
                 "hint": "Check for domain or IP mismatches that suggest traffic isn't going where it claims."
             },
             "Brute Force": {
                 "scenario_label": "brute_force_attack",
                 "ticket_id": "TKT-4823",
-                "ticket_title": "Repeated Failed Logons on Domain Controller",
+                "ticket_title": "Excessive authentication failures on DC",
                 "storyline": "The Domain Controller is showing a cluster of failed logon events from the same external IP address. The activity started a few minutes ago and appears to be targeting a single user account. A successful logon was just recorded from the same source.",
                 "hint": "Identify patterns in the failed authentication events that indicate automation rather than manual attempts."
             }
@@ -619,21 +619,21 @@ CAMPAIGN_LEVELS = [
             "Phishing": {
                 "scenario_label": "phishing_link",
                 "ticket_id": "TKT-4829",
-                "ticket_title": "Suspicious Invoice Email",
+                "ticket_title": "Suspicious document link with file execution",
                 "storyline": "An employee received an email with a link to review a DocuSign document. They clicked the link, which took them to what appeared to be a DocuSign portal. Shortly after, their workstation downloaded and executed a file from the site. The employee is now unsure whether the email was legitimate.",
                 "hint": "Verify the sender domain against the legitimate service and trace what was downloaded and executed."
             },
             "Data Exfiltration": {
                 "scenario_label": "data_exfil_archive",
                 "ticket_id": "TKT-4830",
-                "ticket_title": "Large Outbound Upload to Cloud Storage",
+                "ticket_title": "Large outbound transfer to cloud storage",
                 "storyline": "An employee's workstation created a password-protected archive from a staging folder on their desktop. Shortly after, the firewall recorded a large outbound connection to a cloud storage service. The employee has not submitted any file transfer requests.",
                 "hint": "Examine the archiving activity and compression flags for signs of data being prepared for unauthorized transfer."
             },
             "Insider Threat": {
                 "scenario_label": "insider_staging",
                 "ticket_id": "TKT-4831",
-                "ticket_title": "Unusual File Copy Activity",
+                "ticket_title": "Anomalous access to restricted file share",
                 "storyline": "An employee accessed the Finance share on the file server and copied a quarterly earnings draft to a folder on their desktop. Shortly after, their workstation opened a connection to Google Drive. The employee's role does not typically require access to financial data.",
                 "hint": "Correlate the file access, the data destination, and HR context to determine if the activity is justified."
             }
@@ -647,21 +647,21 @@ CAMPAIGN_LEVELS = [
             "Malware": {
                 "scenario_label": "malware_ransomware",
                 "ticket_id": "TKT-4833",
-                "ticket_title": "Locked Files",
+                "ticket_title": "Rapid file extension changes detected",
                 "storyline": "An employee reported that documents on their workstation have been renamed with an unusual file extension. A text file has appeared on their desktop demanding a Bitcoin payment to restore the files. The employee did not make these changes and no maintenance was scheduled.",
                 "hint": "Trace the process origin, its command line behavior, and the files it created on disk."
             },
             "Lateral Movement": {
                 "scenario_label": "lateral_movement_2",
                 "ticket_id": "TKT-4834",
-                "ticket_title": "Diagnostic Tool Targeting LSASS Process",
+                "ticket_title": "LSASS memory access by unusual process",
                 "storyline": "A workstation generated alerts showing a known diagnostic tool being used to dump the memory of the LSASS process. Shortly after, a second tool was launched from a temporary directory that loaded the dump file. The user's role does not involve system diagnostics and no troubleshooting tickets are open.",
                 "hint": "Identify what process was targeted, what was done with the output, and whether the tool locations match legitimate use."
             },
             "Defense Evasion": {
                 "scenario_label": "defense_evasion_log_clearing",
                 "ticket_id": "TKT-4835",
-                "ticket_title": "Event Logs Cleared",
+                "ticket_title": "Security event log cleared",
                 "storyline": "A workstation's Security and Sysmon event logs were wiped within seconds of each other. There are no open maintenance tickets or scheduled log rotations for this machine. The system generated an alert confirming the logs were cleared, but everything that happened before that point is gone.",
                 "hint": "Identify the tool and targeted logs, then look for the detection artifact that log clearing itself generates."
             }
@@ -675,21 +675,21 @@ CAMPAIGN_LEVELS = [
             "Insider Threat": {
                 "scenario_label": "insider_shadow_it",
                 "ticket_id": "TKT-4837",
-                "ticket_title": "Unapproved Application",
+                "ticket_title": "Unapproved application with network activity",
                 "storyline": "A workstation launched an application that is not on the approved software list. Shortly after, a sensitive client-facing document appeared in a folder associated with the application, and the proxy logged an upload to an external cloud storage service. The employee has not submitted a software installation request.",
                 "hint": "Trace the application install path, what launched it, and where data was sent. Determine if the service is company-approved."
             },
             "Brute Force": {
                 "scenario_label": "password_spray",
                 "ticket_id": "TKT-4838",
-                "ticket_title": "Multiple Failed Logons Across Different Accounts",
+                "ticket_title": "Distributed authentication anomaly via NTLM",
                 "storyline": "The Domain Controller logged a cluster of failed logon attempts from the same source. Each attempt targets a different user account, and they all happened in quick succession using NTLM authentication. None of the targeted accounts have reported issues and no lockout policies have triggered yet.",
                 "hint": "Compare the target accounts across failed logon events to determine if the attack pattern targets one account or many."
             },
             "Command & Control": {
                 "scenario_label": "c2_dns_tunnel",
                 "ticket_id": "TKT-4839",
-                "ticket_title": "Unusual DNS Query Pattern",
+                "ticket_title": "Anomalous encoded DNS query strings",
                 "storyline": "The DNS server logged a burst of TXT queries from a single workstation to subdomains that don't resemble normal hostnames. The subdomain labels look like encoded strings. All queries resolve to the same parent domain, which is not on any internal or approved service list. Shortly before the queries began, the workstation launched an unfamiliar process.",
                 "hint": "Examine the subdomain labels for encoded data and correlate the queries with process activity on the host."
             }

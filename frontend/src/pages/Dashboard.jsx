@@ -202,7 +202,7 @@ const Dashboard = () => {
           </div>
 
           <div className={view === "table" ? "block" : "hidden"}>
-            <div className="flex flex-row items-center justify-between mb-6 gap-2 sm:gap-3">
+            <div className="flex flex-row items-center justify-between mb-3 gap-2 sm:gap-3">
               <h2 className="text-xl sm:text-2xl font-semibold text-white whitespace-nowrap">
                 Events <span className="text-gray-500 font-normal">({alertCount})</span>
               </h2>

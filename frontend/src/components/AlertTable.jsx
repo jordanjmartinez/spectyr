@@ -9,6 +9,12 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
   const [searchField, setSearchField] = useState('all');
   const [expandedRows, setExpandedRows] = useState({});
   const [flaggingIds, setFlaggingIds] = useState(new Set());
+  const [showMobileTutorial, setShowMobileTutorial] = useState(() => {
+    return !localStorage.getItem('spectyr_mobile_onboarded');
+  });
+  const [tutorialStep, setTutorialStep] = useState(0);
+  const longPressTimer = useRef(null);
+  const longPressTriggered = useRef(false);
   const [hintLevel, setHintLevel] = useState(0);
   const [scenarioHint, setScenarioHint] = useState('');
   const [gameMode, setGameMode] = useState(null);
@@ -302,58 +308,91 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
   const noSearchResults = !noAlertsLoaded && filteredAlerts.length === 0;
 
   return (
-    <div className="bg-[#161b22] p-3 sm:p-6 rounded-xl">
+    <>
       {!noAlertsLoaded && (
-        <>
-          <div className="mb-4">
-            <div className="relative">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                type="text"
-                placeholder="Search logs..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setSearchField('all');
+        <div className="mb-3">
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search logs..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setSearchField('all');
+                setCurrentPage(1);
+              }}
+              maxLength={300}
+              className="w-full pl-10 pr-10 py-2 rounded-md bg-transparent border border-gray-700 text-white text-sm placeholder-gray-500 focus:border-gray-500 focus:outline-none transition-colors"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => {
+                  setSearchTerm('');
                   setCurrentPage(1);
                 }}
-                maxLength={300}
-                className="w-full pl-10 pr-10 py-2 rounded-md bg-transparent border border-gray-700 text-white text-base placeholder-gray-500 focus:border-gray-500 focus:outline-none transition-colors"
-              />
-              {searchTerm && (
-                <button
-                  onClick={() => {
-                    setSearchTerm('');
-                    setCurrentPage(1);
-                  }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </div>
-            {searchTerm && (
-              <p className="text-sm text-gray-500 mt-2">
-                {filteredAlerts.length} matches
-              </p>
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             )}
+          </div>
+        </div>
+      )}
+      {!noAlertsLoaded && (
+        <>
+          <div className="flex flex-row justify-between items-center mb-3">
+            <div className="flex items-center gap-1 text-xs sm:text-sm">
+              <button
+                onClick={() => changePage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-2 sm:px-3 py-1 sm:py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Prev
+              </button>
+              <div className="hidden sm:flex items-center gap-1 mx-1">
+                {renderPaginationButtons()}
+              </div>
+              <span className="flex sm:hidden px-1.5 text-xs text-gray-400">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                onClick={() => changePage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-2 sm:px-3 py-1 sm:py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
+            </div>
+            <div className="hidden sm:flex items-center gap-2 text-sm text-gray-500">
+              <select
+                id="pageSize"
+                value={alertsPerPage}
+                onChange={handlePageSizeChange}
+                className="bg-[#161b22] text-gray-400 text-sm px-3 py-1 rounded border border-gray-700 focus:border-gray-500 focus:outline-none cursor-pointer appearance-none text-center [&>option]:bg-[#161b22] [&>option]:text-center"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
           </div>
 
           {gameMode === 'training' && scenarioHint && (() => {
             const hintReady = isPaused && Boolean(scenarioHint);
             return (
-              <div className="flex items-start gap-3 mb-3">
-                {/* Left side: hint text or scanning label */}
+              <div className="flex items-center justify-between mb-3">
+                {/* Left side: event count (always visible when ready) */}
                 <div className="flex-1">
                   {!hintReady && (
-                    <p className="text-sm text-gray-500 italic">Scanning logs...</p>
+                    <p className="text-xs sm:text-sm text-gray-500 italic">Scanning logs...</p>
                   )}
-                  {hintReady && hintLevel >= 1 && (
-                    <p className="text-base text-gray-300 flex items-center gap-2">
+                  {hintReady && (
+                    <p className="text-xs sm:text-sm text-gray-300 flex items-center gap-2">
                       <span className="font-semibold tabular-nums text-white">
                         {scenarioProgress.flagged}/{scenarioProgress.total}
                       </span>
@@ -361,67 +400,85 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
                     </p>
                   )}
                 </div>
-                {/* Button always on right */}
+                {/* Hint button - toggles answer highlight */}
                 <button
-                  onClick={() => hintReady && setHintLevel(prev => (prev + 1) % 3)}
+                  onClick={() => hintReady && setHintLevel(prev => prev === 0 ? 2 : 0)}
                   disabled={!hintReady}
-                  className={`w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-md transition ${
+                  className={`inline-flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm rounded-md border transition ${
                     !hintReady
-                      ? 'text-gray-600 opacity-40 cursor-not-allowed'
+                      ? 'text-gray-600 border-gray-700 opacity-40 cursor-not-allowed'
                       : hintLevel === 0
-                      ? 'text-gray-500 hover:text-gray-300'
-                      : hintLevel === 1
-                      ? 'text-white'
-                      : 'text-blue-500'
+                      ? 'text-gray-400 border-gray-700 hover:text-gray-200 hover:border-gray-600'
+                      : 'text-white border-gray-600 bg-[#21262d]'
                   }`}
-                  title={!hintReady ? 'Scanning logs...' : hintLevel === 0 ? 'Show hint' : hintLevel === 1 ? 'Show answer' : 'Hide hints'}
+                  title={!hintReady ? 'Scanning logs...' : hintLevel === 0 ? 'Show hint' : 'Hide hint'}
                 >
-                  <svg className="w-5 h-5" fill={hintReady && hintLevel > 0 ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill={hintLevel > 0 ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                   </svg>
+                  Hint
                 </button>
               </div>
             );
           })()}
-
-          <div className="flex flex-row justify-between items-center mb-4">
-            <div className="flex items-center gap-1 text-sm">
-              <button
-                onClick={() => changePage(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                Prev
-              </button>
-              <div className="hidden sm:flex items-center gap-1 mx-1">
-                {renderPaginationButtons()}
-              </div>
-              <span className="flex sm:hidden px-2 text-sm text-gray-400">
-                {currentPage} / {totalPages}
-              </span>
-              <button
-                onClick={() => changePage(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                Next
-              </button>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <select
-                id="pageSize"
-                value={alertsPerPage}
-                onChange={handlePageSizeChange}
-                className="bg-[#161b22] text-gray-400 px-1 py-1 rounded border border-gray-700 focus:border-gray-500 focus:outline-none cursor-pointer [&>option]:bg-[#161b22]"
-              >
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-              </select>
-            </div>
-          </div>
         </>
+      )}
+
+    <div className="bg-[#161b22] p-3 sm:p-6 rounded-xl">
+
+      {!noAlertsLoaded && showMobileTutorial && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center sm:hidden">
+          <div className="absolute inset-0 bg-black/70" />
+          <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-xs mx-4 shadow-2xl">
+
+            {tutorialStep === 0 && (
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 flex items-center justify-center rounded-full bg-[#21262d] border border-gray-700 mb-4">
+                  <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  <svg className="w-4 h-4 text-gray-400 absolute ml-14 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9" />
+                  </svg>
+                </div>
+                <h3 className="text-base font-semibold text-white mb-2">Rotate your device</h3>
+                <p className="text-sm text-gray-400">For the best experience, use landscape mode when reviewing logs.</p>
+              </div>
+            )}
+
+            {tutorialStep === 1 && (
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 flex items-center justify-center rounded-full bg-[#21262d] border border-gray-700 mb-4">
+                  <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+                  </svg>
+                </div>
+                <h3 className="text-base font-semibold text-white mb-2">Long-press to flag</h3>
+                <p className="text-sm text-gray-400">Press and hold a log entry to flag it for investigation.</p>
+              </div>
+            )}
+
+            {/* Dot indicators */}
+            <div className="flex justify-center gap-2 mt-5">
+              <span className={`w-1.5 h-1.5 rounded-full ${tutorialStep === 0 ? 'bg-white' : 'bg-gray-600'}`} />
+              <span className={`w-1.5 h-1.5 rounded-full ${tutorialStep === 1 ? 'bg-white' : 'bg-gray-600'}`} />
+            </div>
+
+            <button
+              onClick={() => {
+                if (tutorialStep === 0) {
+                  setTutorialStep(1);
+                } else {
+                  localStorage.setItem('spectyr_mobile_onboarded', 'true');
+                  setShowMobileTutorial(false);
+                }
+              }}
+              className="w-full mt-4 px-4 py-2 text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 transition"
+            >
+              {tutorialStep === 0 ? 'Next' : 'Got it'}
+            </button>
+          </div>
+        </div>
       )}
 
       {noAlertsLoaded ? (
@@ -458,11 +515,37 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
                 const isProcessEvent = hasValue(alert.process_path) || hasValue(alert.process_command_line);
                 const isNetworkEvent = hasValue(alert.destination_ip) || (hasValue(alert.protocol) && alert.protocol !== 'N/A');
 
+                const handleTouchStart = (alertObj) => {
+                  longPressTriggered.current = false;
+                  longPressTimer.current = setTimeout(() => {
+                    longPressTriggered.current = true;
+                    handleFlagEvent(alertObj.id, !alertObj.flagged);
+                  }, 500);
+                };
+
+                const handleTouchEnd = () => {
+                  if (longPressTimer.current) {
+                    clearTimeout(longPressTimer.current);
+                    longPressTimer.current = null;
+                  }
+                };
+
+                const handleRowClick = (alertId) => {
+                  if (longPressTriggered.current) {
+                    longPressTriggered.current = false;
+                    return;
+                  }
+                  toggleRow(alertId);
+                };
+
                 return (
                   <React.Fragment key={alert.id}>
                     <tr
-                      className="hover:bg-white/5 transition-colors cursor-pointer border-b border-gray-700/50"
-                      onClick={() => toggleRow(alert.id)}
+                      className={`hover:bg-white/5 transition-colors cursor-pointer border-b border-gray-700/50 ${alert.flagged ? 'bg-white/[0.03]' : ''}`}
+                      onClick={() => handleRowClick(alert.id)}
+                      onTouchStart={() => handleTouchStart(alert)}
+                      onTouchEnd={handleTouchEnd}
+                      onTouchMove={handleTouchEnd}
                     >
                       <td className={`px-4 py-4 whitespace-nowrap border-l-4 ${
                         hintLevel === 2 && alert.label !== 'normal_traffic' ? 'border-l-blue-500' : 'border-l-transparent'
@@ -488,7 +571,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
                       <td className="px-4 py-4 text-gray-200">
                         {alert.message || '—'}
                       </td>
-                      <td className="px-4 py-4">
+                      <td className="px-4 py-4 hidden sm:table-cell">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -546,6 +629,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, onHardcoreFailure, onNewIncid
       )}
 
     </div>
+    </>
   );
 };
 

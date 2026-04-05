@@ -38,7 +38,7 @@ const CampaignProgress = ({ levelData }) => {
                         ? "border-yellow-500 bg-yellow-600 text-white"
                         : "border-red-500 bg-red-700 text-white"
                       : isCurrent
-                      ? "border-blue-500 bg-gray-700 text-white"
+                      ? "border-gray-300 bg-gray-700 text-white"
                       : "border-gray-600 bg-gray-700 text-gray-500"
                   }`}
                 >
