@@ -5,7 +5,7 @@ import confetti from 'canvas-confetti';
 import CategorySelector from '../components/CategorySelector';
 import IncidentReportForm from '../components/IncidentReportForm';
 
-const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) => {
+const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, setGroupedAlertCount }) => {
   const [groups, setGroups] = useState([]);
   const [expanded, setExpanded] = useState(null);
   const [expandedLogs, setExpandedLogs] = useState({});
@@ -246,6 +246,10 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
   };
 
   const filteredGroups = groups.filter(g => g.status === 'active');
+
+  useEffect(() => {
+    if (setGroupedAlertCount) setGroupedAlertCount(filteredGroups.length);
+  }, [filteredGroups.length, setGroupedAlertCount]);
 
   return (
     <div className="space-y-4">

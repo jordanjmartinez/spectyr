@@ -10,6 +10,7 @@ import FailureModal from '../components/FailureModal';
 
 const Dashboard = () => {
   const [alertCount, setAlertCount] = useState(0);
+  const [groupedAlertCount, setGroupedAlertCount] = useState(0);
   const [reportCount, setReportCount] = useState(0);
   const [view, setView] = useState("table");
   const [resetTrigger, setResetTrigger] = useState(0);
@@ -166,15 +167,7 @@ const Dashboard = () => {
                   : "text-gray-400 font-medium hover:text-white border-b-2 border-transparent"
               }`}
             >
-              <span className="relative inline-flex items-center gap-1.5">
-                Alerts
-                {incidentBadge > 0 && view !== "grouped" && (
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
-                  </span>
-                )}
-              </span>
+              Alerts {groupedAlertCount > 0 && <span className="text-gray-500 font-normal">({groupedAlertCount})</span>}
             </button>
             <button
               onClick={() => setView("table")}
@@ -184,7 +177,7 @@ const Dashboard = () => {
                   : "text-gray-400 font-medium hover:text-white border-b-2 border-transparent"
               }`}
             >
-              Events
+              Events {alertCount > 0 && <span className="text-gray-500 font-normal">({alertCount})</span>}
             </button>
             <button
               onClick={() => setView("analytics")}
@@ -204,7 +197,7 @@ const Dashboard = () => {
                   : "text-gray-400 font-medium hover:text-white border-b-2 border-transparent"
               }`}
             >
-              Reports
+              Reports {reportCount > 0 && <span className="text-gray-500 font-normal">({reportCount})</span>}
             </button>
             <div className="ml-auto">
               <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />
@@ -212,7 +205,7 @@ const Dashboard = () => {
           </div>
 
           <div className={view === "grouped" ? "block" : "hidden"}>
-            <GroupedAlerts resetTrigger={resetTrigger} onHardcoreFailure={handleHardcoreFailure} onReset={() => { handleResetSimulator(); setView("table"); }} isVisible={view === "grouped"} />
+            <GroupedAlerts resetTrigger={resetTrigger} onHardcoreFailure={handleHardcoreFailure} onReset={() => { handleResetSimulator(); setView("table"); }} isVisible={view === "grouped"} setGroupedAlertCount={setGroupedAlertCount} />
           </div>
 
           <div className={view === "table" ? "block" : "hidden"}>
@@ -231,7 +224,7 @@ const Dashboard = () => {
                   onClick={() => setShowResetModal(true)}
                   className="inline-flex items-center px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 transition focus:outline-none focus:ring-2 focus:ring-gray-500"
                 >
-                  Clear Logs
+                  Reset Simulation
                 </button>
               </div>
             </div>
@@ -300,7 +293,7 @@ const Dashboard = () => {
           <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl">
             <h3 className="text-lg font-semibold text-white text-center mb-4">Simulation Active</h3>
             <p className="text-gray-400 mb-6 text-center">
-              You have <span className="text-white font-medium">{existingLogCount} events</span> from an active session. Use <span className="text-white font-medium">Clear Logs</span> to restart from Level 1.
+              You have <span className="text-white font-medium">{existingLogCount} events</span> from an active session. Use <span className="text-white font-medium">Reset Simulation</span> to restart from Level 1.
             </p>
             <div className="flex justify-center">
               <button

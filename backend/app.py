@@ -1752,6 +1752,18 @@ def generate_normal_event(scenario_id=None):
     destination_ip = substitute_placeholders(template.get("destination_ip", ""), subs)
     key_value_pairs = substitute_dict(template.get("key_value_pairs", {}), subs)
 
+    # Auto-populate destination_ip for network log types if not set in template
+    if not destination_ip:
+        src_type = template.get("source_type", "")
+        if src_type == "DNS":
+            # Queries go to DNS server; responses go back to the client
+            if template.get("source_ip") == "{dns_server}":
+                destination_ip = emp["ip"]
+            else:
+                destination_ip = SERVERS["dns"]["ip"]
+        elif src_type in ("Firewall", "Proxy"):
+            destination_ip = key_value_pairs.get("dst_ip", "")
+
     timestamp = datetime.now(timezone.utc) - timedelta(seconds=random.randint(0, 300))
 
     return {

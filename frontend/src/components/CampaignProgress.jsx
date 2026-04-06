@@ -12,7 +12,7 @@ const CampaignProgress = ({ levelData }) => {
       </div>
 
       {/* Level stepper */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between px-4 sm:px-8">
         {Array.from({ length: total_levels }).map((_, i) => {
           const level = i + 1;
           const result = level_results[level] ?? level_results[String(level)];

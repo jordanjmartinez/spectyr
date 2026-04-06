@@ -169,10 +169,10 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
     const end = Math.min(totalPages - 1, currentPage + visibleRange);
 
     const buttonClass = (isActive) =>
-      `w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg text-xs sm:text-sm transition-colors ${
+      `w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md text-xs sm:text-sm font-medium transition ${
         isActive
-          ? 'bg-gray-700 text-white font-medium border border-gray-600'
-          : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+          ? 'bg-[#30363d] text-white border border-gray-500'
+          : 'bg-[#21262d] text-gray-400 border border-gray-600 hover:bg-[#30363d] hover:text-gray-200'
       }`;
 
     buttons.push(
@@ -212,12 +212,9 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
       {!noAlertsLoaded && (
         <div className="mb-3">
           <div className="relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
             <input
               type="text"
-              placeholder="Search logs..."
+              placeholder="Search events..."
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -225,8 +222,13 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
                 setCurrentPage(1);
               }}
               maxLength={300}
-              className="w-full pl-10 pr-10 py-2 rounded-md bg-transparent border border-gray-700 text-white text-sm placeholder-gray-500 focus:border-gray-500 focus:outline-none transition-colors"
+              className="w-full pl-4 pr-10 py-2 rounded-md bg-transparent border border-gray-700 text-white text-sm placeholder-gray-500 focus:border-gray-500 focus:outline-none transition-colors"
             />
+            {!searchTerm && (
+              <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            )}
             {searchTerm && (
               <button
                 onClick={() => {
@@ -278,7 +280,7 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
               <button
                 onClick={() => changePage(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="px-2 sm:px-3 py-1 sm:py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed transition"
               >
                 Prev
               </button>
@@ -291,7 +293,7 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
               <button
                 onClick={() => changePage(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="px-2 sm:px-3 py-1 sm:py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed transition"
               >
                 Next
               </button>
