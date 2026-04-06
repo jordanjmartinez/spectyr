@@ -318,13 +318,13 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
           <table className="w-full min-w-[800px] log-text text-left text-gray-300 border-separate border-spacing-0">
             <thead>
               <tr className="text-sm uppercase text-gray-400 tracking-wider">
+                <th className="px-4 py-3 font-medium w-10"></th>
                 <th className="px-4 py-3 font-medium w-[100px] whitespace-nowrap">Time</th>
                 <th className="px-4 py-3 font-medium w-[140px] whitespace-nowrap">Event Type</th>
                 <th className="px-4 py-3 font-medium w-[110px] whitespace-nowrap">Src Type</th>
                 <th className="px-4 py-3 font-medium w-[120px] whitespace-nowrap">Src IP</th>
                 <th className="px-4 py-3 font-medium w-[120px] whitespace-nowrap">Dst IP</th>
                 <th className="px-4 py-3 font-medium whitespace-nowrap">Message</th>
-                <th className="px-4 py-3 font-medium w-10"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
@@ -342,6 +342,18 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
                       className="hover:bg-white/5 transition-colors cursor-pointer border-b border-gray-700/50"
                       onClick={() => toggleRow(alert.id)}
                     >
+                      <td className="px-4 py-4">
+                        <svg
+                          className={`w-5 h-5 text-gray-500 hover:text-white transition-transform duration-300 ease-in-out ${
+                            expandedRows[alert.id] ? 'rotate-180' : 'rotate-0'
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </td>
                       <td className="px-4 py-4 whitespace-nowrap border-l-4 border-l-transparent">
                         <span className="text-gray-300">
                           {alert.timestamp ? new Date(alert.timestamp).toLocaleTimeString('en-GB', {
@@ -363,18 +375,6 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
                       </td>
                       <td className="px-4 py-4 text-gray-200">
                         {alert.message || '—'}
-                      </td>
-                      <td className="px-4 py-4">
-                        <svg
-                          className={`w-5 h-5 text-gray-500 hover:text-white transition-transform duration-300 ease-in-out ${
-                            expandedRows[alert.id] ? 'rotate-180' : 'rotate-0'
-                          }`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
                       </td>
                     </tr>
 

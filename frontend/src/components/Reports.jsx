@@ -382,7 +382,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
                               setStatusDropdownId(report.id);
                             }
                           }}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-sm font-semibold rounded border transition cursor-pointer hover:bg-gray-700 bg-[#161b22] text-gray-400 border-gray-700"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded border transition cursor-pointer hover:bg-gray-700 bg-[#161b22] text-gray-400 border-gray-700"
                         >
                           {report.status || 'Open'}
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -392,7 +392,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
                         {statusDropdownId === report.id && (
                           <>
                             <div className="fixed inset-0 z-10" onClick={(e) => { e.stopPropagation(); setStatusDropdownId(null); }} />
-                            <div className="fixed z-20 bg-[#161b22] border border-gray-700 rounded py-1 flex flex-col min-w-[100px]" style={{ top: dropdownPos.top, left: dropdownPos.left }}>
+                            <div className="fixed z-20 bg-[#161b22] border border-gray-700 rounded py-1 flex flex-col" style={{ top: dropdownPos.top, left: dropdownPos.left }}>
                               {STATUS_OPTIONS.map((status) => (
                                 <button
                                   key={status}
@@ -400,7 +400,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
                                     e.stopPropagation();
                                     handleStatusChange(report, status);
                                   }}
-                                  className={`text-left px-3 py-1.5 text-sm hover:bg-gray-700 transition whitespace-nowrap ${
+                                  className={`text-left px-3 py-1.5 text-xs hover:bg-gray-700 transition whitespace-nowrap ${
                                     report.status === status ? 'text-white bg-gray-700' : 'text-gray-400'
                                   }`}
                                 >
@@ -505,6 +505,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
             onClick={() => setEditReport(null)}
           />
           <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-3 sm:p-5 w-full max-w-xl mx-2 sm:mx-4 shadow-2xl">
+            <h2 className="text-lg sm:text-xl font-semibold text-white mb-4">Incident Report</h2>
             <IncidentReportForm
               initialData={editReport}
               onSubmit={async (updated) => {

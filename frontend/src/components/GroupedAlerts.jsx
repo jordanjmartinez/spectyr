@@ -242,9 +242,9 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
   return (
     <div className="space-y-4">
       {/* Training Complete Banner */}
-      {gameStarted && currentLevel && currentLevel.completed && (
+      {gameStarted && currentLevel && currentLevel.completed && (<>
+        <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Simulation Complete{analystName ? `, ${analystName} 🏆` : ''}</h2>
         <div className="bg-[#161b22] border border-gray-700 rounded-xl p-4 sm:p-5 mb-6 shadow">
-          <h2 className="text-2xl font-semibold text-white mb-4 pb-4 border-b border-gray-700">Simulation Complete{analystName ? `, ${analystName} 🏆` : ''}</h2>
           <div className="flex flex-col items-center text-center">
             <img
               src="/ghost-celebrate.png"
@@ -256,11 +256,11 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
               onClick={onReset}
               className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600"
             >
-              Train Again
+              Reset Simulation
             </button>
           </div>
         </div>
-      )}
+      </>)}
 
       {!(gameStarted && currentLevel && currentLevel.completed) && (<>
       <div className="mb-4">
