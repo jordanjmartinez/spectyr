@@ -154,8 +154,11 @@ const Dashboard = () => {
     <div className="min-h-screen bg-[#0d1117] text-white pt-2 pb-8 px-4 sm:px-8 lg:px-16">
       <div className="space-y-4">
 
+        <div className="flex sm:hidden justify-end mb-2">
+          <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />
+        </div>
         <div className="bg-[#161b22] rounded-xl p-3 sm:p-6">
-          <div className="flex pl-8 gap-12 border-b border-gray-700 mb-6 overflow-x-auto items-center">
+          <div className="flex pl-2 sm:pl-8 gap-6 sm:gap-12 border-b border-gray-700 mb-6 overflow-x-auto scrollbar-hide items-center">
             <button
               onClick={() => {
                 setView("grouped");
@@ -199,7 +202,7 @@ const Dashboard = () => {
             >
               Reports {reportCount > 0 && <span className="text-gray-500 font-normal">({reportCount})</span>}
             </button>
-            <div className="ml-auto">
+            <div className="ml-auto hidden sm:block">
               <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />
             </div>
           </div>

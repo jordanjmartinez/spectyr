@@ -110,19 +110,6 @@ const ActionHistory = ({ history }) => {
                   )}
                 </div>
 
-                {/* Chevron */}
-                {review && (
-                  <svg
-                    className={`w-5 h-5 text-gray-500 hover:text-white transition-transform duration-300 ease-in-out flex-shrink-0 mt-1 ${
-                      isExpanded ? 'rotate-180' : 'rotate-0'
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                )}
               </div>
 
               {/* Expanded Content */}
@@ -131,50 +118,57 @@ const ActionHistory = ({ history }) => {
                   isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
                 }`}>
                   <div className="overflow-hidden min-h-0">
-                    <div className="mt-5 divide-y divide-gray-700">
-                      {/* What Is It - Educational explanation */}
+                    <div className="mt-5 space-y-5">
+                      {/* What Is It - Callout card */}
                       {review.what_is_it && (
-                        <div className="pb-5">
-                          <h4 className="text-xl text-white font-semibold mb-2">
-                            What is {review.what_is_it.title}?
+                        <div>
+                          <h4 className="text-base sm:text-lg text-white font-semibold mb-3">
+                            What is {review.what_is_it.title.replace(/\s*\(.*?\)/g, '')}?
                           </h4>
-                          <p className="text-base text-gray-200 font-medium" style={{ lineHeight: '1.7' }}>
-                            {review.what_is_it.description}
-                          </p>
+                          <div className="bg-[#161b22] border border-gray-700 rounded-xl p-4 sm:p-5 shadow">
+                            <p className="text-sm sm:text-base text-gray-300 leading-relaxed">
+                              {review.what_is_it.description}
+                            </p>
+                          </div>
                         </div>
                       )}
 
                       {/* Legacy indicators support */}
                       {!review.what_is_it && review.indicators && review.indicators.length > 0 && (
-                        <div className="pb-5">
-                          <h4 className="text-xl uppercase tracking-wider text-gray-400 font-semibold mb-2">
-                            Why This Was Suspicious
-                          </h4>
-                          <ul className="space-y-1.5">
-                            {review.indicators.map((ind, i) => (
-                              <li key={i} className="text-base">
-                                <span className="text-white font-medium">{ind.indicator}</span>
-                                <span className="text-gray-500 mx-1">—</span>
-                                <span className="text-gray-400">{ind.explanation}</span>
-                              </li>
-                            ))}
-                          </ul>
+                        <div className="rounded-lg border border-gray-700 bg-[#1c2129] overflow-hidden">
+                          <div className="border-l-4 border-yellow-500 px-4 sm:px-5 py-4">
+                            <h4 className="text-sm sm:text-base text-yellow-400 font-semibold uppercase tracking-wider mb-3">
+                              Why This Was Suspicious
+                            </h4>
+                            <ul className="space-y-1.5">
+                              {review.indicators.map((ind, i) => (
+                                <li key={i} className="text-sm sm:text-base">
+                                  <span className="text-white font-medium">{ind.indicator}</span>
+                                  <span className="text-gray-500 mx-1">—</span>
+                                  <span className="text-gray-400">{ind.explanation}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
                         </div>
                       )}
 
-                      {/* Response Actions */}
+                      {/* Response Actions - Stepper */}
                       {review.response_actions && review.response_actions.length > 0 && (
-                        <div className="pt-5">
-                          <h4 className="text-xl text-white font-semibold mb-2">
-                            Response Actions
+                        <div>
+                          <h4 className="text-base sm:text-lg text-white font-semibold mb-3">
+                            Playbook
                           </h4>
-                          <ol className="space-y-2 list-decimal list-inside text-base" style={{ lineHeight: '1.7' }}>
+                          <div className="space-y-2">
                             {review.response_actions.map((action, i) => (
-                              <li key={i} className="text-base text-gray-200 font-medium">
-                                {action}
-                              </li>
+                              <div key={i} className="flex items-start gap-3 bg-[#161b22] border border-gray-700 rounded-xl p-4 sm:p-5 shadow">
+                                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-700 text-gray-300 text-xs font-bold flex items-center justify-center mt-0.5">
+                                  {i + 1}
+                                </span>
+                                <span className="text-sm sm:text-base text-gray-300 leading-relaxed">{action}</span>
+                              </div>
                             ))}
-                          </ol>
+                          </div>
                         </div>
                       )}
                     </div>

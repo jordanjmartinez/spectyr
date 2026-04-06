@@ -83,6 +83,15 @@ code {
   scrollbar-color: #30363d transparent;
 }
 
+/* Hide scrollbar utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Mobile table scroll wrapper */
 .mobile-scroll-wrapper {
   -webkit-overflow-scrolling: touch;

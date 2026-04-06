@@ -105,35 +105,10 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
             value={formData.title}
             onChange={handleChange}
             maxLength={60}
-            className="w-full bg-transparent text-base sm:text-lg text-white placeholder-gray-600 border-b border-gray-700 focus:border-gray-500 outline-none pb-1.5 sm:pb-2 transition-colors"
+            className="w-full bg-transparent text-sm sm:text-lg text-white placeholder-gray-600 border-b border-gray-700 focus:border-gray-500 outline-none pb-1.5 sm:pb-2 transition-colors"
           />
         </div>
 
-        {/* Severity - Pill selection */}
-        <div>
-          <label className="block text-sm text-gray-300 mb-1.5">Severity{errors.severity && <span className="text-red-400"> *</span>}</label>
-          <div className="flex flex-wrap gap-2">
-            {severities.map(sev => (
-              <button
-                key={sev}
-                type="button"
-                onClick={() => {
-                  setFormData(prev => ({ ...prev, severity: sev }));
-                  if (errors.severity) {
-                    setErrors(prev => ({ ...prev, severity: null }));
-                  }
-                }}
-                className={`px-2.5 py-1 text-xs sm:text-sm rounded-full border transition-all ${
-                  formData.severity === sev
-                    ? 'bg-[#21262d] text-white border-gray-600'
-                    : 'bg-[#161b22] text-gray-400 border-gray-700 hover:bg-[#30363d]'
-                }`}
-              >
-                {sev}
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* Description */}
         <div>
@@ -144,7 +119,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
             onChange={handleChange}
             maxLength={300}
             rows={2}
-            className="w-full bg-[#161b22] text-white placeholder-gray-600 border border-gray-700 focus:border-gray-500 rounded-md px-3 py-2 outline-none transition-colors resize-none"
+            className="w-full bg-[#161b22] text-sm sm:text-base text-white placeholder-gray-600 border border-gray-700 focus:border-gray-500 rounded-md px-3 py-2 outline-none transition-colors resize-none"
           />
         </div>
 
@@ -155,7 +130,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
             value={formData.affected_hosts}
             onChange={handleChange}
             maxLength={100}
-            className="w-full bg-transparent text-white placeholder-gray-600 border-b border-gray-700 focus:border-gray-500 outline-none pb-2 transition-colors font-sans"
+            className="w-full bg-transparent text-sm sm:text-base text-white placeholder-gray-600 border-b border-gray-700 focus:border-gray-500 outline-none pb-2 transition-colors font-sans"
           />
         </div>
 
@@ -167,7 +142,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
             onChange={handleChange}
             maxLength={200}
             rows={2}
-            className="w-full bg-[#161b22] text-white placeholder-gray-600 border border-gray-700 rounded-md px-3 py-2 outline-none focus:border-gray-500 transition-colors resize-none"
+            className="w-full bg-[#161b22] text-sm sm:text-base text-white placeholder-gray-600 border border-gray-700 rounded-md px-3 py-2 outline-none focus:border-gray-500 transition-colors resize-none"
           />
         </div>
 
@@ -179,7 +154,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
               name="mitre_tactic"
               value={formData.mitre_tactic}
               onChange={handleChange}
-              className="w-full bg-[#161b22] text-sm text-white border border-gray-700 focus:border-gray-500 rounded-md px-3 py-2 outline-none transition-colors appearance-none cursor-pointer"
+              className="w-full bg-[#161b22] text-sm sm:text-base text-white border border-gray-700 focus:border-gray-500 rounded-md px-3 py-2 outline-none transition-colors appearance-none cursor-pointer"
               style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.25rem' }}
             >
               <option value="">Select tactic...</option>
@@ -194,7 +169,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
               name="kill_chain"
               value={formData.kill_chain}
               onChange={handleChange}
-              className="w-full bg-[#161b22] text-sm text-white border border-gray-700 focus:border-gray-500 rounded-md px-3 py-2 outline-none transition-colors appearance-none cursor-pointer"
+              className="w-full bg-[#161b22] text-sm sm:text-base text-white border border-gray-700 focus:border-gray-500 rounded-md px-3 py-2 outline-none transition-colors appearance-none cursor-pointer"
               style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.25rem' }}
             >
               <option value="">Select phase...</option>

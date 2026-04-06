@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { apiFetch } from '../api';
-import confetti from 'canvas-confetti';
+
 import CategorySelector from '../components/CategorySelector';
 import IncidentReportForm from '../components/IncidentReportForm';
 
@@ -82,18 +82,6 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
     return () => clearInterval(interval);
   }, [resetTrigger]);
 
-  useEffect(() => {
-    if (isVisible && gameStarted && currentLevel?.completed) {
-      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-      let count = 1;
-      const interval = setInterval(() => {
-        confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 } });
-        count++;
-        if (count >= 3) clearInterval(interval);
-      }, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [isVisible, gameStarted, currentLevel]);
 
   const toggleGroup = (key) => {
     setExpanded(expanded === key ? null : key);
@@ -256,14 +244,14 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
       {/* Training Complete Banner */}
       {gameStarted && currentLevel && currentLevel.completed && (
         <div className="bg-[#161b22] border border-gray-700 rounded-xl p-4 sm:p-5 mb-6 shadow">
-          <h2 className="text-2xl font-semibold text-white mb-4 pb-4 border-b border-gray-700">Simulation Complete{analystName ? `, ${analystName}` : ''}</h2>
+          <h2 className="text-2xl font-semibold text-white mb-4 pb-4 border-b border-gray-700">Simulation Complete{analystName ? `, ${analystName} 🏆` : ''}</h2>
           <div className="flex flex-col items-center text-center">
             <img
               src="/ghost-celebrate.png"
               alt="Ghost Celebrating"
               className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3"
             />
-            <p className="font-mono text-sm text-gray-400 mb-4">&gt; You've completed your training. The threats never stood a chance.</p>
+            <p className="font-mono text-sm text-gray-400 mb-4">&gt; You've completed your simulation. The threats never stood a chance.</p>
             <button
               onClick={onReset}
               className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600"

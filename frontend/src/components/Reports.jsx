@@ -337,65 +337,24 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
             >
               {/* Row 1: Title + chevron */}
               <div className="flex items-center justify-between">
-                <h3 className="text-lg sm:text-xl font-bold text-white truncate pr-2">
+                <h3 className="text-base sm:text-lg font-semibold text-white truncate pr-2">
                   {report.title || 'Untitled Report'}
                 </h3>
               </div>
 
-              {/* Row 2: Metadata + badges + action icons */}
-              {/* Row 2: metadata */}
-              <div className="flex items-center gap-3 mt-2 whitespace-nowrap">
-                <span className="text-white text-sm sm:text-base">Created {getRelativeTime(report.timestamp)}</span>
-                <span className="text-gray-600">|</span>
-                <span className="text-white text-sm sm:text-base">{report.alert_id || `#${getReportNumber(report.id)}`}</span>
-              </div>
-
-              {/* Row 3: badges left, actions right */}
-              <div className="flex items-center justify-between mt-2">
-                <div className="flex items-center gap-2">
-                  {/* Severity badge */}
-                  <div className="relative">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSeverityDropdownId(severityDropdownId === report.id ? null : report.id);
-                      }}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 text-sm font-semibold rounded border transition cursor-pointer hover:bg-gray-700 bg-[#161b22] text-gray-400 border-gray-700"
-                    >
-                      {report.severity || 'Unset'}
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                    {severityDropdownId === report.id && (
-                      <>
-                        <div
-                          className="fixed inset-0 z-10"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSeverityDropdownId(null);
-                          }}
-                        />
-                        <div className="absolute right-0 top-full mt-1 z-20 bg-[#161b22] border border-gray-700 rounded py-1 flex flex-col min-w-[100px]">
-                          {SEVERITY_OPTIONS.map((severity) => (
-                            <button
-                              key={severity}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSeverityChange(report, severity);
-                              }}
-                              className={`text-left px-3 py-1.5 text-sm hover:bg-gray-700 transition whitespace-nowrap ${
-                                report.severity === severity ? 'text-white bg-gray-700' : 'text-gray-400'
-                              }`}
-                            >
-                              {severity}
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
+              {/* Row 2: metadata + severity + status + actions */}
+              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between mt-2 gap-2">
+                <div className="flex items-center gap-3 whitespace-nowrap">
+                  <span className="text-white text-sm sm:text-base">{report.alert_id || `#${getReportNumber(report.id)}`}</span>
+                  <span className="text-gray-600">|</span>
+                  <div className="inline-flex items-center gap-1.5 text-sm sm:text-base font-medium">
+                    <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: report.severity === 'Critical' ? '#ef4444' : report.severity === 'High' ? '#f97316' : report.severity === 'Medium' ? '#eab308' : '#22c55e' }} />
+                    <span className="text-gray-300">{report.severity || 'Unset'}</span>
                   </div>
-
+                  <span className="text-gray-600">|</span>
+                  <span className="text-white text-sm sm:text-base">Created {getRelativeTime(report.timestamp)}</span>
+                </div>
+                <div className="hidden sm:flex items-center gap-2">
                   {/* Status badge */}
                   <div className="relative">
                     <button
@@ -437,48 +396,50 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
                         </div>
                       </>
                     )}
-                  </div>
-                </div>{/* end badges */}
+                  </div>{/* end status badge */}
+                  <button onClick={(e) => { e.stopPropagation(); setEditReport(report); }} title="Edit" className="p-2.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); handleExportPDF(report); }} title="Export PDF" className="p-2.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(report.id); }} title="Delete" className="p-2.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
+                </div>{/* end desktop row */}
+              </div>{/* end Row 2 */}
 
-                {/* Right: action buttons */}
-                <div className="flex items-center gap-0 sm:gap-2">
+              {/* Mobile-only Row 3: status + actions (all hugging left) */}
+              <div className="flex sm:hidden items-center gap-2 mt-2">
+                {/* Status badge (mobile) */}
+                <div className="relative">
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditReport(report);
-                    }}
-                    title="Edit"
-                    className="p-2.5 sm:p-2.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition"
+                    onClick={(e) => { e.stopPropagation(); setStatusDropdownId(statusDropdownId === report.id ? null : report.id); }}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded border transition cursor-pointer hover:bg-gray-700 bg-[#161b22] text-gray-400 border-gray-700"
                   >
-                    <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
+                    {report.status || 'Open'}
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                   </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleExportPDF(report);
-                    }}
-                    title="Export PDF"
-                    className="p-2.5 sm:p-2.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition"
-                  >
-                    <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteConfirmId(report.id);
-                    }}
-                    title="Delete"
-                    className="p-2.5 sm:p-2.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition"
-                  >
-                    <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>{/* end action buttons */}
+                  {statusDropdownId === report.id && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={(e) => { e.stopPropagation(); setStatusDropdownId(null); }} />
+                      <div className="absolute left-0 top-full mt-1 z-20 bg-[#161b22] border border-gray-700 rounded py-1 flex flex-col min-w-[100px]">
+                        {STATUS_OPTIONS.map((status) => (
+                          <button key={status} onClick={(e) => { e.stopPropagation(); handleStatusChange(report, status); }} className={`text-left px-3 py-1.5 text-sm hover:bg-gray-700 transition whitespace-nowrap ${report.status === status ? 'text-white bg-gray-700' : 'text-gray-400'}`}>{status}</button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+                <button onClick={(e) => { e.stopPropagation(); setEditReport(report); }} title="Edit" className="p-2.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); handleExportPDF(report); }} title="Export PDF" className="p-2.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(report.id); }} title="Delete" className="p-2.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                </button>
               </div>
             </div>
 
@@ -492,36 +453,36 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
                 <div className="mt-4 border-t border-gray-700 pt-4">
                   {/* Severity */}
                   <div className="mb-4">
-                    <span className="text-sm sm:text-base text-gray-400 font-medium">Severity</span>
+                    <span className="text-sm sm:text-base text-white font-medium">Severity</span>
                     <p className="text-gray-300 mt-1 text-sm sm:text-base">{report.severity || '—'}</p>
                   </div>
 
                   {/* Description */}
                   <div className="mb-4">
-                    <span className="text-sm sm:text-base text-gray-400 font-medium">Description</span>
+                    <span className="text-sm sm:text-base text-white font-medium">Description</span>
                     <p className="text-gray-300 mt-2 leading-relaxed text-sm sm:text-base break-words">{report.description || '—'}</p>
                   </div>
 
                   {/* Affected Systems */}
                   <div className="mb-4">
-                    <span className="text-sm sm:text-base text-gray-400 font-medium">Affected Systems</span>
+                    <span className="text-sm sm:text-base text-white font-medium">Affected Systems</span>
                     <p className="text-gray-300 mt-2 text-sm sm:text-base break-words font-sans">{report.affected_hosts || '—'}</p>
                   </div>
 
                   {/* Mitigation Steps */}
                   <div className="mb-4">
-                    <span className="text-sm sm:text-base text-gray-400 font-medium">Mitigation Steps</span>
+                    <span className="text-sm sm:text-base text-white font-medium">Mitigation Steps</span>
                     <p className="text-gray-300 mt-2 leading-relaxed text-sm sm:text-base break-words">{report.mitigation || '—'}</p>
                   </div>
 
                   {/* MITRE & Kill Chain */}
                   <div className="space-y-4">
                     <div>
-                      <span className="text-sm sm:text-base text-gray-400 font-medium">MITRE ATT&CK</span>
+                      <span className="text-sm sm:text-base text-white font-medium">MITRE ATT&CK</span>
                       <p className="text-gray-300 mt-1 text-sm sm:text-base">{report.mitre_tactic || '—'}</p>
                     </div>
                     <div>
-                      <span className="text-sm sm:text-base text-gray-400 font-medium">Kill Chain Phase</span>
+                      <span className="text-sm sm:text-base text-white font-medium">Kill Chain Phase</span>
                       <p className="text-gray-300 mt-1 text-sm sm:text-base">{report.kill_chain || '—'}</p>
                     </div>
                   </div>
