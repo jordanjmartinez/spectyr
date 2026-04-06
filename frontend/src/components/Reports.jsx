@@ -409,8 +409,8 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
                 </div>{/* end desktop row */}
               </div>{/* end Row 2 */}
 
-              {/* Mobile-only Row 3: status + actions (all hugging left) */}
-              <div className="flex sm:hidden items-center gap-2 mt-2">
+              {/* Mobile-only Row 3: status + actions (hugging right) */}
+              <div className="flex sm:hidden items-center justify-end gap-2 mt-2">
                 {/* Status badge (mobile) */}
                 <div className="relative">
                   <button
