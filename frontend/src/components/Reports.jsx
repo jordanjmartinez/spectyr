@@ -409,8 +409,8 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
                 </div>{/* end desktop row */}
               </div>{/* end Row 2 */}
 
-              {/* Mobile-only Row 3: status + actions (hugging right) */}
-              <div className="flex sm:hidden items-center justify-end gap-2 mt-2">
+              {/* Mobile-only Row 3: status left, actions right */}
+              <div className="flex sm:hidden items-center justify-between mt-2">
                 {/* Status badge (mobile) */}
                 <div className="relative">
                   <button
@@ -431,15 +431,17 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
                     </>
                   )}
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); setEditReport(report); }} title="Edit" className="p-2.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                </button>
-                <button onClick={(e) => { e.stopPropagation(); handleExportPDF(report); }} title="Export PDF" className="p-2.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                </button>
-                <button onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(report.id); }} title="Delete" className="p-2.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button onClick={(e) => { e.stopPropagation(); setEditReport(report); }} title="Edit" className="p-2.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); handleExportPDF(report); }} title="Export PDF" className="p-2.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(report.id); }} title="Delete" className="p-2.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
+                </div>
               </div>
             </div>
 
