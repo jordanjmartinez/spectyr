@@ -6,10 +6,11 @@ const AnalystReportCard = ({ report }) => {
   }
 
   return (
-    <div className="bg-[#161b22] p-4 sm:p-6 rounded-2xl border border-gray-700 shadow-md h-full">
+    <div className="h-full flex flex-col">
       <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Report Card</h2>
 
-      <table className="w-full text-sm sm:text-base mt-8">
+      <div className="bg-[#161b22] p-4 sm:p-6 rounded-2xl border border-gray-700 shadow-md flex-1">
+      <table className="w-full text-sm sm:text-base mt-2">
         <thead>
           <tr className="text-sm sm:text-base text-gray-300 tracking-wider">
             <th className="text-left pb-3 font-medium">Category</th>
@@ -37,6 +38,7 @@ const AnalystReportCard = ({ report }) => {
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
   );
 };

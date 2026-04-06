@@ -50,18 +50,18 @@ const ActionHistory = ({ history }) => {
     <div>
       <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Post-Incident Review</h2>
 
-      <div className="divide-y divide-gray-800">
+      <div className="space-y-3">
         {history.map((item, index) => {
           const review = triageReviews[item.scenario_label];
           const isExpanded = expandedItems[index];
 
           return (
-            <div key={index} className="py-4 first:pt-0 last:pb-0">
-              {/* Clickable Header */}
-              <div
-                className={`flex justify-between items-start ${review ? 'cursor-pointer' : ''} rounded-lg p-2 -m-2`}
-                onClick={() => review && toggleExpanded(index)}
-              >
+            <div
+              key={index}
+              className={`bg-[#161b22] p-4 sm:p-6 rounded-2xl border border-gray-700 shadow-md transition-all duration-200 ${review ? 'cursor-pointer hover:border-gray-500' : ''}`}
+              onClick={() => review && toggleExpanded(index)}
+            >
+              <div>
                 <div>
                   {/* Level + Ghost */}
                   <div className="flex items-center gap-2 mb-2">
@@ -78,17 +78,19 @@ const ActionHistory = ({ history }) => {
                   </div>
 
                   {/* Classification result */}
-                  <p className="text-sm sm:text-base mb-3">
-                    <span className="text-gray-400">Classified as </span>
-                    <span className={item.correct ? 'text-emerald-400 font-medium' : 'text-red-400 font-medium'}>{item.user_choice}</span>
+                  <div className="text-sm sm:text-base mb-3 flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-0">
+                    <span>
+                      <span className="text-gray-400">Classified as </span>
+                      <span className={item.correct ? 'text-emerald-400 font-medium' : 'text-red-400 font-medium'}>{item.user_choice}</span>
+                    </span>
                     {!item.correct && (
-                      <>
-                        <span className="text-gray-600 mx-2">|</span>
+                      <span>
+                        <span className="text-gray-600 mx-2 hidden sm:inline">|</span>
                         <span className="text-gray-400">Correct: </span>
                         <span className="text-emerald-400 font-medium">{item.true_category}</span>
-                      </>
+                      </span>
                     )}
-                  </p>
+                  </div>
 
                   {/* MITRE ATT&CK Badge */}
                   {review?.mitre && (
@@ -109,7 +111,6 @@ const ActionHistory = ({ history }) => {
                     </a>
                   )}
                 </div>
-
               </div>
 
               {/* Expanded Content */}

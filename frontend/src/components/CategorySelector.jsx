@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const ATTACK_CATEGORIES = [
   {
@@ -76,6 +76,8 @@ const ATTACK_CATEGORIES = [
 ];
 
 const CategorySelector = ({ onSelect, onCancel, scenarioInfo }) => {
+  const [selected, setSelected] = useState(null);
+
   return (
     <div className="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center p-4">
       <div className="bg-[#161b22] border border-gray-700 rounded-xl shadow-2xl max-w-2xl w-full">
@@ -90,13 +92,17 @@ const CategorySelector = ({ onSelect, onCancel, scenarioInfo }) => {
             {ATTACK_CATEGORIES.map((category) => (
               <button
                 key={category.id}
-                onClick={() => onSelect(category.id, category.label)}
-                className="flex flex-col items-center gap-2 p-4 rounded-lg border border-gray-600 bg-[#21262d] hover:bg-[#30363d] hover:border-gray-500 transition-all duration-200 group"
+                onClick={() => setSelected(category)}
+                className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all duration-200 group ${
+                  selected?.id === category.id
+                    ? 'border-gray-300 bg-[#21262d] shadow-[0_0_12px_rgba(209,213,219,0.15)]'
+                    : 'border-gray-600 bg-[#21262d] hover:bg-[#30363d] hover:border-gray-400 hover:shadow-[0_0_10px_rgba(156,163,175,0.1)]'
+                }`}
               >
-                <div className="text-gray-400 group-hover:text-white transition-colors">
+                <div className={`transition-colors ${selected?.id === category.id ? 'text-white' : 'text-gray-400 group-hover:text-white'}`}>
                   {category.icon}
                 </div>
-                <span className="text-sm font-medium text-gray-300 group-hover:text-white text-center">
+                <span className={`text-sm font-medium text-center ${selected?.id === category.id ? 'text-white' : 'text-gray-300 group-hover:text-white'}`}>
                   {category.label}
                 </span>
               </button>
@@ -105,12 +111,23 @@ const CategorySelector = ({ onSelect, onCancel, scenarioInfo }) => {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 flex justify-end">
+        <div className="px-6 py-4 flex justify-end gap-3">
           <button
             onClick={onCancel}
             className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-gray-400 hover:text-white bg-[#21262d] hover:bg-[#30363d] border border-gray-600 rounded-md transition-colors"
           >
             Cancel
+          </button>
+          <button
+            onClick={() => selected && onSelect(selected.id, selected.label)}
+            disabled={!selected}
+            className={`px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition ${
+              selected
+                ? 'bg-[#21262d] hover:bg-[#30363d] text-gray-300 border-gray-600 cursor-pointer'
+                : 'bg-[#21262d] text-gray-500 border-gray-700 opacity-50 cursor-not-allowed'
+            }`}
+          >
+            Confirm
           </button>
         </div>
       </div>

@@ -263,20 +263,22 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
       )}
 
       {!(gameStarted && currentLevel && currentLevel.completed) && (<>
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-2 sm:space-y-0">
+      <div className="mb-4">
         <h2 className="text-xl sm:text-2xl font-semibold text-white">
           Alerts <span className="text-gray-500 font-normal">({filteredGroups.length})</span>
         </h2>
+        <p className="text-sm sm:text-base text-gray-400 mt-1 sm:mt-4 sm:mb-4 leading-relaxed">Review and classify incoming security events. Related alerts will be grouped into scenarios as threats are detected.</p>
       </div>
 
       {/* Scenario Card + Alert Dashboard side by side */}
         <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
           {/* Scenario Card */}
-          <div className="bg-[#161b22] border border-gray-700 rounded-xl p-4 sm:p-5 shadow">
+          <div className="flex flex-col">
             <div className="flex items-center gap-3 mb-4">
-              <h2 className="text-xl sm:text-2xl font-semibold text-white">Alert Briefing</h2>
+              <h2 className="text-xl sm:text-2xl font-semibold text-white">Alert Scenario</h2>
               {gameStarted && currentLevel && <span className="text-gray-400 text-sm">Level {currentLevel.current_level}</span>}
             </div>
+            <div className="bg-[#161b22] border border-gray-700 rounded-2xl p-4 sm:p-6 shadow-md flex-1">
             {gameStarted && currentLevel && currentLevel.ticket_title ? (
               <>
                 <p className="text-base sm:text-lg font-semibold text-white">{currentLevel.ticket_title}</p>
@@ -291,14 +293,17 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                 <p className="font-mono text-sm text-gray-400 text-center sm:text-left">&gt; Start simulation to receive your first briefing.</p>
               </div>
             )}
+            </div>
           </div>
 
           {/* Alert Dashboard */}
-          <div className="bg-[#161b22] border border-gray-700 rounded-xl p-4 sm:p-5 shadow">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl sm:text-2xl font-semibold text-white">
-              {dashView === 'total' ? 'Total Alerts' : 'Alert Types'}
-            </h2>
+          <div>
+          <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">
+            {dashView === 'total' ? 'Total Alerts' : 'Alert Types'}
+          </h2>
+
+          <div className="bg-[#161b22] border border-gray-700 rounded-2xl p-4 sm:p-6 shadow-md">
+          <div className="flex items-center justify-end mb-4">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setDashView('total')}
@@ -322,7 +327,6 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
               </button>
             </div>
           </div>
-
           {dashView === 'total' ? (
             <>
               <div className="relative w-44 h-44 sm:w-56 sm:h-56 mx-auto border-dashed border-2 border-gray-700 rounded-full p-2">
@@ -430,6 +434,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
               </div>
             </>
           )}
+          </div>
         </div>
         </div>
 
