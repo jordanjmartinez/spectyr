@@ -423,9 +423,9 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
                   {statusDropdownId === report.id && (
                     <>
                       <div className="fixed inset-0 z-10" onClick={(e) => { e.stopPropagation(); setStatusDropdownId(null); }} />
-                      <div className="absolute left-0 top-full mt-1 z-20 bg-[#161b22] border border-gray-700 rounded py-1 flex flex-col min-w-[100px]">
+                      <div className="absolute left-0 top-full mt-1 z-20 bg-[#161b22] border border-gray-700 rounded py-1 flex flex-col min-w-[80px]">
                         {STATUS_OPTIONS.map((status) => (
-                          <button key={status} onClick={(e) => { e.stopPropagation(); handleStatusChange(report, status); }} className={`text-left px-3 py-1.5 text-sm hover:bg-gray-700 transition whitespace-nowrap ${report.status === status ? 'text-white bg-gray-700' : 'text-gray-400'}`}>{status}</button>
+                          <button key={status} onClick={(e) => { e.stopPropagation(); handleStatusChange(report, status); }} className={`text-left px-2 py-1 text-xs hover:bg-gray-700 transition whitespace-nowrap ${report.status === status ? 'text-white bg-gray-700' : 'text-gray-400'}`}>{status}</button>
                         ))}
                       </div>
                     </>
