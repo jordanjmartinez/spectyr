@@ -209,7 +209,6 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
 
   return (
     <>
-      {!noAlertsLoaded && (
         <div className="mb-3">
           <div className="relative">
             <input
@@ -244,7 +243,6 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
             )}
           </div>
         </div>
-      )}
       {!noAlertsLoaded && (
         <>
           <div className="flex flex-row justify-between items-center mb-3">

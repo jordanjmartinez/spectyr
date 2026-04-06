@@ -18,6 +18,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
   const [editReport, setEditReport] = useState(null);
 
   const [statusDropdownId, setStatusDropdownId] = useState(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
   const [severityDropdownId, setSeverityDropdownId] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -281,7 +282,6 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
           </div>
         </div>
       </div>
-      {reports.length > 0 && (
         <div className="relative">
           <input
             type="text"
@@ -307,7 +307,6 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
             </button>
           )}
         </div>
-      )}
     </div>
   );
 
@@ -324,175 +323,147 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
           </div>
         </div>
       ) : (
-      <div className="space-y-4">
-        {filteredReports.map((report, index) => (
-          <div
-            key={report.id}
-            className="bg-[#161b22] border border-gray-700 p-4 rounded-xl shadow transition-all duration-300 ease-in-out"
-          >
-            {/* Card Header - Clickable to expand */}
-            <div
-              className="cursor-pointer"
-              onClick={() => toggleRow(index)}
-            >
-              {/* Row 1: Title + chevron */}
-              <div className="flex items-center justify-between">
-                <h3 className="text-base sm:text-lg font-semibold text-white truncate pr-2">
-                  {report.title || 'Untitled Report'}
-                </h3>
-              </div>
-
-              {/* Row 2: metadata + severity + status + actions */}
-              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between mt-2 gap-2">
-                <div className="flex items-center gap-3 whitespace-nowrap">
-                  <span className="text-white text-sm sm:text-base">{report.alert_id || `#${getReportNumber(report.id)}`}</span>
-                  <span className="text-gray-600">|</span>
-                  <div className="inline-flex items-center gap-1.5 text-sm sm:text-base font-medium">
-                    <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: report.severity === 'Critical' ? '#ef4444' : report.severity === 'High' ? '#f97316' : report.severity === 'Medium' ? '#eab308' : '#22c55e' }} />
-                    <span className="text-gray-300">{report.severity || 'Unset'}</span>
-                  </div>
-                  <span className="text-gray-600">|</span>
-                  <span className="text-white text-sm sm:text-base">Created {getRelativeTime(report.timestamp)}</span>
-                </div>
-                <div className="hidden sm:flex items-center gap-2">
-                  {/* Status badge */}
-                  <div className="relative">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setStatusDropdownId(statusDropdownId === report.id ? null : report.id);
-                      }}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 text-sm font-semibold rounded border transition cursor-pointer hover:bg-gray-700 bg-[#161b22] text-gray-400 border-gray-700"
-                    >
-                      {report.status || 'Open'}
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="bg-[#161b22] p-3 sm:p-6 rounded-xl">
+        <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper">
+          <table className="w-full min-w-[700px] log-text text-left text-gray-300 border-separate border-spacing-0">
+            <thead>
+              <tr className="text-sm uppercase text-gray-400 tracking-wider">
+                <th className="px-4 py-3 font-medium w-10"></th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap">Title</th>
+                <th className="px-4 py-3 font-medium w-[80px] whitespace-nowrap">ID</th>
+                <th className="px-4 py-3 font-medium w-[90px] whitespace-nowrap">Severity</th>
+                <th className="px-4 py-3 font-medium w-[100px] whitespace-nowrap">Created</th>
+                <th className="px-4 py-3 font-medium w-[80px] whitespace-nowrap">Status</th>
+                <th className="px-4 py-3 font-medium w-[140px] whitespace-nowrap">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-700">
+              {filteredReports.map((report, index) => (
+                <React.Fragment key={report.id}>
+                  <tr
+                    className="hover:bg-white/5 transition-colors cursor-pointer border-b border-gray-700/50"
+                    onClick={() => toggleRow(index)}
+                  >
+                    <td className="px-4 py-4">
+                      <svg
+                        className={`w-5 h-5 text-gray-500 hover:text-white transition-transform duration-300 ease-in-out ${
+                          expandedIndex === index ? 'rotate-180' : 'rotate-0'
+                        }`}
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                      >
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
-                    </button>
-                    {statusDropdownId === report.id && (
-                      <>
-                        <div
-                          className="fixed inset-0 z-10"
+                    </td>
+                    <td className="px-4 py-4 font-medium text-gray-200 max-w-[250px] truncate">
+                      {report.title || 'Untitled Report'}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-gray-300">
+                      {report.alert_id || `#${getReportNumber(report.id)}`}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="inline-flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: report.severity === 'Critical' ? '#ef4444' : report.severity === 'High' ? '#f97316' : report.severity === 'Medium' ? '#eab308' : '#22c55e' }} />
+                        <span className="text-gray-300">{report.severity || 'Unset'}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-gray-300">
+                      {getRelativeTime(report.timestamp)}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <div className="relative">
+                        <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setStatusDropdownId(null);
+                            if (statusDropdownId === report.id) {
+                              setStatusDropdownId(null);
+                            } else {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setDropdownPos({ top: rect.bottom + 4, left: rect.left });
+                              setStatusDropdownId(report.id);
+                            }
                           }}
-                        />
-                        <div className="absolute right-0 top-full mt-1 z-20 bg-[#161b22] border border-gray-700 rounded py-1 flex flex-col min-w-[100px]">
-                          {STATUS_OPTIONS.map((status) => (
-                            <button
-                              key={status}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleStatusChange(report, status);
-                              }}
-                              className={`text-left px-3 py-1.5 text-sm hover:bg-gray-700 transition whitespace-nowrap ${
-                                report.status === status ? 'text-white bg-gray-700' : 'text-gray-400'
-                              }`}
-                            >
-                              {status}
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>{/* end status badge */}
-                  <button onClick={(e) => { e.stopPropagation(); setEditReport(report); }} title="Edit" className="p-2.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                  </button>
-                  <button onClick={(e) => { e.stopPropagation(); handleExportPDF(report); }} title="Export PDF" className="p-2.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                  </button>
-                  <button onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(report.id); }} title="Delete" className="p-2.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                  </button>
-                </div>{/* end desktop row */}
-              </div>{/* end Row 2 */}
-
-              {/* Mobile-only Row 3: status left, actions right */}
-              <div className="flex sm:hidden items-center justify-between mt-2">
-                {/* Status badge (mobile) */}
-                <div className="relative">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setStatusDropdownId(statusDropdownId === report.id ? null : report.id); }}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded border transition cursor-pointer hover:bg-gray-700 bg-[#161b22] text-gray-400 border-gray-700"
-                  >
-                    {report.status || 'Open'}
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                  </button>
-                  {statusDropdownId === report.id && (
-                    <>
-                      <div className="fixed inset-0 z-10" onClick={(e) => { e.stopPropagation(); setStatusDropdownId(null); }} />
-                      <div className="absolute left-0 top-full mt-1 z-20 bg-[#161b22] border border-gray-700 rounded py-1 flex flex-col min-w-[80px]">
-                        {STATUS_OPTIONS.map((status) => (
-                          <button key={status} onClick={(e) => { e.stopPropagation(); handleStatusChange(report, status); }} className={`text-left px-2 py-1 text-xs hover:bg-gray-700 transition whitespace-nowrap ${report.status === status ? 'text-white bg-gray-700' : 'text-gray-400'}`}>{status}</button>
-                        ))}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-sm font-semibold rounded border transition cursor-pointer hover:bg-gray-700 bg-[#161b22] text-gray-400 border-gray-700"
+                        >
+                          {report.status || 'Open'}
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {statusDropdownId === report.id && (
+                          <>
+                            <div className="fixed inset-0 z-10" onClick={(e) => { e.stopPropagation(); setStatusDropdownId(null); }} />
+                            <div className="fixed z-20 bg-[#161b22] border border-gray-700 rounded py-1 flex flex-col min-w-[100px]" style={{ top: dropdownPos.top, left: dropdownPos.left }}>
+                              {STATUS_OPTIONS.map((status) => (
+                                <button
+                                  key={status}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStatusChange(report, status);
+                                  }}
+                                  className={`text-left px-3 py-1.5 text-sm hover:bg-gray-700 transition whitespace-nowrap ${
+                                    report.status === status ? 'text-white bg-gray-700' : 'text-gray-400'
+                                  }`}
+                                >
+                                  {status}
+                                </button>
+                              ))}
+                            </div>
+                          </>
+                        )}
                       </div>
-                    </>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={(e) => { e.stopPropagation(); setEditReport(report); }} title="Edit" className="p-2.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                  </button>
-                  <button onClick={(e) => { e.stopPropagation(); handleExportPDF(report); }} title="Export PDF" className="p-2.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                  </button>
-                  <button onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(report.id); }} title="Delete" className="p-2.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Expandable Content */}
-            <div
-              className={`grid transition-all duration-300 ease-in-out ${
-                expandedIndex === index ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-              }`}
-            >
-              <div className="overflow-hidden min-h-0">
-                <div className="mt-4 border-t border-gray-700 pt-4">
-                  {/* Severity */}
-                  <div className="mb-4">
-                    <span className="text-sm sm:text-base text-white font-medium">Severity</span>
-                    <p className="text-gray-300 mt-1 text-sm sm:text-base">{report.severity || '—'}</p>
-                  </div>
-
-                  {/* Description */}
-                  <div className="mb-4">
-                    <span className="text-sm sm:text-base text-white font-medium">Description</span>
-                    <p className="text-gray-300 mt-2 leading-relaxed text-sm sm:text-base break-words">{report.description || '—'}</p>
-                  </div>
-
-                  {/* Affected Systems */}
-                  <div className="mb-4">
-                    <span className="text-sm sm:text-base text-white font-medium">Affected Systems</span>
-                    <p className="text-gray-300 mt-2 text-sm sm:text-base break-words font-sans">{report.affected_hosts || '—'}</p>
-                  </div>
-
-                  {/* Mitigation Steps */}
-                  <div className="mb-4">
-                    <span className="text-sm sm:text-base text-white font-medium">Mitigation Steps</span>
-                    <p className="text-gray-300 mt-2 leading-relaxed text-sm sm:text-base break-words">{report.mitigation || '—'}</p>
-                  </div>
-
-                  {/* MITRE & Kill Chain */}
-                  <div className="space-y-4">
-                    <div>
-                      <span className="text-sm sm:text-base text-white font-medium">MITRE ATT&CK</span>
-                      <p className="text-gray-300 mt-1 text-sm sm:text-base">{report.mitre_tactic || '—'}</p>
-                    </div>
-                    <div>
-                      <span className="text-sm sm:text-base text-white font-medium">Kill Chain Phase</span>
-                      <p className="text-gray-300 mt-1 text-sm sm:text-base">{report.kill_chain || '—'}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-1">
+                        <button onClick={(e) => { e.stopPropagation(); setEditReport(report); }} title="Edit" className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(report.id); }} title="Delete" className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colSpan="7" className="p-0">
+                      <div className={`grid transition-all duration-300 ease-in-out ${
+                        expandedIndex === index ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                      }`}>
+                        <div className="overflow-hidden min-h-0">
+                          <div className="border-t border-gray-700 px-6 py-4">
+                            <div className="mb-4">
+                              <span className="text-sm sm:text-base text-white font-medium">Title</span>
+                              <p className="text-gray-300 mt-1 text-sm sm:text-base break-words">{report.title || '—'}</p>
+                            </div>
+                            <div className="mb-4">
+                              <span className="text-sm sm:text-base text-white font-medium">Description</span>
+                              <p className="text-gray-300 mt-2 leading-relaxed text-sm sm:text-base break-words">{report.description || '—'}</p>
+                            </div>
+                            <div className="mb-4">
+                              <span className="text-sm sm:text-base text-white font-medium">Affected Systems</span>
+                              <p className="text-gray-300 mt-2 text-sm sm:text-base break-words font-sans">{report.affected_hosts || '—'}</p>
+                            </div>
+                            <div className="mb-4">
+                              <span className="text-sm sm:text-base text-white font-medium">Mitigation Steps</span>
+                              <p className="text-gray-300 mt-2 leading-relaxed text-sm sm:text-base break-words">{report.mitigation || '—'}</p>
+                            </div>
+                            <div className="mb-4">
+                              <span className="text-sm sm:text-base text-white font-medium">MITRE ATT&CK</span>
+                              <p className="text-gray-300 mt-1 text-sm sm:text-base">{report.mitre_tactic || '—'}</p>
+                            </div>
+                            <div>
+                              <span className="text-sm sm:text-base text-white font-medium">Kill Chain Phase</span>
+                              <p className="text-gray-300 mt-1 text-sm sm:text-base">{report.kill_chain || '—'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
       )}
 

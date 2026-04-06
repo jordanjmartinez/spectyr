@@ -154,57 +154,54 @@ const Dashboard = () => {
     <div className="min-h-screen bg-[#0d1117] text-white pt-2 pb-8 px-4 sm:px-8 lg:px-16">
       <div className="space-y-4">
 
-        <div className="flex sm:hidden justify-end mb-2">
+        <div className="flex justify-end mb-2">
           <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />
         </div>
         <div className="bg-[#161b22] rounded-xl p-3 sm:p-6">
-          <div className="flex pl-2 sm:pl-8 gap-6 sm:gap-12 border-b border-gray-700 mb-6 overflow-x-auto scrollbar-hide items-center">
+          <div className="grid grid-cols-[5.5rem_5.5rem_5.5rem_5.5rem_1fr] sm:grid-cols-[8rem_8rem_8rem_8rem_1fr] pl-2 sm:pl-8 border-b border-gray-700 mb-6 items-center">
             <button
               onClick={() => {
                 setView("grouped");
                 setIncidentBadge(0);
               }}
-              className={`py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 ${
+              className={`justify-self-start py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 font-medium border-b-2 ${
                 view === "grouped"
-                  ? "text-white font-medium border-b-2 border-white"
-                  : "text-gray-400 font-medium hover:text-white border-b-2 border-transparent"
+                  ? "text-white border-white"
+                  : "text-gray-400 hover:text-white border-transparent"
               }`}
             >
-              Alerts {groupedAlertCount > 0 && <span className="text-gray-500 font-normal">({groupedAlertCount})</span>}
+              Alerts <span className="text-gray-500 font-normal">({groupedAlertCount})</span>
             </button>
             <button
               onClick={() => setView("table")}
-              className={`py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 ${
+              className={`justify-self-start py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 font-medium border-b-2 ${
                 view === "table"
-                  ? "text-white font-medium border-b-2 border-white"
-                  : "text-gray-400 font-medium hover:text-white border-b-2 border-transparent"
+                  ? "text-white border-white"
+                  : "text-gray-400 hover:text-white border-transparent"
               }`}
             >
-              Events {alertCount > 0 && <span className="text-gray-500 font-normal">({alertCount})</span>}
+              Events <span className="text-gray-500 font-normal">({alertCount})</span>
             </button>
             <button
               onClick={() => setView("analytics")}
-              className={`py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 ${
+              className={`justify-self-start py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 font-medium border-b-2 ${
                 view === "analytics"
-                  ? "text-white font-medium border-b-2 border-white"
-                  : "text-gray-400 font-medium hover:text-white border-b-2 border-transparent"
+                  ? "text-white border-white"
+                  : "text-gray-400 hover:text-white border-transparent"
               }`}
             >
               Analytics
             </button>
             <button
               onClick={() => setView("reports")}
-              className={`py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 ${
+              className={`justify-self-start py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 font-medium border-b-2 ${
                 view === "reports"
-                  ? "text-white font-medium border-b-2 border-white"
-                  : "text-gray-400 font-medium hover:text-white border-b-2 border-transparent"
+                  ? "text-white border-white"
+                  : "text-gray-400 hover:text-white border-transparent"
               }`}
             >
-              Reports {reportCount > 0 && <span className="text-gray-500 font-normal">({reportCount})</span>}
+              Reports <span className="text-gray-500 font-normal">({reportCount})</span>
             </button>
-            <div className="ml-auto hidden sm:block">
-              <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />
-            </div>
           </div>
 
           <div className={view === "grouped" ? "block" : "hidden"}>

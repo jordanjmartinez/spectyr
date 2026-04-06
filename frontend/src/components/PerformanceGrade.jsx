@@ -41,7 +41,7 @@ const PerformanceGrade = ({ report }) => {
   const accuracy = hasData ? parseFloat(report.accuracy) : 0;
   const { grade, color: ringColor, feedback } = hasData
     ? getGradeInfo(accuracy)
-    : { grade: "", color: DARK_GRAY, feedback: "> Your performance grade will appear after your first triage." };
+    : { grade: "?", color: DARK_GRAY, feedback: "> Your performance grade will appear after your first triage." };
 
   const data = [
     { name: "Correct", value: hasData ? accuracy : 0 },
@@ -54,7 +54,7 @@ const PerformanceGrade = ({ report }) => {
       <div className="bg-[#161b22] p-4 sm:p-6 rounded-2xl border border-gray-700 shadow-md flex flex-col items-center">
 
       {/* Grade Circle */}
-      <div className="relative w-36 h-36 sm:w-44 sm:h-44 mx-auto border-dashed border-2 border-gray-700 rounded-full p-2">
+      <div className="relative w-36 h-36 sm:w-56 sm:h-56 mx-auto border-dashed border-2 border-gray-700 rounded-full p-2">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -72,7 +72,7 @@ const PerformanceGrade = ({ report }) => {
         </ResponsiveContainer>
 
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className={`text-4xl sm:text-6xl font-bold ${hasData ? 'text-white' : 'text-gray-500'}`}>{grade}</span>
+          <span className={`text-4xl sm:text-7xl font-bold ${hasData ? 'text-white' : 'text-gray-500'}`}>{grade}</span>
         </div>
       </div>
 

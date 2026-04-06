@@ -60,7 +60,7 @@ const GameTimer = ({ onTimeout, disabled }) => {
     >
       <img src="/hacker_icon.jpeg" alt="" className="w-6 h-6 sm:w-9 sm:h-9" />
       <span
-        className={`text-base sm:text-xl tracking-widest ${
+        className={`text-lg sm:text-xl tracking-widest ${
           isCritical ? 'text-red-400' : isLow ? 'text-yellow-400' : 'text-white'
         }`}
         style={{ fontFamily: "'JetBrains Mono', sans-serif" }}

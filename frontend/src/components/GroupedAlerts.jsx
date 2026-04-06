@@ -302,7 +302,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
             {dashView === 'total' ? 'Total Alerts' : 'Alert Types'}
           </h2>
 
-          <div className="bg-[#161b22] border border-gray-700 rounded-2xl p-4 sm:p-6 shadow-md">
+          <div className="bg-[#161b22] border border-gray-700 rounded-2xl p-4 sm:p-6 shadow-md ">
           <div className="flex items-center justify-end mb-4">
             <div className="flex items-center gap-2">
               <button
@@ -328,8 +328,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
             </div>
           </div>
           {dashView === 'total' ? (
-            <>
-              <div className="relative w-44 h-44 sm:w-56 sm:h-56 mx-auto border-dashed border-2 border-gray-700 rounded-full p-2">
+            <div className="flex items-center justify-center gap-6">
+              <div className="relative w-36 h-36 sm:w-56 sm:h-56 flex-shrink-0 border-dashed border-2 border-gray-700 rounded-full p-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -359,24 +359,24 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-5xl sm:text-7xl font-bold text-white">{alertStats.total_alerts}</span>
-                  <span className="text-sm sm:text-base text-gray-400">Alerts</span>
+                  <span className="text-4xl sm:text-7xl font-bold text-white">{alertStats.total_alerts}</span>
+                  <span className="text-xs sm:text-base text-gray-400">Alerts</span>
                 </div>
               </div>
-              <div className="mt-5 flex justify-center gap-6 text-sm sm:text-base text-center">
-                <div>
-                  <p className="text-gray-300">Closed</p>
-                  <p className="text-white font-semibold">{alertStats.closed_alerts}</p>
+              <div className="flex flex-col gap-3 text-sm sm:text-base w-24 sm:w-28">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-gray-300">Closed</span>
+                  <span className="text-white font-semibold">{alertStats.closed_alerts}</span>
                 </div>
-                <div>
-                  <p className="text-gray-300">Open</p>
-                  <p className="text-white font-semibold">{alertStats.open_alerts}</p>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-gray-300">Open</span>
+                  <span className="text-white font-semibold">{alertStats.open_alerts}</span>
                 </div>
               </div>
-            </>
+            </div>
           ) : (
-            <>
-              <div className="relative w-44 h-44 sm:w-56 sm:h-56 mx-auto border-dashed border-2 border-gray-700 rounded-full p-2">
+            <div className="flex items-center justify-center gap-6">
+              <div className="relative w-36 h-36 sm:w-56 sm:h-56 flex-shrink-0 border-dashed border-2 border-gray-700 rounded-full p-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -412,13 +412,13 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-5xl sm:text-7xl font-bold text-white">
+                  <span className="text-4xl sm:text-7xl font-bold text-white">
                     {alertStats.severity_breakdown.critical + alertStats.severity_breakdown.high + alertStats.severity_breakdown.medium + alertStats.severity_breakdown.low}
                   </span>
-                  <span className="text-sm sm:text-base text-gray-400">Alerts</span>
+                  <span className="text-xs sm:text-base text-gray-400">Alerts</span>
                 </div>
               </div>
-              <div className="mt-5 flex justify-center gap-6 text-sm sm:text-base text-center">
+              <div className="flex flex-col gap-2 text-sm sm:text-base w-24 sm:w-28">
                 {[
                   { label: 'Low', value: alertStats.severity_breakdown.low, color: '#22c55e' },
                   { label: 'Medium', value: alertStats.severity_breakdown.medium, color: '#eab308' },
@@ -426,13 +426,13 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                   { label: 'Critical', value: alertStats.severity_breakdown.critical, color: '#ef4444' },
                 ].map(item => (
                   <div key={item.label} className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: item.color }} />
+                    <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
                     <span className="text-gray-300">{item.label}</span>
                     <span className="text-white font-semibold">{item.value}</span>
                   </div>
                 ))}
               </div>
-            </>
+            </div>
           )}
           </div>
         </div>
