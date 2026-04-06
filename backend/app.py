@@ -62,7 +62,7 @@ def create_session():
         "game_mode": "training",
         "timer_start": None,
         "analyst_name": None,
-        "flag_strikes": 0,
+        "used_alert_ids": set(),
         "selected_level_option": None,
         "last_active": datetime.now(timezone.utc),
     }
@@ -1820,6 +1820,18 @@ def log_writer(session, interval=1):
                 pending_scenario_info = None
                 session["paused"] = True
 
+                # Mark all logs for this scenario as chain complete
+                scenario_id = session["current_scenario"].get("scenario_id")
+                if scenario_id:
+                    with open(fake_log_path, "r") as f:
+                        all_logs = [json.loads(line) for line in f if line.strip()]
+                    for log in all_logs:
+                        if log.get("scenario_id") == scenario_id:
+                            log["chain_complete"] = True
+                    with open(fake_log_path, "w") as f:
+                        for log in all_logs:
+                            f.write(json.dumps(log) + "\n")
+
                 # Start timer in hardcore mode
                 if session["game_mode"] == "hardcore":
                     session["timer_start"] = datetime.now(timezone.utc)
@@ -1907,16 +1919,27 @@ def log_writer(session, interval=1):
                 log.pop("time_offset_seconds", None)
                 log["timestamp"] = (base_time + timedelta(seconds=prev_offset)).isoformat()
                 log["id"] = str(uuid.uuid4())
-                log["severity"] = "critical"
+                # Preserve severity from attack template; fallback to "high"
+                if "severity" not in log or not log["severity"]:
+                    log["severity"] = "high"
                 log["scenario_id"] = scenario_id
                 log["status"] = "active"
                 log["level"] = level_config["level"]
                 log["level_name"] = selected["ticket_title"]
                 log["category"] = selected["category"]
-                log["flagged"] = False  # Player must investigate
+                log["flagged"] = True  # Auto-promoted to incident
                 if "source_type" not in log or not log["source_type"]:
                     log["source_type"] = get_source_type(log.get("detected_by", "Unknown"))
                 threat_logs.append(log)
+
+            # Assign alert ID to this scenario's logs
+            while True:
+                alert_id = f"INC-{random.randint(1000, 9999)}"
+                if alert_id not in session["used_alert_ids"]:
+                    session["used_alert_ids"].add(alert_id)
+                    break
+            for log in threat_logs:
+                log["alert_id"] = alert_id
 
             # Queue the attack logs for staggered injection
             attack_queue.extend(threat_logs)
@@ -1974,7 +1997,7 @@ def reset_simulator():
     s["game_mode"] = "training"
     s["timer_start"] = None
     s["analyst_name"] = None
-    s["flag_strikes"] = 0
+    s["used_alert_ids"] = set()
     s["selected_level_option"] = None
 
     for filepath in [s["paths"]["generated_logs"], s["paths"]["analyst_actions"], s["paths"]["incident_reports"]]:
@@ -2286,140 +2309,6 @@ def get_current_scenario():
     s = g.session
     return jsonify(s["current_scenario"] if s["current_scenario"] else {})
 
-@app.route("/api/flag-event", methods=["POST"])
-def flag_event():
-    """Flag or unflag an individual event as suspicious."""
-    s = g.session
-    data = request.json
-    event_id = data.get("event_id")
-    flagged = data.get("flagged", True)
-
-    if not event_id:
-        return jsonify({"error": "Missing event_id"}), 400
-
-    if not os.path.exists(s["paths"]["generated_logs"]):
-        return jsonify({"error": "No logs found"}), 404
-
-    # Read all logs
-    with open(s["paths"]["generated_logs"], "r") as f:
-        all_logs = [json.loads(line) for line in f if line.strip()]
-
-    # Find the event
-    target_event = None
-    target_index = None
-    for i, log in enumerate(all_logs):
-        if log.get("id") == event_id:
-            target_event = log
-            target_index = i
-            break
-
-    if target_event is None:
-        return jsonify({"error": "Event not found"}), 404
-
-    # Check if it's normal traffic (flagging normal traffic is wrong)
-    is_normal_traffic = target_event.get("label") == "normal_traffic"
-    scenario_id = target_event.get("scenario_id")
-
-    # Check if event is already in a terminal status
-    if target_event.get("status") in ["classified", "resolved"]:
-        return jsonify({"error": "Cannot flag events in completed scenarios"}), 400
-
-    # Log flag action for accuracy tracking
-    if flagged:
-        flag_action = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "action": "flag",
-            "event_id": event_id,
-            "scenario_id": scenario_id,
-            "is_normal_traffic": is_normal_traffic,
-            "correct": not is_normal_traffic
-        }
-        with open(s["paths"]["analyst_actions"], "a") as f:
-            f.write(json.dumps(flag_action) + "\n")
-
-    # Handle wrong flag in hardcore mode (3 strikes system)
-    if flagged and is_normal_traffic and s["game_mode"] == "hardcore":
-        s["flag_strikes"] += 1
-        print(f"[STRIKE] Wrong flag! Strike {s['flag_strikes']}/3", flush=True)
-        if s["flag_strikes"] >= 3:
-            s["flag_strikes"] = 0  # Reset for next game
-            return jsonify({
-                "status": "hardcore_failure",
-                "failure_reason": "3 wrong flags - Game Over!",
-                "event_id": event_id
-            })
-
-    # Update the flagged field
-    all_logs[target_index]["flagged"] = flagged
-
-    # Write back all logs
-    with open(s["paths"]["generated_logs"], "w") as f:
-        for log in all_logs:
-            f.write(json.dumps(log) + "\n")
-
-    # Calculate scenario progress (only for non-normal traffic)
-    scenario_events = [log for log in all_logs if log.get("scenario_id") == scenario_id and log.get("label") != "normal_traffic"]
-    flagged_count = sum(1 for log in scenario_events if log.get("flagged", False))
-    total_count = len(scenario_events)
-    all_flagged = flagged_count == total_count and total_count > 0
-
-    print(f"[FLAG] Event {event_id} {'flagged' if flagged else 'unflagged'} | Normal: {is_normal_traffic}", flush=True)
-
-    return jsonify({
-        "status": "success",
-        "event_id": event_id,
-        "flagged": flagged,
-        "scenario_id": scenario_id,
-        "scenario_progress": {
-            "flagged_count": flagged_count,
-            "total_count": total_count,
-            "all_flagged": all_flagged
-        },
-        "is_normal_traffic": is_normal_traffic,
-        "strikes": s["flag_strikes"] if s["game_mode"] == "hardcore" else None
-    })
-
-@app.route("/api/scenario-progress", methods=["GET"])
-def get_scenario_progress():
-    """Get flagging progress for all active scenarios."""
-    s = g.session
-    if not os.path.exists(s["paths"]["generated_logs"]):
-        return jsonify({"scenarios": []})
-
-    with open(s["paths"]["generated_logs"], "r") as f:
-        all_logs = [json.loads(line) for line in f if line.strip()]
-
-    # Group by scenario and calculate progress
-    scenarios = {}
-    for log in all_logs:
-        scenario_id = log.get("scenario_id")
-        if not scenario_id or log.get("label") == "normal_traffic":
-            continue
-        if log.get("status") in ["classified", "resolved"]:
-            continue  # Skip completed scenarios
-
-        if scenario_id not in scenarios:
-            scenarios[scenario_id] = {
-                "scenario_id": scenario_id,
-                "label": log.get("label"),
-                "level": log.get("level"),
-                "threat_pattern": log.get("threat_pattern", "Unknown"),
-                "flagged_count": 0,
-                "total_count": 0
-            }
-
-        scenarios[scenario_id]["total_count"] += 1
-        if log.get("flagged", False):
-            scenarios[scenario_id]["flagged_count"] += 1
-
-    # Calculate all_flagged for each
-    result = []
-    for scenario in scenarios.values():
-        scenario["all_flagged"] = scenario["flagged_count"] == scenario["total_count"] and scenario["total_count"] > 0
-        result.append(scenario)
-
-    return jsonify({"scenarios": result})
-
 @app.route("/api/resume", methods=["POST"])
 def resume_generation():
     s = g.session
@@ -2563,13 +2452,12 @@ def resume_generation():
 def get_grouped_alerts():
     s = g.session
     if not os.path.exists(s["paths"]["generated_logs"]):
-        return jsonify([])
+        return jsonify({"alerts": [], "stats": {"total_alerts": 0, "closed_alerts": 0, "open_alerts": 0, "severity_breakdown": {"low": 0, "medium": 0, "high": 0, "critical": 0}}})
 
     with open(s["paths"]["generated_logs"], "r") as f:
         logs = [json.loads(line) for line in f if line.strip()]
 
     grouped = {}
-    scenario_flag_counts = {}  # Track flagging progress per scenario
 
     for log in logs:
         scenario_id = log.get("scenario_id")
@@ -2577,13 +2465,6 @@ def get_grouped_alerts():
 
         if not scenario_id or log.get("label") == "normal_traffic":
             continue
-
-        # Track flagging progress
-        if scenario_id not in scenario_flag_counts:
-            scenario_flag_counts[scenario_id] = {"flagged": 0, "total": 0}
-        scenario_flag_counts[scenario_id]["total"] += 1
-        if log.get("flagged", False):
-            scenario_flag_counts[scenario_id]["flagged"] += 1
 
         group_key = f"{scenario_id}_{threat_pattern}"
 
@@ -2596,9 +2477,11 @@ def get_grouped_alerts():
                 "severity": log.get("severity", "unknown"),
                 "category": log.get("category", ""),
                 "analyst_category": log.get("analyst_category", ""),
+                "alert_id": log.get("alert_id", ""),
                 "level": log.get("level"),
                 "log_count": 0,
-                "logs": []
+                "logs": [],
+                "severity_breakdown": {"low": 0, "medium": 0, "high": 0, "critical": 0}
             }
         else:
             # Update analyst_category if it exists in this log
@@ -2607,20 +2490,38 @@ def get_grouped_alerts():
 
         grouped[group_key]["logs"].append(log)
         grouped[group_key]["log_count"] += 1
+        sev = log.get("severity", "medium").lower()
+        if sev in grouped[group_key]["severity_breakdown"]:
+            grouped[group_key]["severity_breakdown"][sev] += 1
 
-    # Filter: only return groups where all events are flagged OR already processed (classified/resolved)
-    result = []
-    for group in grouped.values():
-        sid = group["scenario_id"]
-        counts = scenario_flag_counts.get(sid, {"flagged": 0, "total": 0})
-        all_flagged = counts["total"] > 0 and counts["flagged"] == counts["total"]
-        already_processed = group["status"] in ["classified", "resolved", "investigating"]
+    # Only return groups where the full attack chain has been injected
+    result = [grp for grp in grouped.values() if any(log.get("chain_complete") for log in grp["logs"])]
 
-        if all_flagged or already_processed:
-            group["fully_flagged"] = True
-            result.append(group)
+    # Compute unified group severity (highest in the group)
+    severity_order = {"critical": 4, "high": 3, "medium": 2, "low": 1}
+    for grp in result:
+        highest = max(severity_order.get(log.get("severity", "medium").lower(), 2) for log in grp["logs"])
+        grp["group_severity"] = {4: "Critical", 3: "High", 2: "Medium", 1: "Low"}[highest]
 
-    return jsonify(result)
+    # Compute aggregate stats
+    total_alerts = len(result)
+    closed_alerts = sum(1 for grp in result if grp["status"] in ["classified", "resolved"])
+    open_alerts = total_alerts - closed_alerts
+    severity_totals = {"low": 0, "medium": 0, "high": 0, "critical": 0}
+    for grp in result:
+        gs = grp["group_severity"].lower()
+        if gs in severity_totals:
+            severity_totals[gs] += 1
+
+    return jsonify({
+        "alerts": result,
+        "stats": {
+            "total_alerts": total_alerts,
+            "closed_alerts": closed_alerts,
+            "open_alerts": open_alerts,
+            "severity_breakdown": severity_totals
+        }
+    })
 
 
 @app.route("/api/reports", methods=["POST"])
@@ -2663,7 +2564,7 @@ def submit_report():
     with open(s["paths"]["incident_reports"], "a") as f:
         f.write(json.dumps(data) + "\n")
 
-    if scenario_id:
+    if scenario_id and not data.get("skip_advance"):
         if os.path.exists(s["paths"]["generated_logs"]):
             with open(s["paths"]["generated_logs"], "r") as f:
                 logs = [json.loads(line) for line in f if line.strip()]
@@ -2695,13 +2596,14 @@ def submit_report():
         with open(s["paths"]["analyst_actions"], "a") as f:
             f.write(json.dumps(action_log) + "\n")
 
-        # Advance to next level
         s["current_level"] += 1
-        s["selected_level_option"] = None  # Reset so new level selects fresh scenario
         if s["current_level"] < len(CAMPAIGN_LEVELS):
             next_level = CAMPAIGN_LEVELS[s["current_level"]]
+            s["selected_level_option"] = select_level_scenarios(next_level)
             print(f"[LEVEL UP] Advancing to Level {next_level['level']} (categories: {next_level.get('category_pool', [])})", flush=True)
+            print(f"[SCENARIO SELECTED] {s['selected_level_option']['ticket_title']} ({s['selected_level_option']['category']})", flush=True)
         else:
+            s["selected_level_option"] = None
             print("[CAMPAIGN COMPLETE] All levels finished!", flush=True)
 
         s["current_scenario"] = None

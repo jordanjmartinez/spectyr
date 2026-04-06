@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { apiFetch } from '../api';
 import AlertTable from '../components/AlertTable';
 import GroupedAlerts from '../components/GroupedAlerts';
@@ -39,11 +39,26 @@ const Dashboard = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleNewIncident = () => {
-    if (view !== 'grouped') {
-      setIncidentBadge(prev => prev + 1);
-    }
-  };
+  // Auto-detect new incidents when game pauses (attack chain complete)
+  const wasPausedRef = useRef(true);
+  useEffect(() => {
+    const checkForIncidents = () => {
+      apiFetch('/api/game-state')
+        .then(res => res.json())
+        .then(data => {
+          if (wasPausedRef.current === false && data.paused === true) {
+            // Transition from running to paused = attack chain complete
+            if (view !== 'grouped') {
+              setIncidentBadge(prev => prev + 1);
+            }
+          }
+          wasPausedRef.current = data.paused;
+        })
+        .catch(() => {});
+    };
+    const interval = setInterval(checkForIncidents, 2000);
+    return () => clearInterval(interval);
+  }, [view]);
 
   const handleSimulateEvents = async () => {
     try {
@@ -135,28 +150,24 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0d1117] text-white py-8 px-4 sm:px-8 lg:px-16">
-      <div className="max-w-7xl mx-auto space-y-8">
-
-        <header className="flex justify-end">
-          <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />
-        </header>
+    <div className="min-h-screen bg-[#0d1117] text-white pt-2 pb-8 px-4 sm:px-8 lg:px-16">
+      <div className="space-y-4">
 
         <div className="bg-[#161b22] rounded-xl p-3 sm:p-6">
-          <div className="flex border-b border-gray-700 mb-6 overflow-x-auto">
+          <div className="flex pl-8 gap-12 border-b border-gray-700 mb-6 overflow-x-auto items-center">
             <button
               onClick={() => {
                 setView("grouped");
                 setIncidentBadge(0);
               }}
-              className={`flex-1 min-w-0 text-center py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 ${
+              className={`py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 ${
                 view === "grouped"
-                  ? "text-white font-medium"
-                  : "text-gray-400 font-medium hover:text-white"
+                  ? "text-white font-medium border-b-2 border-white"
+                  : "text-gray-400 font-medium hover:text-white border-b-2 border-transparent"
               }`}
             >
               <span className="relative inline-flex items-center gap-1.5">
-                Incidents
+                Alerts
                 {incidentBadge > 0 && view !== "grouped" && (
                   <span className="relative flex h-2.5 w-2.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
@@ -167,34 +178,37 @@ const Dashboard = () => {
             </button>
             <button
               onClick={() => setView("table")}
-              className={`flex-1 min-w-0 text-center py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 ${
+              className={`py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 ${
                 view === "table"
-                  ? "text-white font-medium"
-                  : "text-gray-400 font-medium hover:text-white"
+                  ? "text-white font-medium border-b-2 border-white"
+                  : "text-gray-400 font-medium hover:text-white border-b-2 border-transparent"
               }`}
             >
               Events
             </button>
             <button
               onClick={() => setView("analytics")}
-              className={`flex-1 min-w-0 text-center py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 ${
+              className={`py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 ${
                 view === "analytics"
-                  ? "text-white font-medium"
-                  : "text-gray-400 font-medium hover:text-white"
+                  ? "text-white font-medium border-b-2 border-white"
+                  : "text-gray-400 font-medium hover:text-white border-b-2 border-transparent"
               }`}
             >
               Analytics
             </button>
             <button
               onClick={() => setView("reports")}
-              className={`flex-1 min-w-0 text-center py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 ${
+              className={`py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 ${
                 view === "reports"
-                  ? "text-white font-medium"
-                  : "text-gray-400 font-medium hover:text-white"
+                  ? "text-white font-medium border-b-2 border-white"
+                  : "text-gray-400 font-medium hover:text-white border-b-2 border-transparent"
               }`}
             >
-              Cases
+              Reports
             </button>
+            <div className="ml-auto">
+              <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />
+            </div>
           </div>
 
           <div className={view === "grouped" ? "block" : "hidden"}>
@@ -211,7 +225,7 @@ const Dashboard = () => {
                   onClick={handleSimulateEvents}
                   className="inline-flex items-center px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 transition focus:outline-none focus:ring-2 focus:ring-gray-500"
                 >
-                  Start Training
+                  Start Simulation
                 </button>
                 <button
                   onClick={() => setShowResetModal(true)}
@@ -221,7 +235,7 @@ const Dashboard = () => {
                 </button>
               </div>
             </div>
-            <AlertTable setAlertCount={setAlertCount} resetTrigger={resetTrigger} onHardcoreFailure={handleHardcoreFailure} onNewIncident={handleNewIncident} />
+            <AlertTable setAlertCount={setAlertCount} resetTrigger={resetTrigger} />
           </div>
 
           <div className={view === "analytics" ? "block" : "hidden"}>

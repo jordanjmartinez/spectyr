@@ -16,7 +16,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
   const [reports, setReports] = useState([]);
   const [expandedIndex, setExpandedIndex] = useState(null);
   const [editReport, setEditReport] = useState(null);
-  const [showNewReport, setShowNewReport] = useState(false);
+
   const [statusDropdownId, setStatusDropdownId] = useState(null);
   const [severityDropdownId, setSeverityDropdownId] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
@@ -40,6 +40,11 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
   useEffect(() => {
     fetchReports();
   }, [resetTrigger]);
+
+  useEffect(() => {
+    const interval = setInterval(fetchReports, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (setReportCount) {
@@ -155,7 +160,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
         </div>
         <div>
           <p style="margin: 0 0 4px 0; font-size: 11px; text-transform: uppercase; color: #666; letter-spacing: 0.5px;">Case ID</p>
-          <p style="margin: 0; font-size: 14px;">#${getReportNumber(report.id)}</p>
+          <p style="margin: 0; font-size: 14px;">${report.alert_id || '#' + getReportNumber(report.id)}</p>
         </div>
         <div>
           <p style="margin: 0 0 4px 0; font-size: 11px; text-transform: uppercase; color: #666; letter-spacing: 0.5px;">MITRE ATT&CK</p>
@@ -213,7 +218,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
     // Search filter
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
-    const reportNumber = `#${getReportNumber(r.id)}`;
+    const reportNumber = r.alert_id || `#${getReportNumber(r.id)}`;
     return (
       (r.title || '').toLowerCase().includes(term) ||
       reportNumber.toLowerCase().includes(term) ||
@@ -230,15 +235,9 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
     <div className="flex flex-col gap-3 mb-6">
       <div className="flex flex-row items-center justify-between gap-2 sm:gap-3">
         <h2 className="text-xl sm:text-2xl font-semibold text-white whitespace-nowrap">
-          Cases <span className="text-gray-500 font-normal">({filteredReports.length})</span>
+          Reports <span className="text-gray-500 font-normal">({filteredReports.length})</span>
         </h2>
         <div className="flex items-center gap-2 sm:gap-3">
-          <button
-            onClick={() => setShowNewReport(true)}
-            className="inline-flex items-center justify-center px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
-          >
-            New Case
-          </button>
           <div className="relative">
             <button
               onClick={() => setShowFilterDropdown(!showFilterDropdown)}
@@ -289,7 +288,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
           </svg>
           <input
             type="text"
-            placeholder="Search cases..."
+            placeholder="Search reports..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             maxLength={300}
@@ -319,7 +318,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
         <div className="bg-[#161b22] p-6 rounded-xl">
           <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
             <img src="/ghost-reports.png" alt="Ghost" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
-            <p className="font-mono text-sm text-gray-400 text-center sm:text-left">&gt; Complete a triage to document incidents here.</p>
+            <p className="font-mono text-sm text-gray-400 text-center sm:text-left">&gt; Write a report from Alerts to document your findings.</p>
           </div>
         </div>
       ) : (
@@ -346,7 +345,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
               <div className="flex items-center gap-3 mt-2 whitespace-nowrap">
                 <span className="text-white text-sm sm:text-base">Created {getRelativeTime(report.timestamp)}</span>
                 <span className="text-gray-600">|</span>
-                <span className="text-white text-sm sm:text-base">#{getReportNumber(report.id)}</span>
+                <span className="text-white text-sm sm:text-base">{report.alert_id || `#${getReportNumber(report.id)}`}</span>
               </div>
 
               {/* Row 3: badges left, actions right */}
@@ -489,20 +488,10 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
             >
               <div className="overflow-hidden min-h-0">
                 <div className="mt-4 border-t border-gray-700 pt-4">
-                  {/* 3-column metadata row */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-                    <div>
-                      <span className="text-sm sm:text-base text-gray-400 font-medium">Severity</span>
-                      <p className="text-gray-300 mt-1 text-sm sm:text-base">{report.severity || '—'}</p>
-                    </div>
-                    <div>
-                      <span className="text-sm sm:text-base text-gray-400 font-medium">MITRE ATT&CK</span>
-                      <p className="text-gray-300 mt-1 text-sm sm:text-base">{report.mitre_tactic || '—'}</p>
-                    </div>
-                    <div>
-                      <span className="text-sm sm:text-base text-gray-400 font-medium">Kill Chain Phase</span>
-                      <p className="text-gray-300 mt-1 text-sm sm:text-base">{report.kill_chain || '—'}</p>
-                    </div>
+                  {/* Severity */}
+                  <div className="mb-4">
+                    <span className="text-sm sm:text-base text-gray-400 font-medium">Severity</span>
+                    <p className="text-gray-300 mt-1 text-sm sm:text-base">{report.severity || '—'}</p>
                   </div>
 
                   {/* Description */}
@@ -514,13 +503,25 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
                   {/* Affected Systems */}
                   <div className="mb-4">
                     <span className="text-sm sm:text-base text-gray-400 font-medium">Affected Systems</span>
-                    <p className={`text-gray-300 mt-2 text-sm sm:text-base break-words ${report.affected_hosts ? 'font-mono' : ''}`}>{report.affected_hosts || '—'}</p>
+                    <p className="text-gray-300 mt-2 text-sm sm:text-base break-words font-sans">{report.affected_hosts || '—'}</p>
                   </div>
 
                   {/* Mitigation Steps */}
-                  <div>
+                  <div className="mb-4">
                     <span className="text-sm sm:text-base text-gray-400 font-medium">Mitigation Steps</span>
                     <p className="text-gray-300 mt-2 leading-relaxed text-sm sm:text-base break-words">{report.mitigation || '—'}</p>
+                  </div>
+
+                  {/* MITRE & Kill Chain */}
+                  <div className="space-y-4">
+                    <div>
+                      <span className="text-sm sm:text-base text-gray-400 font-medium">MITRE ATT&CK</span>
+                      <p className="text-gray-300 mt-1 text-sm sm:text-base">{report.mitre_tactic || '—'}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm sm:text-base text-gray-400 font-medium">Kill Chain Phase</span>
+                      <p className="text-gray-300 mt-1 text-sm sm:text-base">{report.kill_chain || '—'}</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -594,37 +595,6 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
       )}
 
       {/* Create Report Modal */}
-      {showNewReport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/70"
-            onClick={() => setShowNewReport(false)}
-          />
-          <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-3 sm:p-5 w-full max-w-xl mx-2 sm:mx-4 shadow-2xl">
-            <IncidentReportForm
-              initialData={{}}
-              onSubmit={async (formData) => {
-                try {
-                  const res = await apiFetch('/api/reports', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(formData),
-                  });
-                  if (res.ok) {
-                    await fetchReports();
-                  }
-                } catch (err) {
-                  console.error("Error creating report", err);
-                } finally {
-                  setShowNewReport(false);
-                }
-              }}
-              onCancel={() => setShowNewReport(false)}
-              inline
-            />
-          </div>
-        </div>
-      )}
     </>
   );
 };

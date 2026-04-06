@@ -155,7 +155,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
             value={formData.affected_hosts}
             onChange={handleChange}
             maxLength={100}
-            className="w-full bg-transparent text-white placeholder-gray-600 border-b border-gray-700 focus:border-gray-500 outline-none pb-2 transition-colors"
+            className="w-full bg-transparent text-white placeholder-gray-600 border-b border-gray-700 focus:border-gray-500 outline-none pb-2 transition-colors font-sans"
           />
         </div>
 
@@ -222,7 +222,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
                 : 'bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600'
             }`}
           >
-            {isSubmitting ? 'Saving...' : 'Save Case'}
+            {isSubmitting ? 'Saving...' : initialData?.id ? 'Save Report' : 'Create Report'}
           </button>
         </div>
       </div>

@@ -41,7 +41,7 @@ const PerformanceGrade = ({ report }) => {
   const accuracy = hasData ? parseFloat(report.accuracy) : 0;
   const { grade, color: ringColor, feedback } = hasData
     ? getGradeInfo(accuracy)
-    : { grade: "", color: DARK_GRAY, feedback: "> Complete a level to see your grade." };
+    : { grade: "", color: DARK_GRAY, feedback: "> Your performance grade will appear after your first triage." };
 
   const data = [
     { name: "Correct", value: hasData ? accuracy : 0 },

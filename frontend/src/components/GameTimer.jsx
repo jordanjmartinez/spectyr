@@ -50,7 +50,7 @@ const GameTimer = ({ onTimeout, disabled }) => {
 
   return (
     <div
-      className={`self-start flex items-center gap-3 px-3 py-2 rounded-xl border-2 ${
+      className={`self-start flex items-center gap-2 px-2 py-1 rounded-lg border-2 ${
         isCritical
           ? 'bg-red-500/30 border-red-500 animate-pulse'
           : isLow
@@ -58,9 +58,9 @@ const GameTimer = ({ onTimeout, disabled }) => {
           : 'bg-gray-800/80 border-gray-600'
       }`}
     >
-      <img src="/hacker_icon.jpeg" alt="" className="w-10 h-10 sm:w-14 sm:h-14" />
+      <img src="/hacker_icon.jpeg" alt="" className="w-7 h-7 sm:w-9 sm:h-9" />
       <span
-        className={`text-2xl sm:text-3xl tracking-widest ${
+        className={`text-lg sm:text-xl tracking-widest ${
           isCritical ? 'text-red-400' : isLow ? 'text-yellow-400' : 'text-white'
         }`}
         style={{ fontFamily: "'JetBrains Mono', sans-serif" }}

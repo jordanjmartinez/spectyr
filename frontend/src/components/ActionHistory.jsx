@@ -40,7 +40,7 @@ const ActionHistory = ({ history }) => {
         <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Post-Incident Review</h2>
         <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
           <img src="/ghost_analytics.png" alt="Ghost Analyzing" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
-          <p className="font-mono text-sm text-gray-400 text-center sm:text-left">&gt; Post-incident analysis will appear after each level.</p>
+          <p className="font-mono text-sm text-gray-400 text-center sm:text-left">&gt; Your post-incident review will appear after your first triage.</p>
         </div>
       </div>
     );
@@ -63,35 +63,32 @@ const ActionHistory = ({ history }) => {
                 onClick={() => review && toggleExpanded(index)}
               >
                 <div>
-                  {/* Tags and Details */}
-                  <div className="flex items-center gap-2 mb-3 flex-wrap">
-                    <span className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      item.correct
-                        ? "bg-emerald-500/20 text-emerald-400 border-2 border-emerald-500/30"
-                        : "bg-red-500/20 text-red-400 border-2 border-red-500/30"
-                    }`}>
-                      {item.correct ? (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      )}
-                    </span>
-                    <span className="text-xs sm:text-base text-gray-400">
-                      Your Call: <span className="text-white">{item.user_choice}</span>
-                      <span className="text-gray-600 mx-2">|</span>
-                      Correct: <span className="text-white">{item.true_category}</span>
-                    </span>
-                    {item.level && (<>
-                      <span className="text-gray-600 mx-2">|</span>
-                      <span className="text-gray-400 text-sm tracking-wider font-medium">
-                        Level {item.level}
-                      </span>
-                    </>)}
+                  {/* Level + Ghost */}
+                  <div className="flex items-center gap-2 mb-2">
+                    {item.level && (
+                      <>
+                        <img
+                          src={`/ghost_level_${item.level}.${item.level === 3 ? 'png' : 'PNG'}`}
+                          alt={`Level ${item.level}`}
+                          className="w-[72px] h-[72px] sm:w-24 sm:h-24 opacity-90"
+                        />
+                        <span className="text-gray-400 text-sm sm:text-base font-medium">Level {item.level}</span>
+                      </>
+                    )}
                   </div>
+
+                  {/* Classification result */}
+                  <p className="text-sm sm:text-base mb-3">
+                    <span className="text-gray-400">Classified as </span>
+                    <span className={item.correct ? 'text-emerald-400 font-medium' : 'text-red-400 font-medium'}>{item.user_choice}</span>
+                    {!item.correct && (
+                      <>
+                        <span className="text-gray-600 mx-2">|</span>
+                        <span className="text-gray-400">Correct: </span>
+                        <span className="text-emerald-400 font-medium">{item.true_category}</span>
+                      </>
+                    )}
+                  </p>
 
                   {/* MITRE ATT&CK Badge */}
                   {review?.mitre && (
@@ -100,8 +97,8 @@ const ActionHistory = ({ history }) => {
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center gap-2 bg-gray-800 text-gray-300 text-xs px-3 py-1.5 rounded-md border border-gray-600 hover:bg-gray-700 transition-colors"
-                      style={{ fontFamily: "'JetBrains Mono', sans-serif" }}
+                      className="inline-flex items-center gap-2 bg-gray-800 text-gray-300 text-xs sm:text-sm px-3 py-1.5 rounded-md border border-gray-600 hover:bg-gray-700 transition-colors"
+                      style={{ fontFamily: "'Inter', sans-serif" }}
                     >
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" fill="none"/>

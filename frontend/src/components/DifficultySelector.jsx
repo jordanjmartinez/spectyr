@@ -21,7 +21,7 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
       />
       <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-lg mx-4 shadow-2xl">
         <div className="text-center mb-6">
-          <h3 className="text-2xl font-bold text-white mb-2">Mission Briefing</h3>
+          <h3 className="text-2xl font-bold text-white mb-2">Select Mode</h3>
         </div>
 
         <div className="mb-6">
@@ -30,6 +30,7 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
             value={analystName}
             onChange={(e) => setAnalystName(e.target.value)}
             placeholder="Your Name"
+            maxLength={12}
             className="w-full px-4 py-2 text-sm font-medium rounded-md bg-[#21262d] border border-gray-600 text-gray-300 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition"
           />
         </div>
@@ -50,7 +51,7 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
             <div className="flex flex-col items-center mb-3">
               <h4 className="text-lg font-semibold text-white mb-2">Training</h4>
               <div className="h-24 sm:h-28 flex items-center justify-center">
-                <img src="/ghost-searching.png" alt="Training" className="w-20 h-24 sm:w-24 sm:h-28 object-contain" />
+                <img src="/ghost_training.PNG" alt="Training" className="w-24 h-28 sm:w-28 sm:h-32 object-contain" />
               </div>
             </div>
             <ul className="space-y-2 text-sm text-gray-400">

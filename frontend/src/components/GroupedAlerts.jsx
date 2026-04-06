@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from 'react';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { apiFetch } from '../api';
 import confetti from 'canvas-confetti';
 import CategorySelector from '../components/CategorySelector';
+import IncidentReportForm from '../components/IncidentReportForm';
 
 const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) => {
   const [groups, setGroups] = useState([]);
   const [expanded, setExpanded] = useState(null);
   const [expandedLogs, setExpandedLogs] = useState({});
+  const [alertStats, setAlertStats] = useState({ total_alerts: 0, closed_alerts: 0, open_alerts: 0, severity_breakdown: { low: 0, medium: 0, high: 0, critical: 0 } });
+  const [dashView, setDashView] = useState('total');
 
   const [disappearingId, setDisappearingId] = useState(null);
   const [showCategorySelector, setShowCategorySelector] = useState(false);
@@ -16,15 +20,21 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
   const [currentLevel, setCurrentLevel] = useState(null);
   const [gameStarted, setGameStarted] = useState(false);
   const [analystName, setAnalystName] = useState('');
+  const [reportScenario, setReportScenario] = useState(null);
+  const [showReportForm, setShowReportForm] = useState(false);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportedScenarios, setReportedScenarios] = useState(new Set());
 
   const fetchGroupedAlerts = () => {
     apiFetch('/api/grouped-alerts')
       .then(res => res.json())
       .then(data => {
+        const alerts = data.alerts || [];
+        if (data.stats) setAlertStats(data.stats);
         setGroups(prevGroups => {
           const prevMap = new Map(prevGroups.map(g => [g.scenario_id, g.selectedAction]));
 
-          return data.map(group => ({
+          return alerts.map(group => ({
             ...group,
             selectedAction: prevMap.get(group.scenario_id) || 'investigate'
           }));
@@ -75,8 +85,11 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
   useEffect(() => {
     if (isVisible && gameStarted && currentLevel?.completed) {
       confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+      let count = 1;
       const interval = setInterval(() => {
         confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 } });
+        count++;
+        if (count >= 3) clearInterval(interval);
       }, 5000);
       return () => clearInterval(interval);
     }
@@ -146,6 +159,39 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
     );
   };
 
+  const getHighestSeverity = (breakdown) => {
+    if (breakdown.critical > 0) return 'Critical';
+    if (breakdown.high > 0) return 'High';
+    if (breakdown.medium > 0) return 'Medium';
+    return 'Low';
+  };
+
+  const handleReportSubmit = async (formData) => {
+    setReportSubmitting(true);
+    try {
+      const res = await apiFetch('/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          scenario_id: reportScenario.scenario_id,
+          threat_category: reportScenario.analyst_category || '',
+          alert_id: reportScenario.alert_id || '',
+          skip_advance: true,
+        }),
+      });
+      if (res.ok) {
+        setReportedScenarios(prev => new Set(prev).add(reportScenario.scenario_id));
+        setShowReportForm(false);
+        setReportScenario(null);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setReportSubmitting(false);
+    }
+  };
+
   const handleCategorySelect = async (categoryId, categoryLabel) => {
     if (!categoryScenario) return;
 
@@ -203,28 +249,10 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
 
   return (
     <div className="space-y-4">
-      {/* Scenario Card - only show when a scenario is actually assigned */}
-      {gameStarted && currentLevel && !currentLevel.completed && currentLevel.ticket_title && (
-        <div className="bg-[#161b22] border border-gray-700 rounded-xl p-4 sm:p-5 mb-6 shadow">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-              <span className="text-gray-400 text-xs sm:text-sm tracking-wider font-medium">
-                Level {currentLevel.current_level}
-              </span>
-              <span className="text-gray-600 hidden sm:inline">|</span>
-              <span className="text-sm sm:text-lg font-semibold text-white">{currentLevel.ticket_title}</span>
-            </div>
-          </div>
-          <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
-            {currentLevel.storyline}
-          </p>
-        </div>
-      )}
-
       {/* Training Complete Banner */}
       {gameStarted && currentLevel && currentLevel.completed && (
         <div className="bg-[#161b22] border border-gray-700 rounded-xl p-4 sm:p-5 mb-6 shadow">
-          <h2 className="text-2xl font-semibold text-white mb-4 pb-4 border-b border-gray-700">Mission Complete{analystName ? `, ${analystName}` : ''}</h2>
+          <h2 className="text-2xl font-semibold text-white mb-4 pb-4 border-b border-gray-700">Simulation Complete{analystName ? `, ${analystName}` : ''}</h2>
           <div className="flex flex-col items-center text-center">
             <img
               src="/ghost-celebrate.png"
@@ -245,32 +273,198 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
       {!(gameStarted && currentLevel && currentLevel.completed) && (<>
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-2 sm:space-y-0">
         <h2 className="text-xl sm:text-2xl font-semibold text-white">
-          Incidents <span className="text-gray-500 font-normal">({filteredGroups.length})</span>
+          Alerts <span className="text-gray-500 font-normal">({filteredGroups.length})</span>
         </h2>
       </div>
 
+      {/* Scenario Card + Alert Dashboard side by side */}
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+          {/* Scenario Card */}
+          <div className="bg-[#161b22] border border-gray-700 rounded-xl p-4 sm:p-5 shadow">
+            <div className="flex items-center gap-3 mb-4">
+              <h2 className="text-xl sm:text-2xl font-semibold text-white">Alert Briefing</h2>
+              {gameStarted && currentLevel && <span className="text-gray-400 text-sm">Level {currentLevel.current_level}</span>}
+            </div>
+            {gameStarted && currentLevel && currentLevel.ticket_title ? (
+              <>
+                <p className="text-base sm:text-lg font-semibold text-white">{currentLevel.ticket_title}</p>
+                <div className="border-t border-gray-700 my-3"></div>
+                <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
+                  {currentLevel.storyline}
+                </p>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-4">
+                <img src="/ghost_scenario.PNG" alt="Ghost Scenario" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
+                <p className="font-mono text-sm text-gray-400 text-center sm:text-left">&gt; Start simulation to receive your first briefing.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Alert Dashboard */}
+          <div className="bg-[#161b22] border border-gray-700 rounded-xl p-4 sm:p-5 shadow">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl sm:text-2xl font-semibold text-white">
+              {dashView === 'total' ? 'Total Alerts' : 'Alert Types'}
+            </h2>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setDashView('total')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md border transition ${
+                  dashView === 'total'
+                    ? 'bg-[#30363d] text-white border-gray-600'
+                    : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
+                }`}
+              >
+                Total Alerts
+              </button>
+              <button
+                onClick={() => setDashView('types')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md border transition ${
+                  dashView === 'types'
+                    ? 'bg-[#30363d] text-white border-gray-600'
+                    : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
+                }`}
+              >
+                Alert Types
+              </button>
+            </div>
+          </div>
+
+          {dashView === 'total' ? (
+            <>
+              <div className="relative w-44 h-44 sm:w-56 sm:h-56 mx-auto border-dashed border-2 border-gray-700 rounded-full p-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={alertStats.total_alerts > 0
+                        ? [
+                            { name: 'Closed', value: alertStats.closed_alerts || 0.001 },
+                            { name: 'Open', value: alertStats.open_alerts || 0.001 }
+                          ]
+                        : [{ name: 'Empty', value: 1 }]
+                      }
+                      innerRadius="70%"
+                      outerRadius="100%"
+                      startAngle={90}
+                      endAngle={-270}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {alertStats.total_alerts > 0 ? (
+                        <>
+                          <Cell fill="#10b981" />
+                          <Cell fill="#374151" />
+                        </>
+                      ) : (
+                        <Cell fill="#374151" />
+                      )}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-5xl sm:text-7xl font-bold text-white">{alertStats.total_alerts}</span>
+                  <span className="text-sm sm:text-base text-gray-400">Alerts</span>
+                </div>
+              </div>
+              <div className="mt-5 flex justify-center gap-6 text-sm sm:text-base text-center">
+                <div>
+                  <p className="text-gray-300">Closed</p>
+                  <p className="text-white font-semibold">{alertStats.closed_alerts}</p>
+                </div>
+                <div>
+                  <p className="text-gray-300">Open</p>
+                  <p className="text-white font-semibold">{alertStats.open_alerts}</p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="relative w-44 h-44 sm:w-56 sm:h-56 mx-auto border-dashed border-2 border-gray-700 rounded-full p-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={(() => {
+                        const sb = alertStats.severity_breakdown;
+                        const segments = [
+                          { name: 'Low', value: sb.low, color: '#22c55e' },
+                          { name: 'Medium', value: sb.medium, color: '#eab308' },
+                          { name: 'High', value: sb.high, color: '#f97316' },
+                          { name: 'Critical', value: sb.critical, color: '#ef4444' },
+                        ].filter(s => s.value > 0);
+                        return segments.length > 0 ? segments : [{ name: 'None', value: 1, color: '#374151' }];
+                      })()}
+                      innerRadius="70%"
+                      outerRadius="100%"
+                      startAngle={90}
+                      endAngle={-270}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {(() => {
+                        const sb = alertStats.severity_breakdown;
+                        const segments = [
+                          { name: 'Low', value: sb.low, color: '#22c55e' },
+                          { name: 'Medium', value: sb.medium, color: '#eab308' },
+                          { name: 'High', value: sb.high, color: '#f97316' },
+                          { name: 'Critical', value: sb.critical, color: '#ef4444' },
+                        ].filter(s => s.value > 0);
+                        const colors = segments.length > 0 ? segments.map(s => s.color) : ['#374151'];
+                        return colors.map((color, i) => <Cell key={i} fill={color} />);
+                      })()}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-5xl sm:text-7xl font-bold text-white">
+                    {alertStats.severity_breakdown.critical + alertStats.severity_breakdown.high + alertStats.severity_breakdown.medium + alertStats.severity_breakdown.low}
+                  </span>
+                  <span className="text-sm sm:text-base text-gray-400">Alerts</span>
+                </div>
+              </div>
+              <div className="mt-5 flex justify-center gap-6 text-sm sm:text-base text-center">
+                {[
+                  { label: 'Low', value: alertStats.severity_breakdown.low, color: '#22c55e' },
+                  { label: 'Medium', value: alertStats.severity_breakdown.medium, color: '#eab308' },
+                  { label: 'High', value: alertStats.severity_breakdown.high, color: '#f97316' },
+                  { label: 'Critical', value: alertStats.severity_breakdown.critical, color: '#ef4444' },
+                ].map(item => (
+                  <div key={item.label} className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: item.color }} />
+                    <span className="text-gray-300">{item.label}</span>
+                    <span className="text-white font-semibold">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+        </div>
+
       {filteredGroups.length === 0 && (
-        <div className="bg-[#161b22] p-6 rounded-xl">
+        <div className="mt-6">
+          <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Notable Event</h2>
           <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
             <img src="/ghost_incident.png" alt="Ghost Analyzing" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
-            <p className="font-mono text-sm text-gray-400 text-center sm:text-left">&gt; Nothing flagged yet. Classify threats in Events to populate this view.</p>
+            <p className="font-mono text-sm text-gray-400 text-center sm:text-left">&gt; No alerts detected yet. Alerts will appear here automatically.</p>
           </div>
         </div>
       )}
 
+      <div className="divide-y divide-gray-700">
       {filteredGroups.map(group => {
         const groupKey = `${group.scenario_id}_${group.threat_pattern}`;
         return (
           <div
             key={groupKey}
-            className={`bg-[#161b22] border border-gray-700 p-3 sm:p-4 rounded-xl shadow transition-all duration-300 ease-in-out ${
+            className={`py-4 first:pt-0 last:pb-0 transition-all duration-300 ease-in-out ${
               disappearingId === group.scenario_id ? 'opacity-0 scale-95' : 'opacity-100'
             }`}
           >
-            <div className="flex justify-between items-start cursor-pointer" onClick={() => toggleGroup(groupKey)}>
+            <div className="flex justify-between items-start">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
-                  <h3 className="text-base sm:text-lg font-semibold text-white">🕵️ Notable Event</h3>
+                  <h2 className="text-xl sm:text-2xl font-semibold text-white">Notable Event</h2>
                   <span className="text-gray-400 text-sm">{group.log_count} {group.log_count === 1 ? 'Event' : 'Events'}</span>
                 </div>
                 {group.status === 'classified' && group.analyst_category && (
@@ -285,29 +479,14 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
                   </p>
                 )}
               </div>
-              <svg
-                className={`ml-4 w-5 h-5 text-gray-500 hover:text-white transition-transform duration-300 ease-in-out flex-shrink-0 mt-1 ${
-                  expanded === groupKey ? 'rotate-180' : 'rotate-0'
-                }`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
             </div>
 
-            <div
-              className={`grid transition-all duration-300 ease-in-out ${
-                expanded === groupKey ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-              }`}
-            >
-              <div className="overflow-hidden min-h-0">
-                <div className="mt-4 border-t border-gray-700 pt-4">
+                <div className="mt-4">
                   <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper">
                     <table className="w-full min-w-[700px] log-text text-left text-gray-300 border-separate border-spacing-0">
                       <thead>
                         <tr className="text-sm uppercase text-gray-400 tracking-wider">
+                          <th className="px-4 py-3 font-medium w-[100px] whitespace-nowrap">ID</th>
                           <th className="px-4 py-3 font-medium w-[100px] whitespace-nowrap">Time</th>
                           <th className="px-4 py-3 font-medium w-[140px] whitespace-nowrap">Event Type</th>
                           <th className="px-4 py-3 font-medium w-[110px] whitespace-nowrap">Src Type</th>
@@ -323,6 +502,9 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
                               className="hover:bg-white/5 transition-colors cursor-pointer border-b border-gray-700/50"
                               onClick={() => toggleLogRow(log.id)}
                             >
+                              <td className="px-4 py-4 whitespace-nowrap text-gray-400">
+                                {log.alert_id || '—'}
+                              </td>
                               <td className="px-4 py-4 whitespace-nowrap">
                                 <span className="text-gray-300">
                                   {new Date(log.timestamp).toLocaleTimeString('en-GB', {
@@ -350,7 +532,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
                               </td>
                             </tr>
                             <tr>
-                              <td colSpan="6" className="p-0">
+                              <td colSpan="7" className="p-0">
                                 <div
                                   className={`grid transition-all duration-300 ease-in-out ${
                                     expandedLogs[log.id] ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
@@ -371,7 +553,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
                   </div>
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-gray-800 flex items-center justify-end gap-3">
+                <div className="mt-4 flex items-center justify-end gap-3">
                   <button
                     disabled={submittingIds.has(group.scenario_id)}
                     onClick={() => {
@@ -384,17 +566,27 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
                         : 'bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600'
                     }`}
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                    </svg>
                     Choose Category
                   </button>
+                  <button
+                    disabled={reportedScenarios.has(group.scenario_id)}
+                    onClick={() => {
+                      setReportScenario(group);
+                      setShowReportForm(true);
+                    }}
+                    className={`inline-flex items-center gap-2 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 ${
+                      reportedScenarios.has(group.scenario_id)
+                        ? 'bg-[#161b22] text-gray-500 border-gray-700 cursor-not-allowed'
+                        : 'bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600'
+                    }`}
+                  >
+                    {reportedScenarios.has(group.scenario_id) ? 'Reported' : 'Write Report'}
+                  </button>
                 </div>
-              </div>
-            </div>
           </div>
         );
       })}
+      </div>
 
       {showCategorySelector && categoryScenario && (
         <CategorySelector
@@ -405,6 +597,31 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible }) 
             setCategoryScenario(null);
           }}
         />
+      )}
+
+      {showReportForm && reportScenario && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/70"
+            onClick={() => { setShowReportForm(false); setReportScenario(null); }}
+          />
+          <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-2xl mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Incident Report</h2>
+            <IncidentReportForm
+              initialData={{
+                title: currentLevel?.ticket_title || '',
+                description: currentLevel?.storyline || '',
+                severity: getHighestSeverity(reportScenario.severity_breakdown),
+                affected_hosts: [...new Set(reportScenario.logs.map(l => l.hostname).filter(Boolean))].join(', '),
+                scenario_id: reportScenario.scenario_id,
+              }}
+              onSubmit={handleReportSubmit}
+              onCancel={() => { setShowReportForm(false); setReportScenario(null); }}
+              submitting={reportSubmitting}
+              inline
+            />
+          </div>
+        </div>
       )}
       </>)}
 

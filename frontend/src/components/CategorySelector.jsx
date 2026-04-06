@@ -91,7 +91,7 @@ const CategorySelector = ({ onSelect, onCancel, scenarioInfo }) => {
               <button
                 key={category.id}
                 onClick={() => onSelect(category.id, category.label)}
-                className="flex flex-col items-center gap-2 p-4 rounded-lg border border-gray-700 bg-[#0d1117] hover:bg-[#21262d] hover:border-gray-500 transition-all duration-200 group"
+                className="flex flex-col items-center gap-2 p-4 rounded-lg border border-gray-600 bg-[#21262d] hover:bg-[#30363d] hover:border-gray-500 transition-all duration-200 group"
               >
                 <div className="text-gray-400 group-hover:text-white transition-colors">
                   {category.icon}
@@ -105,7 +105,7 @@ const CategorySelector = ({ onSelect, onCancel, scenarioInfo }) => {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-700 flex justify-end">
+        <div className="px-6 py-4 flex justify-end">
           <button
             onClick={onCancel}
             className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-gray-400 hover:text-white bg-[#21262d] hover:bg-[#30363d] border border-gray-600 rounded-md transition-colors"

@@ -30,7 +30,7 @@ const AnalystReportCard = ({ report }) => {
             </td>
           </tr>
           <tr className="border-t border-gray-700">
-            <td className="py-3 font-semibold text-gray-400">Accuracy</td>
+            <td className="py-3 font-semibold text-gray-300">Accuracy</td>
             <td className="py-3 text-center">
               <span className="text-white font-bold">{report?.accuracy || 0}%</span>
             </td>
