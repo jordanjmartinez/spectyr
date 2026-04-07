@@ -158,46 +158,46 @@ const Dashboard = () => {
           <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />
         </div>
         <div className="bg-[#161b22] rounded-xl p-3 sm:p-6">
-          <div className="grid grid-cols-[5.5rem_5.5rem_5.5rem_5.5rem_1fr] sm:grid-cols-[8rem_8rem_8rem_8rem_1fr] pl-2 sm:pl-8 border-b border-gray-700 mb-6 items-center">
+          <div className="flex gap-4 sm:gap-8 pl-2 sm:pl-8 border-b border-gray-700 mb-6">
             <button
               onClick={() => {
                 setView("grouped");
                 setIncidentBadge(0);
               }}
-              className={`justify-self-start py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 font-medium border-b-2 ${
+              className={`py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 font-medium ${
                 view === "grouped"
-                  ? "text-white border-white"
-                  : "text-gray-400 hover:text-white border-transparent"
+                  ? "text-white"
+                  : "text-gray-400 hover:text-white"
               }`}
             >
               Alerts <span className="text-gray-500 font-normal">({groupedAlertCount})</span>
             </button>
             <button
               onClick={() => setView("table")}
-              className={`justify-self-start py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 font-medium border-b-2 ${
+              className={`py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 font-medium ${
                 view === "table"
-                  ? "text-white border-white"
-                  : "text-gray-400 hover:text-white border-transparent"
+                  ? "text-white"
+                  : "text-gray-400 hover:text-white"
               }`}
             >
               Events <span className="text-gray-500 font-normal">({alertCount})</span>
             </button>
             <button
               onClick={() => setView("analytics")}
-              className={`justify-self-start py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 font-medium border-b-2 ${
+              className={`py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 font-medium ${
                 view === "analytics"
-                  ? "text-white border-white"
-                  : "text-gray-400 hover:text-white border-transparent"
+                  ? "text-white"
+                  : "text-gray-400 hover:text-white"
               }`}
             >
               Analytics
             </button>
             <button
               onClick={() => setView("reports")}
-              className={`justify-self-start py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 font-medium border-b-2 ${
+              className={`py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 font-medium ${
                 view === "reports"
-                  ? "text-white border-white"
-                  : "text-gray-400 hover:text-white border-transparent"
+                  ? "text-white"
+                  : "text-gray-400 hover:text-white"
               }`}
             >
               Reports <span className="text-gray-500 font-normal">({reportCount})</span>

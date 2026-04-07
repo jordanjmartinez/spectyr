@@ -53,9 +53,21 @@ code {
   font-size: 14px !important;
 }
 
+@media (min-width: 640px) {
+  .log-text {
+    font-size: 16px !important;
+  }
+}
+
 .log-detail {
   font-family: 'Inter', sans-serif !important;
-  font-size: 16px !important;
+  font-size: 14px !important;
+}
+
+@media (min-width: 640px) {
+  .log-detail {
+    font-size: 16px !important;
+  }
 }
 
 /* Custom scrollbar */
