@@ -344,8 +344,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                       data={(() => {
                         if (alertStats.total_alerts === 0) return [{ name: 'Empty', value: 1 }];
                         const segs = [];
-                        if (alertStats.closed_alerts > 0) segs.push({ name: 'Closed', value: alertStats.closed_alerts, color: '#9ca3af' });
-                        if (alertStats.open_alerts > 0) segs.push({ name: 'Open', value: alertStats.open_alerts, color: '#3b82f6' });
+                        if (alertStats.closed_alerts > 0) segs.push({ name: 'Closed', value: alertStats.closed_alerts, color: '#10b981' });
+                        if (alertStats.open_alerts > 0) segs.push({ name: 'Open', value: alertStats.open_alerts, color: '#6b7280' });
                         return segs;
                       })()}
                       innerRadius="70%"
@@ -358,8 +358,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                       {(() => {
                         if (alertStats.total_alerts === 0) return [<Cell key="empty" fill="#374151" />];
                         const cells = [];
-                        if (alertStats.closed_alerts > 0) cells.push(<Cell key="closed" fill="#9ca3af" />);
-                        if (alertStats.open_alerts > 0) cells.push(<Cell key="open" fill="#3b82f6" />);
+                        if (alertStats.closed_alerts > 0) cells.push(<Cell key="closed" fill="#10b981" />);
+                        if (alertStats.open_alerts > 0) cells.push(<Cell key="open" fill="#6b7280" />);
                         return cells;
                       })()}
                     </Pie>
@@ -372,12 +372,12 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
               </div>
               <div className="flex flex-col gap-3 text-sm sm:text-base w-32 sm:w-40">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm bg-gray-400" />
+                  <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm bg-emerald-500" />
                   <span className="text-gray-300">Closed</span>
                   <span className="text-white font-semibold">{alertStats.closed_alerts}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm bg-blue-500" />
+                  <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm bg-gray-500" />
                   <span className="text-gray-300">Open</span>
                   <span className="text-white font-semibold">{alertStats.open_alerts}</span>
                 </div>
