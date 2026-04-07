@@ -314,17 +314,17 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
           <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; No matching logs for "{searchTerm}"</p>
         </div>
       ) : (
-        <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper">
-          <table className="w-full min-w-[800px] log-text text-left text-gray-300 border-separate border-spacing-0">
+        <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper" style={{ minHeight: `${(alertsPerPage * 49) + 48}px` }}>
+          <table className="w-full min-w-[900px] sm:min-w-[1000px] log-text text-left text-gray-300 border-separate border-spacing-0 table-fixed">
             <thead>
-              <tr className="text-sm uppercase text-gray-400 tracking-wider">
-                <th className="px-4 py-3 font-medium w-10"></th>
-                <th className="px-4 py-3 font-medium w-[100px] whitespace-nowrap">Time</th>
-                <th className="px-4 py-3 font-medium w-[140px] whitespace-nowrap">Event Type</th>
-                <th className="px-4 py-3 font-medium w-[110px] whitespace-nowrap">Src Type</th>
-                <th className="px-4 py-3 font-medium w-[120px] whitespace-nowrap">Src IP</th>
-                <th className="px-4 py-3 font-medium w-[120px] whitespace-nowrap">Dst IP</th>
-                <th className="px-4 py-3 font-medium whitespace-nowrap">Message</th>
+              <tr className="text-xs sm:text-sm uppercase text-gray-400 tracking-wider">
+                <th className="px-2 sm:px-4 py-3 font-medium w-10"></th>
+                <th className="px-2 sm:px-4 py-3 font-medium w-[100px] sm:w-[130px] whitespace-nowrap">Time</th>
+                <th className="px-2 sm:px-4 py-3 font-medium w-[160px] sm:w-[240px] whitespace-nowrap">Event Type</th>
+                <th className="px-2 sm:px-4 py-3 font-medium w-[110px] sm:w-[170px] whitespace-nowrap">Src Type</th>
+                <th className="px-2 sm:px-4 py-3 font-medium w-[120px] sm:w-[160px] whitespace-nowrap">Src IP</th>
+                <th className="px-2 sm:px-4 py-3 font-medium w-[120px] sm:w-[160px] whitespace-nowrap">Dst IP</th>
+                <th className="px-2 sm:px-4 py-3 font-medium w-[240px] sm:w-auto whitespace-nowrap">Message</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
@@ -342,7 +342,7 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
                       className="hover:bg-white/5 transition-colors cursor-pointer border-b border-gray-700/50"
                       onClick={() => toggleRow(alert.id)}
                     >
-                      <td className="px-4 py-4">
+                      <td className="px-2 sm:px-4 py-4">
                         <svg
                           className={`w-5 h-5 text-gray-500 hover:text-white transition-transform duration-300 ease-in-out ${
                             expandedRows[alert.id] ? 'rotate-180' : 'rotate-0'
@@ -354,26 +354,26 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap border-l-4 border-l-transparent">
+                      <td className="px-2 sm:px-4 py-4 whitespace-nowrap border-l-4 border-l-transparent">
                         <span className="text-gray-300">
                           {alert.timestamp ? new Date(alert.timestamp).toLocaleTimeString('en-GB', {
                             hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
                           }) : '—'}
                         </span>
                       </td>
-                      <td className="px-4 py-4 font-medium text-gray-200 whitespace-nowrap" title={alert.event_type || '—'}>
+                      <td className="px-2 sm:px-4 py-4 font-medium text-gray-200 whitespace-nowrap" title={alert.event_type || '—'}>
                         {alert.event_type || '—'}
                       </td>
-                      <td className="px-4 py-4 text-gray-200">
+                      <td className="px-2 sm:px-4 py-4 text-gray-200 sm:whitespace-nowrap">
                         {alert.source_type || alert.detected_by || 'Unknown'}
                       </td>
-                      <td className="px-4 py-4 text-gray-200">
+                      <td className="px-2 sm:px-4 py-4 text-gray-200 sm:whitespace-nowrap">
                         {alert.source_ip || '—'}
                       </td>
-                      <td className="px-4 py-4 text-gray-200" title={alert.destination_ip || '—'}>
+                      <td className="px-2 sm:px-4 py-4 text-gray-200 sm:whitespace-nowrap">
                         {alert.destination_ip || '—'}
                       </td>
-                      <td className="px-4 py-4 text-gray-200">
+                      <td className="px-2 sm:px-4 py-4 text-gray-200 truncate" title={alert.message || '—'}>
                         {alert.message || '—'}
                       </td>
                     </tr>

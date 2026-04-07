@@ -170,7 +170,7 @@ const Dashboard = () => {
                   : "text-gray-400 hover:text-white"
               }`}
             >
-              Alerts <span className="text-gray-500 font-normal">({groupedAlertCount})</span>
+              Alerts <span className="text-gray-500 font-normal font-mono">({groupedAlertCount})</span>
             </button>
             <button
               onClick={() => setView("table")}
@@ -180,7 +180,7 @@ const Dashboard = () => {
                   : "text-gray-400 hover:text-white"
               }`}
             >
-              Events <span className="text-gray-500 font-normal">({alertCount})</span>
+              Events <span className="text-gray-500 font-normal font-mono">({alertCount})</span>
             </button>
             <button
               onClick={() => setView("analytics")}
@@ -200,7 +200,7 @@ const Dashboard = () => {
                   : "text-gray-400 hover:text-white"
               }`}
             >
-              Reports <span className="text-gray-500 font-normal">({reportCount})</span>
+              Reports <span className="text-gray-500 font-normal font-mono">({reportCount})</span>
             </button>
           </div>
 
@@ -211,7 +211,7 @@ const Dashboard = () => {
           <div className={view === "table" ? "block" : "hidden"}>
             <div className="flex flex-row items-center justify-between mb-3 gap-2 sm:gap-3">
               <h2 className="text-xl sm:text-2xl font-semibold text-white whitespace-nowrap">
-                Events <span className="text-gray-500 font-normal">({alertCount})</span>
+                Events <span className="text-gray-500 font-normal font-mono">({alertCount})</span>
               </h2>
               <div className="flex items-center gap-2 sm:gap-4">
                 <button

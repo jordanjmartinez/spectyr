@@ -130,7 +130,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
             value={formData.affected_hosts}
             onChange={handleChange}
             maxLength={100}
-            className="w-full bg-transparent text-sm sm:text-base text-white placeholder-gray-600 border-b border-gray-700 focus:border-gray-500 outline-none pb-2 transition-colors font-sans"
+            className="w-full bg-transparent text-sm sm:text-base text-white placeholder-gray-600 border-b border-gray-700 focus:border-gray-500 outline-none pb-2 transition-colors"
           />
         </div>
 

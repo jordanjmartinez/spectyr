@@ -243,23 +243,23 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
     <div className="space-y-4">
       <div className="mb-4">
         <h2 className="text-xl sm:text-2xl font-semibold text-white">
-          Alerts <span className="text-gray-500 font-normal">({filteredGroups.length})</span>
+          Alerts <span className="text-gray-500 font-normal font-mono">({filteredGroups.length})</span>
         </h2>
-        <p className="text-sm sm:text-base text-gray-400 mt-1 sm:mt-4 sm:mb-4 leading-relaxed">Review and classify incoming security events. Related alerts will be grouped into scenarios as threats are detected.</p>
+        <p className="text-sm sm:text-base text-gray-300 mt-1 sm:mt-4 sm:mb-4 leading-relaxed">Review and classify incoming security events. Related alerts will be grouped into scenarios as threats are detected.</p>
       </div>
 
       {/* Scenario Card + Alert Dashboard side by side */}
         <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
           {/* Scenario Card */}
           <div className="flex flex-col">
-            <div className="flex items-center gap-3 mb-4">
-              <h2 className="text-xl sm:text-2xl font-semibold text-white">Alert Scenario</h2>
-              {gameStarted && currentLevel && <span className="text-gray-400 text-sm">Level {currentLevel.current_level}</span>}
-            </div>
+            <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Alert Scenario</h2>
             <div className="bg-[#161b22] border border-gray-700 rounded-2xl p-4 sm:p-6 shadow-md flex-1">
             {gameStarted && currentLevel && currentLevel.ticket_title ? (
               <>
-                <p className="text-base sm:text-lg font-semibold text-white">{currentLevel.ticket_title}</p>
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-base sm:text-lg font-semibold text-white">{currentLevel.ticket_title}</p>
+                  {!currentLevel.completed && <span className="w-9 h-9 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-sm sm:text-lg font-bold border-4 border-gray-300 bg-gray-700 text-white flex-shrink-0">{currentLevel.current_level}</span>}
+                </div>
                 <div className="border-t border-gray-700 my-3"></div>
                 <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
                   {currentLevel.storyline}
@@ -431,6 +431,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
               { name: 'Win Security', key: 'Windows Security', color: '#ef4444' },
               { name: 'Proxy', color: '#ec4899' },
               { name: 'DNS', color: '#14b8a6' },
+              { name: 'Azure AD', color: '#3b82f6' },
             ];
             const sb = alertStats.source_breakdown || {};
             const segments = SOURCE_TYPES.map(s => ({ ...s, value: sb[s.key || s.name] || 0 }));
@@ -460,7 +461,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                   <span className="text-xs sm:text-base text-gray-400">Events</span>
                 </div>
               </div>
-              <div className="flex flex-col gap-2 text-sm sm:text-base w-32 sm:w-40">
+              <div className="flex flex-col gap-1 sm:gap-2 text-xs sm:text-base w-32 sm:w-40">
                 {segments.map(item => (
                   <div key={item.name} className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
@@ -518,17 +519,17 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
 
                 <div className="mt-4">
                   <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper">
-                    <table className="w-full min-w-[700px] log-text text-left text-gray-300 border-separate border-spacing-0">
+                    <table className="w-full min-w-[1000px] sm:min-w-[1100px] table-fixed log-text text-left text-gray-300 border-separate border-spacing-0">
                       <thead>
-                        <tr className="text-sm uppercase text-gray-400 tracking-wider">
+                        <tr className="text-xs sm:text-sm uppercase text-gray-400 tracking-wider">
                           <th className="w-10 px-2 py-3"></th>
-                          <th className="px-4 py-3 font-medium w-[100px] whitespace-nowrap">ID</th>
-                          <th className="px-4 py-3 font-medium w-[100px] whitespace-nowrap">Time</th>
-                          <th className="px-4 py-3 font-medium w-[140px] whitespace-nowrap">Event Type</th>
-                          <th className="px-4 py-3 font-medium w-[110px] whitespace-nowrap">Src Type</th>
-                          <th className="px-4 py-3 font-medium w-[120px] whitespace-nowrap">Src IP</th>
-                          <th className="px-4 py-3 font-medium w-[120px] whitespace-nowrap">Dst IP</th>
-                          <th className="px-4 py-3 font-medium whitespace-nowrap">Message</th>
+                          <th className="px-2 sm:px-4 py-3 font-medium w-[100px] whitespace-nowrap">Alert ID</th>
+                          <th className="px-2 sm:px-4 py-3 font-medium w-[100px] sm:w-[130px] whitespace-nowrap">Time</th>
+                          <th className="px-2 sm:px-4 py-3 font-medium w-[160px] sm:w-[240px] whitespace-nowrap">Event Type</th>
+                          <th className="px-2 sm:px-4 py-3 font-medium w-[110px] sm:w-[170px] whitespace-nowrap">Src Type</th>
+                          <th className="px-2 sm:px-4 py-3 font-medium w-[120px] sm:w-[160px] whitespace-nowrap">Src IP</th>
+                          <th className="px-2 sm:px-4 py-3 font-medium w-[120px] sm:w-[160px] whitespace-nowrap">Dst IP</th>
+                          <th className="px-2 sm:px-4 py-3 font-medium w-[240px] sm:w-auto whitespace-nowrap">Message</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-700">
@@ -550,10 +551,10 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                 </svg>
                               </td>
-                              <td className="px-4 py-4 whitespace-nowrap text-gray-400">
+                              <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-gray-400">
                                 {log.alert_id || '—'}
                               </td>
-                              <td className="px-4 py-4 whitespace-nowrap">
+                              <td className="px-2 sm:px-4 py-4 whitespace-nowrap">
                                 <span className="text-gray-300">
                                   {new Date(log.timestamp).toLocaleTimeString('en-GB', {
                                     hour12: false,
@@ -563,19 +564,19 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                   })}
                                 </span>
                               </td>
-                              <td className="px-4 py-4 font-medium text-gray-200">
+                              <td className="px-2 sm:px-4 py-4 font-medium text-gray-200 sm:whitespace-nowrap">
                                 {log.event_type}
                               </td>
-                              <td className="px-4 py-4 text-gray-200">
+                              <td className="px-2 sm:px-4 py-4 text-gray-200 sm:whitespace-nowrap">
                                 {log.source_type || 'Unknown'}
                               </td>
-                              <td className="px-4 py-4 text-gray-200">
+                              <td className="px-2 sm:px-4 py-4 text-gray-200 sm:whitespace-nowrap">
                                 {log.source_ip || '—'}
                               </td>
-                              <td className="px-4 py-4 text-gray-200">
+                              <td className="px-2 sm:px-4 py-4 text-gray-200 sm:whitespace-nowrap">
                                 {log.destination_ip || '—'}
                               </td>
-                              <td className="px-4 py-4 text-gray-200 truncate max-w-[300px]" title={log.message || '—'}>
+                              <td className="px-2 sm:px-4 py-4 text-gray-200 truncate" title={log.message || '—'}>
                                 {log.message || '—'}
                               </td>
                             </tr>
@@ -628,7 +629,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                         : 'bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600'
                     }`}
                   >
-                    {reportedScenarios.has(group.scenario_id) ? 'Reported' : 'Write Report'}
+                    {reportedScenarios.has(group.scenario_id) ? 'Reported' : 'Create Report'}
                   </button>
                 </div>
           </div>
