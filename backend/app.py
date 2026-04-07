@@ -2464,7 +2464,7 @@ def resume_generation():
 def get_grouped_alerts():
     s = g.session
     if not os.path.exists(s["paths"]["generated_logs"]):
-        return jsonify({"alerts": [], "stats": {"total_alerts": 0, "closed_alerts": 0, "open_alerts": 0, "severity_breakdown": {"low": 0, "medium": 0, "high": 0, "critical": 0}}})
+        return jsonify({"alerts": [], "stats": {"total_alerts": 0, "closed_alerts": 0, "open_alerts": 0, "severity_breakdown": {"low": 0, "medium": 0, "high": 0, "critical": 0}, "source_breakdown": {}}})
 
     with open(s["paths"]["generated_logs"], "r") as f:
         logs = [json.loads(line) for line in f if line.strip()]
@@ -2520,10 +2520,14 @@ def get_grouped_alerts():
     closed_alerts = sum(1 for grp in result if grp["status"] in ["classified", "resolved"])
     open_alerts = total_alerts - closed_alerts
     severity_totals = {"low": 0, "medium": 0, "high": 0, "critical": 0}
+    source_totals = {}
     for grp in result:
         gs = grp["group_severity"].lower()
         if gs in severity_totals:
             severity_totals[gs] += 1
+        for log in grp["logs"]:
+            src = log.get("source_type") or "Unknown"
+            source_totals[src] = source_totals.get(src, 0) + 1
 
     return jsonify({
         "alerts": result,
@@ -2531,7 +2535,8 @@ def get_grouped_alerts():
             "total_alerts": total_alerts,
             "closed_alerts": closed_alerts,
             "open_alerts": open_alerts,
-            "severity_breakdown": severity_totals
+            "severity_breakdown": severity_totals,
+            "source_breakdown": source_totals
         }
     })
 

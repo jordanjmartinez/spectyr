@@ -9,7 +9,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
   const [groups, setGroups] = useState([]);
   const [expanded, setExpanded] = useState(null);
   const [expandedLogs, setExpandedLogs] = useState({});
-  const [alertStats, setAlertStats] = useState({ total_alerts: 0, closed_alerts: 0, open_alerts: 0, severity_breakdown: { low: 0, medium: 0, high: 0, critical: 0 } });
+  const [alertStats, setAlertStats] = useState({ total_alerts: 0, closed_alerts: 0, open_alerts: 0, severity_breakdown: { low: 0, medium: 0, high: 0, critical: 0 }, source_breakdown: {} });
   const [dashView, setDashView] = useState('total');
 
   const [disappearingId, setDisappearingId] = useState(null);
@@ -244,21 +244,19 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
       {/* Training Complete Banner */}
       {gameStarted && currentLevel && currentLevel.completed && (<>
         <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Simulation Complete{analystName ? `, ${analystName} 🏆` : ''}</h2>
-        <div className="bg-[#161b22] border border-gray-700 rounded-xl p-4 sm:p-5 mb-6 shadow">
-          <div className="flex flex-col items-center text-center">
-            <img
-              src="/ghost-celebrate.png"
-              alt="Ghost Celebrating"
-              className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3"
-            />
-            <p className="font-mono text-sm text-gray-400 mb-4">&gt; You've completed your simulation. The threats never stood a chance.</p>
-            <button
-              onClick={onReset}
-              className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600"
-            >
-              Reset Simulation
-            </button>
-          </div>
+        <div className="flex flex-col items-center text-center">
+          <img
+            src="/ghost-celebrate.png"
+            alt="Ghost Celebrating"
+            className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3"
+          />
+          <p className="font-mono text-sm text-gray-400 mb-4">&gt; You've completed your simulation. The threats never stood a chance.</p>
+          <button
+            onClick={onReset}
+            className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600"
+          >
+            Reset Simulation
+          </button>
         </div>
       </>)}
 
@@ -299,7 +297,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
           {/* Alert Dashboard */}
           <div>
           <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">
-            {dashView === 'total' ? 'Total Alerts' : 'Alert Types'}
+            {dashView === 'total' ? 'Total Alerts' : dashView === 'types' ? 'Alert Types' : 'Alert Source'}
           </h2>
 
           <div className="bg-[#161b22] border border-gray-700 rounded-2xl p-4 sm:p-6 shadow-md ">
@@ -325,21 +323,31 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
               >
                 Alert Types
               </button>
+              <button
+                onClick={() => setDashView('source')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md border transition ${
+                  dashView === 'source'
+                    ? 'bg-[#30363d] text-white border-gray-600'
+                    : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
+                }`}
+              >
+                Alert Source
+              </button>
             </div>
           </div>
-          {dashView === 'total' ? (
+          {dashView === 'total' && (
             <div className="flex items-center justify-center gap-6">
               <div className="relative w-36 h-36 sm:w-56 sm:h-56 flex-shrink-0 border-dashed border-2 border-gray-700 rounded-full p-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={alertStats.total_alerts > 0
-                        ? [
-                            { name: 'Closed', value: alertStats.closed_alerts || 0.001 },
-                            { name: 'Open', value: alertStats.open_alerts || 0.001 }
-                          ]
-                        : [{ name: 'Empty', value: 1 }]
-                      }
+                      data={(() => {
+                        if (alertStats.total_alerts === 0) return [{ name: 'Empty', value: 1 }];
+                        const segs = [];
+                        if (alertStats.closed_alerts > 0) segs.push({ name: 'Closed', value: alertStats.closed_alerts, color: '#9ca3af' });
+                        if (alertStats.open_alerts > 0) segs.push({ name: 'Open', value: alertStats.open_alerts, color: '#3b82f6' });
+                        return segs;
+                      })()}
                       innerRadius="70%"
                       outerRadius="100%"
                       startAngle={90}
@@ -347,14 +355,13 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                       dataKey="value"
                       stroke="none"
                     >
-                      {alertStats.total_alerts > 0 ? (
-                        <>
-                          <Cell fill="#10b981" />
-                          <Cell fill="#374151" />
-                        </>
-                      ) : (
-                        <Cell fill="#374151" />
-                      )}
+                      {(() => {
+                        if (alertStats.total_alerts === 0) return [<Cell key="empty" fill="#374151" />];
+                        const cells = [];
+                        if (alertStats.closed_alerts > 0) cells.push(<Cell key="closed" fill="#9ca3af" />);
+                        if (alertStats.open_alerts > 0) cells.push(<Cell key="open" fill="#3b82f6" />);
+                        return cells;
+                      })()}
                     </Pie>
                   </PieChart>
                 </ResponsiveContainer>
@@ -363,18 +370,21 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                   <span className="text-xs sm:text-base text-gray-400">Alerts</span>
                 </div>
               </div>
-              <div className="flex flex-col gap-3 text-sm sm:text-base w-24 sm:w-28">
+              <div className="flex flex-col gap-3 text-sm sm:text-base w-32 sm:w-40">
                 <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm bg-gray-400" />
                   <span className="text-gray-300">Closed</span>
                   <span className="text-white font-semibold">{alertStats.closed_alerts}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm bg-blue-500" />
                   <span className="text-gray-300">Open</span>
                   <span className="text-white font-semibold">{alertStats.open_alerts}</span>
                 </div>
               </div>
             </div>
-          ) : (
+          )}
+          {dashView === 'types' && (
             <div className="flex items-center justify-center gap-6">
               <div className="relative w-36 h-36 sm:w-56 sm:h-56 flex-shrink-0 border-dashed border-2 border-gray-700 rounded-full p-2">
                 <ResponsiveContainer width="100%" height="100%">
@@ -418,7 +428,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                   <span className="text-xs sm:text-base text-gray-400">Alerts</span>
                 </div>
               </div>
-              <div className="flex flex-col gap-2 text-sm sm:text-base w-24 sm:w-28">
+              <div className="flex flex-col gap-2 text-sm sm:text-base w-32 sm:w-40">
                 {[
                   { label: 'Low', value: alertStats.severity_breakdown.low, color: '#22c55e' },
                   { label: 'Medium', value: alertStats.severity_breakdown.medium, color: '#eab308' },
@@ -434,6 +444,54 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
               </div>
             </div>
           )}
+          {dashView === 'source' && (() => {
+            const SOURCE_TYPES = [
+              { name: 'Sysmon', color: '#6366f1' },
+              { name: 'Firewall', color: '#f59e0b' },
+              { name: 'Win Security', key: 'Windows Security', color: '#ef4444' },
+              { name: 'Proxy', color: '#ec4899' },
+              { name: 'DNS', color: '#14b8a6' },
+            ];
+            const sb = alertStats.source_breakdown || {};
+            const segments = SOURCE_TYPES.map(s => ({ ...s, value: sb[s.key || s.name] || 0 }));
+            const total = segments.reduce((sum, s) => sum + s.value, 0);
+            return (
+            <div className="flex items-center justify-center gap-6">
+              <div className="relative w-36 h-36 sm:w-56 sm:h-56 flex-shrink-0 border-dashed border-2 border-gray-700 rounded-full p-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={total > 0 ? segments.filter(s => s.value > 0) : [{ name: 'None', value: 1, color: '#374151' }]}
+                      innerRadius="70%"
+                      outerRadius="100%"
+                      startAngle={90}
+                      endAngle={-270}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {(total > 0 ? segments.filter(s => s.value > 0).map(s => s.color) : ['#374151']).map((color, i) => (
+                        <Cell key={i} fill={color} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-4xl sm:text-7xl font-bold text-white">{total}</span>
+                  <span className="text-xs sm:text-base text-gray-400">Events</span>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 text-sm sm:text-base w-32 sm:w-40">
+                {segments.map(item => (
+                  <div key={item.name} className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
+                    <span className="text-gray-300 truncate">{item.name}</span>
+                    <span className="text-white font-semibold">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            );
+          })()}
           </div>
         </div>
         </div>
@@ -483,6 +541,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                     <table className="w-full min-w-[700px] log-text text-left text-gray-300 border-separate border-spacing-0">
                       <thead>
                         <tr className="text-sm uppercase text-gray-400 tracking-wider">
+                          <th className="w-10 px-2 py-3"></th>
                           <th className="px-4 py-3 font-medium w-[100px] whitespace-nowrap">ID</th>
                           <th className="px-4 py-3 font-medium w-[100px] whitespace-nowrap">Time</th>
                           <th className="px-4 py-3 font-medium w-[140px] whitespace-nowrap">Event Type</th>
@@ -499,6 +558,18 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                               className="hover:bg-white/5 transition-colors cursor-pointer border-b border-gray-700/50"
                               onClick={() => toggleLogRow(log.id)}
                             >
+                              <td className="px-2 py-4">
+                                <svg
+                                  className={`w-5 h-5 text-gray-500 hover:text-white transition-transform duration-300 ease-in-out ${
+                                    expandedLogs[log.id] ? 'rotate-180' : 'rotate-0'
+                                  }`}
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </td>
                               <td className="px-4 py-4 whitespace-nowrap text-gray-400">
                                 {log.alert_id || '—'}
                               </td>
@@ -529,7 +600,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                               </td>
                             </tr>
                             <tr>
-                              <td colSpan="7" className="p-0">
+                              <td colSpan="8" className="p-0">
                                 <div
                                   className={`grid transition-all duration-300 ease-in-out ${
                                     expandedLogs[log.id] ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
@@ -571,7 +642,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                       setReportScenario(group);
                       setShowReportForm(true);
                     }}
-                    className={`inline-flex items-center gap-2 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 ${
+                    className={`inline-flex items-center justify-center gap-2 min-w-[6.5rem] sm:min-w-[7.5rem] px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 ${
                       reportedScenarios.has(group.scenario_id)
                         ? 'bg-[#161b22] text-gray-500 border-gray-700 cursor-not-allowed'
                         : 'bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600'
