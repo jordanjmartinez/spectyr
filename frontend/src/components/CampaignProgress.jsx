@@ -1,9 +1,33 @@
 import React from "react";
 
-const CampaignProgress = ({ levelData }) => {
+const CampaignProgress = ({ levelData, onReset, analystName }) => {
   if (!levelData) return null;
 
   const { completed, current_level, total_levels, ticket_title, level_results = {} } = levelData;
+
+  if (completed) {
+    return (
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl sm:text-2xl font-semibold text-white">Simulation Complete 🏆</h2>
+          <button
+            onClick={onReset}
+            className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600"
+          >
+            Reset Simulation
+          </button>
+        </div>
+        <div className="flex flex-col items-center text-center">
+          <img
+            src="/ghost-celebrate.png"
+            alt="Ghost Celebrating"
+            className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3"
+          />
+          <p className="font-mono text-xs sm:text-sm text-gray-400">&gt; Well done{analystName ? `, ${analystName}` : ''}. You've completed your simulation. The threats never stood a chance.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

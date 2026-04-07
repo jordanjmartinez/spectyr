@@ -77,7 +77,7 @@ const PerformanceGrade = ({ report }) => {
       </div>
 
       {/* Ghost Feedback */}
-      <p className="mt-4 text-center text-sm text-gray-400 font-mono">
+      <p className="mt-4 text-center text-xs sm:text-sm text-gray-400 font-mono">
         {feedback}
       </p>
 

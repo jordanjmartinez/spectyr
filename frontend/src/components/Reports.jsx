@@ -319,7 +319,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
         <div className="bg-[#161b22] p-6 rounded-xl">
           <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
             <img src="/ghost-reports.png" alt="Ghost" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
-            <p className="font-mono text-sm text-gray-400 text-center sm:text-left">&gt; Write a report from Alerts to document your findings.</p>
+            <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; Write a report from Alerts to document your findings.</p>
           </div>
         </div>
       ) : (

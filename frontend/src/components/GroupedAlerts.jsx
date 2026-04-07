@@ -241,26 +241,6 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
 
   return (
     <div className="space-y-4">
-      {/* Training Complete Banner */}
-      {gameStarted && currentLevel && currentLevel.completed && (<>
-        <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Simulation Complete{analystName ? `, ${analystName} 🏆` : ''}</h2>
-        <div className="flex flex-col items-center text-center">
-          <img
-            src="/ghost-celebrate.png"
-            alt="Ghost Celebrating"
-            className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3"
-          />
-          <p className="font-mono text-sm text-gray-400 mb-4">&gt; You've completed your simulation. The threats never stood a chance.</p>
-          <button
-            onClick={onReset}
-            className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600"
-          >
-            Reset Simulation
-          </button>
-        </div>
-      </>)}
-
-      {!(gameStarted && currentLevel && currentLevel.completed) && (<>
       <div className="mb-4">
         <h2 className="text-xl sm:text-2xl font-semibold text-white">
           Alerts <span className="text-gray-500 font-normal">({filteredGroups.length})</span>
@@ -288,7 +268,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
             ) : (
               <div className="flex flex-col items-center justify-center py-4">
                 <img src="/ghost_scenario.PNG" alt="Ghost Scenario" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
-                <p className="font-mono text-sm text-gray-400 text-center sm:text-left">&gt; Start simulation to receive your first briefing.</p>
+                <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; Start simulation to receive your first briefing.</p>
               </div>
             )}
             </div>
@@ -344,7 +324,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                       data={(() => {
                         if (alertStats.total_alerts === 0) return [{ name: 'Empty', value: 1 }];
                         const segs = [];
-                        if (alertStats.closed_alerts > 0) segs.push({ name: 'Closed', value: alertStats.closed_alerts, color: '#10b981' });
+                        if (alertStats.closed_alerts > 0) segs.push({ name: 'Closed', value: alertStats.closed_alerts, color: '#22c55e' });
                         if (alertStats.open_alerts > 0) segs.push({ name: 'Open', value: alertStats.open_alerts, color: '#6b7280' });
                         return segs;
                       })()}
@@ -358,7 +338,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                       {(() => {
                         if (alertStats.total_alerts === 0) return [<Cell key="empty" fill="#374151" />];
                         const cells = [];
-                        if (alertStats.closed_alerts > 0) cells.push(<Cell key="closed" fill="#10b981" />);
+                        if (alertStats.closed_alerts > 0) cells.push(<Cell key="closed" fill="#22c55e" />);
                         if (alertStats.open_alerts > 0) cells.push(<Cell key="open" fill="#6b7280" />);
                         return cells;
                       })()}
@@ -372,7 +352,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
               </div>
               <div className="flex flex-col gap-3 text-sm sm:text-base w-32 sm:w-40">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm bg-emerald-500" />
+                  <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm bg-green-500" />
                   <span className="text-gray-300">Closed</span>
                   <span className="text-white font-semibold">{alertStats.closed_alerts}</span>
                 </div>
@@ -501,7 +481,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
           <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Notable Event</h2>
           <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
             <img src="/ghost_incident.png" alt="Ghost Analyzing" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
-            <p className="font-mono text-sm text-gray-400 text-center sm:text-left">&gt; No alerts detected yet. Alerts will appear here automatically.</p>
+            <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; No alerts detected yet. Alerts will appear here automatically.</p>
           </div>
         </div>
       )}
@@ -691,7 +671,6 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
           </div>
         </div>
       )}
-      </>)}
 
     </div>
   );

@@ -5,7 +5,7 @@ import PerformanceGrade from './PerformanceGrade';
 import CampaignProgress from './CampaignProgress';
 import ActionHistory from './ActionHistory';
 
-const Analytics = () => {
+const Analytics = ({ onReset, analystName }) => {
   const [report, setReport] = useState(null);
   const [levelData, setLevelData] = useState(null);
   const [actionHistory, setActionHistory] = useState([]);
@@ -46,7 +46,7 @@ const Analytics = () => {
   return (
     <div className="space-y-6">
       {/* Campaign Progress - Full Width */}
-      <CampaignProgress levelData={levelData} />
+      <CampaignProgress levelData={levelData} onReset={onReset} analystName={analystName} />
 
       {/* Report Card and Performance Grade */}
       <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
