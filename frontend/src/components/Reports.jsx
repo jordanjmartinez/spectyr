@@ -26,6 +26,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
   const [filterClosed, setFilterClosed] = useState(false);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [, setTick] = useState(0);
+  const [fadingOutId, setFadingOutId] = useState(null);
 
 
   const fetchReports = async () => {
@@ -83,7 +84,13 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
         body: JSON.stringify(updated),
       });
       if (res.ok) {
+        // Check if the row would be filtered out after status change
+        const wouldHide = (newStatus === 'Closed' && !filterClosed) || (newStatus === 'Open' && !filterOpen);
         setReports(prev => prev.map(r => r.id === report.id ? updated : r));
+        if (wouldHide) {
+          setFadingOutId(report.id);
+          setTimeout(() => setFadingOutId(null), 1200);
+        }
       } else {
         console.error("Failed to update status");
       }
@@ -209,6 +216,8 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
 
   // Filter reports based on status filters and search
   const filteredReports = reports.filter(r => {
+    // Keep fading-out rows visible
+    if (fadingOutId === r.id) return true;
     // Status filter
     const isOpen = r.status !== 'Closed';
     const isClosed = r.status === 'Closed';
@@ -236,7 +245,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
     <div className="flex flex-col gap-3 mb-6">
       <div className="flex flex-row items-center justify-between gap-2 sm:gap-3">
         <h2 className="text-xl sm:text-2xl font-semibold text-white whitespace-nowrap">
-          Reports <span className="text-gray-500 font-normal font-mono">({filteredReports.length})</span>
+          Reports <span className={`font-normal ml-1 ${filteredReports.length > 0 ? "text-gray-500" : "invisible"}`}>{filteredReports.length || "0"}</span>
         </h2>
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="relative">
@@ -325,14 +334,14 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
       ) : (
       <div className="bg-[#161b22] p-3 sm:p-6 rounded-xl">
         <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper">
-          <table className="w-full sm:min-w-[700px] log-text text-left text-gray-300 border-separate border-spacing-0 sm:table-fixed">
+          <table className="w-full min-w-[600px] log-text text-left text-gray-300 border-separate border-spacing-0">
             <thead>
               <tr className="text-xs sm:text-sm uppercase text-gray-400 tracking-wider">
-                <th className="hidden sm:table-cell px-4 py-3 font-medium w-10"></th>
+                <th className="w-10 px-2 sm:px-4 py-3 font-medium"></th>
                 <th className="px-2 sm:px-4 py-3 font-medium whitespace-nowrap">Title</th>
-                <th className="px-2 sm:px-4 py-3 font-medium sm:w-[140px] whitespace-nowrap">Severity</th>
-                <th className="px-2 sm:px-4 py-3 font-medium sm:w-[130px] whitespace-nowrap">Status</th>
-                <th className="px-2 sm:px-4 py-3 font-medium sm:w-[190px] whitespace-nowrap">Actions</th>
+                <th className="w-[110px] sm:w-[140px] px-2 sm:px-4 py-3 font-medium whitespace-nowrap text-center">Severity</th>
+                <th className="w-[100px] sm:w-[130px] px-2 sm:px-4 py-3 font-medium whitespace-nowrap text-center">Status</th>
+                <th className="w-[110px] sm:w-[190px] px-2 sm:px-4 py-3 font-medium whitespace-nowrap text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
@@ -342,7 +351,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
                     className="hover:bg-white/5 transition-colors cursor-pointer border-b border-gray-700/50"
                     onClick={() => toggleRow(index)}
                   >
-                    <td className="hidden sm:table-cell px-4 py-4">
+                    <td className="px-2 sm:px-4 py-4">
                       <svg
                         className={`w-5 h-5 text-gray-500 hover:text-white transition-transform duration-300 ease-in-out ${
                           expandedIndex === index ? 'rotate-180' : 'rotate-0'
@@ -353,31 +362,27 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
                       </svg>
                     </td>
                     <td className="px-2 sm:px-4 py-4">
-                      <p className="text-sm sm:text-base font-medium text-gray-200 truncate">{report.title || 'Untitled Report'}</p>
+                      <p className="text-sm sm:text-base font-medium text-gray-200 whitespace-nowrap">{report.title || 'Untitled Report'}</p>
                       <p className="text-xs sm:text-sm text-gray-400 mt-0.5">{report.alert_id || `INC-${getReportNumber(report.id)}`} · {getRelativeTime(report.timestamp)}</p>
                     </td>
-                    <td className="px-2 sm:px-4 py-4 whitespace-nowrap">
-                      <div className="inline-flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: report.severity === 'Critical' ? '#ef4444' : report.severity === 'High' ? '#f97316' : report.severity === 'Medium' ? '#eab308' : '#22c55e' }} />
-                        <span className="text-gray-300">{report.severity || 'Unset'}</span>
-                      </div>
+                    <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
+                      <span className="text-gray-300">{report.severity || 'Unset'}</span>
                     </td>
-                    <td className="px-2 sm:px-4 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleStatusChange(report, (report.status || 'Open') === 'Open' ? 'Closed' : 'Open'); }}
-                        className="inline-flex items-center gap-1.5 hover:opacity-80 transition cursor-pointer"
+                        className="inline-flex items-center gap-1.5 cursor-pointer group"
                       >
-                        <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: (report.status || 'Open') === 'Open' ? '#22c55e' : '#6b7280' }} />
-                        <span className="text-xs sm:text-sm text-gray-300">{report.status || 'Open'}</span>
+                        <span className="text-gray-300 group-hover:text-white transition-colors">{report.status || 'Open'}</span>
                       </button>
                     </td>
-                    <td className="px-2 sm:px-4 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center gap-2">
-                        <button onClick={(e) => { e.stopPropagation(); setEditReport(report); }} title="Edit" className="p-1.5 sm:p-2 rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 transition">
-                          <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center" onClick={(e) => e.stopPropagation()}>
+                      <div className="inline-flex items-center gap-2">
+                        <button onClick={(e) => { e.stopPropagation(); setEditReport(report); }} title="Edit" className="p-1 sm:p-1.5 rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 transition">
+                          <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(report.id); }} title="Delete" className="p-1.5 sm:p-2 rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 transition">
-                          <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        <button onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(report.id); }} title="Delete" className="p-1 sm:p-1.5 rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 transition">
+                          <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>
                       </div>
                     </td>

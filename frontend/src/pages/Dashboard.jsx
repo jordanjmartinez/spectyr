@@ -158,7 +158,7 @@ const Dashboard = () => {
           <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />
         </div>
         <div className="bg-[#161b22] rounded-xl p-3 sm:p-6">
-          <div className="flex gap-4 sm:gap-8 pl-2 sm:pl-8 border-b border-gray-700 mb-6">
+          <div className="flex gap-2 sm:gap-8 pl-1 sm:pl-8 border-b border-gray-700 mb-6">
             <button
               onClick={() => {
                 setView("grouped");
@@ -170,7 +170,7 @@ const Dashboard = () => {
                   : "text-gray-400 hover:text-white"
               }`}
             >
-              Alerts <span className="text-gray-500 font-normal font-mono">({groupedAlertCount})</span>
+              Alerts <span className={`font-normal ml-1 ${groupedAlertCount > 0 ? "text-gray-500" : "invisible"}`}>{groupedAlertCount || "0"}</span>
             </button>
             <button
               onClick={() => setView("table")}
@@ -180,7 +180,7 @@ const Dashboard = () => {
                   : "text-gray-400 hover:text-white"
               }`}
             >
-              Events <span className="text-gray-500 font-normal font-mono">({alertCount})</span>
+              Events <span className={`font-normal ml-1 ${alertCount > 0 ? "text-gray-500" : "invisible"}`}>{alertCount || "0"}</span>
             </button>
             <button
               onClick={() => setView("analytics")}
@@ -190,7 +190,7 @@ const Dashboard = () => {
                   : "text-gray-400 hover:text-white"
               }`}
             >
-              Analytics
+              Analytics <span className="invisible font-normal ml-1 hidden sm:inline">0</span>
             </button>
             <button
               onClick={() => setView("reports")}
@@ -200,7 +200,7 @@ const Dashboard = () => {
                   : "text-gray-400 hover:text-white"
               }`}
             >
-              Reports <span className="text-gray-500 font-normal font-mono">({reportCount})</span>
+              Reports <span className={`font-normal ml-1 ${reportCount > 0 ? "text-gray-500" : "invisible"}`}>{reportCount || "0"}</span>
             </button>
           </div>
 
@@ -211,20 +211,20 @@ const Dashboard = () => {
           <div className={view === "table" ? "block" : "hidden"}>
             <div className="flex flex-row items-center justify-between mb-3 gap-2 sm:gap-3">
               <h2 className="text-xl sm:text-2xl font-semibold text-white whitespace-nowrap">
-                Events <span className="text-gray-500 font-normal font-mono">({alertCount})</span>
+                Events <span className={`font-normal ml-1 ${alertCount > 0 ? "text-gray-500" : "invisible"}`}>{alertCount || "0"}</span>
               </h2>
               <div className="flex items-center gap-2 sm:gap-4">
                 <button
                   onClick={handleSimulateEvents}
                   className="inline-flex items-center px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 transition focus:outline-none focus:ring-2 focus:ring-gray-500"
                 >
-                  Start Simulation
+                  <span className="sm:hidden">Start Sim</span><span className="hidden sm:inline">Start Simulation</span>
                 </button>
                 <button
                   onClick={() => setShowResetModal(true)}
                   className="inline-flex items-center px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 transition focus:outline-none focus:ring-2 focus:ring-gray-500"
                 >
-                  Reset Simulation
+                  <span className="sm:hidden">Reset Sim</span><span className="hidden sm:inline">Reset Simulation</span>
                 </button>
               </div>
             </div>

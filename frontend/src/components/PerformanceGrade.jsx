@@ -64,6 +64,7 @@ const PerformanceGrade = ({ report }) => {
               dataKey="value"
               startAngle={90}
               endAngle={-270}
+              stroke="none"
             >
               <Cell fill={ringColor} />
               <Cell fill={DARK_GRAY} />

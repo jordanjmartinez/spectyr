@@ -243,7 +243,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
     <div className="space-y-4">
       <div className="mb-4">
         <h2 className="text-xl sm:text-2xl font-semibold text-white">
-          Alerts <span className="text-gray-500 font-normal font-mono">({filteredGroups.length})</span>
+          Alerts <span className={`font-normal ml-1 ${filteredGroups.length > 0 ? "text-gray-500" : "invisible"}`}>{filteredGroups.length || "0"}</span>
         </h2>
         <p className="text-sm sm:text-base text-gray-300 mt-1 sm:mt-4 sm:mb-4 leading-relaxed">Review and classify incoming security events. Related alerts will be grouped into scenarios as threats are detected.</p>
       </div>
@@ -256,9 +256,9 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
             <div className="bg-[#161b22] border border-gray-700 rounded-2xl p-4 sm:p-6 shadow-md flex-1">
             {gameStarted && currentLevel && currentLevel.ticket_title ? (
               <>
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  {!currentLevel.completed && <><span className="w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold border-4 border-gray-300 text-white flex-shrink-0">{currentLevel.current_level}</span><span className="text-gray-600">|</span></>}
                   <p className="text-base sm:text-lg font-semibold text-white">{currentLevel.ticket_title}</p>
-                  {!currentLevel.completed && <span className="w-9 h-9 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-sm sm:text-lg font-bold border-4 border-gray-300 bg-gray-700 text-white flex-shrink-0">{currentLevel.current_level}</span>}
                 </div>
                 <div className="border-t border-gray-700 my-3"></div>
                 <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
@@ -285,7 +285,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setDashView('total')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md border transition ${
+                className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
                   dashView === 'total'
                     ? 'bg-[#30363d] text-white border-gray-600'
                     : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
@@ -295,7 +295,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
               </button>
               <button
                 onClick={() => setDashView('types')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md border transition ${
+                className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
                   dashView === 'types'
                     ? 'bg-[#30363d] text-white border-gray-600'
                     : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
@@ -305,7 +305,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
               </button>
               <button
                 onClick={() => setDashView('source')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md border transition ${
+                className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
                   dashView === 'source'
                     ? 'bg-[#30363d] text-white border-gray-600'
                     : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
@@ -350,15 +350,15 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                   <span className="text-xs sm:text-base text-gray-400">Alerts</span>
                 </div>
               </div>
-              <div className="flex flex-col gap-3 text-sm sm:text-base w-32 sm:w-40">
+              <div className="flex flex-col gap-1 sm:gap-2 text-xs sm:text-base w-32 sm:w-40">
                 <div className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm bg-green-500" />
-                  <span className="text-gray-300">Closed</span>
+                  <span className="text-gray-300">Resolved</span>
                   <span className="text-white font-semibold">{alertStats.closed_alerts}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm bg-gray-500" />
-                  <span className="text-gray-300">Open</span>
+                  <span className="text-gray-300">Pending</span>
                   <span className="text-white font-semibold">{alertStats.open_alerts}</span>
                 </div>
               </div>
@@ -408,7 +408,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                   <span className="text-xs sm:text-base text-gray-400">Alerts</span>
                 </div>
               </div>
-              <div className="flex flex-col gap-2 text-sm sm:text-base w-32 sm:w-40">
+              <div className="flex flex-col gap-1 sm:gap-2 text-xs sm:text-base w-32 sm:w-40">
                 {[
                   { label: 'Low', value: alertStats.severity_breakdown.low, color: '#22c55e' },
                   { label: 'Medium', value: alertStats.severity_breakdown.medium, color: '#eab308' },

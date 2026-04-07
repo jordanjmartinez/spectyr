@@ -14,7 +14,7 @@ const CampaignProgress = ({ levelData, onReset, analystName }) => {
             onClick={onReset}
             className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600"
           >
-            Reset Simulation
+            <span className="sm:hidden">Reset Sim</span><span className="hidden sm:inline">Reset Simulation</span>
           </button>
         </div>
         <div className="flex flex-col items-center text-center">
@@ -57,13 +57,13 @@ const CampaignProgress = ({ levelData, onReset, analystName }) => {
                   className={`w-9 h-9 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-sm sm:text-lg font-bold leading-none transition-all border-4 ${
                     isCompleted
                       ? isCorrect
-                        ? "border-emerald-500 bg-emerald-700 text-white"
+                        ? "border-emerald-500 text-white"
                         : isPartial
-                        ? "border-yellow-500 bg-yellow-600 text-white"
-                        : "border-red-500 bg-red-700 text-white"
+                        ? "border-yellow-500 text-white"
+                        : "border-red-500 text-white"
                       : isCurrent
-                      ? "border-gray-300 bg-gray-700 text-white"
-                      : "border-gray-600 bg-gray-700 text-gray-500"
+                      ? "border-gray-300 text-white"
+                      : "border-gray-600 text-gray-500"
                   }`}
                 >
                   {isCompleted ? (
