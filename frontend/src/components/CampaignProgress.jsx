@@ -57,12 +57,12 @@ const CampaignProgress = ({ levelData, onReset, analystName }) => {
                   className={`w-9 h-9 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-sm sm:text-lg font-bold leading-none transition-all border-4 ${
                     isCompleted
                       ? isCorrect
-                        ? "border-emerald-500 text-white"
+                        ? "border-[#6fa868] text-white"
                         : isPartial
                         ? "border-yellow-500 text-white"
-                        : "border-red-500 text-white"
+                        : "border-[#b26666] text-white"
                       : isCurrent
-                      ? "border-gray-300 text-white"
+                      ? "border-[#d1d5db] text-white"
                       : "border-gray-600 text-gray-500"
                   }`}
                 >

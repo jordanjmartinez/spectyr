@@ -558,7 +558,7 @@ CAMPAIGN_LEVELS = [
     # === LEVEL 1 ===
     {
         "level": 1,
-        "category_pool": ["Malware", "Phishing", "Defense Evasion"],
+        "category_pool": ["Malware", "Phishing", "Defense Evasion", "False Positive"],
         "scenarios": {
             "Malware": {
                 "scenario_label": "malware_usb",
@@ -574,13 +574,18 @@ CAMPAIGN_LEVELS = [
                 "scenario_label": "defense_evasion",
                 "ticket_title": "Endpoint Protection Disabled Preceding Malicious Execution",
                 "storyline": "Unusual activity was detected on a workstation outside of business hours. No user was logged in at the time. Review the logs and determine the scope of what occurred.",
+            },
+            "False Positive": {
+                "scenario_label": "false_positive_pentest",
+                "ticket_title": "Phishing Email with Credential Harvesting Link Reported",
+                "storyline": "An employee reported receiving a password reset email they did not request. The email contained a link to what appears to be a lookalike domain. Proxy logs show the user clicked the link. SPF checks passed. The security awareness team recently onboarded a new training vendor.",
             }
         }
     },
     # === LEVEL 2 ===
     {
         "level": 2,
-        "category_pool": ["Lateral Movement", "Command & Control", "Brute Force"],
+        "category_pool": ["Lateral Movement", "Command & Control", "Brute Force", "False Positive"],
         "scenarios": {
             "Lateral Movement": {
                 "scenario_label": "lateral_movement_1",
@@ -596,13 +601,18 @@ CAMPAIGN_LEVELS = [
                 "scenario_label": "brute_force_attack",
                 "ticket_title": "Repeated Authentication Failures on Domain Controller",
                 "storyline": "The Domain Controller began logging unusual authentication activity from an external source outside of business hours. The targeted account has since been locked out.",
+            },
+            "False Positive": {
+                "scenario_label": "false_positive_robocopy",
+                "ticket_title": "Bulk File Transfer to OneDrive from Service Account",
+                "storyline": "A scheduled task executed on a workstation under a service account and began copying a large volume of files from an internal file share. Over 2 GB of data was transferred outbound to a cloud endpoint. IT operations has a standing migration project scheduled this quarter.",
             }
         }
     },
     # === LEVEL 3 ===
     {
         "level": 3,
-        "category_pool": ["Phishing", "Data Exfiltration", "Insider Threat"],
+        "category_pool": ["Phishing", "Data Exfiltration", "Insider Threat", "False Positive"],
         "scenarios": {
             "Phishing": {
                 "scenario_label": "phishing_link",
@@ -618,13 +628,18 @@ CAMPAIGN_LEVELS = [
                 "scenario_label": "insider_staging",
                 "ticket_title": "Restricted Financial Document Accessed and Transferred to Personal Cloud Storage",
                 "storyline": "A user account accessed a file share containing sensitive financial records outside of their normal role. A document was copied locally before an outbound connection was established to a personal cloud storage service. No transfer approval or business justification exists for this activity.",
+            },
+            "False Positive": {
+                "scenario_label": "false_positive_veeam",
+                "ticket_title": "Periodic Data Transfer to Internal Host Under SYSTEM Context",
+                "storyline": "An endpoint began generating repeated outbound connections to an internal server at regular intervals outside of business hours. The process runs under SYSTEM and has transferred over 1.75 GB of data. The backup team recently deployed Veeam agents to all workstations as part of the endpoint protection initiative.",
             }
         }
     },
     # === LEVEL 4 ===
     {
         "level": 4,
-        "category_pool": ["Malware", "Lateral Movement", "Defense Evasion"],
+        "category_pool": ["Malware", "Lateral Movement", "Defense Evasion", "False Positive"],
         "scenarios": {
             "Malware": {
                 "scenario_label": "malware_ransomware",
@@ -640,13 +655,18 @@ CAMPAIGN_LEVELS = [
                 "scenario_label": "defense_evasion_log_clearing",
                 "ticket_title": "Unexpected Log Clearing Activity on Workstation",
                 "storyline": "An automated monitoring alert fired when a workstation's event logs were unexpectedly emptied. No maintenance was scheduled. Investigate what activity preceded the clearing.",
+            },
+            "False Positive": {
+                "scenario_label": "false_positive_oauth",
+                "ticket_title": "Anomalous Token Activity and Sign-In from Foreign Location",
+                "storyline": "Entra ID Protection flagged a user account for anomalous token activity originating from Dublin, Ireland. The user is based in Miami and has not reported any travel. Multiple non-interactive sign-ins were recorded against Office 365 Exchange Online. The identity team recently migrated all endpoints to modern authentication with OAuth refresh tokens.",
             }
         }
     },
     # === LEVEL 5 ===
     {
         "level": 5,
-        "category_pool": ["Insider Threat", "Brute Force", "Command & Control"],
+        "category_pool": ["Insider Threat", "Brute Force", "Command & Control", "False Positive"],
         "scenarios": {
             "Insider Threat": {
                 "scenario_label": "insider_shadow_it",
@@ -662,6 +682,11 @@ CAMPAIGN_LEVELS = [
                 "scenario_label": "c2_dns_tunnel",
                 "ticket_title": "Anomalous Outbound DNS Traffic Pattern",
                 "storyline": "The DNS server logged repeated TXT queries from a single workstation to subdomains of a domain not on any internal or approved service list. The subdomain labels appear non-standard. Shortly before the queries began, the workstation launched an unfamiliar process from the Downloads folder.",
+            },
+            "False Positive": {
+                "scenario_label": "false_positive_ssl_inspection",
+                "ticket_title": "Outlook Repeatedly Failing TLS Connections with Beaconing Pattern",
+                "storyline": "Multiple workstations are generating repeated failed TLS connections to Microsoft 365 endpoints. The connection pattern resembles command-and-control beaconing with consistent retry intervals. The network team recently expanded the corporate proxy's SSL inspection policy to cover additional domains.",
             }
         }
     }
@@ -1221,17 +1246,17 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Process created: svchost.exe by NT AUTHORITY\\SYSTEM.",
-        "key_value_pairs": {"image": "C:\\Windows\\System32\\svchost.exe", "commandline": "svchost.exe -k netsvcs -p -s Schedule", "user": "NT AUTHORITY\\SYSTEM", "parent_image": "C:\\Windows\\System32\\services.exe", "parent_command_line": "C:\\Windows\\System32\\services.exe", "process_id": "4528"}
+        "key_value_pairs": {"process": "C:\\Windows\\System32\\svchost.exe", "command_line": "svchost.exe -k netsvcs -p -s Schedule", "user": "NT AUTHORITY\\SYSTEM", "parent_process": "C:\\Windows\\System32\\services.exe", "parent_command_line": "C:\\Windows\\System32\\services.exe", "process_id": "4528"}
     },
     {
         "event_type": "ProcessCreate",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Process created: chrome.exe by {user_domain}.",
-        "key_value_pairs": {"image": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", "commandline": "chrome.exe", "user": "{user_domain}", "parent_image": "C:\\Windows\\explorer.exe", "parent_command_line": "C:\\Windows\\Explorer.EXE", "process_id": "8824"}
+        "key_value_pairs": {"process": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", "command_line": "chrome.exe", "user": "{user_domain}", "parent_process": "C:\\Windows\\explorer.exe", "parent_command_line": "C:\\Windows\\Explorer.EXE", "process_id": "8824"}
     },
     {
-        "event_type": "NetworkConnection",
+        "event_type": "NetworkConnect",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Outbound connection to www.google.com on port 443.",
@@ -1249,10 +1274,10 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Process created: OUTLOOK.EXE by {user_domain}.",
-        "key_value_pairs": {"image": "C:\\Program Files\\Microsoft Office\\root\\Office16\\OUTLOOK.EXE", "commandline": "OUTLOOK.EXE", "user": "{user_domain}", "parent_image": "C:\\Windows\\explorer.exe", "parent_command_line": "C:\\Windows\\Explorer.EXE", "process_id": "9120"}
+        "key_value_pairs": {"process": "C:\\Program Files\\Microsoft Office\\root\\Office16\\OUTLOOK.EXE", "command_line": "OUTLOOK.EXE", "user": "{user_domain}", "parent_process": "C:\\Windows\\explorer.exe", "parent_command_line": "C:\\Windows\\Explorer.EXE", "process_id": "9120"}
     },
     {
-        "event_type": "NetworkConnection",
+        "event_type": "NetworkConnect",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Outbound connection to outlook.office365.com on port 443.",
@@ -1263,10 +1288,10 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Process created: TiWorker.exe launched by svchost.exe.",
-        "key_value_pairs": {"image": "C:\\Windows\\WinSxS\\amd64_microsoft-windows-servicingstack\\TiWorker.exe", "commandline": "TiWorker.exe -Embedding", "user": "NT AUTHORITY\\SYSTEM", "parent_image": "C:\\Windows\\System32\\svchost.exe", "parent_command_line": "svchost.exe -k netsvcs -p -s TrustedInstaller", "process_id": "6644"}
+        "key_value_pairs": {"process": "C:\\Windows\\WinSxS\\amd64_microsoft-windows-servicingstack\\TiWorker.exe", "command_line": "TiWorker.exe -Embedding", "user": "NT AUTHORITY\\SYSTEM", "parent_process": "C:\\Windows\\System32\\svchost.exe", "parent_command_line": "svchost.exe -k netsvcs -p -s TrustedInstaller", "process_id": "6644"}
     },
     {
-        "event_type": "NetworkConnection",
+        "event_type": "NetworkConnect",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Outbound connection to update.microsoft.com on port 443.",
@@ -1291,7 +1316,7 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Process created: taskhostw.exe by NT AUTHORITY\\SYSTEM.",
-        "key_value_pairs": {"image": "C:\\Windows\\System32\\taskhostw.exe", "commandline": "taskhostw.exe", "user": "NT AUTHORITY\\SYSTEM", "parent_image": "C:\\Windows\\System32\\svchost.exe", "parent_command_line": "svchost.exe -k netsvcs -p -s Schedule", "process_id": "7788"}
+        "key_value_pairs": {"process": "C:\\Windows\\System32\\taskhostw.exe", "command_line": "taskhostw.exe", "user": "NT AUTHORITY\\SYSTEM", "parent_process": "C:\\Windows\\System32\\svchost.exe", "parent_command_line": "svchost.exe -k netsvcs -p -s Schedule", "process_id": "7788"}
     },
     {
         "event_type": "RegistryEvent",
@@ -1305,7 +1330,7 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Process created: notepad.exe by {user_domain}.",
-        "key_value_pairs": {"image": "C:\\Windows\\System32\\notepad.exe", "commandline": "notepad.exe", "user": "{user_domain}", "parent_image": "C:\\Windows\\explorer.exe", "parent_command_line": "C:\\Windows\\Explorer.EXE", "process_id": "10244"}
+        "key_value_pairs": {"process": "C:\\Windows\\System32\\notepad.exe", "command_line": "notepad.exe", "user": "{user_domain}", "parent_process": "C:\\Windows\\explorer.exe", "parent_command_line": "C:\\Windows\\Explorer.EXE", "process_id": "10244"}
     },
     {
         "event_type": "FileCreate",
@@ -1315,7 +1340,7 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "key_value_pairs": {"host": "{hostname}", "src_ip": "{src_ip}", "process": "C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE", "process_id": "11456", "target_filename": "C:\\Users\\{username}\\Documents\\Meeting_Notes.docx"}
     },
     {
-        "event_type": "NetworkConnection",
+        "event_type": "NetworkConnect",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Outbound connection to teams.microsoft.com on port 443.",
@@ -1329,7 +1354,7 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "key_value_pairs": {"process": "msedge.exe", "query_name": "www.bing.com", "query_status": "SUCCESS", "query_results": "204.79.197.200", "process_id": "13692"}
     },
     {
-        "event_type": "NetworkConnection",
+        "event_type": "NetworkConnect",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Outbound connection to sharepoint.com on port 443.",
@@ -1347,10 +1372,10 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Process created: slack.exe by {user_domain}.",
-        "key_value_pairs": {"image": "C:\\Users\\{username}\\AppData\\Local\\slack\\slack.exe", "commandline": "slack.exe", "user": "{user_domain}", "parent_image": "C:\\Windows\\explorer.exe", "parent_command_line": "C:\\Windows\\Explorer.EXE", "process_id": "14804"}
+        "key_value_pairs": {"process": "C:\\Users\\{username}\\AppData\\Local\\slack\\slack.exe", "command_line": "slack.exe", "user": "{user_domain}", "parent_process": "C:\\Windows\\explorer.exe", "parent_command_line": "C:\\Windows\\Explorer.EXE", "process_id": "14804"}
     },
     {
-        "event_type": "NetworkConnection",
+        "event_type": "NetworkConnect",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Outbound connection to slack.com on port 443.",
@@ -1527,7 +1552,7 @@ def infer_event_type(config, dynamic_fields, config_key):
         sysmon_map = {
             1: "ProcessCreate",
             2: "FileCreateTime",
-            3: "NetworkConnection",
+            3: "NetworkConnect",
             5: "ProcessTerminate",
             6: "DriverLoad",
             7: "ImageLoad",
@@ -2147,6 +2172,8 @@ def get_analyst_report_card():
 
         correct_threat_identified = 0  # Correctly classified with right category
         wrong_category = 0             # Wrong category selected
+        true_positives = 0             # Correctly classified real attacks
+        false_positives_caught = 0     # Correctly classified false positives
 
         # Flag accuracy tracking
         correct_flags = 0
@@ -2165,7 +2192,13 @@ def get_analyst_report_card():
                 continue
 
             if act == "classify":
-                # Classifying with category selection
+                # Count TP/FP by true category (regardless of correctness)
+                if action.get("correct_category", "").lower() == "false positive":
+                    false_positives_caught += 1
+                else:
+                    true_positives += 1
+
+                # Track classification accuracy
                 if action.get("category_correct", False):
                     correct_threat_identified += 1  # Correct category!
                 else:
@@ -2185,6 +2218,8 @@ def get_analyst_report_card():
             "wrong_category": wrong_category,
             "total_actions": total_classifications,
             "accuracy": classification_accuracy,
+            "true_positives": true_positives,
+            "false_positives_caught": false_positives_caught,
             "correct_flags": correct_flags,
             "wrong_flags": wrong_flags,
             "total_flags": total_flags,
@@ -2439,7 +2474,7 @@ def get_grouped_alerts():
         if not scenario_id or log.get("label") == "normal_traffic":
             continue
 
-        group_key = f"{scenario_id}_{threat_pattern}"
+        group_key = scenario_id
 
         if group_key not in grouped:
             grouped[group_key] = {

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { apiFetch } from '../api';
 
-const ActionHistory = ({ history }) => {
+const ActionHistory = ({ history: rawHistory }) => {
+  const history = Array.isArray(rawHistory) ? rawHistory : [];
   const [triageReviews, setTriageReviews] = useState({});
-  const [expandedItems, setExpandedItems] = useState({});
+  const [expandedItems, setExpandedItems] = useState(new Set());
 
   // Fetch triage review data for each unique scenario_label
   useEffect(() => {
@@ -13,7 +14,7 @@ const ActionHistory = ({ history }) => {
       const uniqueLabels = [...new Set(history.map(item => item.scenario_label).filter(Boolean))];
 
       for (const label of uniqueLabels) {
-        if (triageReviews[label]) continue; // Already fetched
+        if (triageReviews[label]) continue;
 
         try {
           const response = await apiFetch(`/api/triage-review/${label}`);
@@ -31,7 +32,11 @@ const ActionHistory = ({ history }) => {
   }, [history]);
 
   const toggleExpanded = (index) => {
-    setExpandedItems(prev => ({ ...prev, [index]: !prev[index] }));
+    setExpandedItems(prev => {
+      const next = new Set(prev);
+      next.has(index) ? next.delete(index) : next.add(index);
+      return next;
+    });
   };
 
   if (!history || history.length === 0) {
@@ -50,135 +55,145 @@ const ActionHistory = ({ history }) => {
     <div>
       <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Post-Incident Review</h2>
 
-      <div className="space-y-3">
-        {history.map((item, index) => {
-          const review = triageReviews[item.scenario_label];
-          const isExpanded = expandedItems[index];
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[600px] log-text text-left text-gray-300 border-separate border-spacing-0">
+          <thead>
+            <tr className="text-xs sm:text-sm uppercase text-gray-400 tracking-wider">
+              <th className="w-10 px-2 sm:px-4 py-3 font-medium"></th>
+              <th className="w-12 px-1 sm:px-2 py-3 font-medium text-center">Level</th>
+              <th className="px-2 sm:px-4 py-3 font-medium">Title</th>
+              <th className="w-[120px] sm:w-[140px] px-2 sm:px-4 py-3 font-medium text-center">Result</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-700">
+            {history.map((item, index) => {
+              const review = triageReviews[item.scenario_label];
+              const isExpanded = expandedItems.has(index);
+              const resultLabel = item.correct ? 'Correct' : 'Missed';
 
-          return (
-            <div
-              key={index}
-              className={`bg-[#161b22] p-4 sm:p-6 rounded-2xl border border-gray-700 shadow-md transition-all duration-200 ${review ? 'cursor-pointer hover:border-gray-500' : ''}`}
-              onClick={() => review && toggleExpanded(index)}
-            >
-              <div>
-                <div>
-                  {/* Level + Ghost */}
-                  <div className="flex items-center gap-2 mb-2">
-                    {item.level && (
-                      <>
-                        <img
-                          src={`/ghost_level_${item.level}.${item.level === 3 ? 'png' : 'PNG'}`}
-                          alt={`Level ${item.level}`}
-                          className="w-[72px] h-[72px] sm:w-24 sm:h-24 opacity-90"
-                        />
-                        <span className="text-gray-400 text-sm sm:text-base font-medium">Level {item.level}</span>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Classification result */}
-                  <div className="text-sm sm:text-base mb-3 flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-0">
-                    <span>
-                      <span className="text-gray-400">Classified as </span>
-                      <span className={item.correct ? 'text-emerald-400 font-medium' : 'text-red-400 font-medium'}>{item.user_choice}</span>
-                    </span>
-                    {!item.correct && (
-                      <span>
-                        <span className="text-gray-600 mx-2 hidden sm:inline">|</span>
-                        <span className="text-gray-400">Correct: </span>
-                        <span className="text-emerald-400 font-medium">{item.true_category}</span>
-                      </span>
-                    )}
-                  </div>
-
-                  {/* MITRE ATT&CK Badge */}
-                  {review?.mitre && (
-                    <a
-                      href={review.mitre.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center gap-2 bg-gray-800 text-gray-300 text-xs sm:text-sm px-3 py-1.5 rounded-md border border-gray-600 hover:bg-gray-700 transition-colors"
-                      style={{ fontFamily: "'Inter', sans-serif" }}
-                    >
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" fill="none"/>
+              return (
+                <React.Fragment key={index}>
+                  <tr
+                    className="hover:bg-white/5 transition-colors cursor-pointer border-b border-gray-700/50"
+                    onClick={() => toggleExpanded(index)}
+                  >
+                    <td className="w-10 pl-0 pr-1 sm:pr-2 py-4">
+                      <svg
+                        className={`w-5 h-5 text-gray-500 hover:text-white transition-transform duration-300 ease-in-out ${
+                          isExpanded ? 'rotate-180' : 'rotate-0'
+                        }`}
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
-                      <span className="font-semibold">{review.mitre.id}</span>
-                      <span className="text-gray-500">|</span>
-                      <span>{review.mitre.name}</span>
-                    </a>
-                  )}
-                </div>
-              </div>
-
-              {/* Expanded Content */}
-              {review && (
-                <div className={`grid transition-all duration-300 ease-in-out ${
-                  isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-                }`}>
-                  <div className="overflow-hidden min-h-0">
-                    <div className="mt-5 space-y-5">
-                      {/* What Is It - Callout card */}
-                      {review.what_is_it && (
-                        <div>
-                          <h4 className="text-base sm:text-lg text-white font-semibold mb-3">
-                            What is {review.what_is_it.title.replace(/\s*\(.*?\)/g, '')}?
-                          </h4>
-                          <div className="bg-[#161b22] border border-gray-700 rounded-xl p-4 sm:p-5 shadow">
-                            <p className="text-sm sm:text-base text-gray-300 leading-relaxed">
-                              {review.what_is_it.description}
-                            </p>
+                    </td>
+                    <td className="w-12 px-1 sm:px-2 py-4 text-center">
+                      {item.level && (
+                        <span className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full inline-flex items-center justify-center text-xs font-bold border-[3px] ${
+                          item.correct ? 'border-[#6fa868]' : 'border-[#b26666]'
+                        } text-white`}>
+                          {item.level}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-2 sm:px-4 py-4">
+                      <p className="text-sm sm:text-base font-medium text-gray-200 whitespace-nowrap">
+                        {review?.what_is_it?.title || item.true_category || 'Unknown'}
+                      </p>
+                    </td>
+                    <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
+                      <span className="text-gray-300">{resultLabel}</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colSpan="4" className="p-0">
+                      <div className={`grid transition-all duration-300 ease-in-out ${
+                        isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                      }`}>
+                        <div className="overflow-hidden min-h-0">
+                          <div className="border-t border-gray-700 px-6 py-4">
+                            <div className="mb-4">
+                              <span className="text-sm sm:text-base text-white font-medium">Classification</span>
+                              <p className="text-gray-300 mt-1 text-sm sm:text-base">
+                                <span className={item.correct ? 'text-[#6fa868]' : 'text-[#b26666]'}>{item.user_choice}</span>
+                                {!item.correct && (
+                                  <>
+                                    <span className="text-gray-600 mx-2">→</span>
+                                    <span className="text-[#6fa868]">{item.true_category}</span>
+                                  </>
+                                )}
+                              </p>
+                            </div>
+                            {review ? (
+                              <>
+                                {review.mitre && (
+                                  <div className="mb-4">
+                                    <span className="text-sm sm:text-base text-white font-medium">MITRE ATT&CK</span>
+                                    <div className="mt-1">
+                                      <a
+                                        href={review.mitre.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="inline-flex items-center gap-2 bg-[#21262d] text-gray-300 text-xs sm:text-sm px-3 py-1.5 rounded-md border border-gray-700 hover:bg-[#30363d] transition-colors"
+                                        style={{ fontFamily: "'Inter', sans-serif" }}
+                                      >
+                                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                                          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" fill="none"/>
+                                        </svg>
+                                        <span className="font-semibold">{review.mitre.id}</span>
+                                        <span className="text-gray-500">|</span>
+                                        <span>{review.mitre.name}</span>
+                                      </a>
+                                    </div>
+                                  </div>
+                                )}
+                                {review.what_is_it && (
+                                  <div className="mb-4">
+                                    <span className="text-sm sm:text-base text-white font-medium">What is {review.what_is_it.title.replace(/\s*\(.*?\)/g, '')}?</span>
+                                    <p className="text-gray-300 mt-2 leading-relaxed text-sm sm:text-base break-words">{review.what_is_it.description}</p>
+                                  </div>
+                                )}
+                                {!review.what_is_it && review.indicators && review.indicators.length > 0 && (
+                                  <div className="mb-4">
+                                    <span className="text-sm sm:text-base text-white font-medium">Why This Was Suspicious</span>
+                                    <div className="mt-2 space-y-1.5">
+                                      {review.indicators.map((ind, i) => (
+                                        <p key={i} className="text-sm sm:text-base text-gray-300">
+                                          <span className="text-white font-medium">{ind.indicator}</span>
+                                          <span className="text-gray-500 mx-1">—</span>
+                                          {ind.explanation}
+                                        </p>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {review.response_actions && review.response_actions.length > 0 && (
+                                  <div>
+                                    <span className="text-sm sm:text-base text-white font-medium">Playbook</span>
+                                    <div className="mt-2 space-y-1">
+                                      {review.response_actions.map((action, i) => (
+                                        <p key={i} className="text-sm sm:text-base text-gray-300">
+                                          <span className="text-white font-medium">{i + 1}.</span> {action}
+                                        </p>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <p className="text-sm text-gray-500 italic">Triage review not yet available for this scenario.</p>
+                            )}
                           </div>
                         </div>
-                      )}
-
-                      {/* Legacy indicators support */}
-                      {!review.what_is_it && review.indicators && review.indicators.length > 0 && (
-                        <div className="rounded-lg border border-gray-700 bg-[#1c2129] overflow-hidden">
-                          <div className="border-l-4 border-yellow-500 px-4 sm:px-5 py-4">
-                            <h4 className="text-sm sm:text-base text-yellow-400 font-semibold uppercase tracking-wider mb-3">
-                              Why This Was Suspicious
-                            </h4>
-                            <ul className="space-y-1.5">
-                              {review.indicators.map((ind, i) => (
-                                <li key={i} className="text-sm sm:text-base">
-                                  <span className="text-white font-medium">{ind.indicator}</span>
-                                  <span className="text-gray-500 mx-1">—</span>
-                                  <span className="text-gray-400">{ind.explanation}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Response Actions - Stepper */}
-                      {review.response_actions && review.response_actions.length > 0 && (
-                        <div>
-                          <h4 className="text-base sm:text-lg text-white font-semibold mb-3">
-                            Playbook
-                          </h4>
-                          <div className="space-y-2">
-                            {review.response_actions.map((action, i) => (
-                              <div key={i} className="flex items-start gap-3 bg-[#161b22] border border-gray-700 rounded-xl p-4 sm:p-5 shadow">
-                                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-700 text-gray-300 text-xs font-bold flex items-center justify-center mt-0.5">
-                                  {i + 1}
-                                </span>
-                                <span className="text-sm sm:text-base text-gray-300 leading-relaxed">{action}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
+                      </div>
+                    </td>
+                  </tr>
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );

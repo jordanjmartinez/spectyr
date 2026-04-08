@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { apiFetch } from '../api';
 
@@ -24,6 +24,14 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
   const [showReportForm, setShowReportForm] = useState(false);
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportedScenarios, setReportedScenarios] = useState(new Set());
+  const [leftView, setLeftView] = useState('categories');
+  const [scenarioExpanded, setScenarioExpanded] = useState(new Set());
+  const [scenarioStartTime, setScenarioStartTime] = useState(null);
+  const [scenarioHistory, setScenarioHistory] = useState([]);
+  const prevLevelRef = useRef(null);
+  const [, setTick] = useState(0);
+  const [classificationData, setClassificationData] = useState({ categoryBreakdown: {} });
+  const [searchTerm, setSearchTerm] = useState('');
 
   const fetchGroupedAlerts = () => {
     apiFetch('/api/grouped-alerts')
@@ -62,26 +70,104 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
       .catch(err => console.error("Failed to fetch game state", err));
   };
 
+  const fetchClassificationData = () => {
+    apiFetch('/api/analytics/action_history')
+      .then(res => res.json())
+      .then(data => {
+        const actions = Array.isArray(data) ? data : [];
+        const catBreakdown = {};
+        actions.forEach(a => {
+          const cat = a.true_category || 'Unknown';
+          catBreakdown[cat] = (catBreakdown[cat] || 0) + 1;
+        });
+        setClassificationData({ categoryBreakdown: catBreakdown });
+      })
+      .catch(() => {});
+  };
+
   useEffect(() => {
     // Clear state on reset
     setGroups([]);
     setCurrentLevel(null);
     setExpanded(null);
     setGameStarted(false);
+    setClassificationData({ categoryBreakdown: {} });
+    setScenarioHistory([]);
+    setScenarioExpanded(new Set());
+    setScenarioStartTime(null);
+    prevLevelRef.current = null;
 
     fetchGroupedAlerts();
     fetchCurrentLevel();
     fetchGameState();
+    fetchClassificationData();
 
     const interval = setInterval(() => {
       fetchGroupedAlerts();
       fetchCurrentLevel();
       fetchGameState();
+      fetchClassificationData();
     }, 3000);
 
     return () => clearInterval(interval);
   }, [resetTrigger]);
 
+  // Track scenario changes and accumulate history
+  useEffect(() => {
+    const newLevelNum = currentLevel?.current_level || null;
+    const prev = prevLevelRef.current;
+
+    // New level detected — push previous into history
+    if (newLevelNum && prev && newLevelNum !== prev.level) {
+      setScenarioHistory(h => {
+        if (h.some(s => s.level === prev.level)) return h;
+        return [{ ...prev, completed: true }, ...h];
+      });
+      setScenarioStartTime(Date.now());
+    }
+
+    // All levels completed — push last scenario into history
+    if (currentLevel?.completed === true && prev && !scenarioHistory.some(s => s.level === prev.level)) {
+      setScenarioHistory(h => {
+        if (h.some(s => s.level === prev.level)) return h;
+        return [{ ...prev, completed: true }, ...h];
+      });
+    }
+
+    // First scenario
+    if (newLevelNum && !prev) {
+      setScenarioStartTime(Date.now());
+    }
+
+    // Update ref with current data
+    if (currentLevel?.ticket_title) {
+      prevLevelRef.current = {
+        level: newLevelNum,
+        ticket_title: currentLevel.ticket_title,
+        storyline: currentLevel.storyline,
+        startTime: scenarioStartTime || Date.now(),
+      };
+    }
+
+    if (!currentLevel?.ticket_title && !currentLevel?.completed) {
+      setScenarioStartTime(null);
+    }
+  }, [currentLevel]);
+
+  // Tick every minute to update relative time
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const getRelativeTime = (timestamp) => {
+    const diffMs = Date.now() - timestamp;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+    return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+  };
 
   const toggleGroup = (key) => {
     setExpanded(expanded === key ? null : key);
@@ -180,11 +266,12 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
     }
   };
 
-  const handleCategorySelect = async (categoryId, categoryLabel) => {
-    if (!categoryScenario) return;
+  const handleCategorySelect = async (categoryId, categoryLabel, scenarioOverride) => {
+    const scenario = scenarioOverride || categoryScenario;
+    if (!scenario) return;
 
     const updatedSet = new Set(submittingIds);
-    updatedSet.add(categoryScenario.scenario_id);
+    updatedSet.add(scenario.scenario_id);
     setSubmittingIds(updatedSet);
 
     try {
@@ -193,15 +280,14 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           analyst_action: 'classify',
-          scenario_id: categoryScenario.scenario_id,
-          label: categoryScenario.label,
+          scenario_id: scenario.scenario_id,
+          label: scenario.label,
           selected_category: categoryLabel
         })
       });
 
       const data = await res.json();
 
-      // Check for hardcore mode failure
       if (data.status === 'hardcore_failure') {
         setShowCategorySelector(false);
         setCategoryScenario(null);
@@ -209,12 +295,12 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
         return;
       }
 
-      setDisappearingId(categoryScenario.scenario_id);
+      setDisappearingId(scenario.scenario_id);
 
       setTimeout(() => {
         setGroups(prev =>
           prev.map(g =>
-            g.scenario_id === categoryScenario.scenario_id
+            g.scenario_id === scenario.scenario_id
               ? { ...g, status: 'classified', analyst_category: categoryLabel }
               : g
           )
@@ -228,12 +314,41 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
       console.error('Error classifying incident:', err);
     } finally {
       const clearedSet = new Set(submittingIds);
-      clearedSet.delete(categoryScenario.scenario_id);
+      clearedSet.delete(scenario.scenario_id);
       setSubmittingIds(clearedSet);
     }
   };
 
   const filteredGroups = groups.filter(g => g.status === 'active');
+
+  // Parse search term for filters like level=1, status=active
+  const parseSearch = (term) => {
+    let levelFilter = null;
+    let statusFilter = null;
+    let textFilter = '';
+    const parts = term.split(/\s+/);
+    for (const part of parts) {
+      const lower = part.toLowerCase();
+      if (lower.startsWith('level=')) {
+        levelFilter = parseInt(lower.split('=')[1], 10);
+      } else if (lower.startsWith('status=')) {
+        statusFilter = lower.split('=')[1];
+      } else {
+        textFilter += (textFilter ? ' ' : '') + part;
+      }
+    }
+    return { levelFilter, statusFilter, textFilter: textFilter.toLowerCase() };
+  };
+
+  const { levelFilter, statusFilter, textFilter } = parseSearch(searchTerm);
+
+  const matchesScenario = (title, level, isActive) => {
+    if (levelFilter !== null && level !== levelFilter) return false;
+    if (statusFilter === 'active' && !isActive) return false;
+    if (statusFilter === 'completed' && isActive) return false;
+    if (textFilter && !title.toLowerCase().includes(textFilter)) return false;
+    return true;
+  };
 
   useEffect(() => {
     if (setGroupedAlertCount) setGroupedAlertCount(filteredGroups.length);
@@ -241,240 +356,433 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
 
   return (
     <div className="space-y-4">
-      <div className="mb-4">
-        <h2 className="text-xl sm:text-2xl font-semibold text-white">
-          Alerts <span className={`font-normal ml-1 ${filteredGroups.length > 0 ? "text-gray-500" : "invisible"}`}>{filteredGroups.length || "0"}</span>
-        </h2>
-        <p className="text-sm sm:text-base text-gray-300 mt-1 sm:mt-4 sm:mb-4 leading-relaxed">Review and classify incoming security events. Related alerts will be grouped into scenarios as threats are detected.</p>
+      <h2 className="text-xl sm:text-2xl font-semibold text-white whitespace-nowrap mb-1">
+        Alerts <span className={`font-normal ml-1 ${filteredGroups.length > 0 ? "text-gray-500" : "invisible"}`}>{filteredGroups.length || "0"}</span>
+      </h2>
+      <div className="relative">
+        <input
+          type="text"
+          placeholder="Search alerts..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          maxLength={300}
+          className="w-full pl-4 pr-10 py-2 rounded-md bg-transparent border border-gray-700 text-white text-sm placeholder-gray-500 focus:border-gray-500 focus:outline-none transition-colors"
+        />
+        {!searchTerm && (
+          <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        )}
+        {searchTerm && (
+          <button
+            onClick={() => setSearchTerm('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
       </div>
 
-      {/* Scenario Card + Alert Dashboard side by side */}
+      {/* Alert Scenario */}
+      <div className="mb-6">
+        {(gameStarted && currentLevel && currentLevel.ticket_title) || scenarioHistory.length > 0 ? (
+          <div className="bg-[#161b22] p-3 sm:p-6 rounded-xl">
+            {(() => {
+              const activeMatches = currentLevel && currentLevel.ticket_title && !currentLevel.completed && matchesScenario(currentLevel.ticket_title, currentLevel.current_level, true);
+              const historyMatches = scenarioHistory.filter(s => matchesScenario(s.ticket_title, s.level, false));
+              const noResults = searchTerm && !activeMatches && historyMatches.length === 0;
+
+              if (noResults) return (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <img src="/ghost-searching.png" alt="Ghost Searching" className="w-20 h-20 sm:w-28 sm:h-28 opacity-90 mb-3" />
+                  <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; No matching alerts for "{searchTerm}"</p>
+                </div>
+              );
+
+              return (
+            <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper">
+              <table className="w-full min-w-[600px] log-text text-left text-gray-300 border-separate border-spacing-0">
+                <thead>
+                  <tr className="text-xs sm:text-sm uppercase text-gray-400 tracking-wider">
+                    <th className="w-10 px-2 sm:px-4 py-3 font-medium"></th>
+                    <th className="w-12 px-1 sm:px-2 py-3 font-medium text-center">Level</th>
+                    <th className="px-2 sm:px-4 py-3 font-medium">Title</th>
+                    <th className="px-2 sm:px-4 py-3 font-medium text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-700">
+                  {/* Active scenario */}
+                  {currentLevel && currentLevel.ticket_title && !currentLevel.completed && matchesScenario(currentLevel.ticket_title, currentLevel.current_level, true) && (
+                    <React.Fragment>
+                      <tr
+                        className="hover:bg-white/5 transition-colors cursor-pointer border-b border-gray-700/50"
+                        onClick={() => setScenarioExpanded(prev => { const next = new Set(prev); next.has('active') ? next.delete('active') : next.add('active'); return next; })}
+                      >
+                        <td className="w-10 pl-0 pr-1 sm:pr-2 py-4">
+                          <svg
+                            className={`w-5 h-5 text-gray-500 hover:text-white transition-transform duration-300 ease-in-out ${
+                              scenarioExpanded.has('active') ? 'rotate-180' : 'rotate-0'
+                            }`}
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </td>
+                        <td className="w-12 px-1 sm:px-2 py-4 text-center">
+                          <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-full inline-flex items-center justify-center text-xs font-bold border-[3px] border-[#d1d5db] text-white">{currentLevel.current_level}</span>
+                        </td>
+                        <td className="px-2 sm:px-4 py-4">
+                          <p className="text-sm sm:text-base font-medium text-gray-200 whitespace-nowrap">{currentLevel.ticket_title}</p>
+                          {scenarioStartTime && <p className="text-xs sm:text-sm text-gray-400 mt-0.5">Created {getRelativeTime(scenarioStartTime)}</p>}
+                        </td>
+                        <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
+                          <span className="text-gray-300">Active</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colSpan="4" className="p-0">
+                          <div className={`grid transition-all duration-300 ease-in-out ${
+                            scenarioExpanded.has('active') ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                          }`}>
+                            <div className="overflow-hidden min-h-0">
+                              <div className="border-t border-gray-700 px-6 py-4">
+                                <p className="text-gray-300 text-sm sm:text-base leading-relaxed">{currentLevel.storyline}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    </React.Fragment>
+                  )}
+                  {/* Past scenarios */}
+                  {scenarioHistory.filter(s => matchesScenario(s.ticket_title, s.level, false)).map((scenario) => (
+                    <React.Fragment key={scenario.level}>
+                      <tr
+                        className="hover:bg-white/5 transition-colors cursor-pointer border-b border-gray-700/50"
+                        onClick={() => setScenarioExpanded(prev => { const next = new Set(prev); next.has(scenario.level) ? next.delete(scenario.level) : next.add(scenario.level); return next; })}
+                      >
+                        <td className="w-10 pl-0 pr-1 sm:pr-2 py-4">
+                          <svg
+                            className={`w-5 h-5 text-gray-500 hover:text-white transition-transform duration-300 ease-in-out ${
+                              scenarioExpanded.has(scenario.level) ? 'rotate-180' : 'rotate-0'
+                            }`}
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </td>
+                        <td className="w-12 px-1 sm:px-2 py-4 text-center">
+                          <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-full inline-flex items-center justify-center text-xs font-bold border-[3px] border-[#6fa868] text-white">{scenario.level}</span>
+                        </td>
+                        <td className="px-2 sm:px-4 py-4">
+                          <p className="text-sm sm:text-base font-medium text-gray-200 whitespace-nowrap">{scenario.ticket_title}</p>
+                          <p className="text-xs sm:text-sm text-gray-400 mt-0.5">Created {getRelativeTime(scenario.startTime)}</p>
+                        </td>
+                        <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
+                          <span className="text-gray-300">Completed</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colSpan="4" className="p-0">
+                          <div className={`grid transition-all duration-300 ease-in-out ${
+                            scenarioExpanded.has(scenario.level) ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                          }`}>
+                            <div className="overflow-hidden min-h-0">
+                              <div className="border-t border-gray-700 px-6 py-4">
+                                <p className="text-gray-300 text-sm sm:text-base leading-relaxed">{scenario.storyline}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+              );
+            })()}
+          </div>
+        ) : (
+          <div className="bg-[#161b22] p-3 sm:p-6 rounded-xl">
+            <div className="flex flex-col items-center justify-center py-4">
+              <img src="/ghost_scenario.PNG" alt="Ghost Scenario" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
+              <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; Start simulation to receive your first briefing.</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+        {/* Categories/Alert Types + Total Alerts/Alert Source side by side */}
         <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
-          {/* Scenario Card */}
+          {/* Left Card: Total Alerts + Alert Source */}
           <div className="flex flex-col">
-            <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Alert Scenario</h2>
+            <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">
+              {dashView === 'total' ? 'Total Alerts' : 'Alert Source'}
+            </h2>
             <div className="bg-[#161b22] border border-gray-700 rounded-2xl p-4 sm:p-6 shadow-md flex-1">
-            {gameStarted && currentLevel && currentLevel.ticket_title ? (
-              <>
-                <div className="flex items-center gap-3">
-                  {!currentLevel.completed && <><span className="w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold border-4 border-gray-300 text-white flex-shrink-0">{currentLevel.current_level}</span><span className="text-gray-600">|</span></>}
-                  <p className="text-base sm:text-lg font-semibold text-white">{currentLevel.ticket_title}</p>
-                </div>
-                <div className="border-t border-gray-700 my-3"></div>
-                <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
-                  {currentLevel.storyline}
-                </p>
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-4">
-                <img src="/ghost_scenario.PNG" alt="Ghost Scenario" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
-                <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; Start simulation to receive your first briefing.</p>
-              </div>
-            )}
-            </div>
-          </div>
-
-          {/* Alert Dashboard */}
-          <div>
-          <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">
-            {dashView === 'total' ? 'Total Alerts' : dashView === 'types' ? 'Alert Types' : 'Alert Source'}
-          </h2>
-
-          <div className="bg-[#161b22] border border-gray-700 rounded-2xl p-4 sm:p-6 shadow-md ">
-          <div className="flex items-center justify-end mb-4">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setDashView('total')}
-                className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
-                  dashView === 'total'
-                    ? 'bg-[#30363d] text-white border-gray-600'
-                    : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
-                }`}
-              >
-                Total Alerts
-              </button>
-              <button
-                onClick={() => setDashView('types')}
-                className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
-                  dashView === 'types'
-                    ? 'bg-[#30363d] text-white border-gray-600'
-                    : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
-                }`}
-              >
-                Alert Types
-              </button>
-              <button
-                onClick={() => setDashView('source')}
-                className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
-                  dashView === 'source'
-                    ? 'bg-[#30363d] text-white border-gray-600'
-                    : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
-                }`}
-              >
-                Alert Source
-              </button>
-            </div>
-          </div>
-          {dashView === 'total' && (
-            <div className="flex items-center justify-center gap-6">
-              <div className="relative w-36 h-36 sm:w-56 sm:h-56 flex-shrink-0 border-dashed border-2 border-gray-700 rounded-full p-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={(() => {
-                        if (alertStats.total_alerts === 0) return [{ name: 'Empty', value: 1 }];
-                        const segs = [];
-                        if (alertStats.closed_alerts > 0) segs.push({ name: 'Closed', value: alertStats.closed_alerts, color: '#22c55e' });
-                        if (alertStats.open_alerts > 0) segs.push({ name: 'Open', value: alertStats.open_alerts, color: '#6b7280' });
-                        return segs;
-                      })()}
-                      innerRadius="70%"
-                      outerRadius="100%"
-                      startAngle={90}
-                      endAngle={-270}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {(() => {
-                        if (alertStats.total_alerts === 0) return [<Cell key="empty" fill="#374151" />];
-                        const cells = [];
-                        if (alertStats.closed_alerts > 0) cells.push(<Cell key="closed" fill="#22c55e" />);
-                        if (alertStats.open_alerts > 0) cells.push(<Cell key="open" fill="#6b7280" />);
-                        return cells;
-                      })()}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-4xl sm:text-7xl font-bold text-white">{alertStats.total_alerts}</span>
-                  <span className="text-xs sm:text-base text-gray-400">Alerts</span>
+              <div className="flex items-center justify-end mb-4">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setDashView('total')}
+                    className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
+                      dashView === 'total'
+                        ? 'bg-[#30363d] text-white border-gray-600'
+                        : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
+                    }`}
+                  >
+                    Total Alerts
+                  </button>
+                  <button
+                    onClick={() => setDashView('source')}
+                    className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
+                      dashView === 'source'
+                        ? 'bg-[#30363d] text-white border-gray-600'
+                        : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
+                    }`}
+                  >
+                    Alert Source
+                  </button>
                 </div>
               </div>
-              <div className="flex flex-col gap-1 sm:gap-2 text-xs sm:text-base w-32 sm:w-40">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm bg-green-500" />
-                  <span className="text-gray-300">Resolved</span>
-                  <span className="text-white font-semibold">{alertStats.closed_alerts}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm bg-gray-500" />
-                  <span className="text-gray-300">Pending</span>
-                  <span className="text-white font-semibold">{alertStats.open_alerts}</span>
-                </div>
-              </div>
-            </div>
-          )}
-          {dashView === 'types' && (
-            <div className="flex items-center justify-center gap-6">
-              <div className="relative w-36 h-36 sm:w-56 sm:h-56 flex-shrink-0 border-dashed border-2 border-gray-700 rounded-full p-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={(() => {
-                        const sb = alertStats.severity_breakdown;
-                        const segments = [
-                          { name: 'Low', value: sb.low, color: '#22c55e' },
-                          { name: 'Medium', value: sb.medium, color: '#eab308' },
-                          { name: 'High', value: sb.high, color: '#f97316' },
-                          { name: 'Critical', value: sb.critical, color: '#ef4444' },
-                        ].filter(s => s.value > 0);
-                        return segments.length > 0 ? segments : [{ name: 'None', value: 1, color: '#374151' }];
-                      })()}
-                      innerRadius="70%"
-                      outerRadius="100%"
-                      startAngle={90}
-                      endAngle={-270}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {(() => {
-                        const sb = alertStats.severity_breakdown;
-                        const segments = [
-                          { name: 'Low', value: sb.low, color: '#22c55e' },
-                          { name: 'Medium', value: sb.medium, color: '#eab308' },
-                          { name: 'High', value: sb.high, color: '#f97316' },
-                          { name: 'Critical', value: sb.critical, color: '#ef4444' },
-                        ].filter(s => s.value > 0);
-                        const colors = segments.length > 0 ? segments.map(s => s.color) : ['#374151'];
-                        return colors.map((color, i) => <Cell key={i} fill={color} />);
-                      })()}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-4xl sm:text-7xl font-bold text-white">
-                    {alertStats.severity_breakdown.critical + alertStats.severity_breakdown.high + alertStats.severity_breakdown.medium + alertStats.severity_breakdown.low}
-                  </span>
-                  <span className="text-xs sm:text-base text-gray-400">Alerts</span>
-                </div>
-              </div>
-              <div className="flex flex-col gap-1 sm:gap-2 text-xs sm:text-base w-32 sm:w-40">
-                {[
-                  { label: 'Low', value: alertStats.severity_breakdown.low, color: '#22c55e' },
-                  { label: 'Medium', value: alertStats.severity_breakdown.medium, color: '#eab308' },
-                  { label: 'High', value: alertStats.severity_breakdown.high, color: '#f97316' },
-                  { label: 'Critical', value: alertStats.severity_breakdown.critical, color: '#ef4444' },
-                ].map(item => (
-                  <div key={item.label} className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
-                    <span className="text-gray-300">{item.label}</span>
-                    <span className="text-white font-semibold">{item.value}</span>
+              {dashView === 'total' && (
+                <div className="flex items-center justify-center gap-6">
+                  <div className="relative w-36 h-36 sm:w-56 sm:h-56 flex-shrink-0 border-dashed border-2 border-gray-700 rounded-full p-2">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={(() => {
+                            if (alertStats.total_alerts === 0) return [{ name: 'Empty', value: 1 }];
+                            const segs = [];
+                            if (alertStats.closed_alerts > 0) segs.push({ name: 'Completed', value: alertStats.closed_alerts, color: '#6fa868' });
+                            if (alertStats.open_alerts > 0) segs.push({ name: 'Active', value: alertStats.open_alerts, color: '#d1d5db' });
+                            return segs;
+                          })()}
+                          innerRadius="70%"
+                          outerRadius="100%"
+                          startAngle={90}
+                          endAngle={-270}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {(() => {
+                            if (alertStats.total_alerts === 0) return [<Cell key="empty" fill="#374151" />];
+                            const cells = [];
+                            if (alertStats.closed_alerts > 0) cells.push(<Cell key="closed" fill="#6fa868" />);
+                            if (alertStats.open_alerts > 0) cells.push(<Cell key="open" fill="#d1d5db" />);
+                            return cells;
+                          })()}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-4xl sm:text-7xl font-bold text-white">{alertStats.total_alerts}</span>
+                      <span className="text-xs sm:text-base text-gray-400">Alerts</span>
+                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {dashView === 'source' && (() => {
-            const SOURCE_TYPES = [
-              { name: 'Sysmon', color: '#6366f1' },
-              { name: 'Firewall', color: '#f59e0b' },
-              { name: 'Win Security', key: 'Windows Security', color: '#ef4444' },
-              { name: 'Proxy', color: '#ec4899' },
-              { name: 'DNS', color: '#14b8a6' },
-              { name: 'Azure AD', color: '#3b82f6' },
-            ];
-            const sb = alertStats.source_breakdown || {};
-            const segments = SOURCE_TYPES.map(s => ({ ...s, value: sb[s.key || s.name] || 0 }));
-            const total = segments.reduce((sum, s) => sum + s.value, 0);
-            return (
-            <div className="flex items-center justify-center gap-6">
-              <div className="relative w-36 h-36 sm:w-56 sm:h-56 flex-shrink-0 border-dashed border-2 border-gray-700 rounded-full p-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={total > 0 ? segments.filter(s => s.value > 0) : [{ name: 'None', value: 1, color: '#374151' }]}
-                      innerRadius="70%"
-                      outerRadius="100%"
-                      startAngle={90}
-                      endAngle={-270}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {(total > 0 ? segments.filter(s => s.value > 0).map(s => s.color) : ['#374151']).map((color, i) => (
-                        <Cell key={i} fill={color} />
+                  <div className="flex flex-col gap-1 sm:gap-2 text-xs sm:text-base w-32 sm:w-40">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{backgroundColor: '#6fa868'}} />
+                      <span className="text-gray-300">Completed</span>
+                      <span className="text-white font-semibold">{alertStats.closed_alerts}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{backgroundColor: '#d1d5db'}} />
+                      <span className="text-gray-300">Active</span>
+                      <span className="text-white font-semibold">{alertStats.open_alerts}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {dashView === 'source' && (() => {
+                const SOURCE_TYPES = [
+                  { name: 'Sysmon', color: '#5a7caa' },
+                  { name: 'Firewall', color: '#4f98a0' },
+                  { name: 'Win Security', key: 'Windows Security', color: '#5da88a' },
+                  { name: 'Proxy', color: '#a3a35c' },
+                  { name: 'DNS', color: '#c28e46' },
+                  { name: 'Azure AD', color: '#b26666' },
+                ];
+                const sb = alertStats.source_breakdown || {};
+                const segments = SOURCE_TYPES.map(s => ({ ...s, value: sb[s.key || s.name] || 0 }));
+                const total = segments.reduce((sum, s) => sum + s.value, 0);
+                return (
+                  <div className="flex items-center justify-center gap-6">
+                    <div className="relative w-36 h-36 sm:w-56 sm:h-56 flex-shrink-0 border-dashed border-2 border-gray-700 rounded-full p-2">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={total > 0 ? segments.filter(s => s.value > 0) : [{ name: 'None', value: 1, color: '#374151' }]}
+                            innerRadius="70%"
+                            outerRadius="100%"
+                            startAngle={90}
+                            endAngle={-270}
+                            dataKey="value"
+                            stroke="none"
+                          >
+                            {(total > 0 ? segments.filter(s => s.value > 0).map(s => s.color) : ['#374151']).map((color, i) => (
+                              <Cell key={i} fill={color} />
+                            ))}
+                          </Pie>
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-4xl sm:text-7xl font-bold text-white">{total}</span>
+                        <span className="text-xs sm:text-base text-gray-400">Events</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1 sm:gap-2 text-xs sm:text-base w-32 sm:w-40">
+                      {segments.map(item => (
+                        <div key={item.name} className="flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
+                          <span className="text-gray-300 truncate">{item.name}</span>
+                          <span className="text-white font-semibold">{item.value}</span>
+                        </div>
                       ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-4xl sm:text-7xl font-bold text-white">{total}</span>
-                  <span className="text-xs sm:text-base text-gray-400">Events</span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+
+          {/* Right Card: Categories + Alert Types */}
+          <div className="flex flex-col">
+            <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">
+              {leftView === 'categories' ? 'Categories' : 'Alert Types'}
+            </h2>
+            <div className="bg-[#161b22] border border-gray-700 rounded-2xl p-4 sm:p-6 shadow-md flex-1">
+              <div className="flex items-center justify-end mb-4">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setLeftView('categories')}
+                    className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
+                      leftView === 'categories'
+                        ? 'bg-[#30363d] text-white border-gray-600'
+                        : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
+                    }`}
+                  >
+                    Categories
+                  </button>
+                  <button
+                    onClick={() => setLeftView('types')}
+                    className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
+                      leftView === 'types'
+                        ? 'bg-[#30363d] text-white border-gray-600'
+                        : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
+                    }`}
+                  >
+                    Alert Types
+                  </button>
                 </div>
               </div>
-              <div className="flex flex-col gap-1 sm:gap-2 text-xs sm:text-base w-32 sm:w-40">
-                {segments.map(item => (
-                  <div key={item.name} className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
-                    <span className="text-gray-300 truncate">{item.name}</span>
-                    <span className="text-white font-semibold">{item.value}</span>
+              {leftView === 'categories' && (() => {
+                const ALL_CATEGORIES = [
+                  { name: 'Malware', key: 'Malware', color: '#5a7caa' },
+                  { name: 'Phishing', key: 'Phishing', color: '#4f98a0' },
+                  { name: 'Defense Evasion', key: 'Defense Evasion', color: '#5da88a' },
+                  { name: 'Lateral Movement', key: 'Lateral Movement', color: '#6fa868' },
+                  { name: 'Command & Control', key: 'Command & Control', color: '#a3a35c' },
+                  { name: 'Brute Force', key: 'Brute Force', color: '#c28e46' },
+                  { name: 'Data Exfiltration', key: 'Data Exfiltration', color: '#c4755a' },
+                  { name: 'Insider Threat', key: 'Insider Threat', color: '#b26666' },
+                  { name: 'False Positive', key: 'False Positive', color: '#9ca3af' },
+                ];
+                const cb = classificationData.categoryBreakdown;
+                const segments = ALL_CATEGORIES.map(c => ({ ...c, value: cb[c.key] || 0 })).filter(s => s.value > 0);
+                const total = segments.reduce((sum, s) => sum + s.value, 0);
+                const chartData = total > 0 ? segments : [{ name: 'None', value: 1, color: '#374151' }];
+                return (
+                  <div className="flex items-center justify-center gap-6">
+                    <div className="relative w-36 h-36 sm:w-56 sm:h-56 flex-shrink-0 border-dashed border-2 border-gray-700 rounded-full p-2">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={chartData} innerRadius="70%" outerRadius="100%" startAngle={90} endAngle={-270} dataKey="value" stroke="none">
+                            {chartData.map((s, i) => <Cell key={i} fill={s.color} />)}
+                          </Pie>
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-4xl sm:text-7xl font-bold text-white">{total}</span>
+                        <span className="text-xs sm:text-base text-gray-400">Total</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1 sm:gap-2 text-xs sm:text-base w-32 sm:w-40">
+                      {segments.map(item => (
+                        <div key={item.name} className="flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
+                          <span className="text-gray-300 truncate">{item.name}</span>
+                          <span className="text-white font-semibold">{item.value}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                ))}
-              </div>
+                );
+              })()}
+              {leftView === 'types' && (
+                <div className="flex items-center justify-center gap-6">
+                  <div className="relative w-36 h-36 sm:w-56 sm:h-56 flex-shrink-0 border-dashed border-2 border-gray-700 rounded-full p-2">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={(() => {
+                            const sb = alertStats.severity_breakdown;
+                            const segments = [
+                              { name: 'Low', value: sb.low, color: '#6fa868' },
+                              { name: 'Medium', value: sb.medium, color: '#a3a35c' },
+                              { name: 'High', value: sb.high, color: '#c28e46' },
+                              { name: 'Critical', value: sb.critical, color: '#b26666' },
+                            ].filter(s => s.value > 0);
+                            return segments.length > 0 ? segments : [{ name: 'None', value: 1, color: '#374151' }];
+                          })()}
+                          innerRadius="70%"
+                          outerRadius="100%"
+                          startAngle={90}
+                          endAngle={-270}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {(() => {
+                            const sb = alertStats.severity_breakdown;
+                            const segments = [
+                              { name: 'Low', value: sb.low, color: '#6fa868' },
+                              { name: 'Medium', value: sb.medium, color: '#a3a35c' },
+                              { name: 'High', value: sb.high, color: '#c28e46' },
+                              { name: 'Critical', value: sb.critical, color: '#b26666' },
+                            ].filter(s => s.value > 0);
+                            const colors = segments.length > 0 ? segments.map(s => s.color) : ['#374151'];
+                            return colors.map((color, i) => <Cell key={i} fill={color} />);
+                          })()}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-4xl sm:text-7xl font-bold text-white">
+                        {alertStats.severity_breakdown.critical + alertStats.severity_breakdown.high + alertStats.severity_breakdown.medium + alertStats.severity_breakdown.low}
+                      </span>
+                      <span className="text-xs sm:text-base text-gray-400">Alerts</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1 sm:gap-2 text-xs sm:text-base w-32 sm:w-40">
+                    {[
+                      { label: 'Low', value: alertStats.severity_breakdown.low, color: '#6fa868' },
+                      { label: 'Medium', value: alertStats.severity_breakdown.medium, color: '#a3a35c' },
+                      { label: 'High', value: alertStats.severity_breakdown.high, color: '#c28e46' },
+                      { label: 'Critical', value: alertStats.severity_breakdown.critical, color: '#b26666' },
+                    ].map(item => (
+                      <div key={item.label} className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
+                        <span className="text-gray-300">{item.label}</span>
+                        <span className="text-white font-semibold">{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-            );
-          })()}
           </div>
-        </div>
         </div>
 
       {filteredGroups.length === 0 && (
@@ -615,7 +923,18 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                         : 'bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600'
                     }`}
                   >
-                    Choose Category
+                    Classify
+                  </button>
+                  <button
+                    disabled={submittingIds.has(group.scenario_id)}
+                    onClick={() => handleCategorySelect('false_positive', 'False Positive', group)}
+                    className={`inline-flex items-center gap-2 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 ${
+                      submittingIds.has(group.scenario_id)
+                        ? 'bg-[#161b22] text-gray-500 border-gray-700 cursor-not-allowed'
+                        : 'bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600'
+                    }`}
+                  >
+                    False Positive
                   </button>
                   <button
                     disabled={reportedScenarios.has(group.scenario_id)}

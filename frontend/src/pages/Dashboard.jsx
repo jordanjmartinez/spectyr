@@ -232,7 +232,7 @@ const Dashboard = () => {
           </div>
 
           <div className={view === "analytics" ? "block" : "hidden"}>
-            <Analytics onReset={() => { handleResetSimulator(); setView("table"); }} analystName={analystName} />
+            <Analytics onReset={() => setShowResetModal(true)} analystName={analystName} />
           </div>
 
           <div className={view === "reports" ? "block" : "hidden"}>

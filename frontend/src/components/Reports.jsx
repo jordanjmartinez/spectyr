@@ -23,7 +23,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterOpen, setFilterOpen] = useState(true);
-  const [filterClosed, setFilterClosed] = useState(false);
+  const [filterClosed, setFilterClosed] = useState(true);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [, setTick] = useState(0);
   const [fadingOutId, setFadingOutId] = useState(null);
@@ -324,12 +324,17 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
       {header}
 
 
-      {filteredReports.length === 0 ? (
+      {filteredReports.length === 0 && !searchTerm ? (
         <div className="bg-[#161b22] p-6 rounded-xl">
           <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
             <img src="/ghost-reports.png" alt="Ghost" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
             <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; Write a report from Alerts to document your findings.</p>
           </div>
+        </div>
+      ) : filteredReports.length === 0 && searchTerm ? (
+        <div className="flex flex-col items-center justify-center py-12">
+          <img src="/ghost-searching.png" alt="Ghost Searching" className="w-20 h-20 sm:w-28 sm:h-28 opacity-90 mb-3" />
+          <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; No matching reports for "{searchTerm}"</p>
         </div>
       ) : (
       <div className="bg-[#161b22] p-3 sm:p-6 rounded-xl">

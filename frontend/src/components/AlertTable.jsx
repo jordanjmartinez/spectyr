@@ -310,7 +310,7 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
         </div>
       ) : noSearchResults ? (
         <div className="flex flex-col items-center justify-center py-12">
-          <img src="/ghost-searching.png" alt="Ghost Searching" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
+          <img src="/ghost-searching.png" alt="Ghost Searching" className="w-20 h-20 sm:w-28 sm:h-28 opacity-90 mb-3" />
           <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; No matching logs for "{searchTerm}"</p>
         </div>
       ) : (
