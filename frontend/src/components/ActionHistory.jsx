@@ -182,7 +182,7 @@ const ActionHistory = ({ history: rawHistory }) => {
                                 )}
                               </>
                             ) : (
-                              <p className="text-sm text-gray-500 italic">Triage review not yet available for this scenario.</p>
+                              <p className="text-sm sm:text-base text-gray-300 leading-relaxed">Triage review not yet available for this scenario.</p>
                             )}
                           </div>
                         </div>
