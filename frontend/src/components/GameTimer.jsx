@@ -58,7 +58,7 @@ const GameTimer = ({ onTimeout, disabled }) => {
           : 'bg-gray-800/80 border-gray-600'
       }`}
     >
-      <img src="/hacker_icon.jpeg" alt="" className="w-6 h-6 sm:w-9 sm:h-9" />
+      <img src="/hacker_icon.jpeg" alt="" className="w-8 h-8 sm:w-11 sm:h-11" />
       <span
         className={`text-lg sm:text-xl tracking-widest ${
           isCritical ? 'text-red-400' : isLow ? 'text-yellow-400' : 'text-white'
