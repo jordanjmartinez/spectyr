@@ -24,7 +24,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
   const [showReportForm, setShowReportForm] = useState(false);
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportedScenarios, setReportedScenarios] = useState(new Set());
-  const [leftView, setLeftView] = useState('categories');
+  const [leftView, setLeftView] = useState('types');
   const [scenarioExpanded, setScenarioExpanded] = useState(new Set());
   const [scenarioStartTime, setScenarioStartTime] = useState(null);
   const [scenarioHistory, setScenarioHistory] = useState([]);
@@ -651,21 +651,11 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
           {/* Right Card: Categories + Alert Types */}
           <div className="flex flex-col">
             <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">
-              {leftView === 'categories' ? 'Categories' : 'Alert Types'}
+              {leftView === 'types' ? 'Alert Types' : 'Categories'}
             </h2>
             <div className="bg-[#161b22] border border-gray-700 rounded-2xl p-4 sm:p-6 shadow-md flex-1">
               <div className="flex items-center justify-end mb-4">
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setLeftView('categories')}
-                    className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
-                      leftView === 'categories'
-                        ? 'bg-[#30363d] text-white border-gray-600'
-                        : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
-                    }`}
-                  >
-                    Categories
-                  </button>
                   <button
                     onClick={() => setLeftView('types')}
                     className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
@@ -675,6 +665,16 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                     }`}
                   >
                     Alert Types
+                  </button>
+                  <button
+                    onClick={() => setLeftView('categories')}
+                    className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
+                      leftView === 'categories'
+                        ? 'bg-[#30363d] text-white border-gray-600'
+                        : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
+                    }`}
+                  >
+                    Categories
                   </button>
                 </div>
               </div>
