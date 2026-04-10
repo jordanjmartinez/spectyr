@@ -540,7 +540,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                     {/* Left: big circle */}
                     <div className="flex-1 flex items-center justify-center min-w-0">
                       {dashView === 'total' && (
-                        <div className="relative w-full aspect-square max-w-[20rem] border-dashed border-2 border-gray-700 rounded-full p-2">
+                        <div className="relative w-full aspect-square max-w-[9rem] sm:max-w-[20rem] border-dashed border-2 border-gray-700 rounded-full p-2">
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                               <Pie
@@ -575,7 +575,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                         </div>
                       )}
                       {dashView === 'source' && (
-                        <div className="relative w-full aspect-square max-w-[20rem] border-dashed border-2 border-gray-700 rounded-full p-2">
+                        <div className="relative w-full aspect-square max-w-[9rem] sm:max-w-[20rem] border-dashed border-2 border-gray-700 rounded-full p-2">
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                               <Pie
@@ -697,7 +697,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                     {/* Left: big circle */}
                     <div className="flex-1 flex items-center justify-center min-w-0">
                       {leftView === 'types' && (
-                        <div className="relative w-full aspect-square max-w-[20rem] border-dashed border-2 border-gray-700 rounded-full p-2">
+                        <div className="relative w-full aspect-square max-w-[9rem] sm:max-w-[20rem] border-dashed border-2 border-gray-700 rounded-full p-2">
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                               <Pie
@@ -720,7 +720,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                         </div>
                       )}
                       {leftView === 'categories' && (
-                        <div className="relative w-full aspect-square max-w-[20rem] border-dashed border-2 border-gray-700 rounded-full p-2">
+                        <div className="relative w-full aspect-square max-w-[9rem] sm:max-w-[20rem] border-dashed border-2 border-gray-700 rounded-full p-2">
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                               <Pie data={catChartData} innerRadius="70%" outerRadius="100%" startAngle={90} endAngle={-270} dataKey="value" stroke="none">
