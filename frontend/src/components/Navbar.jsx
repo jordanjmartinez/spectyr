@@ -7,7 +7,7 @@ const Navbar = () => {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <nav className="bg-[#0d1117] text-white px-4 pt-0 pb-3 sm:px-6 sm:pt-0 sm:pb-4 shadow-md flex items-center">
+    <nav className="bg-[#0d1117] text-white px-4 pt-0 pb-0 sm:px-6 sm:pt-0 sm:pb-0 shadow-md flex items-center">
       <div className="flex items-center gap-3">
         <img
           src="/spectyr_logo.png"

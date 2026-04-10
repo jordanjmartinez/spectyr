@@ -152,8 +152,8 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0d1117] text-white pt-2 pb-8 px-4 sm:px-8 lg:px-16">
-      <div className="space-y-4">
+    <div className="min-h-screen bg-[#0d1117] text-white pt-0 pb-8 px-4 sm:px-8 lg:px-16">
+      <div className="space-y-2 sm:space-y-4">
 
         <div className="flex justify-end h-10 sm:h-12">
           <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />

@@ -523,80 +523,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
               {dashView === 'total' ? 'Total Alerts' : 'Alert Source'}
             </h2>
             <div className="bg-[#161b22] border border-gray-700 rounded-2xl p-4 sm:p-6 shadow-md flex-1">
-              <div className="flex items-center justify-end mb-4">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setDashView('total')}
-                    className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
-                      dashView === 'total'
-                        ? 'bg-[#30363d] text-white border-gray-600'
-                        : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
-                    }`}
-                  >
-                    Total Alerts
-                  </button>
-                  <button
-                    onClick={() => setDashView('source')}
-                    className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
-                      dashView === 'source'
-                        ? 'bg-[#30363d] text-white border-gray-600'
-                        : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
-                    }`}
-                  >
-                    Alert Source
-                  </button>
-                </div>
-              </div>
-              {dashView === 'total' && (
-                <div className="flex items-center justify-center gap-6">
-                  <div className="relative w-36 h-36 sm:w-56 sm:h-56 flex-shrink-0 border-dashed border-2 border-gray-700 rounded-full p-2">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={(() => {
-                            if (alertStats.total_alerts === 0) return [{ name: 'Empty', value: 1 }];
-                            const segs = [];
-                            if (alertStats.closed_alerts > 0) segs.push({ name: 'Completed', value: alertStats.closed_alerts, color: '#6fa868' });
-                            if (alertStats.open_alerts > 0) segs.push({ name: 'Active', value: alertStats.open_alerts, color: '#d1d5db' });
-                            return segs;
-                          })()}
-                          innerRadius="70%"
-                          outerRadius="100%"
-                          startAngle={90}
-                          endAngle={-270}
-                          dataKey="value"
-                          stroke="none"
-                        >
-                          {(() => {
-                            if (alertStats.total_alerts === 0) return [<Cell key="empty" fill="#374151" />];
-                            const cells = [];
-                            if (alertStats.closed_alerts > 0) cells.push(<Cell key="closed" fill="#6fa868" />);
-                            if (alertStats.open_alerts > 0) cells.push(<Cell key="open" fill="#d1d5db" />);
-                            return cells;
-                          })()}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-4xl sm:text-7xl font-bold text-white">{alertStats.total_alerts}</span>
-                      <span className="text-xs sm:text-base text-gray-400">Alerts</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-1 sm:gap-2 text-xs sm:text-base w-32 sm:w-40">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{backgroundColor: '#6fa868'}} />
-                      <span className="text-gray-300">Completed</span>
-                      <span className="text-white font-semibold">{alertStats.closed_alerts}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{backgroundColor: '#d1d5db'}} />
-                      <span className="text-gray-300">Active</span>
-                      <span className="text-white font-semibold">{alertStats.open_alerts}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {dashView === 'source' && (() => {
+              {(() => {
                 const SOURCE_TYPES = [
                   { name: 'Sysmon', color: '#5a7caa' },
                   { name: 'Firewall', color: '#4f98a0' },
@@ -606,41 +533,122 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                   { name: 'Azure AD', color: '#b26666' },
                 ];
                 const sb = alertStats.source_breakdown || {};
-                const segments = SOURCE_TYPES.map(s => ({ ...s, value: sb[s.key || s.name] || 0 }));
-                const total = segments.reduce((sum, s) => sum + s.value, 0);
+                const sourceSegments = SOURCE_TYPES.map(s => ({ ...s, value: sb[s.key || s.name] || 0 }));
+                const sourceTotal = sourceSegments.reduce((sum, s) => sum + s.value, 0);
                 return (
-                  <div className="flex items-center justify-center gap-6">
-                    <div className="relative w-36 h-36 sm:w-56 sm:h-56 flex-shrink-0 border-dashed border-2 border-gray-700 rounded-full p-2">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={total > 0 ? segments.filter(s => s.value > 0) : [{ name: 'None', value: 1, color: '#374151' }]}
-                            innerRadius="70%"
-                            outerRadius="100%"
-                            startAngle={90}
-                            endAngle={-270}
-                            dataKey="value"
-                            stroke="none"
-                          >
-                            {(total > 0 ? segments.filter(s => s.value > 0).map(s => s.color) : ['#374151']).map((color, i) => (
-                              <Cell key={i} fill={color} />
-                            ))}
-                          </Pie>
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-4xl sm:text-7xl font-bold text-white">{total}</span>
-                        <span className="text-xs sm:text-base text-gray-400">Events</span>
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-1 sm:gap-2 text-xs sm:text-base w-32 sm:w-40">
-                      {segments.map(item => (
-                        <div key={item.name} className="flex items-center gap-1.5">
-                          <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
-                          <span className="text-gray-300 truncate">{item.name}</span>
-                          <span className="text-white font-semibold">{item.value}</span>
+                  <div className="flex gap-4 sm:gap-6 items-stretch">
+                    {/* Left: big circle */}
+                    <div className="flex-1 flex items-center justify-center min-w-0">
+                      {dashView === 'total' && (
+                        <div className="relative w-full aspect-square max-w-[20rem] border-dashed border-2 border-gray-700 rounded-full p-2">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={(() => {
+                                  if (alertStats.total_alerts === 0) return [{ name: 'Empty', value: 1 }];
+                                  const segs = [];
+                                  if (alertStats.closed_alerts > 0) segs.push({ name: 'Completed', value: alertStats.closed_alerts, color: '#6fa868' });
+                                  if (alertStats.open_alerts > 0) segs.push({ name: 'Active', value: alertStats.open_alerts, color: '#d1d5db' });
+                                  return segs;
+                                })()}
+                                innerRadius="70%"
+                                outerRadius="100%"
+                                startAngle={90}
+                                endAngle={-270}
+                                dataKey="value"
+                                stroke="none"
+                              >
+                                {(() => {
+                                  if (alertStats.total_alerts === 0) return [<Cell key="empty" fill="#374151" />];
+                                  const cells = [];
+                                  if (alertStats.closed_alerts > 0) cells.push(<Cell key="closed" fill="#6fa868" />);
+                                  if (alertStats.open_alerts > 0) cells.push(<Cell key="open" fill="#d1d5db" />);
+                                  return cells;
+                                })()}
+                              </Pie>
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="text-5xl sm:text-8xl font-bold text-white">{alertStats.total_alerts}</span>
+                            <span className="text-xs sm:text-base text-gray-400">Alerts</span>
+                          </div>
                         </div>
-                      ))}
+                      )}
+                      {dashView === 'source' && (
+                        <div className="relative w-full aspect-square max-w-[20rem] border-dashed border-2 border-gray-700 rounded-full p-2">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={sourceTotal > 0 ? sourceSegments.filter(s => s.value > 0) : [{ name: 'None', value: 1, color: '#374151' }]}
+                                innerRadius="70%"
+                                outerRadius="100%"
+                                startAngle={90}
+                                endAngle={-270}
+                                dataKey="value"
+                                stroke="none"
+                              >
+                                {(sourceTotal > 0 ? sourceSegments.filter(s => s.value > 0).map(s => s.color) : ['#374151']).map((color, i) => (
+                                  <Cell key={i} fill={color} />
+                                ))}
+                              </Pie>
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="text-5xl sm:text-8xl font-bold text-white">{sourceTotal}</span>
+                            <span className="text-xs sm:text-base text-gray-400">Events</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {/* Right: buttons + legend */}
+                    <div className="flex-1 flex flex-col gap-4 min-w-0">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => setDashView('total')}
+                          className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
+                            dashView === 'total'
+                              ? 'bg-[#30363d] text-white border-gray-600'
+                              : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
+                          }`}
+                        >
+                          Total Alerts
+                        </button>
+                        <button
+                          onClick={() => setDashView('source')}
+                          className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
+                            dashView === 'source'
+                              ? 'bg-[#30363d] text-white border-gray-600'
+                              : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
+                          }`}
+                        >
+                          Alert Source
+                        </button>
+                      </div>
+                      <div className="flex-1 flex items-center justify-end pr-14 sm:pr-32">
+                        <div className="flex flex-col gap-2 sm:gap-3 text-xs sm:text-base">
+                        {dashView === 'total' && (
+                          <>
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{backgroundColor: '#6fa868'}} />
+                              <span className="text-gray-300">Completed</span>
+                              <span className="text-white font-semibold">{alertStats.closed_alerts}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{backgroundColor: '#d1d5db'}} />
+                              <span className="text-gray-300">Active</span>
+                              <span className="text-white font-semibold">{alertStats.open_alerts}</span>
+                            </div>
+                          </>
+                        )}
+                        {dashView === 'source' && sourceSegments.map(item => (
+                          <div key={item.name} className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
+                            <span className="text-gray-300 truncate">{item.name}</span>
+                            <span className="text-white font-semibold">{item.value}</span>
+                          </div>
+                        ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );
@@ -654,31 +662,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
               {leftView === 'types' ? 'Alert Types' : 'Categories'}
             </h2>
             <div className="bg-[#161b22] border border-gray-700 rounded-2xl p-4 sm:p-6 shadow-md flex-1">
-              <div className="flex items-center justify-end mb-4">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setLeftView('types')}
-                    className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
-                      leftView === 'types'
-                        ? 'bg-[#30363d] text-white border-gray-600'
-                        : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
-                    }`}
-                  >
-                    Alert Types
-                  </button>
-                  <button
-                    onClick={() => setLeftView('categories')}
-                    className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
-                      leftView === 'categories'
-                        ? 'bg-[#30363d] text-white border-gray-600'
-                        : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
-                    }`}
-                  >
-                    Categories
-                  </button>
-                </div>
-              </div>
-              {leftView === 'categories' && (() => {
+              {(() => {
                 const ALL_CATEGORIES = [
                   { name: 'Malware', key: 'Malware', color: '#5a7caa' },
                   { name: 'Phishing', key: 'Phishing', color: '#4f98a0' },
@@ -691,96 +675,110 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                   { name: 'False Positive', key: 'False Positive', color: '#9ca3af' },
                 ];
                 const cb = classificationData.categoryBreakdown;
-                const segments = ALL_CATEGORIES.map(c => ({ ...c, value: cb[c.key] || 0 })).filter(s => s.value > 0);
-                const total = segments.reduce((sum, s) => sum + s.value, 0);
-                const chartData = total > 0 ? segments : [{ name: 'None', value: 1, color: '#374151' }];
+                const catSegments = ALL_CATEGORIES.map(c => ({ ...c, value: cb[c.key] || 0 })).filter(s => s.value > 0);
+                const catTotal = catSegments.reduce((sum, s) => sum + s.value, 0);
+                const catChartData = catTotal > 0 ? catSegments : [{ name: 'None', value: 1, color: '#374151' }];
+
+                const sb = alertStats.severity_breakdown;
+                const sevSegments = [
+                  { name: 'Low', value: sb.low, color: '#6fa868' },
+                  { name: 'Medium', value: sb.medium, color: '#a3a35c' },
+                  { name: 'High', value: sb.high, color: '#c28e46' },
+                  { name: 'Critical', value: sb.critical, color: '#b26666' },
+                ];
+                const sevFiltered = sevSegments.filter(s => s.value > 0);
+                const sevChartData = sevFiltered.length > 0 ? sevFiltered : [{ name: 'None', value: 1, color: '#374151' }];
+                const sevTotal = sb.critical + sb.high + sb.medium + sb.low;
+
                 return (
-                  <div className="flex items-center justify-center gap-6">
-                    <div className="relative w-36 h-36 sm:w-56 sm:h-56 flex-shrink-0 border-dashed border-2 border-gray-700 rounded-full p-2">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie data={chartData} innerRadius="70%" outerRadius="100%" startAngle={90} endAngle={-270} dataKey="value" stroke="none">
-                            {chartData.map((s, i) => <Cell key={i} fill={s.color} />)}
-                          </Pie>
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-4xl sm:text-7xl font-bold text-white">{total}</span>
-                        <span className="text-xs sm:text-base text-gray-400">Total</span>
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-1 sm:gap-2 text-xs sm:text-base w-32 sm:w-40">
-                      {segments.map(item => (
-                        <div key={item.name} className="flex items-center gap-1.5">
-                          <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
-                          <span className="text-gray-300 truncate">{item.name}</span>
-                          <span className="text-white font-semibold">{item.value}</span>
+                  <div className="flex gap-4 sm:gap-6 items-stretch">
+                    {/* Left: big circle */}
+                    <div className="flex-1 flex items-center justify-center min-w-0">
+                      {leftView === 'types' && (
+                        <div className="relative w-full aspect-square max-w-[20rem] border-dashed border-2 border-gray-700 rounded-full p-2">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={sevChartData}
+                                innerRadius="70%"
+                                outerRadius="100%"
+                                startAngle={90}
+                                endAngle={-270}
+                                dataKey="value"
+                                stroke="none"
+                              >
+                                {sevChartData.map((s, i) => <Cell key={i} fill={s.color} />)}
+                              </Pie>
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="text-5xl sm:text-8xl font-bold text-white">{sevTotal}</span>
+                            <span className="text-xs sm:text-base text-gray-400">Alerts</span>
+                          </div>
                         </div>
-                      ))}
+                      )}
+                      {leftView === 'categories' && (
+                        <div className="relative w-full aspect-square max-w-[20rem] border-dashed border-2 border-gray-700 rounded-full p-2">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie data={catChartData} innerRadius="70%" outerRadius="100%" startAngle={90} endAngle={-270} dataKey="value" stroke="none">
+                                {catChartData.map((s, i) => <Cell key={i} fill={s.color} />)}
+                              </Pie>
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="text-5xl sm:text-8xl font-bold text-white">{catTotal}</span>
+                            <span className="text-xs sm:text-base text-gray-400">Total</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {/* Right: buttons + legend */}
+                    <div className="flex-1 flex flex-col gap-4 min-w-0">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => setLeftView('types')}
+                          className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
+                            leftView === 'types'
+                              ? 'bg-[#30363d] text-white border-gray-600'
+                              : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
+                          }`}
+                        >
+                          Alert Types
+                        </button>
+                        <button
+                          onClick={() => setLeftView('categories')}
+                          className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
+                            leftView === 'categories'
+                              ? 'bg-[#30363d] text-white border-gray-600'
+                              : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
+                          }`}
+                        >
+                          Categories
+                        </button>
+                      </div>
+                      <div className="flex-1 flex items-center justify-end pr-14 sm:pr-32">
+                        <div className="flex flex-col gap-2 sm:gap-3 text-xs sm:text-base">
+                        {leftView === 'types' && sevSegments.map(item => (
+                          <div key={item.name} className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
+                            <span className="text-gray-300">{item.name}</span>
+                            <span className="text-white font-semibold">{item.value}</span>
+                          </div>
+                        ))}
+                        {leftView === 'categories' && catSegments.map(item => (
+                          <div key={item.name} className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
+                            <span className="text-gray-300 truncate">{item.name}</span>
+                            <span className="text-white font-semibold">{item.value}</span>
+                          </div>
+                        ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );
               })()}
-              {leftView === 'types' && (
-                <div className="flex items-center justify-center gap-6">
-                  <div className="relative w-36 h-36 sm:w-56 sm:h-56 flex-shrink-0 border-dashed border-2 border-gray-700 rounded-full p-2">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={(() => {
-                            const sb = alertStats.severity_breakdown;
-                            const segments = [
-                              { name: 'Low', value: sb.low, color: '#6fa868' },
-                              { name: 'Medium', value: sb.medium, color: '#a3a35c' },
-                              { name: 'High', value: sb.high, color: '#c28e46' },
-                              { name: 'Critical', value: sb.critical, color: '#b26666' },
-                            ].filter(s => s.value > 0);
-                            return segments.length > 0 ? segments : [{ name: 'None', value: 1, color: '#374151' }];
-                          })()}
-                          innerRadius="70%"
-                          outerRadius="100%"
-                          startAngle={90}
-                          endAngle={-270}
-                          dataKey="value"
-                          stroke="none"
-                        >
-                          {(() => {
-                            const sb = alertStats.severity_breakdown;
-                            const segments = [
-                              { name: 'Low', value: sb.low, color: '#6fa868' },
-                              { name: 'Medium', value: sb.medium, color: '#a3a35c' },
-                              { name: 'High', value: sb.high, color: '#c28e46' },
-                              { name: 'Critical', value: sb.critical, color: '#b26666' },
-                            ].filter(s => s.value > 0);
-                            const colors = segments.length > 0 ? segments.map(s => s.color) : ['#374151'];
-                            return colors.map((color, i) => <Cell key={i} fill={color} />);
-                          })()}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-4xl sm:text-7xl font-bold text-white">
-                        {alertStats.severity_breakdown.critical + alertStats.severity_breakdown.high + alertStats.severity_breakdown.medium + alertStats.severity_breakdown.low}
-                      </span>
-                      <span className="text-xs sm:text-base text-gray-400">Alerts</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-1 sm:gap-2 text-xs sm:text-base w-32 sm:w-40">
-                    {[
-                      { label: 'Low', value: alertStats.severity_breakdown.low, color: '#6fa868' },
-                      { label: 'Medium', value: alertStats.severity_breakdown.medium, color: '#a3a35c' },
-                      { label: 'High', value: alertStats.severity_breakdown.high, color: '#c28e46' },
-                      { label: 'Critical', value: alertStats.severity_breakdown.critical, color: '#b26666' },
-                    ].map(item => (
-                      <div key={item.label} className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
-                        <span className="text-gray-300">{item.label}</span>
-                        <span className="text-white font-semibold">{item.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -788,20 +786,22 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
       {filteredGroups.length === 0 && (
         <div className="mt-6">
           <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Notable Event</h2>
-          <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
-            <img src="/ghost_incident.png" alt="Ghost Analyzing" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
-            <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; No alerts detected yet. Alerts will appear here automatically.</p>
+          <div className="bg-[#161b22] p-3 sm:p-6 rounded-xl">
+            <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
+              <img src="/ghost_incident.png" alt="Ghost Analyzing" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
+              <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; No alerts detected yet. Alerts will appear here automatically.</p>
+            </div>
           </div>
         </div>
       )}
 
-      <div className="divide-y divide-gray-700">
+      <div className="space-y-6">
       {filteredGroups.map(group => {
         const groupKey = `${group.scenario_id}_${group.threat_pattern}`;
         return (
           <div
             key={groupKey}
-            className={`py-4 first:pt-0 last:pb-0 transition-all duration-300 ease-in-out ${
+            className={`bg-[#161b22] p-3 sm:p-6 rounded-xl transition-all duration-300 ease-in-out ${
               disappearingId === group.scenario_id ? 'opacity-0 scale-95' : 'opacity-100'
             }`}
           >

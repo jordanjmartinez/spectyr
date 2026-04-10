@@ -43,9 +43,11 @@ const ActionHistory = ({ history: rawHistory }) => {
     return (
       <div>
         <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Post-Incident Review</h2>
-        <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
-          <img src="/ghost_analytics.png" alt="Ghost Analyzing" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
-          <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; Your post-incident review will appear after your first triage.</p>
+        <div className="bg-[#161b22] p-3 sm:p-6 rounded-xl">
+          <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
+            <img src="/ghost_analytics.png" alt="Ghost Analyzing" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
+            <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; Your post-incident review will appear after your first triage.</p>
+          </div>
         </div>
       </div>
     );
@@ -55,14 +57,15 @@ const ActionHistory = ({ history: rawHistory }) => {
     <div>
       <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Post-Incident Review</h2>
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[600px] log-text text-left text-gray-300 border-separate border-spacing-0">
+      <div className="bg-[#161b22] p-3 sm:p-6 rounded-xl">
+        <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper">
+          <table className="w-full min-w-[600px] log-text text-left text-gray-300 border-separate border-spacing-0">
           <thead>
             <tr className="text-xs sm:text-sm uppercase text-gray-400 tracking-wider">
               <th className="w-10 px-2 sm:px-4 py-3 font-medium"></th>
               <th className="w-12 px-1 sm:px-2 py-3 font-medium text-center">Level</th>
-              <th className="px-2 sm:px-4 py-3 font-medium">Title</th>
-              <th className="w-[120px] sm:w-[140px] px-2 sm:px-4 py-3 font-medium text-center">Result</th>
+              <th className="w-full px-2 sm:px-4 py-3 font-medium">Title</th>
+              <th className="px-2 sm:px-4 py-3 font-medium text-center">Result</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-700">
@@ -186,6 +189,7 @@ const ActionHistory = ({ history: rawHistory }) => {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

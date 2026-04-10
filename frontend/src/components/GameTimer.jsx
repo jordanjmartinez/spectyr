@@ -50,18 +50,18 @@ const GameTimer = ({ onTimeout, disabled }) => {
 
   return (
     <div
-      className={`self-start flex items-center gap-2 px-2 py-1 rounded-lg border-2 ${
+      className={`self-start flex items-center gap-2 px-2 py-1 rounded-lg border ${
         isCritical
-          ? 'bg-red-500/30 border-red-500 animate-pulse'
+          ? 'bg-[#3a1f1f] border-[#7a3a3a] animate-pulse'
           : isLow
-          ? 'bg-yellow-500/20 border-yellow-500'
-          : 'bg-gray-800/80 border-gray-600'
+          ? 'bg-[#3a3522] border-[#7a6f3a]'
+          : 'bg-[#161b22] border-gray-700'
       }`}
     >
       <img src="/hacker_icon.jpeg" alt="" className="w-8 h-8 sm:w-11 sm:h-11" />
       <span
         className={`text-lg sm:text-xl tracking-widest ${
-          isCritical ? 'text-red-400' : isLow ? 'text-yellow-400' : 'text-white'
+          isCritical ? 'text-[#c4755a]' : isLow ? 'text-[#c28e46]' : 'text-gray-200'
         }`}
         style={{ fontFamily: "'JetBrains Mono', sans-serif" }}
       >

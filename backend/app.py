@@ -25,10 +25,10 @@ os.makedirs(LOG_DIR, exist_ok=True)
 
 fake = Faker()
 
-TIMER_DURATIONS = {1: 120, 2: 150, 3: 180, 4: 210, 5: 240}
+TIMER_DURATIONS = {1: 900, 2: 900, 3: 900, 4: 900, 5: 900}
 
 def get_timer_duration(level):
-    return TIMER_DURATIONS.get(level, 120)
+    return TIMER_DURATIONS.get(level, 900)
 
 # --- Session Management ---
 SESSION_COOKIE_NAME = "spectyr_session"
@@ -2854,9 +2854,11 @@ def get_grouped_alerts():
     severity_totals = {"low": 0, "medium": 0, "high": 0, "critical": 0}
     source_totals = {}
     for grp in result:
-        gs = grp["group_severity"].lower()
-        if gs in severity_totals:
-            severity_totals[gs] += 1
+        # Sum per-log severities (not per-scenario), so the donut reflects
+        # the real distribution of event severities, not just chain peaks.
+        for sev_key, sev_count in grp["severity_breakdown"].items():
+            if sev_key in severity_totals:
+                severity_totals[sev_key] += sev_count
         for log in grp["logs"]:
             src = log.get("source_type") or "Unknown"
             source_totals[src] = source_totals.get(src, 0) + 1
