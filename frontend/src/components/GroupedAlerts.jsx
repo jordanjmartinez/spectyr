@@ -611,7 +611,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                               : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
                           }`}
                         >
-                          Total Alerts
+                          <span className="sm:hidden">Total</span>
+                          <span className="hidden sm:inline">Total Alerts</span>
                         </button>
                         <button
                           onClick={() => setDashView('source')}
@@ -621,7 +622,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                               : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
                           }`}
                         >
-                          Alert Source
+                          <span className="sm:hidden">Source</span>
+                          <span className="hidden sm:inline">Alert Source</span>
                         </button>
                       </div>
                       <div className="flex-1 flex items-center justify-end pr-14 sm:pr-32">
@@ -744,7 +746,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                               : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
                           }`}
                         >
-                          Alert Types
+                          <span className="sm:hidden">Types</span>
+                          <span className="hidden sm:inline">Alert Types</span>
                         </button>
                         <button
                           onClick={() => setLeftView('categories')}
