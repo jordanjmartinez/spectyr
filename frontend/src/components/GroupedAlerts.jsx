@@ -540,7 +540,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                     {/* Left: big circle */}
                     <div className="flex-1 flex items-center justify-center min-w-0">
                       {dashView === 'total' && (
-                        <div className="relative w-full aspect-square max-w-[9rem] sm:max-w-[20rem] border-dashed border-2 border-gray-700 rounded-full p-2">
+                        <div className="relative w-36 h-36 sm:w-80 sm:h-80 border-dashed border-2 border-gray-700 rounded-full p-2">
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                               <Pie
@@ -575,7 +575,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                         </div>
                       )}
                       {dashView === 'source' && (
-                        <div className="relative w-full aspect-square max-w-[9rem] sm:max-w-[20rem] border-dashed border-2 border-gray-700 rounded-full p-2">
+                        <div className="relative w-36 h-36 sm:w-80 sm:h-80 border-dashed border-2 border-gray-700 rounded-full p-2">
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                               <Pie
@@ -661,7 +661,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
           {/* Right Card: Categories + Alert Types */}
           <div className="flex flex-col">
             <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">
-              {leftView === 'types' ? 'Alert Types' : 'Categories'}
+              {leftView === 'types' ? 'Alert Severity' : 'Alert Categories'}
             </h2>
             <div className="bg-[#161b22] border border-gray-700 rounded-2xl p-4 sm:p-6 shadow-md flex-1">
               {(() => {
@@ -697,7 +697,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                     {/* Left: big circle */}
                     <div className="flex-1 flex items-center justify-center min-w-0">
                       {leftView === 'types' && (
-                        <div className="relative w-full aspect-square max-w-[9rem] sm:max-w-[20rem] border-dashed border-2 border-gray-700 rounded-full p-2">
+                        <div className="relative w-36 h-36 sm:w-80 sm:h-80 border-dashed border-2 border-gray-700 rounded-full p-2">
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                               <Pie
@@ -720,7 +720,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                         </div>
                       )}
                       {leftView === 'categories' && (
-                        <div className="relative w-full aspect-square max-w-[9rem] sm:max-w-[20rem] border-dashed border-2 border-gray-700 rounded-full p-2">
+                        <div className="relative w-36 h-36 sm:w-80 sm:h-80 border-dashed border-2 border-gray-700 rounded-full p-2">
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                               <Pie data={catChartData} innerRadius="70%" outerRadius="100%" startAngle={90} endAngle={-270} dataKey="value" stroke="none">
@@ -746,8 +746,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                               : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
                           }`}
                         >
-                          <span className="sm:hidden">Types</span>
-                          <span className="hidden sm:inline">Alert Types</span>
+                          <span className="sm:hidden">Severity</span>
+                          <span className="hidden sm:inline">Alert Severity</span>
                         </button>
                         <button
                           onClick={() => setLeftView('categories')}
@@ -757,7 +757,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                               : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
                           }`}
                         >
-                          Categories
+                          <span className="sm:hidden">Categories</span>
+                          <span className="hidden sm:inline">Alert Categories</span>
                         </button>
                       </div>
                       <div className="flex-1 flex items-center justify-end pr-14 sm:pr-32">
