@@ -827,144 +827,144 @@ NORMAL_TRAFFIC_TEMPLATES = [
     # DNS LOGS (20 events) - Windows DNS Server Analytical Logs
     # =========================================================================
     {
-        "event_type": "QUERY_RECEIVED",
+        "event_type": "QUERY",
         "source_type": "DNS",
         "source_ip": "{src_ip}",
         "message": "DNS query received for www.google.com.",
-        "key_value_pairs": {"client_ip": "{src_ip}", "qname": "www.google.com", "qtype": "A", "src_port": "52314"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "52314", "dest_port": "53", "transport": "udp", "query": "www.google.com", "query_type": "A", "message_type": "QUERY", "reply_code": "NOERROR", "dvc": "ACME-SVR03"}
     },
     {
-        "event_type": "RESPONSE_SUCCESS",
+        "event_type": "ALLOWED",
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS response sent for www.google.com.",
-        "key_value_pairs": {"client_ip": "{src_ip}", "qname": "www.google.com", "qtype": "A", "answer": "142.250.191.46", "rcode": "NOERROR"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "52315", "dest_port": 53, "transport": "udp", "query": "www.google.com", "query_type": "A", "message_type": "Response", "reply_code": "NoError", "answer": "142.250.191.46", "dvc": "ACME-FW01"}
     },
     {
-        "event_type": "QUERY_RECEIVED",
+        "event_type": "QUERY",
         "source_type": "DNS",
         "source_ip": "{src_ip}",
         "message": "DNS query received for outlook.office365.com.",
-        "key_value_pairs": {"client_ip": "{src_ip}", "qname": "outlook.office365.com", "qtype": "A", "src_port": "52418"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "52418", "dest_port": "53", "transport": "udp", "query": "outlook.office365.com", "query_type": "A", "message_type": "QUERY", "reply_code": "NOERROR", "dvc": "ACME-SVR03"}
     },
     {
-        "event_type": "RESPONSE_SUCCESS",
+        "event_type": "ALLOWED",
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS response sent for outlook.office365.com.",
-        "key_value_pairs": {"client_ip": "{src_ip}", "qname": "outlook.office365.com", "qtype": "A", "answer": "52.96.166.24", "rcode": "NOERROR"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "52419", "dest_port": 53, "transport": "udp", "query": "outlook.office365.com", "query_type": "A", "message_type": "Response", "reply_code": "NoError", "answer": "52.96.166.24", "dvc": "ACME-FW01"}
     },
     {
-        "event_type": "QUERY_RECEIVED",
+        "event_type": "QUERY",
         "source_type": "DNS",
         "source_ip": "{src_ip}",
         "message": "DNS query received for www.google.com.",
-        "key_value_pairs": {"client_ip": "{src_ip}", "qname": "www.google.com", "qtype": "AAAA", "src_port": "52512"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "52512", "dest_port": "53", "transport": "udp", "query": "www.google.com", "query_type": "AAAA", "message_type": "QUERY", "reply_code": "NOERROR", "dvc": "ACME-SVR03"}
     },
     {
-        "event_type": "RESPONSE_SUCCESS",
+        "event_type": "ALLOWED",
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS response sent for www.google.com.",
-        "key_value_pairs": {"client_ip": "{src_ip}", "qname": "www.google.com", "qtype": "AAAA", "answer": "2607:f8b0:4004:800::2004", "rcode": "NOERROR"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "52513", "dest_port": 53, "transport": "udp", "query": "www.google.com", "query_type": "AAAA", "message_type": "Response", "reply_code": "NoError", "answer": "2607:f8b0:4004:800::2004", "dvc": "ACME-FW01"}
     },
     {
-        "event_type": "QUERY_RECEIVED",
+        "event_type": "QUERY",
         "source_type": "DNS",
         "source_ip": "{src_ip}",
         "message": "DNS query received for teams.microsoft.com.",
-        "key_value_pairs": {"client_ip": "{src_ip}", "qname": "teams.microsoft.com", "qtype": "A", "src_port": "52620"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "52620", "dest_port": "53", "transport": "udp", "query": "teams.microsoft.com", "query_type": "A", "message_type": "QUERY", "reply_code": "NOERROR", "dvc": "ACME-SVR03"}
     },
     {
-        "event_type": "RESPONSE_SUCCESS",
+        "event_type": "ALLOWED",
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS response sent for teams.microsoft.com.",
-        "key_value_pairs": {"client_ip": "{src_ip}", "qname": "teams.microsoft.com", "qtype": "A", "answer": "13.107.42.16", "rcode": "NOERROR"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "52621", "dest_port": 53, "transport": "udp", "query": "teams.microsoft.com", "query_type": "A", "message_type": "Response", "reply_code": "NoError", "answer": "13.107.42.16", "dvc": "ACME-FW01"}
     },
     {
-        "event_type": "QUERY_RECEIVED",
+        "event_type": "QUERY",
         "source_type": "DNS",
         "source_ip": "{src_ip}",
         "message": "DNS query received for slack.com.",
-        "key_value_pairs": {"client_ip": "{src_ip}", "qname": "slack.com", "qtype": "A", "src_port": "53100"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53100", "dest_port": "53", "transport": "udp", "query": "slack.com", "query_type": "A", "message_type": "QUERY", "reply_code": "NOERROR", "dvc": "ACME-SVR03"}
     },
     {
-        "event_type": "RESPONSE_SUCCESS",
+        "event_type": "ALLOWED",
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS response sent for slack.com.",
-        "key_value_pairs": {"client_ip": "{src_ip}", "qname": "slack.com", "qtype": "A", "answer": "99.181.64.71", "rcode": "NOERROR"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53101", "dest_port": 53, "transport": "udp", "query": "slack.com", "query_type": "A", "message_type": "Response", "reply_code": "NoError", "answer": "99.181.64.71", "dvc": "ACME-FW01"}
     },
     {
-        "event_type": "QUERY_RECEIVED",
+        "event_type": "QUERY",
         "source_type": "DNS",
         "source_ip": "{src_ip}",
         "message": "DNS query received for github.com.",
-        "key_value_pairs": {"client_ip": "{src_ip}", "qname": "github.com", "qtype": "A", "src_port": "53200"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53200", "dest_port": "53", "transport": "udp", "query": "github.com", "query_type": "A", "message_type": "QUERY", "reply_code": "NOERROR", "dvc": "ACME-SVR03"}
     },
     {
-        "event_type": "RESPONSE_SUCCESS",
+        "event_type": "ALLOWED",
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS response sent for github.com.",
-        "key_value_pairs": {"client_ip": "{src_ip}", "qname": "github.com", "qtype": "A", "answer": "140.82.112.4", "rcode": "NOERROR"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53201", "dest_port": 53, "transport": "udp", "query": "github.com", "query_type": "A", "message_type": "Response", "reply_code": "NoError", "answer": "140.82.112.4", "dvc": "ACME-FW01"}
     },
     {
-        "event_type": "QUERY_RECEIVED",
+        "event_type": "QUERY",
         "source_type": "DNS",
         "source_ip": "{src_ip}",
         "message": "DNS query received for login.microsoftonline.com.",
-        "key_value_pairs": {"client_ip": "{src_ip}", "qname": "login.microsoftonline.com", "qtype": "A", "src_port": "53300", "dst_ip": "{dns_server}"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53300", "dest_port": "53", "transport": "udp", "query": "login.microsoftonline.com", "query_type": "A", "message_type": "QUERY", "reply_code": "NOERROR", "dvc": "ACME-SVR03"}
     },
     {
-        "event_type": "RESPONSE_SUCCESS",
+        "event_type": "ALLOWED",
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS response sent for _dmarc.google.com.",
-        "key_value_pairs": {"client_ip": "{src_ip}", "qname": "_dmarc.google.com", "qtype": "TXT", "answer": "v=DMARC1; p=reject...", "rcode": "NOERROR"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53301", "dest_port": 53, "transport": "udp", "query": "_dmarc.google.com", "query_type": "TXT", "message_type": "Response", "reply_code": "NoError", "answer": "v=DMARC1; p=reject...", "dvc": "ACME-FW01"}
     },
     {
-        "event_type": "QUERY_RECEIVED",
+        "event_type": "QUERY",
         "source_type": "DNS",
         "source_ip": "{src_ip}",
         "message": "DNS query received for _ldap._tcp.acme.local.",
-        "key_value_pairs": {"client_ip": "{src_ip}", "qname": "_ldap._tcp.acme.local", "qtype": "SRV", "src_port": "53400"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53400", "dest_port": "53", "transport": "udp", "query": "_ldap._tcp.acme.local", "query_type": "SRV", "message_type": "QUERY", "reply_code": "NOERROR", "dvc": "ACME-SVR03"}
     },
     {
-        "event_type": "RESPONSE_SUCCESS",
+        "event_type": "ALLOWED",
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS response sent for _ldap._tcp.acme.local.",
-        "key_value_pairs": {"client_ip": "{src_ip}", "qname": "_ldap._tcp.acme.local", "qtype": "SRV", "answer": "ACME-SVR01.acme.local", "rcode": "NOERROR", "dst_ip": "{dns_server}"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53401", "dest_port": 53, "transport": "udp", "query": "_ldap._tcp.acme.local", "query_type": "SRV", "message_type": "Response", "reply_code": "NoError", "answer": "ACME-SVR01.acme.local", "dvc": "ACME-FW01"}
     },
     {
-        "event_type": "QUERY_RECEIVED",
+        "event_type": "QUERY",
         "source_type": "DNS",
         "source_ip": "{src_ip}",
         "message": "DNS query received for 200.1.0.10.in-addr.arpa.",
-        "key_value_pairs": {"client_ip": "{src_ip}", "qname": "200.1.0.10.in-addr.arpa", "qtype": "PTR", "src_port": "53500"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53500", "dest_port": "53", "transport": "udp", "query": "200.1.0.10.in-addr.arpa", "query_type": "PTR", "message_type": "QUERY", "reply_code": "NOERROR", "dvc": "ACME-SVR03"}
     },
     {
-        "event_type": "RESPONSE_SUCCESS",
+        "event_type": "ALLOWED",
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS response sent for 200.1.0.10.in-addr.arpa.",
-        "key_value_pairs": {"client_ip": "{src_ip}", "qname": "200.1.0.10.in-addr.arpa", "qtype": "PTR", "answer": "ACME-SVR01.acme.local", "rcode": "NOERROR"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53501", "dest_port": 53, "transport": "udp", "query": "200.1.0.10.in-addr.arpa", "query_type": "PTR", "message_type": "Response", "reply_code": "NoError", "answer": "ACME-SVR01.acme.local", "dvc": "ACME-FW01"}
     },
     {
-        "event_type": "QUERY_RECEIVED",
+        "event_type": "QUERY",
         "source_type": "DNS",
         "source_ip": "{src_ip}",
         "message": "DNS query received for wpad.acme.local.",
-        "key_value_pairs": {"client_ip": "{src_ip}", "qname": "wpad.acme.local", "qtype": "A", "src_port": "53700"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53700", "dest_port": "53", "transport": "udp", "query": "wpad.acme.local", "query_type": "A", "message_type": "QUERY", "reply_code": "NOERROR", "dvc": "ACME-SVR03"}
     },
     {
-        "event_type": "RESPONSE_FAILURE",
+        "event_type": "NXDOMAIN",
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS query failed for wpad.acme.local.",
-        "key_value_pairs": {"client_ip": "{src_ip}", "qname": "wpad.acme.local", "qtype": "A", "rcode": "NXDOMAIN"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "54891", "dest_port": 53, "transport": "udp", "query": "wpad.acme.local", "query_type": "A", "message_type": "Response", "reply_code": "NXDomain", "dvc": "ACME-FW01"}
     },
     # =========================================================================
     # FIREWALL LOGS (20 events) - Generic firewall syslog format
@@ -974,140 +974,140 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "source_type": "Firewall",
         "source_ip": "{src_ip}",
         "message": "Outbound DNS request allowed to internal DNS server.",
-        "key_value_pairs": {"protocol": "udp", "src_port": "49152", "dst_ip": "{dns_server}", "dst_port": "53", "direction": "outbound", "rule": "dns_outbound", "action": "allow"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "49152", "dest_port": "53", "transport": "udp", "action": "allow", "app": "dns", "dvc": "ACME-FW01", "rule": "dns_outbound"}
     },
     {
         "event_type": "ALLOW",
         "source_type": "Firewall",
         "source_ip": "{src_ip}",
         "message": "Outbound HTTPS request allowed to google.com.",
-        "key_value_pairs": {"protocol": "tcp", "src_port": "49200", "dst_ip": "142.250.191.46", "dst_port": "443", "direction": "outbound", "rule": "https_outbound", "action": "allow"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "142.250.191.46", "src_port": "49200", "dest_port": "443", "transport": "tcp", "action": "allow", "app": "ssl", "dvc": "ACME-FW01", "rule": "https_outbound"}
     },
     {
         "event_type": "ALLOW",
         "source_type": "Firewall",
         "source_ip": "{src_ip}",
         "message": "Outbound HTTPS request allowed to outlook.office365.com.",
-        "key_value_pairs": {"protocol": "tcp", "src_port": "49215", "dst_ip": "52.96.166.24", "dst_port": "443", "direction": "outbound", "rule": "https_outbound", "action": "allow"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "52.96.166.24", "src_port": "49215", "dest_port": "443", "transport": "tcp", "action": "allow", "app": "ssl", "dvc": "ACME-FW01", "rule": "https_outbound"}
     },
     {
         "event_type": "ALLOW",
         "source_type": "Firewall",
         "source_ip": "{src_ip}",
         "message": "Internal SMB request allowed to file server.",
-        "key_value_pairs": {"protocol": "tcp", "src_port": "49300", "dst_ip": "{file_server}", "dst_port": "445", "direction": "internal", "rule": "smb_internal", "action": "allow"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{file_server}", "src_port": "49300", "dest_port": "445", "transport": "tcp", "action": "allow", "app": "microsoft-ds", "dvc": "ACME-FW01", "rule": "smb_internal"}
     },
     {
         "event_type": "ALLOW",
         "source_type": "Firewall",
         "source_ip": "{src_ip}",
         "message": "Internal print request allowed to print server.",
-        "key_value_pairs": {"protocol": "tcp", "src_port": "49350", "dst_ip": "{print_server}", "dst_port": "9100", "direction": "internal", "rule": "print_internal", "action": "allow"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{print_server}", "src_port": "49350", "dest_port": "9100", "transport": "tcp", "action": "allow", "app": "raw-printing", "dvc": "ACME-FW01", "rule": "print_internal"}
     },
     {
         "event_type": "ALLOW",
         "source_type": "Firewall",
         "source_ip": "{src_ip}",
         "message": "Outbound HTTPS request allowed to teams.microsoft.com.",
-        "key_value_pairs": {"protocol": "tcp", "src_port": "49400", "dst_ip": "13.107.42.16", "dst_port": "443", "direction": "outbound", "rule": "https_outbound", "action": "allow"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "13.107.42.16", "src_port": "49400", "dest_port": "443", "transport": "tcp", "action": "allow", "app": "ssl", "dvc": "ACME-FW01", "rule": "https_outbound"}
     },
     {
         "event_type": "ALLOW",
         "source_type": "Firewall",
         "source_ip": "{src_ip}",
         "message": "Outbound DNS request allowed to internal DNS server.",
-        "key_value_pairs": {"protocol": "udp", "src_port": "49500", "dst_ip": "{dns_server}", "dst_port": "53", "direction": "outbound", "rule": "dns_outbound", "action": "allow"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "49500", "dest_port": "53", "transport": "udp", "action": "allow", "app": "dns", "dvc": "ACME-FW01", "rule": "dns_outbound"}
     },
     {
         "event_type": "ALLOW",
         "source_type": "Firewall",
         "source_ip": "{src_ip}",
         "message": "Outbound HTTPS request allowed to youtube.com.",
-        "key_value_pairs": {"protocol": "tcp", "src_port": "49550", "dst_ip": "208.65.153.238", "dst_port": "443", "direction": "outbound", "rule": "https_outbound", "action": "allow"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "208.65.153.238", "src_port": "49550", "dest_port": "443", "transport": "tcp", "action": "allow", "app": "ssl", "dvc": "ACME-FW01", "rule": "https_outbound"}
     },
     {
         "event_type": "ALLOW",
         "source_type": "Firewall",
         "source_ip": "{file_server}",
         "message": "Internal SMB response from file server.",
-        "key_value_pairs": {"protocol": "tcp", "src_port": "49600", "dst_ip": "{src_ip}", "dst_port": "445", "direction": "internal", "rule": "smb_internal", "action": "allow"}
+        "key_value_pairs": {"src_ip": "{file_server}", "dst_ip": "{src_ip}", "src_port": "49600", "dest_port": "445", "transport": "tcp", "action": "allow", "app": "microsoft-ds", "dvc": "ACME-FW01", "rule": "smb_internal"}
     },
     {
         "event_type": "ALLOW",
         "source_type": "Firewall",
         "source_ip": "{src_ip}",
         "message": "Outbound HTTPS request allowed to slack.com.",
-        "key_value_pairs": {"protocol": "tcp", "src_port": "49700", "dst_ip": "99.181.64.71", "dst_port": "443", "direction": "outbound", "rule": "https_outbound", "action": "allow"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "99.181.64.71", "src_port": "49700", "dest_port": "443", "transport": "tcp", "action": "allow", "app": "ssl", "dvc": "ACME-FW01", "rule": "https_outbound"}
     },
     {
         "event_type": "ALLOW",
         "source_type": "Firewall",
         "source_ip": "{src_ip}",
         "message": "Outbound HTTPS request allowed to sharepoint.com.",
-        "key_value_pairs": {"protocol": "tcp", "src_port": "49750", "dst_ip": "13.107.136.9", "dst_port": "443", "direction": "outbound", "rule": "https_outbound", "action": "allow"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "13.107.136.9", "src_port": "49750", "dest_port": "443", "transport": "tcp", "action": "allow", "app": "ssl", "dvc": "ACME-FW01", "rule": "https_outbound"}
     },
     {
         "event_type": "ALLOW",
         "source_type": "Firewall",
         "source_ip": "{dns_server}",
         "message": "Outbound NTP request allowed to time.nist.gov.",
-        "key_value_pairs": {"protocol": "udp", "src_port": "49800", "dst_ip": "129.6.15.28", "dst_port": "123", "direction": "outbound", "rule": "ntp_outbound", "action": "allow"}
+        "key_value_pairs": {"src_ip": "{dns_server}", "dst_ip": "129.6.15.28", "src_port": "49800", "dest_port": "123", "transport": "udp", "action": "allow", "app": "ntp", "dvc": "ACME-FW01", "rule": "ntp_outbound"}
     },
     {
         "event_type": "DENY",
         "source_type": "Firewall",
         "source_ip": "203.0.113.50",
         "message": "Inbound SSH request denied from external IP.",
-        "key_value_pairs": {"protocol": "tcp", "src_port": "45123", "dst_ip": "{dc_server}", "dst_port": "22", "direction": "inbound", "rule": "inbound_default", "action": "deny"}
+        "key_value_pairs": {"src_ip": "203.0.113.50", "dst_ip": "{dc_server}", "src_port": "45123", "dest_port": "22", "transport": "tcp", "action": "deny", "app": "ssh", "dvc": "ACME-FW01", "rule": "inbound_default"}
     },
     {
         "event_type": "ALLOW",
         "source_type": "Firewall",
         "source_ip": "{src_ip}",
         "message": "Internal SMB request allowed to file server.",
-        "key_value_pairs": {"protocol": "tcp", "src_port": "49900", "dst_ip": "{file_server}", "dst_port": "445", "direction": "internal", "rule": "smb_internal", "action": "allow"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{file_server}", "src_port": "49900", "dest_port": "445", "transport": "tcp", "action": "allow", "app": "microsoft-ds", "dvc": "ACME-FW01", "rule": "smb_internal"}
     },
     {
         "event_type": "ALLOW",
         "source_type": "Firewall",
         "source_ip": "{src_ip}",
         "message": "Outbound HTTPS request allowed to reddit.com.",
-        "key_value_pairs": {"protocol": "tcp", "src_port": "49950", "dst_ip": "151.101.1.140", "dst_port": "443", "direction": "outbound", "rule": "https_outbound", "action": "allow"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "151.101.1.140", "src_port": "49950", "dest_port": "443", "transport": "tcp", "action": "allow", "app": "ssl", "dvc": "ACME-FW01", "rule": "https_outbound"}
     },
     {
         "event_type": "DENY",
         "source_type": "Firewall",
         "source_ip": "198.51.100.22",
         "message": "Inbound RDP request denied from external IP.",
-        "key_value_pairs": {"protocol": "tcp", "src_port": "52100", "dst_ip": "{dc_server}", "dst_port": "3389", "direction": "inbound", "rule": "inbound_default", "action": "deny"}
+        "key_value_pairs": {"src_ip": "198.51.100.22", "dst_ip": "{dc_server}", "src_port": "52100", "dest_port": "3389", "transport": "tcp", "action": "deny", "app": "ms-wbt-server", "dvc": "ACME-FW01", "rule": "inbound_default"}
     },
     {
         "event_type": "ALLOW",
         "source_type": "Firewall",
         "source_ip": "{src_ip}",
         "message": "Outbound HTTPS request allowed to github.com.",
-        "key_value_pairs": {"protocol": "tcp", "src_port": "50000", "dst_ip": "140.82.112.4", "dst_port": "443", "direction": "outbound", "rule": "https_outbound", "action": "allow"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "140.82.112.4", "src_port": "50000", "dest_port": "443", "transport": "tcp", "action": "allow", "app": "ssl", "dvc": "ACME-FW01", "rule": "https_outbound"}
     },
     {
         "event_type": "ALLOW",
         "source_type": "Firewall",
         "source_ip": "{src_ip}",
         "message": "Outbound DNS request allowed to internal DNS server.",
-        "key_value_pairs": {"protocol": "udp", "src_port": "50050", "dst_ip": "{dns_server}", "dst_port": "53", "direction": "outbound", "rule": "dns_outbound", "action": "allow"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "50050", "dest_port": "53", "transport": "udp", "action": "allow", "app": "dns", "dvc": "ACME-FW01", "rule": "dns_outbound"}
     },
     {
         "event_type": "ALLOW",
         "source_type": "Firewall",
         "source_ip": "{src_ip}",
         "message": "Outbound HTTPS request allowed to facebook.com.",
-        "key_value_pairs": {"protocol": "tcp", "src_port": "50100", "dst_ip": "157.240.214.35", "dst_port": "443", "direction": "outbound", "rule": "https_outbound", "action": "allow"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "157.240.214.35", "src_port": "50100", "dest_port": "443", "transport": "tcp", "action": "allow", "app": "ssl", "dvc": "ACME-FW01", "rule": "https_outbound"}
     },
     {
         "event_type": "ALLOW",
         "source_type": "Firewall",
         "source_ip": "{src_ip}",
         "message": "Internal SMB request allowed to file server.",
-        "key_value_pairs": {"protocol": "tcp", "src_port": "50150", "dst_ip": "{file_server}", "dst_port": "445", "direction": "internal", "rule": "smb_internal", "action": "allow"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{file_server}", "src_port": "50150", "dest_port": "445", "transport": "tcp", "action": "allow", "app": "microsoft-ds", "dvc": "ACME-FW01", "rule": "smb_internal"}
     },
     # =========================================================================
     # PROXY LOGS (20 events) - Squid Native Format
@@ -1117,126 +1117,126 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "source_type": "Proxy",
         "source_ip": "{src_ip}",
         "message": "GET request to www.google.com returned 200 OK.",
-        "key_value_pairs": {"domain": "www.google.com", "url_path": "/", "dst_ip": "142.250.191.46", "http_status": "200"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "142.250.191.46", "src_user": "{user_domain}", "dvc": "{hostname}", "url": "www.google.com", "app": "web-browsing", "transport": "tcp", "dest_port": "443", "action": "allow", "http_method": "GET"}
     },
     {
         "event_type": "HTTP_GET",
         "source_type": "Proxy",
         "source_ip": "{src_ip}",
         "message": "GET request to www.reddit.com returned 200 OK.",
-        "key_value_pairs": {"domain": "www.reddit.com", "url_path": "/", "dst_ip": "151.101.1.69", "http_status": "200"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "151.101.1.69", "src_user": "{user_domain}", "dvc": "{hostname}", "url": "www.reddit.com", "app": "web-browsing", "transport": "tcp", "dest_port": "443", "action": "allow", "http_method": "GET"}
     },
     {
         "event_type": "HTTP_GET",
         "source_type": "Proxy",
         "source_ip": "{src_ip}",
         "message": "GET request to docs.microsoft.com returned 200 OK.",
-        "key_value_pairs": {"domain": "docs.microsoft.com", "url_path": "/en-us/windows/", "dst_ip": "52.84.214.93", "http_status": "200"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "52.84.214.93", "src_user": "{user_domain}", "dvc": "{hostname}", "url": "docs.microsoft.com/en-us/windows/", "app": "web-browsing", "transport": "tcp", "dest_port": "443", "action": "allow", "http_method": "GET"}
     },
     {
         "event_type": "HTTP_GET",
         "source_type": "Proxy",
         "source_ip": "{src_ip}",
         "message": "GET request to github.com returned 200 OK.",
-        "key_value_pairs": {"domain": "github.com", "url_path": "/", "dst_ip": "140.82.112.4", "http_status": "200"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "140.82.112.4", "src_user": "{user_domain}", "dvc": "{hostname}", "url": "github.com", "app": "web-browsing", "transport": "tcp", "dest_port": "443", "action": "allow", "http_method": "GET"}
     },
     {
         "event_type": "HTTP_GET",
         "source_type": "Proxy",
         "source_ip": "{src_ip}",
         "message": "GET request to twitter.com returned 200 OK.",
-        "key_value_pairs": {"domain": "twitter.com", "url_path": "/home", "dst_ip": "104.244.42.193", "http_status": "200"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "104.244.42.193", "src_user": "{user_domain}", "dvc": "{hostname}", "url": "twitter.com/home", "app": "web-browsing", "transport": "tcp", "dest_port": "443", "action": "allow", "http_method": "GET"}
     },
     {
         "event_type": "HTTP_GET",
         "source_type": "Proxy",
         "source_ip": "{src_ip}",
         "message": "GET request to outlook.office365.com returned 200 OK.",
-        "key_value_pairs": {"domain": "outlook.office365.com", "url_path": "/mail/inbox", "dst_ip": "13.107.42.14", "http_status": "200"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "13.107.42.14", "src_user": "{user_domain}", "dvc": "{hostname}", "url": "outlook.office365.com/mail/inbox", "app": "web-browsing", "transport": "tcp", "dest_port": "443", "action": "allow", "http_method": "GET"}
     },
     {
         "event_type": "HTTP_POST",
         "source_type": "Proxy",
         "source_ip": "{src_ip}",
         "message": "POST request to outlook.office365.com returned 200 OK.",
-        "key_value_pairs": {"domain": "outlook.office365.com", "url_path": "/api/v2.0/me/sendmail", "dst_ip": "13.107.42.14", "http_status": "200"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "13.107.42.14", "src_user": "{user_domain}", "dvc": "{hostname}", "url": "outlook.office365.com/api/v2.0/me/sendmail", "app": "web-browsing", "transport": "tcp", "dest_port": "443", "action": "allow", "http_method": "POST"}
     },
     {
         "event_type": "HTTP_GET",
         "source_type": "Proxy",
         "source_ip": "{src_ip}",
         "message": "GET request to teams.microsoft.com returned 200 OK.",
-        "key_value_pairs": {"domain": "teams.microsoft.com", "url_path": "/conversations", "dst_ip": "52.96.166.130", "http_status": "200"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "52.96.166.130", "src_user": "{user_domain}", "dvc": "{hostname}", "url": "teams.microsoft.com/conversations", "app": "web-browsing", "transport": "tcp", "dest_port": "443", "action": "allow", "http_method": "GET"}
     },
     {
         "event_type": "HTTP_GET",
         "source_type": "Proxy",
         "source_ip": "{src_ip}",
         "message": "GET request to www.linkedin.com returned 200 OK.",
-        "key_value_pairs": {"domain": "www.linkedin.com", "url_path": "/feed/", "dst_ip": "31.13.65.36", "http_status": "200"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "31.13.65.36", "src_user": "{user_domain}", "dvc": "{hostname}", "url": "www.linkedin.com/feed/", "app": "web-browsing", "transport": "tcp", "dest_port": "443", "action": "allow", "http_method": "GET"}
     },
     {
         "event_type": "HTTP_GET",
         "source_type": "Proxy",
         "source_ip": "{src_ip}",
         "message": "GET request to drive.google.com returned 200 OK.",
-        "key_value_pairs": {"domain": "drive.google.com", "url_path": "/drive/my-drive", "dst_ip": "172.217.14.110", "http_status": "200"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "172.217.14.110", "src_user": "{user_domain}", "dvc": "{hostname}", "url": "drive.google.com/drive/my-drive", "app": "web-browsing", "transport": "tcp", "dest_port": "443", "action": "allow", "http_method": "GET"}
     },
     {
         "event_type": "HTTP_GET",
         "source_type": "Proxy",
         "source_ip": "{src_ip}",
         "message": "GET request to sharepoint.com returned 200 OK.",
-        "key_value_pairs": {"domain": "sharepoint.com", "url_path": "/sites/", "dst_ip": "13.107.136.9", "http_status": "200"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "13.107.136.9", "src_user": "{user_domain}", "dvc": "{hostname}", "url": "sharepoint.com/sites/", "app": "web-browsing", "transport": "tcp", "dest_port": "443", "action": "allow", "http_method": "GET"}
     },
     {
         "event_type": "HTTP_GET",
         "source_type": "Proxy",
         "source_ip": "{src_ip}",
         "message": "GET request to stackoverflow.com returned 200 OK.",
-        "key_value_pairs": {"domain": "stackoverflow.com", "url_path": "/questions", "dst_ip": "151.101.65.69", "http_status": "200"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "151.101.65.69", "src_user": "{user_domain}", "dvc": "{hostname}", "url": "stackoverflow.com/questions", "app": "web-browsing", "transport": "tcp", "dest_port": "443", "action": "allow", "http_method": "GET"}
     },
     {
         "event_type": "HTTP_GET",
         "source_type": "Proxy",
         "source_ip": "{src_ip}",
         "message": "GET request to aws.amazon.com returned 200 OK.",
-        "key_value_pairs": {"domain": "aws.amazon.com", "url_path": "/console/", "dst_ip": "54.230.202.113", "http_status": "200"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "54.230.202.113", "src_user": "{user_domain}", "dvc": "{hostname}", "url": "aws.amazon.com/console/", "app": "web-browsing", "transport": "tcp", "dest_port": "443", "action": "allow", "http_method": "GET"}
     },
     {
         "event_type": "HTTP_GET",
         "source_type": "Proxy",
         "source_ip": "{src_ip}",
         "message": "GET request to zoom.us returned 200 OK.",
-        "key_value_pairs": {"domain": "zoom.us", "url_path": "/j/meetings", "dst_ip": "52.84.150.44", "http_status": "200"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "52.84.150.44", "src_user": "{user_domain}", "dvc": "{hostname}", "url": "zoom.us/j/meetings", "app": "web-browsing", "transport": "tcp", "dest_port": "443", "action": "allow", "http_method": "GET"}
     },
     {
         "event_type": "HTTP_GET",
         "source_type": "Proxy",
         "source_ip": "{src_ip}",
         "message": "GET request to www.youtube.com returned 200 OK.",
-        "key_value_pairs": {"domain": "www.youtube.com", "url_path": "/", "dst_ip": "216.58.214.206", "http_status": "200"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "216.58.214.206", "src_user": "{user_domain}", "dvc": "{hostname}", "url": "www.youtube.com", "app": "web-browsing", "transport": "tcp", "dest_port": "443", "action": "allow", "http_method": "GET"}
     },
     {
         "event_type": "HTTP_GET",
         "source_type": "Proxy",
         "source_ip": "{src_ip}",
         "message": "GET request to docs.github.com returned 200 OK.",
-        "key_value_pairs": {"domain": "docs.github.com", "url_path": "/en/repositories", "dst_ip": "185.199.108.154", "http_status": "200"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "185.199.108.154", "src_user": "{user_domain}", "dvc": "{hostname}", "url": "docs.github.com/en/repositories", "app": "web-browsing", "transport": "tcp", "dest_port": "443", "action": "allow", "http_method": "GET"}
     },
     {
         "event_type": "HTTP_GET",
         "source_type": "Proxy",
         "source_ip": "{src_ip}",
         "message": "GET request to onedrive.live.com returned 200 OK.",
-        "key_value_pairs": {"domain": "onedrive.live.com", "url_path": "/", "dst_ip": "52.96.166.130", "http_status": "200"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "52.96.166.130", "src_user": "{user_domain}", "dvc": "{hostname}", "url": "onedrive.live.com", "app": "web-browsing", "transport": "tcp", "dest_port": "443", "action": "allow", "http_method": "GET"}
     },
     {
         "event_type": "HTTP_GET",
         "source_type": "Proxy",
         "source_ip": "{src_ip}",
         "message": "GET request to wordpress.com returned 200 OK.",
-        "key_value_pairs": {"domain": "wordpress.com", "url_path": "/home", "dst_ip": "192.0.78.24", "http_status": "200"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "192.0.78.24", "src_user": "{user_domain}", "dvc": "{hostname}", "url": "wordpress.com/home", "app": "web-browsing", "transport": "tcp", "dest_port": "443", "action": "allow", "http_method": "GET"}
     },
     # =========================================================================
     # SYSMON LOGS (20 events) - Windows Sysmon
@@ -1246,140 +1246,140 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Process created: svchost.exe by NT AUTHORITY\\SYSTEM.",
-        "key_value_pairs": {"process": "C:\\Windows\\System32\\svchost.exe", "command_line": "svchost.exe -k netsvcs -p -s Schedule", "user": "NT AUTHORITY\\SYSTEM", "parent_process": "C:\\Windows\\System32\\services.exe", "parent_command_line": "C:\\Windows\\System32\\services.exe", "process_id": "4528"}
+        "key_value_pairs": {"event_id": 1, "channel": "Microsoft-Windows-Sysmon/Operational", "computer": "{hostname}", "rule_name": "", "process_id": "4528", "image": "C:\\Windows\\System32\\svchost.exe", "command_line": "svchost.exe -k netsvcs -p -s Schedule", "user": "NT AUTHORITY\\SYSTEM", "parent_process_id": "668", "parent_image": "C:\\Windows\\System32\\services.exe", "parent_command_line": "C:\\Windows\\System32\\services.exe"}
     },
     {
         "event_type": "ProcessCreate",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Process created: chrome.exe by {user_domain}.",
-        "key_value_pairs": {"process": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", "command_line": "chrome.exe", "user": "{user_domain}", "parent_process": "C:\\Windows\\explorer.exe", "parent_command_line": "C:\\Windows\\Explorer.EXE", "process_id": "8824"}
+        "key_value_pairs": {"event_id": 1, "channel": "Microsoft-Windows-Sysmon/Operational", "computer": "{hostname}", "rule_name": "", "process_id": "8824", "image": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", "command_line": "chrome.exe", "user": "{user_domain}", "parent_process_id": "4412", "parent_image": "C:\\Windows\\explorer.exe", "parent_command_line": "C:\\Windows\\Explorer.EXE"}
     },
     {
         "event_type": "NetworkConnect",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Outbound connection to www.google.com on port 443.",
-        "key_value_pairs": {"process": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", "process_id": "8824", "protocol": "tcp", "src_port": "49200", "dst_ip": "142.250.191.46", "dst_port": "443", "dst_hostname": "www.google.com"}
+        "key_value_pairs": {"event_id": 3, "channel": "Microsoft-Windows-Sysmon/Operational", "computer": "{hostname}", "rule_name": "", "process_id": "8824", "image": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", "user": "{user_domain}", "protocol": "tcp", "initiated": True, "source_is_ipv6": False, "source_ip": "{src_ip}", "source_hostname": "{hostname}", "source_port_name": "", "destination_is_ipv6": False, "destination_ip": "142.250.191.46", "destination_hostname": "www.google.com", "destination_port": "443", "destination_port_name": "https"}
     },
     {
         "event_type": "DNSQuery",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "DNS query for www.google.com resolved to 142.250.191.46.",
-        "key_value_pairs": {"process": "chrome.exe", "query_name": "www.google.com", "query_status": "SUCCESS", "query_results": "142.250.191.46", "process_id": "8824"}
+        "key_value_pairs": {"event_id": 22, "channel": "Microsoft-Windows-Sysmon/Operational", "computer": "{hostname}", "rule_name": "-", "utc_time": "{timestamp}", "process_guid": "{a1b2c3d4-5e6f-7890-abcd-ef1234567890}", "process_id": "8824", "query_name": "www.google.com", "query_status": "0", "query_results": "type:  5 www.google.com;::ffff:142.250.191.46;", "image": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", "user": "ACME\\{username}"}
     },
     {
         "event_type": "ProcessCreate",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Process created: OUTLOOK.EXE by {user_domain}.",
-        "key_value_pairs": {"process": "C:\\Program Files\\Microsoft Office\\root\\Office16\\OUTLOOK.EXE", "command_line": "OUTLOOK.EXE", "user": "{user_domain}", "parent_process": "C:\\Windows\\explorer.exe", "parent_command_line": "C:\\Windows\\Explorer.EXE", "process_id": "9120"}
+        "key_value_pairs": {"event_id": 1, "channel": "Microsoft-Windows-Sysmon/Operational", "computer": "{hostname}", "rule_name": "", "process_id": "9120", "image": "C:\\Program Files\\Microsoft Office\\root\\Office16\\OUTLOOK.EXE", "command_line": "OUTLOOK.EXE", "user": "{user_domain}", "parent_process_id": "4412", "parent_image": "C:\\Windows\\explorer.exe", "parent_command_line": "C:\\Windows\\Explorer.EXE"}
     },
     {
         "event_type": "NetworkConnect",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Outbound connection to outlook.office365.com on port 443.",
-        "key_value_pairs": {"process": "C:\\Program Files\\Microsoft Office\\root\\Office16\\OUTLOOK.EXE", "process_id": "9120", "protocol": "tcp", "src_port": "49215", "dst_ip": "52.96.166.24", "dst_port": "443", "dst_hostname": "outlook.office365.com"}
+        "key_value_pairs": {"event_id": 3, "channel": "Microsoft-Windows-Sysmon/Operational", "computer": "{hostname}", "rule_name": "", "process_id": "9120", "image": "C:\\Program Files\\Microsoft Office\\root\\Office16\\OUTLOOK.EXE", "user": "{user_domain}", "protocol": "tcp", "initiated": True, "source_is_ipv6": False, "source_ip": "{src_ip}", "source_hostname": "{hostname}", "source_port_name": "", "destination_is_ipv6": False, "destination_ip": "52.96.166.24", "destination_hostname": "outlook.office365.com", "destination_port": "443", "destination_port_name": "https"}
     },
     {
         "event_type": "ProcessCreate",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Process created: TiWorker.exe launched by svchost.exe.",
-        "key_value_pairs": {"process": "C:\\Windows\\WinSxS\\amd64_microsoft-windows-servicingstack\\TiWorker.exe", "command_line": "TiWorker.exe -Embedding", "user": "NT AUTHORITY\\SYSTEM", "parent_process": "C:\\Windows\\System32\\svchost.exe", "parent_command_line": "svchost.exe -k netsvcs -p -s TrustedInstaller", "process_id": "6644"}
+        "key_value_pairs": {"event_id": 1, "channel": "Microsoft-Windows-Sysmon/Operational", "computer": "{hostname}", "rule_name": "", "process_id": "6644", "image": "C:\\Windows\\WinSxS\\amd64_microsoft-windows-servicingstack\\TiWorker.exe", "command_line": "TiWorker.exe -Embedding", "user": "NT AUTHORITY\\SYSTEM", "parent_process_id": "4528", "parent_image": "C:\\Windows\\System32\\svchost.exe", "parent_command_line": "svchost.exe -k netsvcs -p -s TrustedInstaller"}
     },
     {
         "event_type": "NetworkConnect",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Outbound connection to update.microsoft.com on port 443.",
-        "key_value_pairs": {"process": "C:\\Windows\\System32\\svchost.exe", "process_id": "1284", "protocol": "tcp", "src_port": "49250", "dst_ip": "20.109.186.68", "dst_port": "443", "dst_hostname": "update.microsoft.com"}
+        "key_value_pairs": {"event_id": 3, "channel": "Microsoft-Windows-Sysmon/Operational", "computer": "{hostname}", "rule_name": "", "process_id": "1284", "image": "C:\\Windows\\System32\\svchost.exe", "user": "NT AUTHORITY\\NETWORK SERVICE", "protocol": "tcp", "initiated": True, "source_is_ipv6": False, "source_ip": "{src_ip}", "source_hostname": "{hostname}", "source_port_name": "", "destination_is_ipv6": False, "destination_ip": "20.109.186.68", "destination_hostname": "update.microsoft.com", "destination_port": "443", "destination_port_name": "https"}
     },
     {
         "event_type": "FileCreate",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "File created: Q4_Report.pdf by {user_domain}.",
-        "key_value_pairs": {"host": "{hostname}", "src_ip": "{src_ip}", "process": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", "process_id": "8824", "target_filename": "C:\\Users\\{username}\\Downloads\\Q4_Report.pdf"}
+        "key_value_pairs": {"event_id": 11, "channel": "Microsoft-Windows-Sysmon/Operational", "computer": "{hostname}", "rule_name": "", "process_id": "8824", "image": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", "target_filename": "C:\\Users\\{username}\\Downloads\\Q4_Report.pdf", "user": "{user_domain}"}
     },
     {
         "event_type": "DNSQuery",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "DNS query for settings-win.data.microsoft.com resolved to 40.77.226.250.",
-        "key_value_pairs": {"process": "svchost.exe", "query_name": "settings-win.data.microsoft.com", "query_status": "SUCCESS", "query_results": "40.77.226.250", "process_id": "1284"}
+        "key_value_pairs": {"event_id": 22, "channel": "Microsoft-Windows-Sysmon/Operational", "computer": "{hostname}", "rule_name": "-", "utc_time": "{timestamp}", "process_guid": "{b2c3d4e5-6f78-9012-bcde-f23456789012}", "process_id": "1284", "query_name": "settings-win.data.microsoft.com", "query_status": "0", "query_results": "type:  5 settings-win-data-microsoft-com.akadns.net;::ffff:40.77.226.250;", "image": "C:\\Windows\\System32\\svchost.exe", "user": "NT AUTHORITY\\NETWORK SERVICE"}
     },
     {
         "event_type": "ProcessCreate",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Process created: taskhostw.exe by NT AUTHORITY\\SYSTEM.",
-        "key_value_pairs": {"process": "C:\\Windows\\System32\\taskhostw.exe", "command_line": "taskhostw.exe", "user": "NT AUTHORITY\\SYSTEM", "parent_process": "C:\\Windows\\System32\\svchost.exe", "parent_command_line": "svchost.exe -k netsvcs -p -s Schedule", "process_id": "7788"}
+        "key_value_pairs": {"event_id": 1, "channel": "Microsoft-Windows-Sysmon/Operational", "computer": "{hostname}", "rule_name": "", "process_id": "7788", "image": "C:\\Windows\\System32\\taskhostw.exe", "command_line": "taskhostw.exe", "user": "NT AUTHORITY\\SYSTEM", "parent_process_id": "4528", "parent_image": "C:\\Windows\\System32\\svchost.exe", "parent_command_line": "svchost.exe -k netsvcs -p -s Schedule"}
     },
     {
-        "event_type": "RegistryEvent",
+        "event_type": "SetValue",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Registry value updated by explorer.exe on recent documents list.",
-        "key_value_pairs": {"process": "C:\\Windows\\explorer.exe", "process_id": "4412", "target_object": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\RecentDocs"}
+        "key_value_pairs": {"event_id": 13, "channel": "Microsoft-Windows-Sysmon/Operational", "computer": "{hostname}", "rule_name": "", "event_type": "SetValue", "process_id": "4412", "image": "C:\\Windows\\explorer.exe", "target_object": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\RecentDocs", "details": "Binary Data", "user": "{user_domain}"}
     },
     {
         "event_type": "ProcessCreate",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Process created: notepad.exe by {user_domain}.",
-        "key_value_pairs": {"process": "C:\\Windows\\System32\\notepad.exe", "command_line": "notepad.exe", "user": "{user_domain}", "parent_process": "C:\\Windows\\explorer.exe", "parent_command_line": "C:\\Windows\\Explorer.EXE", "process_id": "10244"}
+        "key_value_pairs": {"event_id": 1, "channel": "Microsoft-Windows-Sysmon/Operational", "computer": "{hostname}", "rule_name": "", "process_id": "10244", "image": "C:\\Windows\\System32\\notepad.exe", "command_line": "notepad.exe", "user": "{user_domain}", "parent_process_id": "4412", "parent_image": "C:\\Windows\\explorer.exe", "parent_command_line": "C:\\Windows\\Explorer.EXE"}
     },
     {
         "event_type": "FileCreate",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "File created: Meeting_Notes.docx by {user_domain}.",
-        "key_value_pairs": {"host": "{hostname}", "src_ip": "{src_ip}", "process": "C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE", "process_id": "11456", "target_filename": "C:\\Users\\{username}\\Documents\\Meeting_Notes.docx"}
+        "key_value_pairs": {"event_id": 11, "channel": "Microsoft-Windows-Sysmon/Operational", "computer": "{hostname}", "rule_name": "", "process_id": "11456", "image": "C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE", "target_filename": "C:\\Users\\{username}\\Documents\\Meeting_Notes.docx", "user": "{user_domain}"}
     },
     {
         "event_type": "NetworkConnect",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Outbound connection to teams.microsoft.com on port 443.",
-        "key_value_pairs": {"process": "C:\\Users\\{username}\\AppData\\Local\\Microsoft\\Teams\\current\\Teams.exe", "process_id": "12580", "protocol": "tcp", "src_port": "49400", "dst_ip": "13.107.42.16", "dst_port": "443", "dst_hostname": "teams.microsoft.com"}
+        "key_value_pairs": {"event_id": 3, "channel": "Microsoft-Windows-Sysmon/Operational", "computer": "{hostname}", "rule_name": "", "process_id": "12580", "image": "C:\\Users\\{username}\\AppData\\Local\\Microsoft\\Teams\\current\\Teams.exe", "user": "{user_domain}", "protocol": "tcp", "initiated": True, "source_is_ipv6": False, "source_ip": "{src_ip}", "source_hostname": "{hostname}", "source_port_name": "", "destination_is_ipv6": False, "destination_ip": "13.107.42.16", "destination_hostname": "teams.microsoft.com", "destination_port": "443", "destination_port_name": "https"}
     },
     {
         "event_type": "DNSQuery",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "DNS query for www.bing.com resolved to 204.79.197.200.",
-        "key_value_pairs": {"process": "msedge.exe", "query_name": "www.bing.com", "query_status": "SUCCESS", "query_results": "204.79.197.200", "process_id": "13692"}
+        "key_value_pairs": {"event_id": 22, "channel": "Microsoft-Windows-Sysmon/Operational", "computer": "{hostname}", "rule_name": "-", "utc_time": "{timestamp}", "process_guid": "{c3d4e5f6-7890-1234-cdef-345678901234}", "process_id": "13692", "query_name": "www.bing.com", "query_status": "0", "query_results": "type:  5 www-bing-com.dual-a-0001.a-msedge.net;::ffff:204.79.197.200;", "image": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe", "user": "ACME\\{username}"}
     },
     {
         "event_type": "NetworkConnect",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Outbound connection to sharepoint.com on port 443.",
-        "key_value_pairs": {"process": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe", "process_id": "8824", "protocol": "tcp", "src_port": "49750", "dst_ip": "13.107.136.9", "dst_port": "443", "dst_hostname": "sharepoint.com"}
+        "key_value_pairs": {"event_id": 3, "channel": "Microsoft-Windows-Sysmon/Operational", "computer": "{hostname}", "rule_name": "", "process_id": "8824", "image": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe", "user": "{user_domain}", "protocol": "tcp", "initiated": True, "source_is_ipv6": False, "source_ip": "{src_ip}", "source_hostname": "{hostname}", "source_port_name": "", "destination_is_ipv6": False, "destination_ip": "13.107.136.9", "destination_hostname": "sharepoint.com", "destination_port": "443", "destination_port_name": "https"}
     },
     {
         "event_type": "FileCreate",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "File created: CHROME.EXE-D43B7FE7.pf by NT AUTHORITY\\SYSTEM.",
-        "key_value_pairs": {"process": "C:\\Windows\\System32\\svchost.exe", "process_id": "1284", "target_filename": "C:\\Windows\\Prefetch\\CHROME.EXE-D43B7FE7.pf"}
+        "key_value_pairs": {"event_id": 11, "channel": "Microsoft-Windows-Sysmon/Operational", "computer": "{hostname}", "rule_name": "", "process_id": "1284", "image": "C:\\Windows\\System32\\svchost.exe", "target_filename": "C:\\Windows\\Prefetch\\CHROME.EXE-D43B7FE7.pf", "user": "NT AUTHORITY\\SYSTEM"}
     },
     {
         "event_type": "ProcessCreate",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Process created: slack.exe by {user_domain}.",
-        "key_value_pairs": {"process": "C:\\Users\\{username}\\AppData\\Local\\slack\\slack.exe", "command_line": "slack.exe", "user": "{user_domain}", "parent_process": "C:\\Windows\\explorer.exe", "parent_command_line": "C:\\Windows\\Explorer.EXE", "process_id": "14804"}
+        "key_value_pairs": {"event_id": 1, "channel": "Microsoft-Windows-Sysmon/Operational", "computer": "{hostname}", "rule_name": "", "process_id": "14804", "image": "C:\\Users\\{username}\\AppData\\Local\\slack\\slack.exe", "command_line": "slack.exe", "user": "{user_domain}", "parent_process_id": "4412", "parent_image": "C:\\Windows\\explorer.exe", "parent_command_line": "C:\\Windows\\Explorer.EXE"}
     },
     {
         "event_type": "NetworkConnect",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Outbound connection to slack.com on port 443.",
-        "key_value_pairs": {"process": "C:\\Users\\{username}\\AppData\\Local\\slack\\slack.exe", "process_id": "14804", "protocol": "tcp", "src_port": "49700", "dst_ip": "99.181.64.71", "dst_port": "443", "dst_hostname": "slack.com"}
+        "key_value_pairs": {"event_id": 3, "channel": "Microsoft-Windows-Sysmon/Operational", "computer": "{hostname}", "rule_name": "", "process_id": "14804", "image": "C:\\Users\\{username}\\AppData\\Local\\slack\\slack.exe", "user": "{user_domain}", "protocol": "tcp", "initiated": True, "source_is_ipv6": False, "source_ip": "{src_ip}", "source_hostname": "{hostname}", "source_port_name": "", "destination_is_ipv6": False, "destination_ip": "99.181.64.71", "destination_hostname": "slack.com", "destination_port": "443", "destination_port_name": "https"}
     },
     # =========================================================================
     # WINDOWS SECURITY LOGS (20 events) - Windows Security Event Log
@@ -1389,140 +1389,140 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "source_type": "Windows Security",
         "source_ip": "{src_ip}",
         "message": "An account was successfully logged on.",
-        "key_value_pairs": {"logon_type": "2", "target_user": "{username}", "target_domain": "ACME", "auth_package": "Kerberos", "logon_id": "0x1A2B3C", "status": "Success"}
+        "key_value_pairs": {"event_id": 4624, "channel": "WinEventLog:Security", "computer": "{hostname}", "subject_security_id": "NULL SID", "subject_account_name": "-", "subject_account_domain": "-", "subject_logon_id": "0x0", "logon_type": "2", "account_name": "{username}", "account_domain": "ACME", "new_logon_logon_id": "0x1A2B3C", "logon_guid": "{00000000-0000-0000-0000-000000000000}", "process_id": "0x0", "process_name": "-", "workstation_name": "{hostname}", "src_ip": "{src_ip}", "src_port": "-", "logon_process": "User32", "authentication_package": "Kerberos", "transited_services": "-", "package_name": "-", "key_length": "0"}
     },
     {
         "event_type": "4672",
         "source_type": "Windows Security",
         "source_ip": "{src_ip}",
         "message": "Special privileges assigned to new logon.",
-        "key_value_pairs": {"target_user": "{username}", "target_domain": "ACME", "logon_id": "0x1A2B3C", "privileges": "SeChangeNotifyPrivilege;SeIncreaseWorkingSetPrivilege;SeShutdownPrivilege"}
+        "key_value_pairs": {"event_id": 4672, "channel": "WinEventLog:Security", "computer": "{hostname}", "subject_security_id": "S-1-5-21-1547161642-1842894336-919524151-1105", "account_name": "{username}", "account_domain": "ACME", "subject_logon_id": "0x1A2B3C", "privileges": "SeChangeNotifyPrivilege\n\t\t\tSeIncreaseWorkingSetPrivilege\n\t\t\tSeShutdownPrivilege"}
     },
     {
         "event_type": "4624",
         "source_type": "Windows Security",
         "source_ip": "{src_ip}",
         "message": "An account was successfully logged on.",
-        "key_value_pairs": {"logon_type": "5", "target_user": "SYSTEM", "target_domain": "NT AUTHORITY", "auth_package": "Negotiate", "logon_id": "0x3E8", "status": "Success"}
+        "key_value_pairs": {"event_id": 4624, "channel": "WinEventLog:Security", "computer": "{hostname}", "subject_security_id": "NULL SID", "subject_account_name": "-", "subject_account_domain": "-", "subject_logon_id": "0x0", "logon_type": "5", "account_name": "SYSTEM", "account_domain": "NT AUTHORITY", "new_logon_logon_id": "0x3E8", "logon_guid": "{00000000-0000-0000-0000-000000000000}", "process_id": "0x0", "process_name": "-", "workstation_name": "{hostname}", "src_ip": "-", "src_port": "-", "logon_process": "Advapi", "authentication_package": "Negotiate", "transited_services": "-", "package_name": "-", "key_length": "0"}
     },
     {
         "event_type": "4688",
         "source_type": "Windows Security",
         "source_ip": "{src_ip}",
         "message": "A new process has been created.",
-        "key_value_pairs": {"new_process_name": "explorer.exe", "new_process_id": "0x1234", "creator_process_name": "winlogon.exe", "command_line": "C:\\Windows\\Explorer.EXE"}
+        "key_value_pairs": {"event_id": 4688, "channel": "WinEventLog:Security", "computer": "{hostname}", "subject_security_id": "S-1-5-18", "account_name": "ACME-WKS01$", "account_domain": "ACME", "subject_logon_id": "0x3e7", "target_security_id": "S-1-5-21-1547161642-1842894336-919524151-1105", "target_account_name": "{username}", "target_account_domain": "ACME", "target_logon_id": "0x1A2B3C", "new_process_id": "0x1234", "new_process_name": "C:\\Windows\\explorer.exe", "token_elevation_type": "%%1936", "mandatory_label": "S-1-16-8192", "creator_process_id": "0x4a8", "creator_process_name": "C:\\Windows\\System32\\winlogon.exe", "process_command_line": "C:\\Windows\\Explorer.EXE"}
     },
     {
         "event_type": "4688",
         "source_type": "Windows Security",
         "source_ip": "{src_ip}",
         "message": "A new process has been created.",
-        "key_value_pairs": {"new_process_name": "RuntimeBroker.exe", "new_process_id": "0x1456", "creator_process_name": "svchost.exe"}
+        "key_value_pairs": {"event_id": 4688, "channel": "WinEventLog:Security", "computer": "{hostname}", "subject_security_id": "S-1-5-21-1547161642-1842894336-919524151-1105", "account_name": "{username}", "account_domain": "ACME", "subject_logon_id": "0x1A2B3C", "target_security_id": "S-1-5-21-1547161642-1842894336-919524151-1105", "target_account_name": "{username}", "target_account_domain": "ACME", "target_logon_id": "0x1A2B3C", "new_process_id": "0x1456", "new_process_name": "C:\\Windows\\System32\\RuntimeBroker.exe", "token_elevation_type": "%%1938", "mandatory_label": "S-1-16-8192", "creator_process_id": "0x6f4", "creator_process_name": "C:\\Windows\\System32\\svchost.exe", "process_command_line": "C:\\Windows\\System32\\RuntimeBroker.exe -Embedding"}
     },
     {
         "event_type": "4624",
         "source_type": "Windows Security",
         "source_ip": "{src_ip}",
         "message": "An account was successfully logged on.",
-        "key_value_pairs": {"logon_type": "3", "target_user": "{username}", "target_domain": "ACME", "auth_package": "NTLM", "logon_id": "0x49300", "status": "Success"}
+        "key_value_pairs": {"event_id": 4624, "channel": "WinEventLog:Security", "computer": "{hostname}", "subject_security_id": "NULL SID", "subject_account_name": "-", "subject_account_domain": "-", "subject_logon_id": "0x0", "logon_type": "3", "account_name": "{username}", "account_domain": "ACME", "new_logon_logon_id": "0x49300", "logon_guid": "{00000000-0000-0000-0000-000000000000}", "process_id": "0x0", "process_name": "-", "workstation_name": "{hostname}", "src_ip": "{src_ip}", "src_port": "-", "logon_process": "NtLmSsp", "authentication_package": "NTLM", "transited_services": "-", "package_name": "NTLM V2", "key_length": "128"}
     },
     {
         "event_type": "4634",
         "source_type": "Windows Security",
         "source_ip": "{src_ip}",
         "message": "An account was logged off.",
-        "key_value_pairs": {"logon_type": "3", "target_user": "{username}", "target_domain": "ACME", "logon_id": "0x1A2B3C"}
+        "key_value_pairs": {"event_id": 4634, "channel": "WinEventLog:Security", "computer": "{hostname}", "subject_security_id": "S-1-5-21-1547161642-1842894336-919524151-1105", "subject_account_name": "{username}", "subject_account_domain": "ACME", "subject_logon_id": "0x1A2B3C", "logon_type": 3}
     },
     {
         "event_type": "4624",
         "source_type": "Windows Security",
         "source_ip": "{src_ip}",
         "message": "An account was successfully logged on.",
-        "key_value_pairs": {"logon_type": "5", "target_user": "SYSTEM", "target_domain": "NT AUTHORITY", "auth_package": "Negotiate", "logon_id": "0x3E9", "status": "Success"}
+        "key_value_pairs": {"event_id": 4624, "channel": "WinEventLog:Security", "computer": "{hostname}", "subject_security_id": "NULL SID", "subject_account_name": "-", "subject_account_domain": "-", "subject_logon_id": "0x0", "logon_type": "5", "account_name": "SYSTEM", "account_domain": "NT AUTHORITY", "new_logon_logon_id": "0x3E9", "logon_guid": "{00000000-0000-0000-0000-000000000000}", "process_id": "0x0", "process_name": "-", "workstation_name": "{hostname}", "src_ip": "-", "src_port": "-", "logon_process": "Advapi", "authentication_package": "Negotiate", "transited_services": "-", "package_name": "-", "key_length": "0"}
     },
     {
         "event_type": "4624",
         "source_type": "Windows Security",
         "source_ip": "{src_ip}",
         "message": "An account was successfully logged on.",
-        "key_value_pairs": {"logon_type": "7", "target_user": "{username}", "target_domain": "ACME", "auth_package": "Kerberos", "logon_id": "0x2C3D4E", "status": "Success"}
+        "key_value_pairs": {"event_id": 4624, "channel": "WinEventLog:Security", "computer": "{hostname}", "subject_security_id": "NULL SID", "subject_account_name": "-", "subject_account_domain": "-", "subject_logon_id": "0x0", "logon_type": "7", "account_name": "{username}", "account_domain": "ACME", "new_logon_logon_id": "0x2C3D4E", "logon_guid": "{00000000-0000-0000-0000-000000000000}", "process_id": "0x0", "process_name": "-", "workstation_name": "{hostname}", "src_ip": "{src_ip}", "src_port": "-", "logon_process": "User32", "authentication_package": "Kerberos", "transited_services": "-", "package_name": "-", "key_length": "0"}
     },
     {
         "event_type": "4688",
         "source_type": "Windows Security",
         "source_ip": "{src_ip}",
         "message": "A new process has been created.",
-        "key_value_pairs": {"new_process_name": "OUTLOOK.EXE", "new_process_id": "0x2468", "creator_process_name": "explorer.exe"}
+        "key_value_pairs": {"event_id": 4688, "channel": "WinEventLog:Security", "computer": "{hostname}", "subject_security_id": "S-1-5-21-1547161642-1842894336-919524151-1105", "account_name": "{username}", "account_domain": "ACME", "subject_logon_id": "0x1A2B3C", "target_security_id": "S-1-5-21-1547161642-1842894336-919524151-1105", "target_account_name": "{username}", "target_account_domain": "ACME", "target_logon_id": "0x1A2B3C", "new_process_id": "0x2468", "new_process_name": "C:\\Program Files\\Microsoft Office\\root\\Office16\\OUTLOOK.EXE", "token_elevation_type": "%%1938", "mandatory_label": "S-1-16-8192", "creator_process_id": "0x1234", "creator_process_name": "C:\\Windows\\explorer.exe", "process_command_line": "\"C:\\Program Files\\Microsoft Office\\root\\Office16\\OUTLOOK.EXE\""}
     },
     {
         "event_type": "4648",
         "source_type": "Windows Security",
         "source_ip": "{src_ip}",
         "message": "A logon was attempted using explicit credentials.",
-        "key_value_pairs": {"target_user": "{username}", "target_server": "ACME-SVR02", "process_name": "OUTLOOK.EXE", "logon_id": "0x2C3D4E"}
+        "key_value_pairs": {"event_id": 4648, "channel": "WinEventLog:Security", "computer": "{hostname}", "subject_security_id": "S-1-5-21-1547161642-1842894336-919524151-1105", "account_name": "{username}", "account_domain": "ACME", "subject_logon_id": "0x2C3D4E", "subject_logon_guid": "{00000000-0000-0000-0000-000000000000}", "target_account_name": "{username}", "target_account_domain": "ACME", "target_logon_guid": "{00000000-0000-0000-0000-000000000000}", "target_server_name": "ACME-SVR02", "target_info": "ACME-SVR02", "process_id": "0x1a4c", "process_name": "C:\\Program Files\\Microsoft Office\\root\\Office16\\OUTLOOK.EXE", "ip_address": "-", "ip_port": "-"}
     },
     {
         "event_type": "4624",
         "source_type": "Windows Security",
         "source_ip": "{src_ip}",
         "message": "An account was successfully logged on.",
-        "key_value_pairs": {"logon_type": "3", "target_user": "{username}", "target_domain": "ACME", "auth_package": "Kerberos", "logon_id": "0x49350", "status": "Success"}
+        "key_value_pairs": {"event_id": 4624, "channel": "WinEventLog:Security", "computer": "{hostname}", "subject_security_id": "NULL SID", "subject_account_name": "-", "subject_account_domain": "-", "subject_logon_id": "0x0", "logon_type": "3", "account_name": "{username}", "account_domain": "ACME", "new_logon_logon_id": "0x49350", "logon_guid": "{00000000-0000-0000-0000-000000000000}", "process_id": "0x0", "process_name": "-", "workstation_name": "{hostname}", "src_ip": "{src_ip}", "src_port": "-", "logon_process": "Kerberos", "authentication_package": "Kerberos", "transited_services": "-", "package_name": "-", "key_length": "0"}
     },
     {
         "event_type": "4688",
         "source_type": "Windows Security",
         "source_ip": "{src_ip}",
         "message": "A new process has been created.",
-        "key_value_pairs": {"new_process_name": "svchost.exe", "new_process_id": "0x3580", "creator_process_name": "services.exe", "command_line": "svchost.exe -k netsvcs -p"}
+        "key_value_pairs": {"event_id": 4688, "channel": "WinEventLog:Security", "computer": "{hostname}", "subject_security_id": "S-1-5-18", "account_name": "ACME-WKS01$", "account_domain": "ACME", "subject_logon_id": "0x3e7", "target_security_id": "S-1-5-18", "target_account_name": "ACME-WKS01$", "target_account_domain": "ACME", "target_logon_id": "0x3e7", "new_process_id": "0x3580", "new_process_name": "C:\\Windows\\System32\\svchost.exe", "token_elevation_type": "%%1936", "mandatory_label": "S-1-16-16384", "creator_process_id": "0x2c8", "creator_process_name": "C:\\Windows\\System32\\services.exe", "process_command_line": "C:\\Windows\\System32\\svchost.exe -k netsvcs -p"}
     },
     {
         "event_type": "4624",
         "source_type": "Windows Security",
         "source_ip": "{src_ip}",
         "message": "An account was successfully logged on.",
-        "key_value_pairs": {"logon_type": "3", "target_user": "svc_backup", "target_domain": "ACME", "auth_package": "Negotiate", "logon_id": "0x49600", "status": "Success"}
+        "key_value_pairs": {"event_id": 4624, "channel": "WinEventLog:Security", "computer": "{hostname}", "subject_security_id": "NULL SID", "subject_account_name": "-", "subject_account_domain": "-", "subject_logon_id": "0x0", "logon_type": "3", "account_name": "svc_backup", "account_domain": "ACME", "new_logon_logon_id": "0x49600", "logon_guid": "{00000000-0000-0000-0000-000000000000}", "process_id": "0x0", "process_name": "-", "workstation_name": "{hostname}", "src_ip": "{src_ip}", "src_port": "-", "logon_process": "Kerberos", "authentication_package": "Negotiate", "transited_services": "-", "package_name": "-", "key_length": "0"}
     },
     {
         "event_type": "4672",
         "source_type": "Windows Security",
         "source_ip": "{src_ip}",
         "message": "Special privileges assigned to new logon.",
-        "key_value_pairs": {"target_user": "svc_backup", "target_domain": "ACME", "logon_id": "0x4D5E6F", "privileges": "SeBackupPrivilege;SeRestorePrivilege;SeChangeNotifyPrivilege"}
+        "key_value_pairs": {"event_id": 4672, "channel": "WinEventLog:Security", "computer": "{hostname}", "subject_security_id": "S-1-5-21-1547161642-1842894336-919524151-2001", "account_name": "svc_backup", "account_domain": "ACME", "subject_logon_id": "0x4D5E6F", "privileges": "SeBackupPrivilege\n\t\t\tSeRestorePrivilege\n\t\t\tSeChangeNotifyPrivilege"}
     },
     {
         "event_type": "4634",
         "source_type": "Windows Security",
         "source_ip": "{src_ip}",
         "message": "An account was logged off.",
-        "key_value_pairs": {"logon_type": "7", "target_user": "{username}", "target_domain": "ACME", "logon_id": "0x2C3D4E"}
+        "key_value_pairs": {"event_id": 4634, "channel": "WinEventLog:Security", "computer": "{hostname}", "subject_security_id": "S-1-5-21-1547161642-1842894336-919524151-1105", "subject_account_name": "{username}", "subject_account_domain": "ACME", "subject_logon_id": "0x2C3D4E", "logon_type": 7}
     },
     {
         "event_type": "4624",
         "source_type": "Windows Security",
         "source_ip": "{src_ip}",
         "message": "An account was successfully logged on.",
-        "key_value_pairs": {"logon_type": "2", "target_user": "{username}", "target_domain": "ACME", "auth_package": "Kerberos", "logon_id": "0x5E6F70", "status": "Success"}
+        "key_value_pairs": {"event_id": 4624, "channel": "WinEventLog:Security", "computer": "{hostname}", "subject_security_id": "NULL SID", "subject_account_name": "-", "subject_account_domain": "-", "subject_logon_id": "0x0", "logon_type": "2", "account_name": "{username}", "account_domain": "ACME", "new_logon_logon_id": "0x5E6F70", "logon_guid": "{00000000-0000-0000-0000-000000000000}", "process_id": "0x0", "process_name": "-", "workstation_name": "{hostname}", "src_ip": "{src_ip}", "src_port": "-", "logon_process": "User32", "authentication_package": "Kerberos", "transited_services": "-", "package_name": "-", "key_length": "0"}
     },
     {
         "event_type": "4688",
         "source_type": "Windows Security",
         "source_ip": "{src_ip}",
         "message": "A new process has been created.",
-        "key_value_pairs": {"new_process_name": "taskhostw.exe", "new_process_id": "0x4692", "creator_process_name": "svchost.exe"}
+        "key_value_pairs": {"event_id": 4688, "channel": "WinEventLog:Security", "computer": "{hostname}", "subject_security_id": "S-1-5-21-1547161642-1842894336-919524151-1105", "account_name": "{username}", "account_domain": "ACME", "subject_logon_id": "0x1A2B3C", "target_security_id": "S-1-5-21-1547161642-1842894336-919524151-1105", "target_account_name": "{username}", "target_account_domain": "ACME", "target_logon_id": "0x1A2B3C", "new_process_id": "0x4692", "new_process_name": "C:\\Windows\\System32\\taskhostw.exe", "token_elevation_type": "%%1938", "mandatory_label": "S-1-16-8192", "creator_process_id": "0x6f4", "creator_process_name": "C:\\Windows\\System32\\svchost.exe", "process_command_line": "taskhostw.exe {222A245B-E637-4AE9-A93F-A59CA119A75E}"}
     },
     {
         "event_type": "4624",
         "source_type": "Windows Security",
         "source_ip": "{src_ip}",
         "message": "An account was successfully logged on.",
-        "key_value_pairs": {"logon_type": "2", "target_user": "DWM-1", "target_domain": "Window Manager", "auth_package": "Negotiate", "logon_id": "0x6F7080", "status": "Success"}
+        "key_value_pairs": {"event_id": 4624, "channel": "WinEventLog:Security", "computer": "{hostname}", "subject_security_id": "NULL SID", "subject_account_name": "-", "subject_account_domain": "-", "subject_logon_id": "0x0", "logon_type": "2", "account_name": "DWM-1", "account_domain": "Window Manager", "new_logon_logon_id": "0x6F7080", "logon_guid": "{00000000-0000-0000-0000-000000000000}", "process_id": "0x0", "process_name": "-", "workstation_name": "{hostname}", "src_ip": "-", "src_port": "-", "logon_process": "User32", "authentication_package": "Negotiate", "transited_services": "-", "package_name": "-", "key_length": "0"}
     },
     {
         "event_type": "4688",
         "source_type": "Windows Security",
         "source_ip": "{src_ip}",
         "message": "A new process has been created.",
-        "key_value_pairs": {"new_process_name": "chrome.exe", "new_process_id": "0x57A4", "creator_process_name": "explorer.exe", "command_line": "\"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\""}
+        "key_value_pairs": {"event_id": 4688, "channel": "WinEventLog:Security", "computer": "{hostname}", "subject_security_id": "S-1-5-21-1547161642-1842894336-919524151-1105", "account_name": "{username}", "account_domain": "ACME", "subject_logon_id": "0x1A2B3C", "target_security_id": "S-1-5-21-1547161642-1842894336-919524151-1105", "target_account_name": "{username}", "target_account_domain": "ACME", "target_logon_id": "0x1A2B3C", "new_process_id": "0x57A4", "new_process_name": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", "token_elevation_type": "%%1938", "mandatory_label": "S-1-16-8192", "creator_process_id": "0x1234", "creator_process_name": "C:\\Windows\\explorer.exe", "process_command_line": "\"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\""}
     },
 ]
 
