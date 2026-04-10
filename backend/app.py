@@ -567,17 +567,17 @@ CAMPAIGN_LEVELS = [
             },
             "Phishing": {
                 "scenario_label": "phishing_1",
-                "ticket_title": "Credential Submission to Untrusted Domain",
+                "ticket_title": "Microsoft 365 Account Login from Unusual Location",
                 "storyline": "An employee received a Microsoft 365 password reset email and clicked the link. The page looked like a normal Microsoft sign-in. The proxy logged the connection but did not block it. Shortly after, account activity was detected from an unexpected location.",
             },
             "Defense Evasion": {
                 "scenario_label": "defense_evasion",
-                "ticket_title": "Endpoint Protection Disabled Preceding Malicious Execution",
+                "ticket_title": "Endpoint Protection Disabled on Workstation",
                 "storyline": "Unusual activity was detected on a workstation outside of business hours. No user was logged in at the time. Review the logs and determine the scope of what occurred.",
             },
             "False Positive": {
                 "scenario_label": "false_positive_pentest",
-                "ticket_title": "Phishing Email with Credential Harvesting Link Reported",
+                "ticket_title": "Suspicious Password Reset Email Reported",
                 "storyline": "An employee reported receiving a password reset email they did not request. The email contained a link to what appears to be a lookalike domain. Proxy logs show the user clicked the link. SPF checks passed. The security awareness team recently onboarded a new training vendor.",
             }
         }
@@ -589,7 +589,7 @@ CAMPAIGN_LEVELS = [
         "scenarios": {
             "Lateral Movement": {
                 "scenario_label": "lateral_movement_1",
-                "ticket_title": "Unusual Connection Attempts to Internal Server",
+                "ticket_title": "Internal Port Scan from Workstation",
                 "storyline": "Unexpected network activity was detected originating from an internal workstation with no scheduled maintenance or administrative tasks. The firewall logged multiple connection attempts to an internal server in rapid succession.",
             },
             "Command & Control": {
@@ -599,12 +599,12 @@ CAMPAIGN_LEVELS = [
             },
             "Brute Force": {
                 "scenario_label": "brute_force_attack",
-                "ticket_title": "Repeated Authentication Failures on Domain Controller",
+                "ticket_title": "Account Locked After External Login Failures",
                 "storyline": "The Domain Controller began logging unusual authentication activity from an external source outside of business hours. The targeted account has since been locked out.",
             },
             "False Positive": {
                 "scenario_label": "false_positive_robocopy",
-                "ticket_title": "Bulk File Transfer to OneDrive from Service Account",
+                "ticket_title": "Large Outbound Transfer to OneDrive",
                 "storyline": "A scheduled task executed on a workstation under a service account and began copying a large volume of files from an internal file share. Over 2 GB of data was transferred outbound to a cloud endpoint. IT operations has a standing migration project scheduled this quarter.",
             }
         }
@@ -621,17 +621,17 @@ CAMPAIGN_LEVELS = [
             },
             "Data Exfiltration": {
                 "scenario_label": "data_exfil_archive",
-                "ticket_title": "Password-Protected Archive Created Outside of Business Hours",
+                "ticket_title": "Encrypted Archive Followed by External Upload",
                 "storyline": "A compression utility was executed on an endpoint outside of business hours. No software deployment or IT task was scheduled for this host. Shortly after, outbound connections were established to an external file hosting service.",
             },
             "Insider Threat": {
                 "scenario_label": "insider_staging",
-                "ticket_title": "Restricted Financial Document Accessed and Transferred to Personal Cloud Storage",
+                "ticket_title": "Unauthorized Access to Financial Records",
                 "storyline": "A user account accessed a file share containing sensitive financial records outside of their normal role. A document was copied locally before an outbound connection was established to a personal cloud storage service. No transfer approval or business justification exists for this activity.",
             },
             "False Positive": {
                 "scenario_label": "false_positive_veeam",
-                "ticket_title": "Periodic Data Transfer to Internal Host Under SYSTEM Context",
+                "ticket_title": "Beaconing-Like Pattern from Workstation",
                 "storyline": "An endpoint began generating repeated outbound connections to an internal server at regular intervals outside of business hours. The process runs under SYSTEM and has transferred over 1.75 GB of data. The backup team recently deployed Veeam agents to all workstations as part of the endpoint protection initiative.",
             }
         }
@@ -643,7 +643,7 @@ CAMPAIGN_LEVELS = [
         "scenarios": {
             "Malware": {
                 "scenario_label": "malware_ransomware",
-                "ticket_title": "Unexpected File Modifications and Volume Shadow Copy Deletion",
+                "ticket_title": "Mass File Encryption with Ransom Note",
                 "storyline": "An employee discovered a text file on their desktop demanding Bitcoin payment to restore access to their documents. Multiple files on the workstation appear to have been renamed with an unfamiliar extension. The employee did not make these changes and no maintenance was scheduled.",
             },
             "Lateral Movement": {
@@ -653,12 +653,12 @@ CAMPAIGN_LEVELS = [
             },
             "Defense Evasion": {
                 "scenario_label": "defense_evasion_log_clearing",
-                "ticket_title": "Unexpected Log Clearing Activity on Workstation",
+                "ticket_title": "Event Logs Cleared on Workstation",
                 "storyline": "An automated monitoring alert fired when a workstation's event logs were unexpectedly emptied. No maintenance was scheduled. Investigate what activity preceded the clearing.",
             },
             "False Positive": {
                 "scenario_label": "false_positive_oauth",
-                "ticket_title": "Anomalous Token Activity and Sign-In from Foreign Location",
+                "ticket_title": "Impossible Travel Sign-In Alert",
                 "storyline": "Entra ID Protection flagged a user account for anomalous token activity originating from Dublin, Ireland. The user is based in Miami and has not reported any travel. Multiple non-interactive sign-ins were recorded against Office 365 Exchange Online. The identity team recently migrated all endpoints to modern authentication with OAuth refresh tokens.",
             }
         }
@@ -670,7 +670,7 @@ CAMPAIGN_LEVELS = [
         "scenarios": {
             "Insider Threat": {
                 "scenario_label": "insider_shadow_it",
-                "ticket_title": "Unapproved Application with Outbound File Transfer",
+                "ticket_title": "Possible Data Leak via Unauthorized Application",
                 "storyline": "A workstation launched an application not on the approved software list. Shortly after, multiple sensitive documents were moved into a folder associated with the application, and the proxy logged an upload to an external cloud storage provider. The employee has not submitted a software installation request.",
             },
             "Brute Force": {
@@ -680,12 +680,12 @@ CAMPAIGN_LEVELS = [
             },
             "Command & Control": {
                 "scenario_label": "c2_dns_tunnel",
-                "ticket_title": "Anomalous Outbound DNS Traffic Pattern",
+                "ticket_title": "DNS Queries to Unrecognized Domain",
                 "storyline": "The DNS server logged repeated TXT queries from a single workstation to subdomains of a domain not on any internal or approved service list. The subdomain labels appear non-standard. Shortly before the queries began, the workstation launched an unfamiliar process from the Downloads folder.",
             },
             "False Positive": {
                 "scenario_label": "false_positive_ssl_inspection",
-                "ticket_title": "Outlook Repeatedly Failing TLS Connections with Beaconing Pattern",
+                "ticket_title": "Repeated TLS Failures from Multiple Workstations",
                 "storyline": "Multiple workstations are generating repeated failed TLS connections to Microsoft 365 endpoints. The connection pattern resembles command-and-control beaconing with consistent retry intervals. The network team recently expanded the corporate proxy's SSL inspection policy to cover additional domains.",
             }
         }
@@ -1208,56 +1208,56 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "10.0.1.204", "src_port": "48562", "dest_port": 3389, "transport": "tcp", "action": "allow", "app": "ms-rdp", "dvc": "ACME-FW01", "rule": "admin-rdp-access"}
     },
     {
-        "event_type": "session-end",
+        "event_type": "SESSION_END",
         "source_type": "Firewall",
         "source_ip": "{src_ip}",
         "message": "Session ended for outbound HTTPS connection to Office 365.",
         "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "52.96.165.18", "src_port": "52341", "dest_port": 443, "transport": "tcp", "action": "allow", "app": "ssl", "dvc": "ACME-FW01", "rule": "outbound-web", "bytes_in": 184729, "bytes_out": 24816, "session_end_reason": "tcp-fin"}
     },
     {
-        "event_type": "session-end",
+        "event_type": "SESSION_END",
         "source_type": "Firewall",
         "source_ip": "{src_ip}",
         "message": "Session ended for outbound HTTPS connection to SharePoint.",
         "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "13.107.42.14", "src_port": "49823", "dest_port": 443, "transport": "tcp", "action": "allow", "app": "ssl", "dvc": "ACME-FW01", "rule": "outbound-web", "bytes_in": 892341, "bytes_out": 47215, "session_end_reason": "tcp-fin"}
     },
     {
-        "event_type": "session-end",
+        "event_type": "SESSION_END",
         "source_type": "Firewall",
         "source_ip": "{src_ip}",
         "message": "Session ended for outbound HTTPS connection to Google.",
         "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "142.250.191.46", "src_port": "51247", "dest_port": 443, "transport": "tcp", "action": "allow", "app": "web-browsing", "dvc": "ACME-FW01", "rule": "outbound-web", "bytes_in": 41825, "bytes_out": 8294, "session_end_reason": "tcp-fin"}
     },
     {
-        "event_type": "session-end",
+        "event_type": "SESSION_END",
         "source_type": "Firewall",
         "source_ip": "{src_ip}",
         "message": "Session ended for outbound HTTPS connection to Bing.",
         "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "204.79.197.200", "src_port": "48562", "dest_port": 443, "transport": "tcp", "action": "allow", "app": "web-browsing", "dvc": "ACME-FW01", "rule": "outbound-web", "bytes_in": 36172, "bytes_out": 6841, "session_end_reason": "tcp-fin"}
     },
     {
-        "event_type": "session-end",
+        "event_type": "SESSION_END",
         "source_type": "Firewall",
         "source_ip": "{src_ip}",
         "message": "Session ended for outbound HTTPS connection to GitHub.",
         "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "151.101.1.140", "src_port": "53891", "dest_port": 443, "transport": "tcp", "action": "allow", "app": "ssl", "dvc": "ACME-FW01", "rule": "outbound-web", "bytes_in": 124583, "bytes_out": 18472, "session_end_reason": "tcp-fin"}
     },
     {
-        "event_type": "session-end",
+        "event_type": "SESSION_END",
         "source_type": "Firewall",
         "source_ip": "{src_ip}",
         "message": "Session ended for outbound HTTPS connection to LinkedIn.",
         "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "157.240.241.35", "src_port": "54129", "dest_port": 443, "transport": "tcp", "action": "allow", "app": "ssl", "dvc": "ACME-FW01", "rule": "outbound-web", "bytes_in": 728194, "bytes_out": 39528, "session_end_reason": "tcp-fin"}
     },
     {
-        "event_type": "session-end",
+        "event_type": "SESSION_END",
         "source_type": "Firewall",
         "source_ip": "{src_ip}",
         "message": "Session ended for outbound HTTPS connection to Microsoft login.",
         "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "20.190.151.7", "src_port": "55672", "dest_port": 443, "transport": "tcp", "action": "allow", "app": "ssl", "dvc": "ACME-FW01", "rule": "outbound-web", "bytes_in": 12847, "bytes_out": 4193, "session_end_reason": "tcp-fin"}
     },
     {
-        "event_type": "session-end",
+        "event_type": "SESSION_END",
         "source_type": "Firewall",
         "source_ip": "{src_ip}",
         "message": "Session ended for outbound HTTPS connection to jsDelivr CDN.",
