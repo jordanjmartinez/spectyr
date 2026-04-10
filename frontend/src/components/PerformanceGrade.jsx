@@ -90,6 +90,7 @@ const PerformanceGrade = ({ report }) => {
           </div>
         </div>
 
+        <div className="flex-1 w-full flex items-center justify-center min-h-[220px]">
         {view === 'grade' && (
           <div className="relative w-36 h-36 sm:w-56 sm:h-56 mx-auto border-dashed border-2 border-gray-700 rounded-full p-2">
             <ResponsiveContainer width="100%" height="100%">
@@ -107,7 +108,7 @@ const PerformanceGrade = ({ report }) => {
         )}
 
         {view === 'accuracy' && (
-          <div className="flex-1 w-full min-h-[220px]">
+          <div className="w-full h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={barData} margin={{ top: 16, right: 10, left: -20, bottom: 10 }} barCategoryGap="20%">
                 <CartesianGrid strokeDasharray="3 3" stroke="#21262d" vertical={false} />
@@ -136,6 +137,7 @@ const PerformanceGrade = ({ report }) => {
             </ResponsiveContainer>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

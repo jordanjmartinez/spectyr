@@ -114,15 +114,7 @@ const ActionHistory = ({ history: rawHistory }) => {
                           <div className="border-t border-gray-700 px-6 py-4">
                             <div className="mb-4">
                               <span className="text-sm sm:text-base text-white font-medium">Classification</span>
-                              <p className="text-gray-300 mt-1 text-sm sm:text-base">
-                                <span className={item.correct ? 'text-[#6fa868]' : 'text-[#b26666]'}>{item.user_choice}</span>
-                                {!item.correct && (
-                                  <>
-                                    <span className="text-gray-600 mx-2">→</span>
-                                    <span className="text-[#6fa868]">{item.true_category}</span>
-                                  </>
-                                )}
-                              </p>
+                              <p className="text-gray-300 mt-1 text-sm sm:text-base">{item.true_category}</p>
                             </div>
                             {review ? (
                               <>
@@ -150,7 +142,7 @@ const ActionHistory = ({ history: rawHistory }) => {
                                 )}
                                 {review.what_is_it && (
                                   <div className="mb-4">
-                                    <span className="text-sm sm:text-base text-white font-medium">What is {review.what_is_it.title.replace(/\s*\(.*?\)/g, '')}?</span>
+                                    <span className="text-sm sm:text-base text-white font-medium">Description</span>
                                     <p className="text-gray-300 mt-2 leading-relaxed text-sm sm:text-base break-words">{review.what_is_it.description}</p>
                                   </div>
                                 )}

@@ -12,6 +12,7 @@ const Dashboard = () => {
   const [alertCount, setAlertCount] = useState(0);
   const [groupedAlertCount, setGroupedAlertCount] = useState(0);
   const [reportCount, setReportCount] = useState(0);
+  const [analyticsCount, setAnalyticsCount] = useState(0);
   const [view, setView] = useState("table");
   const [resetTrigger, setResetTrigger] = useState(0);
   const [showResetModal, setShowResetModal] = useState(false);
@@ -158,13 +159,13 @@ const Dashboard = () => {
           <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />
         </div>
         <div className="bg-[#161b22] rounded-xl p-3 sm:p-6">
-          <div className="flex gap-2 sm:gap-8 pl-1 sm:pl-8 border-b border-gray-700 mb-6">
+          <div className="grid grid-cols-4 sm:grid-cols-[8rem_8rem_8.5rem_8rem] border-b border-gray-700 mb-6">
             <button
               onClick={() => {
                 setView("grouped");
                 setIncidentBadge(0);
               }}
-              className={`py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 font-medium ${
+              className={`py-3 sm:py-4 text-xs sm:text-lg whitespace-nowrap transition-all duration-200 font-medium ${
                 view === "grouped"
                   ? "text-white"
                   : "text-gray-400 hover:text-white"
@@ -174,7 +175,7 @@ const Dashboard = () => {
             </button>
             <button
               onClick={() => setView("table")}
-              className={`py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 font-medium ${
+              className={`py-3 sm:py-4 text-xs sm:text-lg whitespace-nowrap transition-all duration-200 font-medium ${
                 view === "table"
                   ? "text-white"
                   : "text-gray-400 hover:text-white"
@@ -184,17 +185,17 @@ const Dashboard = () => {
             </button>
             <button
               onClick={() => setView("analytics")}
-              className={`py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 font-medium ${
+              className={`py-3 sm:py-4 text-xs sm:text-lg whitespace-nowrap transition-all duration-200 font-medium ${
                 view === "analytics"
                   ? "text-white"
                   : "text-gray-400 hover:text-white"
               }`}
             >
-              Analytics <span className="invisible font-normal ml-1 hidden sm:inline">0</span>
+              Analytics <span className={`font-normal ml-1 ${analyticsCount > 0 ? "text-gray-500" : "invisible"}`}>{analyticsCount || "0"}</span>
             </button>
             <button
               onClick={() => setView("reports")}
-              className={`py-3 sm:py-4 text-sm sm:text-lg whitespace-nowrap transition-all duration-200 font-medium ${
+              className={`py-3 sm:py-4 text-xs sm:text-lg whitespace-nowrap transition-all duration-200 font-medium ${
                 view === "reports"
                   ? "text-white"
                   : "text-gray-400 hover:text-white"
@@ -232,7 +233,7 @@ const Dashboard = () => {
           </div>
 
           <div className={view === "analytics" ? "block" : "hidden"}>
-            <Analytics onReset={() => setShowResetModal(true)} analystName={analystName} />
+            <Analytics onReset={() => setShowResetModal(true)} analystName={analystName} setAnalyticsCount={setAnalyticsCount} />
           </div>
 
           <div className={view === "reports" ? "block" : "hidden"}>

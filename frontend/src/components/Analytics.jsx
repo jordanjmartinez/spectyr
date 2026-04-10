@@ -5,7 +5,7 @@ import PerformanceGrade from './PerformanceGrade';
 import CampaignProgress from './CampaignProgress';
 import ActionHistory from './ActionHistory';
 
-const Analytics = ({ onReset, analystName }) => {
+const Analytics = ({ onReset, analystName, setAnalyticsCount }) => {
   const [report, setReport] = useState(null);
   const [levelData, setLevelData] = useState(null);
   const [actionHistory, setActionHistory] = useState([]);
@@ -42,6 +42,12 @@ const Analytics = ({ onReset, analystName }) => {
     }, 3000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (setAnalyticsCount) {
+      setAnalyticsCount(actionHistory.length);
+    }
+  }, [actionHistory, setAnalyticsCount]);
 
   return (
     <div className="space-y-6">

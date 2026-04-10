@@ -831,12 +831,12 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                       <thead>
                         <tr className="text-xs sm:text-sm uppercase text-gray-400 tracking-wider">
                           <th className="w-10 px-2 py-3"></th>
-                          <th className="px-2 sm:px-4 py-3 font-medium w-[100px] whitespace-nowrap">Alert ID</th>
-                          <th className="px-2 sm:px-4 py-3 font-medium w-[100px] sm:w-[130px] whitespace-nowrap">Time</th>
-                          <th className="px-2 sm:px-4 py-3 font-medium w-[160px] sm:w-[240px] whitespace-nowrap">Event Type</th>
-                          <th className="px-2 sm:px-4 py-3 font-medium w-[110px] sm:w-[170px] whitespace-nowrap">Src Type</th>
-                          <th className="px-2 sm:px-4 py-3 font-medium w-[120px] sm:w-[160px] whitespace-nowrap">Src IP</th>
-                          <th className="px-2 sm:px-4 py-3 font-medium w-[120px] sm:w-[160px] whitespace-nowrap">Dst IP</th>
+                          <th className="px-2 sm:px-4 py-3 font-medium w-[100px] whitespace-nowrap text-center">Alert ID</th>
+                          <th className="px-2 sm:px-4 py-3 font-medium w-[100px] sm:w-[130px] whitespace-nowrap text-center">Time</th>
+                          <th className="px-2 sm:px-4 py-3 font-medium w-[160px] sm:w-[240px] whitespace-nowrap text-center">Event Type</th>
+                          <th className="px-2 sm:px-4 py-3 font-medium w-[110px] sm:w-[170px] whitespace-nowrap text-center">Src Type</th>
+                          <th className="px-2 sm:px-4 py-3 font-medium w-[120px] sm:w-[160px] whitespace-nowrap text-center">Src IP</th>
+                          <th className="px-2 sm:px-4 py-3 font-medium w-[120px] sm:w-[160px] whitespace-nowrap text-center">Dst IP</th>
                           <th className="px-2 sm:px-4 py-3 font-medium w-[240px] sm:w-auto whitespace-nowrap">Message</th>
                         </tr>
                       </thead>
@@ -859,10 +859,10 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                 </svg>
                               </td>
-                              <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-gray-400">
+                              <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-gray-400 text-center">
                                 {log.alert_id || '—'}
                               </td>
-                              <td className="px-2 sm:px-4 py-4 whitespace-nowrap">
+                              <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
                                 <span className="text-gray-300">
                                   {new Date(log.timestamp).toLocaleTimeString('en-GB', {
                                     hour12: false,
@@ -872,16 +872,16 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                   })}
                                 </span>
                               </td>
-                              <td className="px-2 sm:px-4 py-4 font-medium text-gray-200 sm:whitespace-nowrap">
+                              <td className="px-2 sm:px-4 py-4 font-medium text-gray-200 sm:whitespace-nowrap text-center">
                                 {log.event_type}
                               </td>
-                              <td className="px-2 sm:px-4 py-4 text-gray-200 sm:whitespace-nowrap">
+                              <td className="px-2 sm:px-4 py-4 text-gray-200 sm:whitespace-nowrap text-center">
                                 {log.source_type || 'Unknown'}
                               </td>
-                              <td className="px-2 sm:px-4 py-4 text-gray-200 sm:whitespace-nowrap">
+                              <td className="px-2 sm:px-4 py-4 text-gray-200 sm:whitespace-nowrap text-center">
                                 {log.source_ip || '—'}
                               </td>
-                              <td className="px-2 sm:px-4 py-4 text-gray-200 sm:whitespace-nowrap">
+                              <td className="px-2 sm:px-4 py-4 text-gray-200 sm:whitespace-nowrap text-center">
                                 {log.destination_ip || '—'}
                               </td>
                               <td className="px-2 sm:px-4 py-4 text-gray-200 truncate" title={log.message || '—'}>

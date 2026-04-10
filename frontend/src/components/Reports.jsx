@@ -353,7 +353,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
               {filteredReports.map((report, index) => (
                 <React.Fragment key={report.id}>
                   <tr
-                    className="hover:bg-white/5 transition-colors cursor-pointer border-b border-gray-700/50"
+                    className={`hover:bg-white/5 cursor-pointer border-b border-gray-700/50 transition-all duration-700 ${fadingOutId === report.id ? 'opacity-0' : 'opacity-100'}`}
                     onClick={() => toggleRow(index)}
                   >
                     <td className="px-2 sm:px-4 py-4">
