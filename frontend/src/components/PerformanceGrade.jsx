@@ -30,10 +30,10 @@ const PerformanceGrade = ({ report }) => {
   const fpMissed = hasData ? report.fp_missed : 0;
 
   const barData = [
-    { name: 'Correct', fullName: 'Correct', value: correct, fill: '#6fa868' },
-    { name: 'Missed', fullName: 'Missed', value: missed, fill: '#b26666' },
-    { name: 'FP Caught', fullName: 'FP Caught', value: fpIdentified, fill: '#9ca3af' },
-    { name: 'FP Missed', fullName: 'FP Missed', value: fpMissed, fill: '#9ca3af' },
+    { name: 'Correct', fullName: 'Correct', value: correct + fpIdentified, fill: '#6fa868' },
+    { name: 'Missed', fullName: 'Missed', value: missed + fpMissed, fill: '#b26666' },
+    { name: 'FP Caught', fullName: 'FP Caught', value: fpIdentified, fill: '#6fa868' },
+    { name: 'FP Missed', fullName: 'FP Missed', value: fpMissed, fill: '#b26666' },
   ];
 
   return (

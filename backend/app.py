@@ -2663,6 +2663,14 @@ def resume_generation():
                     existing_category = log["category"]
                     break
 
+        # Guard against duplicate classify actions
+        already_classified = any(
+            log.get("scenario_id") == scenario_id and log.get("status") == "classified"
+            for log in all_logs
+        )
+        if already_classified and action == "classify":
+            return jsonify({"status": "already_classified", "category": existing_category or "Unknown"})
+
         # Determine correctness for classify action
         category_correct = False
         if action == "classify" and selected_category:

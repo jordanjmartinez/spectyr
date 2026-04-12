@@ -19,13 +19,13 @@ const AnalystReportCard = ({ report }) => {
           <tr>
             <td className="py-3">Correct</td>
             <td className="py-3 text-center">
-              <span className="text-white font-semibold">{report?.threats_caught || 0}</span>
+              <span className="text-white font-semibold">{(report?.threats_caught || 0) + (report?.fp_identified || 0)}</span>
             </td>
           </tr>
           <tr className="border-t border-gray-800">
             <td className="py-3">Missed</td>
             <td className="py-3 text-center">
-              <span className="text-white font-semibold">{report?.wrong_category || 0}</span>
+              <span className="text-white font-semibold">{(report?.wrong_category || 0) + (report?.fp_missed || 0)}</span>
             </td>
           </tr>
           <tr className="border-t border-gray-800">

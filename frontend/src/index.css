@@ -104,6 +104,13 @@ code {
   display: none;
 }
 
+/* Remove focus outline on Recharts chart click */
+.recharts-wrapper,
+.recharts-wrapper *:focus,
+.recharts-wrapper *:active {
+  outline: none !important;
+}
+
 /* Mobile table scroll wrapper */
 .mobile-scroll-wrapper {
   -webkit-overflow-scrolling: touch;

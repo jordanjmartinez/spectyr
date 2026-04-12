@@ -602,99 +602,99 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                 const sourceSegments = SOURCE_TYPES.map(s => ({ ...s, value: sb[s.key || s.name] || 0 }));
                 const sourceTotal = sourceSegments.reduce((sum, s) => sum + s.value, 0);
                 return (
-                  <div className="flex gap-4 sm:gap-6 items-stretch">
-                    {/* Left: big circle */}
-                    <div className="flex-1 flex items-center pl-2 sm:pl-6 min-w-0">
-                      {dashView === 'total' && (
-                        <div className="relative w-36 h-36 sm:w-80 sm:h-80 border-dashed border-2 border-gray-700 rounded-full p-2">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                              <Pie
-                                data={(() => {
-                                  if (alertStats.total_alerts === 0) return [{ name: 'Empty', value: 1 }];
-                                  const segs = [];
-                                  if (alertStats.closed_alerts > 0) segs.push({ name: 'Completed', value: alertStats.closed_alerts, color: '#4b5563' });
-                                  if (alertStats.open_alerts > 0) segs.push({ name: 'Active', value: alertStats.open_alerts, color: '#d1d5db' });
-                                  return segs;
-                                })()}
-                                innerRadius="70%"
-                                outerRadius="100%"
-                                startAngle={90}
-                                endAngle={-270}
-                                dataKey="value"
-                                stroke="none"
-                              >
-                                {(() => {
-                                  if (alertStats.total_alerts === 0) return [<Cell key="empty" fill="#374151" />];
-                                  const cells = [];
-                                  if (alertStats.closed_alerts > 0) cells.push(<Cell key="closed" fill="#4b5563" />);
-                                  if (alertStats.open_alerts > 0) cells.push(<Cell key="open" fill="#d1d5db" />);
-                                  return cells;
-                                })()}
-                              </Pie>
-                              <Tooltip content={<PieTooltip />} wrapperStyle={{ zIndex: 20 }} />
-                            </PieChart>
-                          </ResponsiveContainer>
-                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none group/tip">
-                            <span className="text-5xl sm:text-8xl font-bold text-white cursor-default pointer-events-auto">{alertStats.total_alerts}</span>
-                            <div className="hidden group-hover/tip:block absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-6 sm:translate-y-10 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-1.5 text-xs sm:text-sm text-gray-200 whitespace-nowrap z-10">Total Alerts: <span className="text-white font-semibold">{alertStats.total_alerts}</span></div>
-                          </div>
-                        </div>
-                      )}
-                      {dashView === 'source' && (
-                        <div className="relative w-36 h-36 sm:w-80 sm:h-80 border-dashed border-2 border-gray-700 rounded-full p-2">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                              <Pie
-                                data={sourceTotal > 0 ? sourceSegments.filter(s => s.value > 0) : [{ name: 'None', value: 1, color: '#374151' }]}
-                                innerRadius="70%"
-                                outerRadius="100%"
-                                startAngle={90}
-                                endAngle={-270}
-                                dataKey="value"
-                                stroke="none"
-                              >
-                                {(sourceTotal > 0 ? sourceSegments.filter(s => s.value > 0).map(s => s.color) : ['#374151']).map((color, i) => (
-                                  <Cell key={i} fill={color} />
-                                ))}
-                              </Pie>
-                              <Tooltip content={<PieTooltip />} wrapperStyle={{ zIndex: 20 }} />
-                            </PieChart>
-                          </ResponsiveContainer>
-                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none group/tip">
-                            <span className="text-5xl sm:text-8xl font-bold text-white cursor-default pointer-events-auto">{sourceTotal}</span>
-                            <div className="hidden group-hover/tip:block absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-6 sm:translate-y-10 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-1.5 text-xs sm:text-sm text-gray-200 whitespace-nowrap z-10">Alert Source: <span className="text-white font-semibold">{sourceTotal}</span></div>
-                          </div>
-                        </div>
-                      )}
+                  <div className="flex flex-col gap-4">
+                    {/* Toggle buttons */}
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => setDashView('total')}
+                        className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
+                          dashView === 'total'
+                            ? 'bg-[#30363d] text-white border-gray-600'
+                            : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
+                        }`}
+                      >
+                        <span className="sm:hidden">Total</span>
+                        <span className="hidden sm:inline">Total Alerts</span>
+                      </button>
+                      <button
+                        onClick={() => setDashView('source')}
+                        className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
+                          dashView === 'source'
+                            ? 'bg-[#30363d] text-white border-gray-600'
+                            : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
+                        }`}
+                      >
+                        <span className="sm:hidden">Source</span>
+                        <span className="hidden sm:inline">Alert Source</span>
+                      </button>
                     </div>
-                    {/* Right: buttons + legend */}
-                    <div className="flex-1 flex flex-col gap-4 min-w-0">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => setDashView('total')}
-                          className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
-                            dashView === 'total'
-                              ? 'bg-[#30363d] text-white border-gray-600'
-                              : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
-                          }`}
-                        >
-                          <span className="sm:hidden">Total</span>
-                          <span className="hidden sm:inline">Total Alerts</span>
-                        </button>
-                        <button
-                          onClick={() => setDashView('source')}
-                          className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
-                            dashView === 'source'
-                              ? 'bg-[#30363d] text-white border-gray-600'
-                              : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
-                          }`}
-                        >
-                          <span className="sm:hidden">Source</span>
-                          <span className="hidden sm:inline">Alert Source</span>
-                        </button>
+                    {/* Chart + Legend */}
+                    <div className="flex gap-4 sm:gap-6 items-center">
+                      <div className="flex items-center pl-2 sm:pl-6 md:pl-2 xl:pl-6 min-w-0">
+                        {dashView === 'total' && (
+                          <div className="relative w-36 h-36 sm:w-80 sm:h-80 md:w-40 md:h-40 lg:w-56 lg:h-56 xl:w-80 xl:h-80 aspect-square border-dashed border-2 border-gray-700 rounded-full p-2">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={(() => {
+                                    if (alertStats.total_alerts === 0) return [{ name: 'Empty', value: 1 }];
+                                    const segs = [];
+                                    if (alertStats.closed_alerts > 0) segs.push({ name: 'Completed', value: alertStats.closed_alerts, color: '#4b5563' });
+                                    if (alertStats.open_alerts > 0) segs.push({ name: 'Active', value: alertStats.open_alerts, color: '#d1d5db' });
+                                    return segs;
+                                  })()}
+                                  innerRadius="70%"
+                                  outerRadius="100%"
+                                  startAngle={90}
+                                  endAngle={-270}
+                                  dataKey="value"
+                                  stroke="none"
+                                >
+                                  {(() => {
+                                    if (alertStats.total_alerts === 0) return [<Cell key="empty" fill="#374151" />];
+                                    const cells = [];
+                                    if (alertStats.closed_alerts > 0) cells.push(<Cell key="closed" fill="#4b5563" />);
+                                    if (alertStats.open_alerts > 0) cells.push(<Cell key="open" fill="#d1d5db" />);
+                                    return cells;
+                                  })()}
+                                </Pie>
+                                <Tooltip content={<PieTooltip />} wrapperStyle={{ zIndex: 20, outline: 'none', border: 'none' }} />
+                              </PieChart>
+                            </ResponsiveContainer>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none group/tip">
+                              <span className="text-5xl sm:text-8xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white cursor-default pointer-events-auto">{alertStats.total_alerts}</span>
+                              <div className="hidden group-hover/tip:block absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-6 sm:translate-y-10 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-1.5 text-xs sm:text-sm text-gray-200 whitespace-nowrap z-10">Total Alerts: <span className="text-white font-semibold">{alertStats.total_alerts}</span></div>
+                            </div>
+                          </div>
+                        )}
+                        {dashView === 'source' && (
+                          <div className="relative w-36 h-36 sm:w-80 sm:h-80 md:w-40 md:h-40 lg:w-56 lg:h-56 xl:w-80 xl:h-80 aspect-square border-dashed border-2 border-gray-700 rounded-full p-2">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={sourceTotal > 0 ? sourceSegments.filter(s => s.value > 0) : [{ name: 'None', value: 1, color: '#374151' }]}
+                                  innerRadius="70%"
+                                  outerRadius="100%"
+                                  startAngle={90}
+                                  endAngle={-270}
+                                  dataKey="value"
+                                  stroke="none"
+                                >
+                                  {(sourceTotal > 0 ? sourceSegments.filter(s => s.value > 0).map(s => s.color) : ['#374151']).map((color, i) => (
+                                    <Cell key={i} fill={color} />
+                                  ))}
+                                </Pie>
+                                <Tooltip content={<PieTooltip />} wrapperStyle={{ zIndex: 20, outline: 'none', border: 'none' }} />
+                              </PieChart>
+                            </ResponsiveContainer>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none group/tip">
+                              <span className="text-5xl sm:text-8xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white cursor-default pointer-events-auto">{sourceTotal}</span>
+                              <div className="hidden group-hover/tip:block absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-6 sm:translate-y-10 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-1.5 text-xs sm:text-sm text-gray-200 whitespace-nowrap z-10">Alert Source: <span className="text-white font-semibold">{sourceTotal}</span></div>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex-1 flex items-center pl-2 sm:pl-6 min-h-[160px] sm:min-h-0">
+                      <div className="flex-1 flex items-center pl-2 sm:pl-6 md:pl-2 xl:pl-6">
                         <div className="flex flex-col gap-2 sm:gap-3 text-xs sm:text-base">
                         {dashView === 'total' && (
                           <>
@@ -761,77 +761,77 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                 const sevTotal = sb.critical + sb.high + sb.medium + sb.low;
 
                 return (
-                  <div className="flex gap-4 sm:gap-6 items-stretch">
-                    {/* Left: big circle */}
-                    <div className="flex-1 flex items-center pl-2 sm:pl-6 min-w-0">
-                      {leftView === 'types' && (
-                        <div className="relative w-36 h-36 sm:w-80 sm:h-80 border-dashed border-2 border-gray-700 rounded-full p-2">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                              <Pie
-                                data={sevChartData}
-                                innerRadius="70%"
-                                outerRadius="100%"
-                                startAngle={90}
-                                endAngle={-270}
-                                dataKey="value"
-                                stroke="none"
-                              >
-                                {sevChartData.map((s, i) => <Cell key={i} fill={s.color} />)}
-                              </Pie>
-                              <Tooltip content={<PieTooltip />} wrapperStyle={{ zIndex: 20 }} />
-                            </PieChart>
-                          </ResponsiveContainer>
-                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none group/tip">
-                            <span className="text-5xl sm:text-8xl font-bold text-white cursor-default pointer-events-auto">{sevTotal}</span>
-                            <div className="hidden group-hover/tip:block absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-6 sm:translate-y-10 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-1.5 text-xs sm:text-sm text-gray-200 whitespace-nowrap z-10">Alert Severity: <span className="text-white font-semibold">{sevTotal}</span></div>
-                          </div>
-                        </div>
-                      )}
-                      {leftView === 'categories' && (
-                        <div className="relative w-36 h-36 sm:w-80 sm:h-80 border-dashed border-2 border-gray-700 rounded-full p-2">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                              <Pie data={catChartData} innerRadius="70%" outerRadius="100%" startAngle={90} endAngle={-270} dataKey="value" stroke="none">
-                                {catChartData.map((s, i) => <Cell key={i} fill={s.color} />)}
-                              </Pie>
-                              <Tooltip content={<PieTooltip />} wrapperStyle={{ zIndex: 20 }} />
-                            </PieChart>
-                          </ResponsiveContainer>
-                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none group/tip">
-                            <span className="text-5xl sm:text-8xl font-bold text-white cursor-default pointer-events-auto">{catTotal}</span>
-                            <div className="hidden group-hover/tip:block absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-6 sm:translate-y-10 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-1.5 text-xs sm:text-sm text-gray-200 whitespace-nowrap z-10">Alert Category: <span className="text-white font-semibold">{catTotal}</span></div>
-                          </div>
-                        </div>
-                      )}
+                  <div className="flex flex-col gap-4">
+                    {/* Toggle buttons */}
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => setLeftView('types')}
+                        className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
+                          leftView === 'types'
+                            ? 'bg-[#30363d] text-white border-gray-600'
+                            : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
+                        }`}
+                      >
+                        <span className="sm:hidden">Severity</span>
+                        <span className="hidden sm:inline">Alert Severity</span>
+                      </button>
+                      <button
+                        onClick={() => setLeftView('categories')}
+                        className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
+                          leftView === 'categories'
+                            ? 'bg-[#30363d] text-white border-gray-600'
+                            : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
+                        }`}
+                      >
+                        <span className="sm:hidden">Category</span>
+                        <span className="hidden sm:inline">Alert Category</span>
+                      </button>
                     </div>
-                    {/* Right: buttons + legend */}
-                    <div className="flex-1 flex flex-col gap-4 min-w-0">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => setLeftView('types')}
-                          className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
-                            leftView === 'types'
-                              ? 'bg-[#30363d] text-white border-gray-600'
-                              : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
-                          }`}
-                        >
-                          <span className="sm:hidden">Severity</span>
-                          <span className="hidden sm:inline">Alert Severity</span>
-                        </button>
-                        <button
-                          onClick={() => setLeftView('categories')}
-                          className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
-                            leftView === 'categories'
-                              ? 'bg-[#30363d] text-white border-gray-600'
-                              : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
-                          }`}
-                        >
-                          <span className="sm:hidden">Category</span>
-                          <span className="hidden sm:inline">Alert Category</span>
-                        </button>
+                    {/* Chart + Legend */}
+                    <div className="flex gap-4 sm:gap-6 items-center">
+                      <div className="flex items-center pl-2 sm:pl-6 md:pl-2 xl:pl-6 min-w-0">
+                        {leftView === 'types' && (
+                          <div className="relative w-36 h-36 sm:w-80 sm:h-80 md:w-40 md:h-40 lg:w-56 lg:h-56 xl:w-80 xl:h-80 aspect-square border-dashed border-2 border-gray-700 rounded-full p-2">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={sevChartData}
+                                  innerRadius="70%"
+                                  outerRadius="100%"
+                                  startAngle={90}
+                                  endAngle={-270}
+                                  dataKey="value"
+                                  stroke="none"
+                                >
+                                  {sevChartData.map((s, i) => <Cell key={i} fill={s.color} />)}
+                                </Pie>
+                                <Tooltip content={<PieTooltip />} wrapperStyle={{ zIndex: 20, outline: 'none', border: 'none' }} />
+                              </PieChart>
+                            </ResponsiveContainer>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none group/tip">
+                              <span className="text-5xl sm:text-8xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white cursor-default pointer-events-auto">{sevTotal}</span>
+                              <div className="hidden group-hover/tip:block absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-6 sm:translate-y-10 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-1.5 text-xs sm:text-sm text-gray-200 whitespace-nowrap z-10">Alert Severity: <span className="text-white font-semibold">{sevTotal}</span></div>
+                            </div>
+                          </div>
+                        )}
+                        {leftView === 'categories' && (
+                          <div className="relative w-36 h-36 sm:w-80 sm:h-80 md:w-40 md:h-40 lg:w-56 lg:h-56 xl:w-80 xl:h-80 aspect-square border-dashed border-2 border-gray-700 rounded-full p-2">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie data={catChartData} innerRadius="70%" outerRadius="100%" startAngle={90} endAngle={-270} dataKey="value" stroke="none">
+                                  {catChartData.map((s, i) => <Cell key={i} fill={s.color} />)}
+                                </Pie>
+                                <Tooltip content={<PieTooltip />} wrapperStyle={{ zIndex: 20, outline: 'none', border: 'none' }} />
+                              </PieChart>
+                            </ResponsiveContainer>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none group/tip">
+                              <span className="text-5xl sm:text-8xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white cursor-default pointer-events-auto">{catTotal}</span>
+                              <div className="hidden group-hover/tip:block absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-6 sm:translate-y-10 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-1.5 text-xs sm:text-sm text-gray-200 whitespace-nowrap z-10">Alert Category: <span className="text-white font-semibold">{catTotal}</span></div>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex-1 flex items-center pl-2 sm:pl-6 min-h-[160px] sm:min-h-0">
+                      <div className="flex-1 flex items-center pl-2 sm:pl-6 md:pl-2 xl:pl-6">
                         <div className="flex flex-col gap-2 sm:gap-3 text-xs sm:text-base">
                         {leftView === 'types' && sevSegments.map(item => (
                           <div key={item.name} className="flex items-center gap-1.5">
