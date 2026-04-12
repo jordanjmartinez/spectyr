@@ -41,9 +41,13 @@ const AnalystReportCard = ({ report }) => {
             </td>
           </tr>
           <tr className="border-t border-gray-700">
-            <td className="py-3 font-normal text-gray-300">Overall</td>
+            <td className="py-3 font-normal text-gray-300">Overall Grade</td>
             <td className="py-3 text-center">
-              <span className="text-white font-bold">{report?.accuracy || 0}%</span>
+              <span className="text-white font-bold">{(() => {
+                if (!report?.total_actions) return '-';
+                const acc = report.accuracy || 0;
+                return acc >= 100 ? 'A' : acc >= 80 ? 'B' : acc >= 60 ? 'C' : acc >= 40 ? 'D' : 'F';
+              })()}</span>
             </td>
           </tr>
         </tbody>

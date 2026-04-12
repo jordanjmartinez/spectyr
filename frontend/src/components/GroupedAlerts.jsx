@@ -661,9 +661,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                 <Tooltip content={<PieTooltip />} wrapperStyle={{ zIndex: 20, outline: 'none', border: 'none' }} />
                               </PieChart>
                             </ResponsiveContainer>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none group/tip">
-                              <span className="text-5xl sm:text-8xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white cursor-default pointer-events-auto">{alertStats.total_alerts}</span>
-                              <div className="hidden group-hover/tip:block absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-6 sm:translate-y-10 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-1.5 text-xs sm:text-sm text-gray-200 whitespace-nowrap z-10">Total Alerts: <span className="text-white font-semibold">{alertStats.total_alerts}</span></div>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                              <span className="text-5xl sm:text-8xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white">{alertStats.total_alerts}</span>
                             </div>
                           </div>
                         )}
@@ -687,9 +686,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                 <Tooltip content={<PieTooltip />} wrapperStyle={{ zIndex: 20, outline: 'none', border: 'none' }} />
                               </PieChart>
                             </ResponsiveContainer>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none group/tip">
-                              <span className="text-5xl sm:text-8xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white cursor-default pointer-events-auto">{sourceTotal}</span>
-                              <div className="hidden group-hover/tip:block absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-6 sm:translate-y-10 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-1.5 text-xs sm:text-sm text-gray-200 whitespace-nowrap z-10">Alert Source: <span className="text-white font-semibold">{sourceTotal}</span></div>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                              <span className="text-5xl sm:text-8xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white">{sourceTotal}</span>
                             </div>
                           </div>
                         )}
@@ -808,9 +806,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                 <Tooltip content={<PieTooltip />} wrapperStyle={{ zIndex: 20, outline: 'none', border: 'none' }} />
                               </PieChart>
                             </ResponsiveContainer>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none group/tip">
-                              <span className="text-5xl sm:text-8xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white cursor-default pointer-events-auto">{sevTotal}</span>
-                              <div className="hidden group-hover/tip:block absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-6 sm:translate-y-10 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-1.5 text-xs sm:text-sm text-gray-200 whitespace-nowrap z-10">Alert Severity: <span className="text-white font-semibold">{sevTotal}</span></div>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                              <span className="text-5xl sm:text-8xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white">{sevTotal}</span>
                             </div>
                           </div>
                         )}
@@ -824,9 +821,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                 <Tooltip content={<PieTooltip />} wrapperStyle={{ zIndex: 20, outline: 'none', border: 'none' }} />
                               </PieChart>
                             </ResponsiveContainer>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none group/tip">
-                              <span className="text-5xl sm:text-8xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white cursor-default pointer-events-auto">{catTotal}</span>
-                              <div className="hidden group-hover/tip:block absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-6 sm:translate-y-10 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-1.5 text-xs sm:text-sm text-gray-200 whitespace-nowrap z-10">Alert Category: <span className="text-white font-semibold">{catTotal}</span></div>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                              <span className="text-5xl sm:text-8xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white">{catTotal}</span>
                             </div>
                           </div>
                         )}
