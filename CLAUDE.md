@@ -279,6 +279,7 @@ Transform Hardcore from "Training with timer + penalty" into a realistic SOC que
 - **20-minute global timer**: All alerts injected by minute 10, last 10 minutes for resolution
 - **3-strike policy**: 3 wrong classifications = game over (timer stops, FailureModal shown)
 - **No level progression**: Scenarios randomly drawn from all 15 attack scenarios
+- **No duplicate scenarios**: Each of the 10 alerts must be a unique scenario (no repeats in a single game)
 - **FP injection**: 1-3 of the 10 alerts are false positives (max 3 FPs per game)
 - **Concurrent alerts**: Multiple active alerts at once (not one-at-a-time)
 - **Per-alert controls**: Each alert gets its own Classify / False Positive / Create Report buttons
