@@ -10,15 +10,13 @@ const AnalystReportCard = ({ report }) => {
       <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Report Card</h2>
 
       <div className="bg-[#161b22] p-4 sm:p-6 rounded-2xl border border-gray-700 shadow-md flex-1">
-      <table className="w-full text-xs sm:text-base mt-2">
-        <thead>
-          <tr className="text-xs sm:text-base text-gray-300 tracking-wider">
-            <th className="text-left pb-3 font-medium">Category</th>
-            <th className="text-center pb-3 font-medium w-16">Score</th>
-          </tr>
-        </thead>
+      <table className="w-full h-full text-xs sm:text-base">
+        <colgroup>
+          <col />
+          <col className="w-16" />
+        </colgroup>
         <tbody className="text-gray-300">
-          <tr className="border-t border-gray-800">
+          <tr>
             <td className="py-3">Correct</td>
             <td className="py-3 text-center">
               <span className="text-white font-semibold">{report?.threats_caught || 0}</span>
@@ -31,19 +29,19 @@ const AnalystReportCard = ({ report }) => {
             </td>
           </tr>
           <tr className="border-t border-gray-800">
-            <td className="py-3">True Positive</td>
+            <td className="py-3">FP Caught</td>
             <td className="py-3 text-center">
-              <span className="text-white font-semibold">{report?.true_positives || 0}</span>
+              <span className="text-white font-semibold">{report?.fp_identified || 0}</span>
             </td>
           </tr>
           <tr className="border-t border-gray-800">
-            <td className="py-3">False Positive</td>
+            <td className="py-3">FP Missed</td>
             <td className="py-3 text-center">
-              <span className="text-white font-semibold">{report?.false_positives_caught || 0}</span>
+              <span className="text-white font-semibold">{report?.fp_missed || 0}</span>
             </td>
           </tr>
           <tr className="border-t border-gray-700">
-            <td className="py-3 font-semibold text-gray-300">Accuracy</td>
+            <td className="py-3 font-normal text-gray-300">Overall</td>
             <td className="py-3 text-center">
               <span className="text-white font-bold">{report?.accuracy || 0}%</span>
             </td>

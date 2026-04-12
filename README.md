@@ -1,7 +1,6 @@
 # Spectyr
-A SIEM simulation built for training cybersecurity analysts. It generates security event logs, injects attack scenarios into normal traffic, and lets you practice detecting, triaging, and reporting threats in a SOC-style interface.
 
-<!-- ![Spectyr](./assets/spectyr-demo.png) -->
+A SIEM simulation platform for training cybersecurity analysts. Spectyr generates realistic security logs, injects attack scenarios into normal network traffic, and drops you into a SOC-style interface where you detect, triage, and report threats.
 
 ## Live Demo
 
@@ -11,61 +10,48 @@ A SIEM simulation built for training cybersecurity analysts. It generates securi
 
 ## Features
 
-### Campaign System
+### Campaign
 
-5 levels, each with a randomly selected attack scenario from a pool of three categories. The scenarios get harder as you go.
+Five progressive levels. Each level randomly selects one scenario from a pool of attack categories — or a false positive designed to test whether you can tell the difference.
 
-**Categories:**
+**Attack Categories:** Malware, Phishing, Command & Control, Lateral Movement, Brute Force, Data Exfiltration, Insider Threat, Defense Evasion
 
-- Malware
-- Phishing
-- Command & Control
-- Lateral Movement
-- Brute Force
-- Data Exfiltration
-- Insider Threat
-- Defense Evasion
-
-<!-- ![Campaign](./assets/campaign.png) -->
+**False Positives:** Not every alert is a real threat. Some levels inject benign activity — security training tools, backup software, data migrations, OAuth flows — that looks suspicious but isn't. Identifying these correctly is part of your score.
 
 ### Game Modes
 
-- **Training**: No time limit. Take as long as you need to work through each scenario.
-- **Hardcore**: Timed countdown that scales with difficulty. Stop the threat actors before time runs out.
+- **Training** — No timer, no penalties. Learn at your own pace and review feedback after each scenario.
+- **Hardcore** — 15-minute countdown. One wrong classification resets you to Level 1.
 
-<!-- ![Game Modes](./assets/game-modes.png) -->
+### Log Generation
 
-### Alert Generation
+Start a simulation and logs begin streaming in from multiple sources — Sysmon, Windows Security, Firewall, Proxy, DNS, and Azure AD. An attack chain gets scattered into the normal traffic with realistic timing and spacing, just like it would in a real environment.
 
-Hit **Start Training** and the simulator starts producing logs from different sources (Sysmon, Windows Security, Firewall, Proxy, DNS). After a few benign logs, an attack chain gets injected into the stream.
+### Triage & Classification
 
-<!-- ![Events Tab](./assets/events-tab.png) -->
+Attack logs are grouped by scenario into a single incident view. Expand the event chain, review the details, and classify it — pick the correct attack category or flag it as a false positive. In Hardcore mode, you only get one shot.
 
-### Incident Grouping & Classification
+### Post-Incident Review
 
-Related attack logs are grouped together by `scenario_id` so you can investigate them as a single incident instead of chasing individual alerts. Each group shows a Notable Event label. Your job is to classify it by picking the correct attack category.
+After each classification, Spectyr provides a post-incident review for the scenario:
 
-<!-- ![Incidents Tab](./assets/incidents-tab.png) -->
+- **MITRE ATT&CK** technique ID, tactic, and a direct link to the framework
+- **What happened** — a breakdown of the attack technique
+- **Response playbook** — the steps a SOC analyst would take
 
-### Triage Reviews
+All 15 attack scenarios include full post-incident reviews, covering everything from USB-based malware to DNS tunneling.
 
-After you classify a scenario, you get to review the learning details:
+### Reports
 
-- **MITRE ATT&CK mapping** with technique ID, tactic, and a link to the MITRE page
-- **Explanation** of the attack technique
-- **Response actions** you'd take in a real SOC
+Document your findings with structured reports — title, description, severity, MITRE tactic, kill chain phase, affected systems, and mitigation steps. Export any report as a PDF.
 
-<!-- ![Triage Review](./assets/triage-review.png) -->
+### Analytics
 
-### Incident Reports
+Track your performance across four metrics:
 
-You can write up incident reports with fields for title, description, severity, MITRE tactic, kill chain phase, affected hosts, mitigation steps, and status.
+- **Correct** — threats you classified accurately
+- **Missed** — threats you got wrong
+- **FP Caught** — false positives you correctly identified
+- **FP Missed** — false positives you mistook for real threats
 
-<!-- ![Reports Tab](./assets/reports-tab.png) -->
-
-### Performance Scoring
-
-Your report card tracks correct/wrong classifications, flag accuracy, and overall accuracy percentage.
-
-
-<!-- ![Analytics](./assets/analytics.png) -->
+Your results are shown in a bar chart alongside an overall accuracy percentage, with a full breakdown in the report card.

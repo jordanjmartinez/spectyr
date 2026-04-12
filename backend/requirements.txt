@@ -1,7 +1,6 @@
 blinker==1.9.0
 click==8.2.1
 colorama==0.4.6
-Faker==37.3.0
 Flask==3.1.1
 flask-cors==6.0.0
 gunicorn==23.0.0

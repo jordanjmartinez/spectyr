@@ -105,7 +105,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
             value={formData.title}
             onChange={handleChange}
             maxLength={60}
-            className="w-full bg-transparent text-sm sm:text-lg text-white placeholder-gray-600 border-b border-gray-700 focus:border-gray-500 outline-none pb-1.5 sm:pb-2 transition-colors"
+            className="w-full bg-transparent text-sm sm:text-base text-white placeholder-gray-600 border-b border-gray-700 focus:border-gray-500 outline-none pb-1.5 sm:pb-2 transition-colors"
           />
         </div>
 

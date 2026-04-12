@@ -1,6 +1,5 @@
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
-from threading import Thread
 import os
 import json
 import uuid
@@ -9,7 +8,6 @@ import time
 import copy
 import shutil
 from datetime import datetime, timezone, timedelta
-from faker import Faker
 import threading
 
 app = Flask(__name__)
@@ -22,8 +20,6 @@ CORS(app, supports_credentials=True, expose_headers=["X-Session-ID"], origins=[
 LOG_DIR = "logs"
 SCENARIO_PATH = os.path.join(LOG_DIR, "simulated_attack_logs.ndjson")
 os.makedirs(LOG_DIR, exist_ok=True)
-
-fake = Faker()
 
 TIMER_DURATIONS = {1: 900, 2: 900, 3: 900, 4: 900, 5: 900}
 
@@ -64,6 +60,7 @@ def create_session():
         "analyst_name": None,
         "used_alert_ids": set(),
         "selected_level_option": None,
+        "scenario_history": [],
         "last_active": datetime.now(timezone.utc),
     }
     with sessions_lock:
@@ -314,26 +311,6 @@ TRIAGE_REVIEWS = {
             "Search firewall logs for scan activity from the same source",
             "Check for follow-up activity like exploitation attempts or lateral movement",
             "Review segmentation rules to confirm workstations cannot reach server management ports"
-        ]
-    },
-    "c2_http": {
-        "mitre": {
-            "id": "T1071.001",
-            "name": "Application Layer Protocol: Web Protocols",
-            "tactic": "Command and Control",
-            "url": "https://attack.mitre.org/techniques/T1071/001/"
-        },
-        "what_is_it": {
-            "title": "HTTPS C2 Beaconing",
-            "description": "C2 beaconing is when malware on a compromised machine regularly phones home to an attacker-controlled server over HTTPS to receive commands. Because the traffic uses port 443 and looks like normal web browsing, it blends into everyday network activity. Key indicators include connections to lookalike domains, destination IPs that don't belong to the impersonated service, and regular timed intervals between connections."
-        },
-        "response_actions": [
-            "Isolate the host immediately, the C2 channel is active",
-            "Block the C2 domain and destination IP",
-            "Search logs for other hosts connecting to the same domain or IP",
-            "Identify which process on the workstation made the connection",
-            "Trace how the malware was delivered",
-            "Check for any post-compromise activity like credential theft or lateral movement"
         ]
     },
     "brute_force_attack": {
@@ -2339,6 +2316,8 @@ def reset_simulator():
     s["analyst_name"] = None
     s["used_alert_ids"] = set()
     s["selected_level_option"] = None
+    s["scenario_start_time"] = None
+    s["scenario_history"] = []
 
     for filepath in [s["paths"]["generated_logs"], s["paths"]["analyst_actions"], s["paths"]["incident_reports"]]:
         with open(filepath, "w") as f:
@@ -2401,12 +2380,10 @@ def get_current_level():
             if correct:
                 level_stats[level_key]["correct"] += 1
 
-        # Convert stats to results: "correct", "partial", or "incorrect"
+        # Convert stats to results: "correct" or "incorrect"
         for level_key, stats in level_stats.items():
             if stats["correct"] == stats["total"]:
                 level_results[level_key] = "correct"
-            elif stats["correct"] > 0:
-                level_results[level_key] = "partial"
             else:
                 level_results[level_key] = "incorrect"
 
@@ -2415,6 +2392,7 @@ def get_current_level():
             "completed": True,
             "total_levels": len(CAMPAIGN_LEVELS),
             "level_results": level_results,
+            "scenario_history": s.get("scenario_history", []),
             "message": "Congratulations! You've completed all levels!"
         })
 
@@ -2440,7 +2418,9 @@ def get_current_level():
         "category_pool": level_config.get("category_pool", []),
         "total_levels": len(CAMPAIGN_LEVELS),
         "progress": f"{s['current_level']}/{len(CAMPAIGN_LEVELS)}",
-        "level_results": level_results
+        "level_results": level_results,
+        "scenario_history": s.get("scenario_history", []),
+        "scenario_start_time": s.get("scenario_start_time")
     })
 
 
@@ -2506,10 +2486,10 @@ def get_analyst_report_card():
                     "category": log.get("category", "")
                 }
 
-        correct_threat_identified = 0  # Correctly classified with right category
-        wrong_category = 0             # Wrong category selected
-        true_positives = 0             # Correctly classified real attacks
-        false_positives_caught = 0     # Correctly classified false positives
+        correct_threat_identified = 0  # Correctly classified real threats
+        wrong_category = 0             # Wrong category selected on real threats
+        fp_identified = 0              # False positives correctly identified
+        fp_missed = 0                  # False positives wrongly classified as real threats
 
         # Flag accuracy tracking
         correct_flags = 0
@@ -2528,22 +2508,24 @@ def get_analyst_report_card():
                 continue
 
             if act == "classify":
-                # Count TP/FP by true category (regardless of correctness)
                 if action.get("correct_category", "").lower() == "false positive":
-                    false_positives_caught += 1
+                    # This was a false positive scenario
+                    if action.get("category_correct", False):
+                        fp_identified += 1   # Analyst correctly spotted the FP
+                    else:
+                        fp_missed += 1       # Analyst fell for the FP
                 else:
-                    true_positives += 1
-
-                # Track classification accuracy
-                if action.get("category_correct", False):
-                    correct_threat_identified += 1  # Correct category!
-                else:
-                    wrong_category += 1  # Wrong category selected
+                    # This was a real threat scenario
+                    if action.get("category_correct", False):
+                        correct_threat_identified += 1  # Correct category!
+                    else:
+                        wrong_category += 1  # Wrong category selected
 
         # Calculate classification accuracy (exclude flags)
         classification_actions = [a for a in actions if a.get("action") == "classify"]
         total_classifications = len(classification_actions)
-        classification_accuracy = round((correct_threat_identified / total_classifications) * 100, 2) if total_classifications else 0
+        total_correct = correct_threat_identified + fp_identified
+        classification_accuracy = round((total_correct / total_classifications) * 100, 2) if total_classifications else 0
 
         # Calculate flag accuracy
         total_flags = correct_flags + wrong_flags
@@ -2554,8 +2536,8 @@ def get_analyst_report_card():
             "wrong_category": wrong_category,
             "total_actions": total_classifications,
             "accuracy": classification_accuracy,
-            "true_positives": true_positives,
-            "false_positives_caught": false_positives_caught,
+            "fp_identified": fp_identified,
+            "fp_missed": fp_missed,
             "correct_flags": correct_flags,
             "wrong_flags": wrong_flags,
             "total_flags": total_flags,
@@ -2771,6 +2753,14 @@ def resume_generation():
         active_scenarios = set(log.get("scenario_id") for log in active_for_level)
 
         if len(active_scenarios) == 0:
+            # Save completed scenario to history
+            if s["selected_level_option"]:
+                s["scenario_history"].append({
+                    "level": current_level_num,
+                    "ticket_title": s["selected_level_option"].get("ticket_title", "Unknown"),
+                    "storyline": s["selected_level_option"].get("storyline", ""),
+                    "startTime": s.get("scenario_start_time"),
+                })
             # All incidents resolved - advance to next level
             s["current_level"] += 1
             s["timer_start"] = None  # Reset timer for next level
@@ -2778,6 +2768,7 @@ def resume_generation():
                 # Select next scenario immediately so Scenario Card shows
                 next_level = CAMPAIGN_LEVELS[s["current_level"]]
                 s["selected_level_option"] = select_level_scenarios(next_level)
+                s["scenario_start_time"] = time.time() * 1000
                 print(f"[LEVEL UP] Advancing to Level {next_level['level']}", flush=True)
                 print(f"[SCENARIO SELECTED] {s['selected_level_option']['ticket_title']} ({s['selected_level_option']['category']})", flush=True)
             else:
@@ -2947,10 +2938,22 @@ def submit_report():
         with open(s["paths"]["analyst_actions"], "a") as f:
             f.write(json.dumps(action_log) + "\n")
 
+        # Save completed scenario to history
+        if s["selected_level_option"]:
+            completed_level_num = CAMPAIGN_LEVELS[s["current_level"]]["level"] if s["current_level"] < len(CAMPAIGN_LEVELS) else None
+            if completed_level_num is not None:
+                s["scenario_history"].append({
+                    "level": completed_level_num,
+                    "ticket_title": s["selected_level_option"].get("ticket_title", "Unknown"),
+                    "storyline": s["selected_level_option"].get("storyline", ""),
+                    "startTime": s.get("scenario_start_time"),
+                })
+
         s["current_level"] += 1
         if s["current_level"] < len(CAMPAIGN_LEVELS):
             next_level = CAMPAIGN_LEVELS[s["current_level"]]
             s["selected_level_option"] = select_level_scenarios(next_level)
+            s["scenario_start_time"] = time.time() * 1000
             print(f"[LEVEL UP] Advancing to Level {next_level['level']} (categories: {next_level.get('category_pool', [])})", flush=True)
             print(f"[SCENARIO SELECTED] {s['selected_level_option']['ticket_title']} ({s['selected_level_option']['category']})", flush=True)
         else:
@@ -3105,6 +3108,7 @@ def start_simulator():
     if s["current_level"] < len(CAMPAIGN_LEVELS):
         level_config = CAMPAIGN_LEVELS[s["current_level"]]
         s["selected_level_option"] = select_level_scenarios(level_config)
+        s["scenario_start_time"] = time.time() * 1000
         print(f"[SCENARIO SELECTED] {s['selected_level_option']['ticket_title']} ({s['selected_level_option']['category']})", flush=True)
 
     thread_name = f"LogWriter-{s['id']}"

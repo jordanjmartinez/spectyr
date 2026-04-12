@@ -1,9 +1,20 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { apiFetch } from '../api';
 
 import CategorySelector from '../components/CategorySelector';
 import IncidentReportForm from '../components/IncidentReportForm';
+
+const PieTooltip = ({ active, payload }) => {
+  if (!active || !payload?.length) return null;
+  const { name, value } = payload[0];
+  if (name === 'Empty' || name === 'None') return null;
+  return (
+    <div style={{ backgroundColor: '#161b22', border: '1px solid #30363d', borderRadius: '8px', padding: '6px 12px', fontSize: '13px' }}>
+      <span style={{ color: '#e5e7eb' }}>{name}: <span style={{ color: '#fff', fontWeight: 600 }}>{value}</span></span>
+    </div>
+  );
+};
 
 const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, setGroupedAlertCount }) => {
   const [groups, setGroups] = useState([]);
@@ -32,6 +43,10 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
   const [, setTick] = useState(0);
   const [classificationData, setClassificationData] = useState({ categoryBreakdown: {} });
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterActive, setFilterActive] = useState(true);
+  const [filterCompleted, setFilterCompleted] = useState(false);
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [fadingOutScenarioLevel, setFadingOutScenarioLevel] = useState(null);
 
   const fetchGroupedAlerts = () => {
     apiFetch('/api/grouped-alerts')
@@ -112,31 +127,37 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
     return () => clearInterval(interval);
   }, [resetTrigger]);
 
-  // Track scenario changes and accumulate history
+  // Sync scenario history from backend and track active scenario timing
   useEffect(() => {
     const newLevelNum = currentLevel?.current_level || null;
     const prev = prevLevelRef.current;
 
-    // New level detected — push previous into history
+    // Sync history from backend — this is the source of truth
+    if (currentLevel?.scenario_history) {
+      const backendHistory = currentLevel.scenario_history.map(s => ({
+        ...s,
+        completed: true,
+        startTime: s.startTime || null,
+      }));
+      setScenarioHistory(prevHistory => {
+        // Fade out newly completed scenarios if filter is off
+        if (!filterCompleted && backendHistory.length > prevHistory.length) {
+          const newEntry = backendHistory[backendHistory.length - 1];
+          if (newEntry) {
+            setFadingOutScenarioLevel(newEntry.level);
+            setTimeout(() => setFadingOutScenarioLevel(null), 700);
+          }
+        }
+        return backendHistory;
+      });
+    }
+
+    // Track active scenario start time from backend
     if (newLevelNum && prev && newLevelNum !== prev.level) {
-      setScenarioHistory(h => {
-        if (h.some(s => s.level === prev.level)) return h;
-        return [{ ...prev, completed: true }, ...h];
-      });
-      setScenarioStartTime(Date.now());
+      setScenarioStartTime(currentLevel?.scenario_start_time || Date.now());
     }
-
-    // All levels completed — push last scenario into history
-    if (currentLevel?.completed === true && prev && !scenarioHistory.some(s => s.level === prev.level)) {
-      setScenarioHistory(h => {
-        if (h.some(s => s.level === prev.level)) return h;
-        return [{ ...prev, completed: true }, ...h];
-      });
-    }
-
-    // First scenario
     if (newLevelNum && !prev) {
-      setScenarioStartTime(Date.now());
+      setScenarioStartTime(currentLevel?.scenario_start_time || Date.now());
     }
 
     // Update ref with current data
@@ -355,10 +376,55 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
   }, [filteredGroups.length, setGroupedAlertCount]);
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl sm:text-2xl font-semibold text-white whitespace-nowrap mb-1">
-        Alerts <span className={`font-normal ml-1 ${filteredGroups.length > 0 ? "text-gray-500" : "invisible"}`}>{filteredGroups.length || "0"}</span>
-      </h2>
+    <div>
+      <div className="flex flex-row items-center justify-between mb-3 gap-2 sm:gap-3">
+        <h2 className="text-xl sm:text-2xl font-semibold text-white whitespace-nowrap">
+          Alerts <span className={`font-normal ml-1 ${filteredGroups.length > 0 ? "text-gray-500" : "invisible"}`}>{filteredGroups.length || "0"}</span>
+        </h2>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="relative">
+            <button
+              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+              className="inline-flex items-center justify-center gap-1 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              Filter
+            </button>
+            {showFilterDropdown && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setShowFilterDropdown(false)}
+                />
+                <div className="absolute right-0 top-full mt-1 z-20 bg-[#161b22] border border-gray-700 rounded py-1 flex flex-col min-w-[100px] sm:min-w-[120px]">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFilterActive(!filterActive);
+                    }}
+                    className="flex items-center gap-2 text-left px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm hover:bg-gray-700 transition text-gray-400"
+                  >
+                    <span className={`w-3 h-3 sm:w-3.5 sm:h-3.5 rounded border ${filterActive ? 'bg-gray-300 border-gray-300' : 'border-gray-600'}`} />
+                    Active
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFilterCompleted(!filterCompleted);
+                    }}
+                    className="flex items-center gap-2 text-left px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm hover:bg-gray-700 transition text-gray-400"
+                  >
+                    <span className={`w-3 h-3 sm:w-3.5 sm:h-3.5 rounded border ${filterCompleted ? 'bg-gray-300 border-gray-300' : 'border-gray-600'}`} />
+                    Completed
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
       <div className="relative">
         <input
           type="text"
@@ -386,18 +452,18 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
       </div>
 
       {/* Alert Scenario */}
-      <div className="mb-6">
+      <div className="mt-3 mb-6">
         {(gameStarted && currentLevel && currentLevel.ticket_title) || scenarioHistory.length > 0 ? (
           <div className="bg-[#161b22] p-3 sm:p-6 rounded-xl">
             {(() => {
-              const activeMatches = currentLevel && currentLevel.ticket_title && !currentLevel.completed && matchesScenario(currentLevel.ticket_title, currentLevel.current_level, true);
-              const historyMatches = scenarioHistory.filter(s => matchesScenario(s.ticket_title, s.level, false));
-              const noResults = searchTerm && !activeMatches && historyMatches.length === 0;
+              const activeMatches = filterActive && currentLevel && currentLevel.ticket_title && !currentLevel.completed && matchesScenario(currentLevel.ticket_title, currentLevel.current_level, true);
+              const historyMatches = filterCompleted ? scenarioHistory.filter(s => matchesScenario(s.ticket_title, s.level, false)) : [];
+              const noResults = (searchTerm || !filterActive || !filterCompleted) && !activeMatches && historyMatches.length === 0;
 
               if (noResults) return (
                 <div className="flex flex-col items-center justify-center py-12">
                   <img src="/ghost-searching.png" alt="Ghost Searching" className="w-20 h-20 sm:w-28 sm:h-28 opacity-90 mb-3" />
-                  <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; No matching alerts for "{searchTerm}"</p>
+                  <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; {searchTerm ? `No matching alerts for "${searchTerm}"` : 'No alerts match the current filter'}</p>
                 </div>
               );
 
@@ -409,12 +475,12 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                     <th className="w-10 px-2 sm:px-4 py-3 font-medium"></th>
                     <th className="w-12 px-1 sm:px-2 py-3 font-medium text-center">Level</th>
                     <th className="px-2 sm:px-4 py-3 font-medium">Title</th>
-                    <th className="px-2 sm:px-4 py-3 font-medium text-center">Status</th>
+                    <th className="w-24 sm:w-28 px-2 sm:px-4 py-3 font-medium text-center">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700">
                   {/* Active scenario */}
-                  {currentLevel && currentLevel.ticket_title && !currentLevel.completed && matchesScenario(currentLevel.ticket_title, currentLevel.current_level, true) && (
+                  {filterActive && currentLevel && currentLevel.ticket_title && !currentLevel.completed && matchesScenario(currentLevel.ticket_title, currentLevel.current_level, true) && (
                     <React.Fragment>
                       <tr
                         className="hover:bg-white/5 transition-colors cursor-pointer border-b border-gray-700/50"
@@ -457,10 +523,10 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                     </React.Fragment>
                   )}
                   {/* Past scenarios */}
-                  {scenarioHistory.filter(s => matchesScenario(s.ticket_title, s.level, false)).map((scenario) => (
+                  {historyMatches.map((scenario) => (
                     <React.Fragment key={scenario.level}>
                       <tr
-                        className="hover:bg-white/5 transition-colors cursor-pointer border-b border-gray-700/50"
+                        className={`hover:bg-white/5 cursor-pointer border-b border-gray-700/50 transition-all duration-700 ${fadingOutScenarioLevel === scenario.level ? 'opacity-0' : 'opacity-100'}`}
                         onClick={() => setScenarioExpanded(prev => { const next = new Set(prev); next.has(scenario.level) ? next.delete(scenario.level) : next.add(scenario.level); return next; })}
                       >
                         <td className="w-10 pl-0 pr-1 sm:pr-2 py-4">
@@ -474,11 +540,11 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                           </svg>
                         </td>
                         <td className="w-12 px-1 sm:px-2 py-4 text-center">
-                          <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-full inline-flex items-center justify-center text-xs font-bold border-[3px] border-[#6fa868] text-white">{scenario.level}</span>
+                          <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-full inline-flex items-center justify-center text-xs font-bold border-[3px] border-gray-600 text-gray-500">{scenario.level}</span>
                         </td>
                         <td className="px-2 sm:px-4 py-4">
                           <p className="text-sm sm:text-base font-medium text-gray-200 whitespace-nowrap">{scenario.ticket_title}</p>
-                          <p className="text-xs sm:text-sm text-gray-400 mt-0.5">Created {getRelativeTime(scenario.startTime)}</p>
+                          {scenario.startTime && <p className="text-xs sm:text-sm text-gray-400 mt-0.5">Created {getRelativeTime(scenario.startTime)}</p>}
                         </td>
                         <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
                           <span className="text-gray-300">Completed</span>
@@ -538,7 +604,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                 return (
                   <div className="flex gap-4 sm:gap-6 items-stretch">
                     {/* Left: big circle */}
-                    <div className="flex-1 flex items-center justify-center min-w-0">
+                    <div className="flex-1 flex items-center pl-2 sm:pl-6 min-w-0">
                       {dashView === 'total' && (
                         <div className="relative w-36 h-36 sm:w-80 sm:h-80 border-dashed border-2 border-gray-700 rounded-full p-2">
                           <ResponsiveContainer width="100%" height="100%">
@@ -547,7 +613,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                 data={(() => {
                                   if (alertStats.total_alerts === 0) return [{ name: 'Empty', value: 1 }];
                                   const segs = [];
-                                  if (alertStats.closed_alerts > 0) segs.push({ name: 'Completed', value: alertStats.closed_alerts, color: '#6fa868' });
+                                  if (alertStats.closed_alerts > 0) segs.push({ name: 'Completed', value: alertStats.closed_alerts, color: '#4b5563' });
                                   if (alertStats.open_alerts > 0) segs.push({ name: 'Active', value: alertStats.open_alerts, color: '#d1d5db' });
                                   return segs;
                                 })()}
@@ -561,16 +627,17 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                 {(() => {
                                   if (alertStats.total_alerts === 0) return [<Cell key="empty" fill="#374151" />];
                                   const cells = [];
-                                  if (alertStats.closed_alerts > 0) cells.push(<Cell key="closed" fill="#6fa868" />);
+                                  if (alertStats.closed_alerts > 0) cells.push(<Cell key="closed" fill="#4b5563" />);
                                   if (alertStats.open_alerts > 0) cells.push(<Cell key="open" fill="#d1d5db" />);
                                   return cells;
                                 })()}
                               </Pie>
+                              <Tooltip content={<PieTooltip />} wrapperStyle={{ zIndex: 20 }} />
                             </PieChart>
                           </ResponsiveContainer>
-                          <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-5xl sm:text-8xl font-bold text-white">{alertStats.total_alerts}</span>
-                            <span className="text-xs sm:text-base text-gray-400">Alerts</span>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none group/tip">
+                            <span className="text-5xl sm:text-8xl font-bold text-white cursor-default pointer-events-auto">{alertStats.total_alerts}</span>
+                            <div className="hidden group-hover/tip:block absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-6 sm:translate-y-10 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-1.5 text-xs sm:text-sm text-gray-200 whitespace-nowrap z-10">Total Alerts: <span className="text-white font-semibold">{alertStats.total_alerts}</span></div>
                           </div>
                         </div>
                       )}
@@ -591,11 +658,12 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                   <Cell key={i} fill={color} />
                                 ))}
                               </Pie>
+                              <Tooltip content={<PieTooltip />} wrapperStyle={{ zIndex: 20 }} />
                             </PieChart>
                           </ResponsiveContainer>
-                          <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-5xl sm:text-8xl font-bold text-white">{sourceTotal}</span>
-                            <span className="text-xs sm:text-base text-gray-400">Events</span>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none group/tip">
+                            <span className="text-5xl sm:text-8xl font-bold text-white cursor-default pointer-events-auto">{sourceTotal}</span>
+                            <div className="hidden group-hover/tip:block absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-6 sm:translate-y-10 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-1.5 text-xs sm:text-sm text-gray-200 whitespace-nowrap z-10">Alert Source: <span className="text-white font-semibold">{sourceTotal}</span></div>
                           </div>
                         </div>
                       )}
@@ -626,19 +694,19 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                           <span className="hidden sm:inline">Alert Source</span>
                         </button>
                       </div>
-                      <div className="flex-1 flex items-center justify-end pr-14 sm:pr-32">
+                      <div className="flex-1 flex items-center pl-2 sm:pl-6 min-h-[160px] sm:min-h-0">
                         <div className="flex flex-col gap-2 sm:gap-3 text-xs sm:text-base">
                         {dashView === 'total' && (
                           <>
                             <div className="flex items-center gap-1.5">
-                              <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{backgroundColor: '#6fa868'}} />
-                              <span className="text-gray-300">Completed</span>
-                              <span className="text-white font-semibold">{alertStats.closed_alerts}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
                               <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{backgroundColor: '#d1d5db'}} />
                               <span className="text-gray-300">Active</span>
                               <span className="text-white font-semibold">{alertStats.open_alerts}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{backgroundColor: '#4b5563'}} />
+                              <span className="text-gray-300">Completed</span>
+                              <span className="text-white font-semibold">{alertStats.closed_alerts}</span>
                             </div>
                           </>
                         )}
@@ -661,7 +729,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
           {/* Right Card: Categories + Alert Types */}
           <div className="flex flex-col">
             <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">
-              {leftView === 'types' ? 'Alert Severity' : 'Alert Categories'}
+              {leftView === 'types' ? 'Alert Severity' : 'Alert Category'}
             </h2>
             <div className="bg-[#161b22] border border-gray-700 rounded-2xl p-4 sm:p-6 shadow-md flex-1">
               {(() => {
@@ -695,7 +763,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                 return (
                   <div className="flex gap-4 sm:gap-6 items-stretch">
                     {/* Left: big circle */}
-                    <div className="flex-1 flex items-center justify-center min-w-0">
+                    <div className="flex-1 flex items-center pl-2 sm:pl-6 min-w-0">
                       {leftView === 'types' && (
                         <div className="relative w-36 h-36 sm:w-80 sm:h-80 border-dashed border-2 border-gray-700 rounded-full p-2">
                           <ResponsiveContainer width="100%" height="100%">
@@ -711,11 +779,12 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                               >
                                 {sevChartData.map((s, i) => <Cell key={i} fill={s.color} />)}
                               </Pie>
+                              <Tooltip content={<PieTooltip />} wrapperStyle={{ zIndex: 20 }} />
                             </PieChart>
                           </ResponsiveContainer>
-                          <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-5xl sm:text-8xl font-bold text-white">{sevTotal}</span>
-                            <span className="text-xs sm:text-base text-gray-400">Alerts</span>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none group/tip">
+                            <span className="text-5xl sm:text-8xl font-bold text-white cursor-default pointer-events-auto">{sevTotal}</span>
+                            <div className="hidden group-hover/tip:block absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-6 sm:translate-y-10 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-1.5 text-xs sm:text-sm text-gray-200 whitespace-nowrap z-10">Alert Severity: <span className="text-white font-semibold">{sevTotal}</span></div>
                           </div>
                         </div>
                       )}
@@ -726,11 +795,12 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                               <Pie data={catChartData} innerRadius="70%" outerRadius="100%" startAngle={90} endAngle={-270} dataKey="value" stroke="none">
                                 {catChartData.map((s, i) => <Cell key={i} fill={s.color} />)}
                               </Pie>
+                              <Tooltip content={<PieTooltip />} wrapperStyle={{ zIndex: 20 }} />
                             </PieChart>
                           </ResponsiveContainer>
-                          <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-5xl sm:text-8xl font-bold text-white">{catTotal}</span>
-                            <span className="text-xs sm:text-base text-gray-400">Total</span>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none group/tip">
+                            <span className="text-5xl sm:text-8xl font-bold text-white cursor-default pointer-events-auto">{catTotal}</span>
+                            <div className="hidden group-hover/tip:block absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-6 sm:translate-y-10 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-1.5 text-xs sm:text-sm text-gray-200 whitespace-nowrap z-10">Alert Category: <span className="text-white font-semibold">{catTotal}</span></div>
                           </div>
                         </div>
                       )}
@@ -757,11 +827,11 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                               : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
                           }`}
                         >
-                          <span className="sm:hidden">Categories</span>
-                          <span className="hidden sm:inline">Alert Categories</span>
+                          <span className="sm:hidden">Category</span>
+                          <span className="hidden sm:inline">Alert Category</span>
                         </button>
                       </div>
-                      <div className="flex-1 flex items-center justify-end pr-14 sm:pr-32">
+                      <div className="flex-1 flex items-center pl-2 sm:pl-6 min-h-[160px] sm:min-h-0">
                         <div className="flex flex-col gap-2 sm:gap-3 text-xs sm:text-base">
                         {leftView === 'types' && sevSegments.map(item => (
                           <div key={item.name} className="flex items-center gap-1.5">

@@ -1,6 +1,7 @@
 import API_BASE_URL from './config';
 
-let sessionId = null;
+const SESSION_KEY = 'spectyr_session_id';
+let sessionId = localStorage.getItem(SESSION_KEY);
 
 export function apiFetch(path, options = {}) {
   const headers = { ...(options.headers || {}) };
@@ -12,7 +13,10 @@ export function apiFetch(path, options = {}) {
     headers,
   }).then(res => {
     const id = res.headers.get('X-Session-ID');
-    if (id) sessionId = id;
+    if (id) {
+      sessionId = id;
+      localStorage.setItem(SESSION_KEY, id);
+    }
     return res;
   });
 }

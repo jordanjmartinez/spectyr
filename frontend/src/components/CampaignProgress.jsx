@@ -42,7 +42,6 @@ const CampaignProgress = ({ levelData, onReset, analystName }) => {
           const result = level_results[level] ?? level_results[String(level)];
           const isCompleted = result !== undefined;
           const isCorrect = result === "correct" || result === true;
-          const isPartial = result === "partial";
           const isCurrent = level === current_level && !completed;
           const isLast = i === total_levels - 1;
 
@@ -58,8 +57,6 @@ const CampaignProgress = ({ levelData, onReset, analystName }) => {
                     isCompleted
                       ? isCorrect
                         ? "border-[#6fa868] text-white"
-                        : isPartial
-                        ? "border-yellow-500 text-white"
                         : "border-[#b26666] text-white"
                       : isCurrent
                       ? "border-[#d1d5db] text-white"
@@ -70,10 +67,6 @@ const CampaignProgress = ({ levelData, onReset, analystName }) => {
                     isCorrect ? (
                       <svg className="w-4 h-4 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    ) : isPartial ? (
-                      <svg className="w-4 h-4 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
                       </svg>
                     ) : (
                       <svg className="w-4 h-4 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
