@@ -38,6 +38,7 @@ html, body {
 
 body {
   margin: 0;
+  min-width: 352px;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
     sans-serif;
   -webkit-font-smoothing: antialiased;
