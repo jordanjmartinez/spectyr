@@ -588,7 +588,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
             <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">
               {dashView === 'total' ? 'Total Alerts' : 'Alert Source'}
             </h2>
-            <div className="bg-[#161b22] border border-gray-700 rounded-2xl p-4 sm:p-6 flex-1 overflow-hidden">
+            <div className="rounded-2xl p-4 sm:p-6 flex-1" style={{ background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(88,130,180,0.3), transparent) border-box', border: '1px solid transparent', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
               {(() => {
                 const SOURCE_TYPES = [
                   { name: 'Sysmon', color: '#5a7caa' },
@@ -629,8 +629,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                       </button>
                     </div>
                     {/* Chart + Legend */}
-                    <div className="flex flex-row-reverse gap-4 sm:gap-6 items-center">
-                      <div className="flex-shrink-0 flex items-center pr-2 sm:pr-6 md:pr-2 xl:pr-6">
+                    <div className="flex flex-col items-center gap-4 sm:gap-6 lg:flex-row-reverse lg:items-center">
+                      <div className="flex-shrink-0 flex items-center lg:pr-2 xl:pr-6">
                         {dashView === 'total' && (
                           <div className="relative w-36 h-36 sm:w-80 sm:h-80 md:w-40 md:h-40 lg:w-56 lg:h-56 xl:w-80 xl:h-80 aspect-square border-dashed border-2 border-gray-700 rounded-full p-2">
                             <ResponsiveContainer width="100%" height="100%">
@@ -692,27 +692,27 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                           </div>
                         )}
                       </div>
-                      <div className="flex-1 min-w-0 flex items-center pl-4 sm:pl-6 md:pl-4 xl:pl-6">
-                        <div className="flex flex-col gap-2 sm:gap-3 md:gap-2 lg:gap-3 text-xs sm:text-base md:text-xs lg:text-sm">
+                      <div className="min-w-0 flex items-center lg:flex-1 lg:pl-4 xl:pl-6">
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:gap-y-3 lg:grid-cols-1 lg:gap-3 text-xs sm:text-base md:text-xs lg:text-sm">
                         {dashView === 'total' && (
                           <>
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 min-w-0">
                               <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{backgroundColor: '#d1d5db'}} />
-                              <span className="text-gray-300">Active</span>
-                              <span className="text-white font-semibold">{alertStats.open_alerts}</span>
+                              <span className="text-gray-300 truncate">Active</span>
+                              <span className="text-white font-semibold flex-shrink-0">{alertStats.open_alerts}</span>
                             </div>
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 min-w-0">
                               <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{backgroundColor: '#4b5563'}} />
-                              <span className="text-gray-300">Completed</span>
-                              <span className="text-white font-semibold">{alertStats.closed_alerts}</span>
+                              <span className="text-gray-300 truncate">Completed</span>
+                              <span className="text-white font-semibold flex-shrink-0">{alertStats.closed_alerts}</span>
                             </div>
                           </>
                         )}
                         {dashView === 'source' && sourceSegments.map(item => (
-                          <div key={item.name} className="flex items-center gap-1.5">
+                          <div key={item.name} className="flex items-center gap-1.5 min-w-0">
                             <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
                             <span className="text-gray-300 truncate">{item.name}</span>
-                            <span className="text-white font-semibold">{item.value}</span>
+                            <span className="text-white font-semibold flex-shrink-0">{item.value}</span>
                           </div>
                         ))}
                         </div>
@@ -729,7 +729,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
             <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">
               {leftView === 'types' ? 'Alert Severity' : 'Alert Category'}
             </h2>
-            <div className="bg-[#161b22] border border-gray-700 rounded-2xl p-4 sm:p-6 flex-1 overflow-hidden">
+            <div className="rounded-2xl p-4 sm:p-6 flex-1" style={{ background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(88,130,180,0.3), transparent) border-box', border: '1px solid transparent', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
               {(() => {
                 const ALL_CATEGORIES = [
                   { name: 'Malware', key: 'Malware', color: '#5a7caa' },
@@ -786,8 +786,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                       </button>
                     </div>
                     {/* Chart + Legend */}
-                    <div className="flex flex-row-reverse gap-4 sm:gap-6 items-center">
-                      <div className="flex-shrink-0 flex items-center pr-2 sm:pr-6 md:pr-2 xl:pr-6">
+                    <div className="flex flex-col items-center gap-4 sm:gap-6 lg:flex-row-reverse lg:items-center">
+                      <div className="flex-shrink-0 flex items-center lg:pr-2 xl:pr-6">
                         {leftView === 'types' && (
                           <div className="relative w-36 h-36 sm:w-80 sm:h-80 md:w-40 md:h-40 lg:w-56 lg:h-56 xl:w-80 xl:h-80 aspect-square border-dashed border-2 border-gray-700 rounded-full p-2">
                             <ResponsiveContainer width="100%" height="100%">
@@ -827,20 +827,20 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                           </div>
                         )}
                       </div>
-                      <div className="flex-1 min-w-0 flex items-center pl-4 sm:pl-6 md:pl-4 xl:pl-6">
-                        <div className="flex flex-col gap-2 sm:gap-3 md:gap-2 lg:gap-3 text-xs sm:text-base md:text-xs lg:text-sm">
+                      <div className="min-w-0 flex items-center lg:flex-1 lg:pl-4 xl:pl-6">
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:gap-y-3 lg:grid-cols-1 lg:gap-3 text-xs sm:text-base md:text-xs lg:text-sm">
                         {leftView === 'types' && sevSegments.map(item => (
-                          <div key={item.name} className="flex items-center gap-1.5">
+                          <div key={item.name} className="flex items-center gap-1.5 min-w-0">
                             <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
-                            <span className="text-gray-300">{item.name}</span>
-                            <span className="text-white font-semibold">{item.value}</span>
+                            <span className="text-gray-300 truncate">{item.name}</span>
+                            <span className="text-white font-semibold flex-shrink-0">{item.value}</span>
                           </div>
                         ))}
                         {leftView === 'categories' && catSegments.map(item => (
-                          <div key={item.name} className="flex items-center gap-1.5">
+                          <div key={item.name} className="flex items-center gap-1.5 min-w-0">
                             <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
                             <span className="text-gray-300 truncate">{item.name}</span>
-                            <span className="text-white font-semibold">{item.value}</span>
+                            <span className="text-white font-semibold flex-shrink-0">{item.value}</span>
                           </div>
                         ))}
                         </div>

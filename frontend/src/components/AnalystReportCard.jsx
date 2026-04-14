@@ -9,7 +9,7 @@ const AnalystReportCard = ({ report }) => {
     <div className="h-full flex flex-col">
       <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Report Card</h2>
 
-      <div className="bg-[#161b22] p-4 sm:p-6 border border-gray-700 rounded-2xl flex-1">
+      <div className="p-4 sm:p-6 rounded-2xl flex-1" style={{ background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(88,130,180,0.3), transparent) border-box', border: '1px solid transparent', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
       <table className="w-full h-full text-xs sm:text-base">
         <colgroup>
           <col />
@@ -43,7 +43,7 @@ const AnalystReportCard = ({ report }) => {
           <tr className="border-t border-gray-700">
             <td className="py-3 font-normal text-gray-300">Overall Grade</td>
             <td className="py-3 text-center">
-              <span className="text-white font-bold">{(() => {
+              <span className="text-white font-bold text-xl" style={{ fontFamily: 'cursive' }}>{(() => {
                 if (!report?.total_actions) return '-';
                 const acc = report.accuracy || 0;
                 return acc >= 100 ? 'A' : acc >= 80 ? 'B' : acc >= 60 ? 'C' : acc >= 40 ? 'D' : 'F';
