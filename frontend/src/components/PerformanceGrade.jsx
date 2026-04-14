@@ -39,7 +39,7 @@ const PerformanceGrade = ({ report }) => {
   return (
     <div className="h-full flex flex-col">
       <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Results</h2>
-      <div className="bg-[#161b22] px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 rounded-2xl border border-gray-700 shadow-md flex flex-col items-center flex-1">
+      <div className="bg-[#161b22] px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border border-gray-700 rounded-2xl flex flex-col items-center flex-1">
         <div className="flex-1 w-full flex items-center justify-center min-h-[220px]">
           <div className="w-full h-full">
             <ResponsiveContainer width="100%" height="100%">

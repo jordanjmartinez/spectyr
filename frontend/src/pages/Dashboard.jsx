@@ -152,13 +152,13 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0d1117] text-white pt-0 pb-8 px-4 sm:px-8 lg:px-16">
+    <div className="min-h-screen bg-[#0d1117] text-white pt-0 pb-8">
       <div className="space-y-2 sm:space-y-4">
 
         <div className="flex justify-end h-10 sm:h-12">
           <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />
         </div>
-        <div className="bg-[#161b22] rounded-xl p-3 sm:p-6">
+        <div className="bg-[#161b22] p-3 sm:p-6">
           <div className="grid grid-cols-4 sm:grid-cols-[8rem_8rem_8.5rem_8rem] border-b border-gray-700 mb-6">
             <button
               onClick={() => {

@@ -91,6 +91,16 @@ function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/analytics" element={<Analytics />} />
       </Routes>
+
+      <footer className="bg-[#161b22] border-t border-gray-800 px-4 sm:px-6 py-4 flex flex-col min-[674px]:flex-row items-center min-[674px]:justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <img src="/spectyr_logo.png" alt="Spectyr" className="h-8 w-8 object-contain" />
+          <span className="text-base tracking-wider text-gray-300" style={{ fontFamily: "'Aldrich', sans-serif" }}>SPECTYR</span>
+          <span className="text-sm text-gray-500 hidden sm:inline">|</span>
+          <span className="text-sm text-gray-300 hidden sm:inline">SOC Simulation Training</span>
+        </div>
+        <span className="text-sm text-gray-300">&copy; 2026 Spectyr. All rights reserved.</span>
+      </footer>
     </Router>
   );
 }

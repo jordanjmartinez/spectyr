@@ -9,7 +9,7 @@ const AnalystReportCard = ({ report }) => {
     <div className="h-full flex flex-col">
       <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Report Card</h2>
 
-      <div className="bg-[#161b22] p-4 sm:p-6 rounded-2xl border border-gray-700 shadow-md flex-1">
+      <div className="bg-[#161b22] p-4 sm:p-6 border border-gray-700 rounded-2xl flex-1">
       <table className="w-full h-full text-xs sm:text-base">
         <colgroup>
           <col />
