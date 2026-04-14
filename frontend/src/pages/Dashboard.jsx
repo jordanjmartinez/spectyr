@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { apiFetch } from '../api';
 import AlertTable from '../components/AlertTable';
 import GroupedAlerts from '../components/GroupedAlerts';
@@ -151,14 +152,17 @@ const Dashboard = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-[#0d1117] text-white pt-0 pb-8">
-      <div className="space-y-2 sm:space-y-4">
+  const timerSlot = document.getElementById('navbar-timer-slot');
 
-        <div className="flex justify-end h-10 sm:h-12">
-          <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />
-        </div>
-        <div className="bg-[#161b22] p-3 sm:p-6">
+  return (
+    <div className="min-h-screen bg-[#0d1117] text-white pt-0 pb-8 flex flex-col">
+      {timerSlot && createPortal(
+        <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />,
+        timerSlot
+      )}
+      <div className="flex flex-col flex-1 gap-2 sm:gap-4">
+
+        <div className="bg-[#161b22] p-3 sm:p-6 flex-1 flex flex-col">
           <div className="grid grid-cols-4 sm:grid-cols-[8rem_8rem_8.5rem_8rem] border-b border-gray-700 mb-6">
             <button
               onClick={() => {
