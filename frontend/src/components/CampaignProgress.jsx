@@ -33,7 +33,7 @@ const CampaignProgress = ({ levelData, onReset, analystName }) => {
           <p className="font-mono text-xs sm:text-sm text-gray-400 mb-6">&gt; Well done{analystName ? `, ${analystName}` : ''}. You've completed your simulation. The threats never stood a chance.</p>
         </div>
         {/* Level stepper with results */}
-        <div className={`flex items-center justify-between px-4 sm:px-8 pt-10 pb-8 transition-all duration-700 delay-300 ease-out ${ghostVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+        <div className={`flex items-center justify-between px-4 sm:px-8 pt-5 pb-5 transition-all duration-700 delay-300 ease-out ${ghostVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           {Array.from({ length: total_levels }).map((_, i) => {
             const level = i + 1;
             const result = level_results[level] ?? level_results[String(level)];
@@ -87,7 +87,7 @@ const CampaignProgress = ({ levelData, onReset, analystName }) => {
       <div className="mb-6" style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
 
       {/* Level stepper */}
-      <div className="flex items-center justify-between px-4 sm:px-8 pt-10 pb-8">
+      <div className="flex items-center justify-between px-4 sm:px-8 pt-5 pb-5">
         {Array.from({ length: total_levels }).map((_, i) => {
           const level = i + 1;
           const result = level_results[level] ?? level_results[String(level)];
