@@ -169,14 +169,15 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
     const end = Math.min(totalPages - 1, currentPage + visibleRange);
 
     const buttonClass = (isActive) =>
-      `w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md text-xs sm:text-sm font-medium transition ${
+      `w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md text-xs sm:text-sm font-medium transition border border-gray-600 ${
         isActive
-          ? 'bg-[#30363d] text-white border border-gray-500'
-          : 'bg-[#21262d] text-gray-400 border border-gray-600 hover:bg-[#30363d] hover:text-gray-200'
+          ? 'text-white'
+          : 'bg-[#21262d] text-gray-400 hover:bg-[#30363d] hover:text-gray-200'
       }`;
+    const activePageStyle = { backgroundColor: 'rgba(255,255,255,0.08)' };
 
     buttons.push(
-      <button key={1} onClick={() => changePage(1)} className={buttonClass(currentPage === 1)}>
+      <button key={1} onClick={() => changePage(1)} className={buttonClass(currentPage === 1)} style={currentPage === 1 ? activePageStyle : undefined}>
         1
       </button>
     );
@@ -185,7 +186,7 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
 
     for (let i = start; i <= end; i++) {
       buttons.push(
-        <button key={i} onClick={() => changePage(i)} className={buttonClass(currentPage === i)}>
+        <button key={i} onClick={() => changePage(i)} className={buttonClass(currentPage === i)} style={currentPage === i ? activePageStyle : undefined}>
           {i}
         </button>
       );
@@ -195,7 +196,7 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
 
     if (totalPages > 1) {
       buttons.push(
-        <button key={totalPages} onClick={() => changePage(totalPages)} className={buttonClass(currentPage === totalPages)}>
+        <button key={totalPages} onClick={() => changePage(totalPages)} className={buttonClass(currentPage === totalPages)} style={currentPage === totalPages ? activePageStyle : undefined}>
           {totalPages}
         </button>
       );
@@ -249,36 +250,40 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
             <div className="hidden sm:flex items-center relative" ref={pageSizeRef}>
               <button
                 onClick={() => setPageSizeOpen(!pageSizeOpen)}
-                className="flex items-center gap-1.5 bg-[#21262d] hover:bg-[#30363d] text-gray-200 text-sm px-3 py-1 rounded border border-gray-600 focus:outline-none cursor-pointer transition-colors"
+                className="inline-flex items-center justify-center gap-1 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
               >
-                <svg className={`w-3.5 h-3.5 transition-transform ${pageSizeOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={`w-4 h-4 transition-transform ${pageSizeOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
                 {alertsPerPage} Per Page
               </button>
               {pageSizeOpen && (
-                <div className="absolute top-full left-0 mt-1 bg-[#21262d] border border-gray-600 rounded shadow-lg z-50 min-w-full">
-                  {[10, 20, 50].map((size) => (
-                    <button
-                      key={size}
-                      onClick={() => {
-                        handlePageSizeChange({ target: { value: String(size) } });
-                        setPageSizeOpen(false);
-                      }}
-                      className="flex items-center w-full px-3 py-1.5 text-sm text-gray-200 hover:bg-[#30363d] transition-colors cursor-pointer"
-                    >
-                      <span className="w-4 -ml-0.5 text-gray-200">{alertsPerPage === size ? '✓' : ''}</span>
-                      <span>{size} Per Page</span>
-                    </button>
-                  ))}
-                </div>
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setPageSizeOpen(false)} />
+                  <div className="absolute left-0 top-full mt-1 z-20 bg-[#161b22] border border-gray-700 rounded py-1 flex flex-col min-w-[100px] sm:min-w-[120px]">
+                    {[10, 20, 50].map((size) => (
+                      <button
+                        key={size}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePageSizeChange({ target: { value: String(size) } });
+                          setPageSizeOpen(false);
+                        }}
+                        className="flex items-center gap-2 text-left px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm hover:bg-gray-700 transition text-gray-400"
+                      >
+                        <span className={`w-3 h-3 sm:w-3.5 sm:h-3.5 rounded border ${alertsPerPage === size ? 'bg-gray-300 border-gray-300' : 'border-gray-600'}`} />
+                        {size} Per Page
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
             <div className="flex items-center gap-1 text-xs sm:text-sm ml-auto">
               <button
                 onClick={() => changePage(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#21262d] transition"
               >
                 Prev
               </button>
@@ -291,7 +296,7 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
               <button
                 onClick={() => changePage(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#21262d] transition"
               >
                 Next
               </button>

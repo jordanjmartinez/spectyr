@@ -48,6 +48,7 @@ const ActionHistory = ({ history: rawHistory }) => {
     return (
       <div>
         <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Post-Incident Review</h2>
+        <div className="mb-4" style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
         <div className="bg-[#161b22] p-3 sm:p-6 rounded-xl">
           <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
             <img src="/ghost_analytics.png" alt="Ghost Analyzing" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
@@ -61,6 +62,7 @@ const ActionHistory = ({ history: rawHistory }) => {
   return (
     <div>
       <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Post-Incident Review</h2>
+      <div className="mb-4" style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
 
       <div className="bg-[#161b22] p-3 sm:p-6 rounded-xl">
         <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper">

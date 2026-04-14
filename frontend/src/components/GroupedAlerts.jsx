@@ -697,12 +697,12 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                         {dashView === 'total' && (
                           <>
                             <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{backgroundColor: '#d1d5db'}} />
+                              <span className="w-2.5 h-2.5 flex-shrink-0 rounded-md" style={{backgroundColor: '#d1d5db'}} />
                               <span className="text-gray-300 truncate">Active</span>
                               <span className="text-white font-semibold flex-shrink-0">{alertStats.open_alerts}</span>
                             </div>
                             <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{backgroundColor: '#4b5563'}} />
+                              <span className="w-2.5 h-2.5 flex-shrink-0 rounded-md" style={{backgroundColor: '#4b5563'}} />
                               <span className="text-gray-300 truncate">Completed</span>
                               <span className="text-white font-semibold flex-shrink-0">{alertStats.closed_alerts}</span>
                             </div>
@@ -710,7 +710,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                         )}
                         {dashView === 'source' && sourceSegments.map(item => (
                           <div key={item.name} className="flex items-center gap-1.5 min-w-0">
-                            <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
+                            <span className="w-2.5 h-2.5 flex-shrink-0 rounded-md" style={{ backgroundColor: item.color }} />
                             <span className="text-gray-300 truncate">{item.name}</span>
                             <span className="text-white font-semibold flex-shrink-0">{item.value}</span>
                           </div>
@@ -831,14 +831,14 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                         <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:gap-y-3 lg:grid-cols-1 lg:gap-3 text-xs sm:text-base md:text-xs lg:text-sm">
                         {leftView === 'types' && sevSegments.map(item => (
                           <div key={item.name} className="flex items-center gap-1.5 min-w-0">
-                            <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
+                            <span className="w-2.5 h-2.5 flex-shrink-0 rounded-md" style={{ backgroundColor: item.color }} />
                             <span className="text-gray-300 truncate">{item.name}</span>
                             <span className="text-white font-semibold flex-shrink-0">{item.value}</span>
                           </div>
                         ))}
                         {leftView === 'categories' && catSegments.map(item => (
                           <div key={item.name} className="flex items-center gap-1.5 min-w-0">
-                            <span className="w-2.5 h-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
+                            <span className="w-2.5 h-2.5 flex-shrink-0 rounded-md" style={{ backgroundColor: item.color }} />
                             <span className="text-gray-300 truncate">{item.name}</span>
                             <span className="text-white font-semibold flex-shrink-0">{item.value}</span>
                           </div>
@@ -895,11 +895,13 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
               </div>
             </div>
 
+                <div className="mt-3" style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
                 <div className="mt-4">
                   <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper">
                     <table className="w-full min-w-[1000px] sm:min-w-[1100px] table-fixed log-text text-left text-gray-300 border-separate border-spacing-0">
                       <thead>
                         <tr className="text-xs sm:text-sm uppercase text-gray-400 tracking-wider">
+                          <th className="w-5 p-0"></th>
                           <th className="w-10 px-2 py-3"></th>
                           <th className="px-2 sm:px-4 py-3 font-medium w-[100px] whitespace-nowrap text-center">Alert ID</th>
                           <th className="px-2 sm:px-4 py-3 font-medium w-[100px] sm:w-[130px] whitespace-nowrap text-center">Time</th>
@@ -911,12 +913,22 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-700">
-                        {group.logs.map((log) => (
+                        {group.logs.map((log, logIdx) => {
+                          const alertId = log.alert_id;
+                          const hasPrev = alertId && logIdx > 0 && group.logs[logIdx - 1].alert_id === alertId;
+                          const hasNext = alertId && logIdx < group.logs.length - 1 && group.logs[logIdx + 1].alert_id === alertId;
+                          return (
                           <React.Fragment key={log.id}>
                             <tr
                               className="hover:bg-white/5 transition-colors cursor-pointer border-b border-gray-700/50"
                               onClick={() => toggleLogRow(log.id)}
                             >
+                              <td className="p-0 relative w-5">
+                                {alertId && (hasPrev || hasNext) && (
+                                  <div className="absolute left-1/2 -translate-x-1/2 w-px bg-gray-600" style={{ top: hasPrev ? 0 : '50%', bottom: hasNext ? 0 : '50%' }} />
+                                )}
+                                {alertId && <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rotate-45 border border-gray-500 bg-[#161b22]" />}
+                              </td>
                               <td className="px-2 py-4">
                                 <svg
                                   className={`w-5 h-5 text-gray-500 hover:text-white transition-transform duration-300 ease-in-out ${
@@ -959,6 +971,11 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                               </td>
                             </tr>
                             <tr>
+                              <td className="p-0 relative w-5">
+                                {alertId && hasNext && (
+                                  <div className="absolute left-1/2 -translate-x-1/2 w-px bg-gray-600 inset-y-0" />
+                                )}
+                              </td>
                               <td colSpan="8" className="p-0">
                                 <div
                                   className={`grid transition-all duration-300 ease-in-out ${
@@ -974,7 +991,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                               </td>
                             </tr>
                           </React.Fragment>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
