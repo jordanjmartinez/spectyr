@@ -526,6 +526,71 @@ TRIAGE_REVIEWS = {
             "Trace how the malware was delivered",
             "Check for any post-compromise activity like credential theft or lateral movement"
         ]
+    },
+    "false_positive_pentest": {
+        "what_is_it": {
+            "title": "Security Awareness Training Campaign",
+            "description": "Phishing simulation platforms send realistic-looking emails to test employee awareness. These generate alerts identical to real phishing — lookalike domains, credential harvesting pages, and clicked links — but originate from authorized training vendors."
+        },
+        "response_actions": [
+            "Verify with the security awareness team if a campaign is active",
+            "Check the sending domain against the approved vendor list",
+            "Confirm SPF/DKIM alignment with the training platform",
+            "Document as false positive and close the ticket",
+            "Notify the SOC to expect similar alerts during the campaign window"
+        ]
+    },
+    "false_positive_robocopy": {
+        "what_is_it": {
+            "title": "Scheduled Data Migration",
+            "description": "Robocopy and similar bulk file transfer tools generate high-volume file access patterns that closely resemble data exfiltration. Legitimate IT migrations involving large outbound transfers to cloud endpoints can trigger data loss prevention and exfiltration alerts."
+        },
+        "response_actions": [
+            "Check change management for approved migration tasks",
+            "Verify the service account running the transfer is authorized",
+            "Confirm the destination endpoint is an approved cloud target",
+            "Validate the transfer volume against the migration scope",
+            "Whitelist the scheduled task for the migration window"
+        ]
+    },
+    "false_positive_veeam": {
+        "what_is_it": {
+            "title": "Backup Agent Beaconing",
+            "description": "Backup agents like Veeam communicate with their management server at regular intervals, transferring large volumes of data during backup windows. This periodic outbound traffic to a fixed destination closely mimics command-and-control beaconing patterns."
+        },
+        "response_actions": [
+            "Verify the process is a known backup agent by checking its hash and path",
+            "Confirm the destination is the authorized backup server",
+            "Cross-reference with the backup schedule and retention policy",
+            "Check with the backup team for recent agent deployments",
+            "Add the backup process and destination to the monitoring whitelist"
+        ]
+    },
+    "false_positive_oauth": {
+        "what_is_it": {
+            "title": "OAuth Token Refresh Activity",
+            "description": "Modern authentication using OAuth generates non-interactive sign-in events from Microsoft's global infrastructure. Token refreshes can originate from data centers in different countries, triggering impossible travel and anomalous location alerts even when the user hasn't moved."
+        },
+        "response_actions": [
+            "Check if the sign-ins are non-interactive token refreshes versus user logins",
+            "Verify the application is a known first-party service like Exchange Online",
+            "Confirm with the identity team if modern auth was recently enabled",
+            "Review the user's interactive sign-in history for actual anomalies",
+            "Tune the impossible travel policy to exclude non-interactive sign-ins"
+        ]
+    },
+    "false_positive_ssl_inspection": {
+        "what_is_it": {
+            "title": "SSL Inspection Policy Expansion",
+            "description": "When a corporate proxy expands its SSL inspection scope to new domains, endpoints may generate repeated TLS handshake failures while certificate trust is established. The retry pattern with consistent intervals to fixed destinations closely resembles command-and-control communication."
+        },
+        "response_actions": [
+            "Check with the network team for recent proxy policy changes",
+            "Verify the destination domains are legitimate Microsoft 365 endpoints",
+            "Confirm the TLS failures correlate with the inspection policy rollout timeline",
+            "Push updated root certificates to affected workstations",
+            "Monitor for resolution as endpoints pick up the new trust chain"
+        ]
     }
 }
 

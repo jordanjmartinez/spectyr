@@ -13,7 +13,6 @@ const ActionHistory = ({ history: rawHistory }) => {
     const fetchTriageReviews = async () => {
       const uniqueLabels = [...new Set(
         history
-          .filter(item => item.true_category !== "False Positive")
           .map(item => item.scenario_label)
           .filter(Boolean)
       )];
@@ -122,9 +121,6 @@ const ActionHistory = ({ history: rawHistory }) => {
                       }`}>
                         <div className="overflow-hidden min-h-0">
                           <div className="border-t border-gray-700 px-6 py-4">
-                            {item.true_category === "False Positive" ? (
-                              <p className="text-sm sm:text-base text-gray-400">No incident to review.</p>
-                            ) : (<>
                             <div className="mb-4">
                               <span className="text-sm sm:text-base text-white font-medium">Classification</span>
                               <p className="text-gray-300 mt-1 text-sm sm:text-base">{item.true_category}</p>
@@ -202,7 +198,6 @@ const ActionHistory = ({ history: rawHistory }) => {
                             ) : (
                               <p className="text-sm sm:text-base text-gray-300 leading-relaxed">Triage review not yet available for this scenario.</p>
                             )}
-                            </>)}
                           </div>
                         </div>
                       </div>
