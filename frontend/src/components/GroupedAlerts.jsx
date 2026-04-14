@@ -639,8 +639,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                   data={(() => {
                                     if (alertStats.total_alerts === 0) return [{ name: 'Empty', value: 1 }];
                                     const segs = [];
-                                    if (alertStats.closed_alerts > 0) segs.push({ name: 'Completed', value: alertStats.closed_alerts, color: '#4b5563' });
-                                    if (alertStats.open_alerts > 0) segs.push({ name: 'Active', value: alertStats.open_alerts, color: '#d1d5db' });
+                                    if (alertStats.closed_alerts > 0) segs.push({ name: 'Completed', value: alertStats.closed_alerts, color: '#6fa868' });
+                                    if (alertStats.open_alerts > 0) segs.push({ name: 'Active', value: alertStats.open_alerts, color: '#b26666' });
                                     return segs;
                                   })()}
                                   innerRadius="70%"
@@ -653,8 +653,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                   {(() => {
                                     if (alertStats.total_alerts === 0) return [<Cell key="empty" fill="#374151" />];
                                     const cells = [];
-                                    if (alertStats.closed_alerts > 0) cells.push(<Cell key="closed" fill="#4b5563" />);
-                                    if (alertStats.open_alerts > 0) cells.push(<Cell key="open" fill="#d1d5db" />);
+                                    if (alertStats.closed_alerts > 0) cells.push(<Cell key="closed" fill="#6fa868" />);
+                                    if (alertStats.open_alerts > 0) cells.push(<Cell key="open" fill="#b26666" />);
                                     return cells;
                                   })()}
                                 </Pie>
@@ -697,12 +697,12 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                         {dashView === 'total' && (
                           <>
                             <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="w-2.5 h-2.5 flex-shrink-0 rounded-md" style={{backgroundColor: '#d1d5db'}} />
+                              <span className="w-2.5 h-2.5 flex-shrink-0 rounded-md" style={{backgroundColor: '#b26666'}} />
                               <span className="text-gray-300 truncate">Active</span>
                               <span className="text-white font-semibold flex-shrink-0">{alertStats.open_alerts}</span>
                             </div>
                             <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="w-2.5 h-2.5 flex-shrink-0 rounded-md" style={{backgroundColor: '#4b5563'}} />
+                              <span className="w-2.5 h-2.5 flex-shrink-0 rounded-md" style={{backgroundColor: '#6fa868'}} />
                               <span className="text-gray-300 truncate">Completed</span>
                               <span className="text-white font-semibold flex-shrink-0">{alertStats.closed_alerts}</span>
                             </div>

@@ -43,7 +43,7 @@ const AnalystReportCard = ({ report }) => {
           <tr className="border-t border-gray-700">
             <td className="py-3 font-normal text-gray-300">Overall Grade</td>
             <td className="py-3 text-center">
-              <span className="text-white font-bold text-xl" style={{ fontFamily: 'cursive' }}>{(() => {
+              <span className="text-white font-bold text-xl">{(() => {
                 if (!report?.total_actions) return '-';
                 const acc = report.accuracy || 0;
                 return acc >= 100 ? 'A' : acc >= 80 ? 'B' : acc >= 60 ? 'C' : acc >= 40 ? 'D' : 'F';

@@ -17,6 +17,7 @@ const CampaignProgress = ({ levelData, onReset, analystName }) => {
             <span className="sm:hidden">Reset Sim</span><span className="hidden sm:inline">Reset Simulation</span>
           </button>
         </div>
+        <div className="mb-4" style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
         <div className="flex flex-col items-center text-center">
           <img
             src="/ghost-celebrate.png"
