@@ -33,7 +33,7 @@ const CampaignProgress = ({ levelData, onReset, analystName }) => {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl sm:text-2xl font-semibold text-white">Simulation Overview</h2>
+        <h2 className="text-xl sm:text-2xl font-semibold text-white">Simulation Status</h2>
       </div>
       <div className="mb-6" style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
 
