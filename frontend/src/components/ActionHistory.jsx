@@ -176,12 +176,25 @@ const ActionHistory = ({ history: rawHistory }) => {
                                 {review.response_actions && review.response_actions.length > 0 && (
                                   <div>
                                     <span className="text-sm sm:text-base text-white font-medium">Playbook</span>
-                                    <div className="mt-2 space-y-1">
-                                      {review.response_actions.map((action, i) => (
-                                        <p key={i} className="text-sm sm:text-base text-gray-300">
-                                          <span className="text-white font-medium">{i + 1}.</span> {action}
-                                        </p>
-                                      ))}
+                                    <div className="mt-2">
+                                      {review.response_actions.map((action, i) => {
+                                        const isFirst = i === 0;
+                                        const isLast = i === review.response_actions.length - 1;
+                                        return (
+                                          <div key={i} className="flex gap-3">
+                                            <div className="relative w-3 flex-shrink-0 self-stretch">
+                                              {!isFirst && (
+                                                <div className="absolute left-1/2 -translate-x-1/2 w-px bg-gray-600" style={{ top: 0, bottom: '50%' }} />
+                                              )}
+                                              {!isLast && (
+                                                <div className="absolute left-1/2 -translate-x-1/2 w-px bg-gray-600" style={{ top: '50%', bottom: 0 }} />
+                                              )}
+                                              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rotate-45 border border-gray-500 bg-[#161b22]" />
+                                            </div>
+                                            <p className="text-sm sm:text-base text-gray-300 py-1.5">{action}</p>
+                                          </div>
+                                        );
+                                      })}
                                     </div>
                                   </div>
                                 )}

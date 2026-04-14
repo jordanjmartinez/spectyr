@@ -92,7 +92,7 @@ function App() {
         <Route path="/analytics" element={<Analytics />} />
       </Routes>
 
-      <footer className="bg-[#0d1117] border-t border-gray-800 px-4 sm:px-6 py-4 flex flex-col min-[674px]:flex-row items-center min-[674px]:justify-between gap-2">
+      <footer className="bg-[#0d1117] px-4 sm:px-6 py-4 flex flex-col min-[674px]:flex-row items-center min-[674px]:justify-between gap-2">
         <div className="flex items-center gap-2">
           <img src="/spectyr_logo.png" alt="Spectyr" className="h-8 w-8 object-contain" />
           <span className="text-base tracking-wider text-white" style={{ fontFamily: "'Aldrich', sans-serif" }}>SPECTYR</span>
