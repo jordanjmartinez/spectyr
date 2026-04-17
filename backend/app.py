@@ -307,7 +307,7 @@ TRIAGE_REVIEWS = {
             "url": "https://attack.mitre.org/techniques/T1046/"
         },
         "what_is_it": {
-            "title": "Network Service Scanning (Port Scan)",
+            "title": "Network Service Scanning",
             "description": "Network service scanning is when someone probes target systems to discover open ports and running services, typically using tools like Nmap. When a scanning tool is found on a standard user's workstation, it indicates either unauthorized reconnaissance or a compromised machine."
         },
         "response_actions": [
@@ -326,7 +326,7 @@ TRIAGE_REVIEWS = {
             "url": "https://attack.mitre.org/techniques/T1110/001/"
         },
         "what_is_it": {
-            "title": "Dictionary Attack (Password Guessing)",
+            "title": "Dictionary Attack",
             "description": "A dictionary attack is a brute force method where attackers use automated tools to rapidly cycle through a wordlist of common passwords against a single account. This differs from password spraying, which tries one password across many accounts, and credential stuffing, which reuses stolen credentials from previous breaches."
         },
         "response_actions": [
@@ -345,7 +345,7 @@ TRIAGE_REVIEWS = {
             "url": "https://attack.mitre.org/techniques/T1566/002/"
         },
         "what_is_it": {
-            "title": "Spearphishing Link (Payload Download)",
+            "title": "Spearphishing Link",
             "description": "Spearphishing with a link is when attackers send targeted emails containing URLs to malicious files instead of attaching them directly. This bypasses email security that scans attachments but may not inspect linked content. Attackers typically impersonate trusted services like DocuSign, SharePoint, or Dropbox to convince the victim to click, download, and execute the payload."
         },
         "response_actions": [
@@ -463,7 +463,7 @@ TRIAGE_REVIEWS = {
             "url": "https://attack.mitre.org/techniques/T1567/002/"
         },
         "what_is_it": {
-            "title": "Shadow IT (Unauthorized Cloud Storage)",
+            "title": "Shadow IT",
             "description": "Shadow IT is when employees use unapproved software, cloud services, or personal devices for work without IT's knowledge. Common examples include syncing files to personal Dropbox or Google Drive, or using personal laptops and phones to access corporate data. Even without malicious intent, this puts company data in unmanaged locations with no security controls or audit trail."
         },
         "response_actions": [
@@ -535,7 +535,7 @@ TRIAGE_REVIEWS = {
     "false_positive_pentest": {
         "what_is_it": {
             "title": "Security Awareness Training Campaign",
-            "description": "Phishing simulation platforms send realistic-looking emails to test employee awareness. These generate alerts identical to real phishing — lookalike domains, credential harvesting pages, and clicked links — but originate from authorized training vendors."
+            "description": "Phishing simulation platforms send realistic-looking emails to test employee awareness. These generate alerts identical to real phishing, including lookalike domains, credential harvesting pages, and clicked links, but they originate from authorized training vendors."
         },
         "response_actions": [
             "Verify with the security awareness team if a campaign is active",
@@ -2769,11 +2769,6 @@ def resume_generation():
         answer_wrong = True
         failure_reason = f"Wrong category: selected {selected_category}, was {existing_category}"
 
-    # Hardcore failure (wrong classify) — reset semantics will move to the
-    # 3-strike system in a future stage. For now, log it but don't hard-reset.
-    if answer_wrong and s["game_mode"] == "hardcore":
-        print(f"[HARDCORE WRONG] {failure_reason}", flush=True)
-
     # Mark this scenario resolved in the queue and push to history
     queue_entry = next((e for e in s.get("alert_queue", []) if e.get("scenario_id") == scenario_id), None)
     if queue_entry and not queue_entry.get("resolved_at"):
@@ -2794,6 +2789,17 @@ def resume_generation():
             print("[SESSION COMPLETE] All alerts resolved!", flush=True)
 
     s["current_scenario"] = None
+
+    if answer_wrong and s["game_mode"] == "hardcore":
+        print(f"[HARDCORE FAILURE] {failure_reason}", flush=True)
+        s["paused"] = True
+        return jsonify({
+            "status": "hardcore_failure",
+            "category": selected_category,
+            "correct_category": existing_category,
+            "reason": failure_reason,
+        })
+
     return jsonify({"status": "action logged", "action": action})
 
 
@@ -3070,7 +3076,14 @@ def get_game_state():
     elapsed = None
 
     if s["timer_start"]:
-        elapsed = (datetime.now(timezone.utc) - s["timer_start"]).total_seconds()
+        if s.get("paused"):
+            if s.get("timer_paused_at") is None:
+                s["timer_paused_at"] = datetime.now(timezone.utc)
+            elapsed = (s["timer_paused_at"] - s["timer_start"]).total_seconds()
+        else:
+            if s.get("timer_paused_at") is not None:
+                s["timer_paused_at"] = None
+            elapsed = (datetime.now(timezone.utc) - s["timer_start"]).total_seconds()
 
     if s["game_mode"] == "hardcore" and elapsed is not None:
         duration = get_timer_duration(1)

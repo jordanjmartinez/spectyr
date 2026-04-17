@@ -191,7 +191,7 @@ const ActionHistory = ({ history: rawHistory }) => {
                                               {!isLast && (
                                                 <div className="absolute left-1/2 -translate-x-1/2 w-px bg-gray-600" style={{ top: '50%', bottom: 0 }} />
                                               )}
-                                              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rotate-45 border border-gray-500 bg-[#161b22]" />
+                                              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rotate-45 border border-gray-500 bg-[#161b22]" />
                                             </div>
                                             <p className="text-sm sm:text-base text-gray-300 py-1.5">{action}</p>
                                           </div>
