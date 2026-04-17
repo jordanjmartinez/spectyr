@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { apiFetch } from '../api';
 
@@ -41,11 +42,14 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [dropdownPos, setDropdownPos] = useState(null);
   const dropdownRef = useRef(null);
+  const menuRef = useRef(null);
 
   useEffect(() => {
     if (!openDropdownId) return;
     const handleMouseDown = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+      const insideButton = dropdownRef.current?.contains(e.target);
+      const insideMenu = menuRef.current?.contains(e.target);
+      if (!insideButton && !insideMenu) {
         setOpenDropdownId(null);
       }
     };
@@ -1004,8 +1008,9 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                 </svg>
                                 Actions
                               </button>
-                              {openDropdownId === groupKey && dropdownPos && (
+                              {openDropdownId === groupKey && dropdownPos && createPortal(
                                 <div
+                                  ref={menuRef}
                                   role="menu"
                                   style={{
                                     position: 'fixed',
@@ -1024,7 +1029,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                       setCategoryScenario(group);
                                       setShowCategorySelector(true);
                                     }}
-                                    className="text-left px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs hover:bg-gray-700 transition text-gray-400 disabled:text-gray-600 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                                    className="text-left px-2.5 sm:px-3 py-2 sm:py-2.5 text-xs hover:bg-gray-700 transition text-gray-400 disabled:text-gray-600 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                                   >
                                     Classify Threat
                                   </button>
@@ -1036,7 +1041,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                       setOpenDropdownId(null);
                                       handleCategorySelect('false_positive', 'False Positive', group);
                                     }}
-                                    className="text-left px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs hover:bg-gray-700 transition text-gray-400 disabled:text-gray-600 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                                    className="text-left px-2.5 sm:px-3 py-2 sm:py-2.5 text-xs hover:bg-gray-700 transition text-gray-400 disabled:text-gray-600 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                                   >
                                     False Positive
                                   </button>
@@ -1049,11 +1054,12 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                       setReportScenario(group);
                                       setShowReportForm(true);
                                     }}
-                                    className="text-left px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs hover:bg-gray-700 transition text-gray-400 disabled:text-gray-600 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                                    className="text-left px-2.5 sm:px-3 py-2 sm:py-2.5 text-xs hover:bg-gray-700 transition text-gray-400 disabled:text-gray-600 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                                   >
                                     {reportedScenarios.has(group.scenario_id) ? 'Reported' : 'Create Report'}
                                   </button>
-                                </div>
+                                </div>,
+                                document.body
                               )}
                             </div>
                           </td>
