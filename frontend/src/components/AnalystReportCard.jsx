@@ -34,7 +34,7 @@ const AnalystReportCard = ({ report }) => {
             </td>
           </tr>
           <tr className="border-t border-gray-800">
-            <td className="py-3">False Positive</td>
+            <td className="py-3">False Positives</td>
             <td className="py-3 text-center">
               <span className="text-white font-semibold">{fpCorrect}/{fpTotal}</span>
             </td>

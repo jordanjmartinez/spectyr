@@ -47,7 +47,7 @@ const PerformanceGrade = ({ report }) => {
   return (
     <div className="h-full flex flex-col">
       <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">
-        {resultsView === 'threats' ? 'Threats' : 'False Positive'}
+        {resultsView === 'threats' ? 'Threats' : 'False Positives'}
       </h2>
       <div className="rounded-2xl p-4 sm:p-6 flex-1" style={{ background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(88,130,180,0.3), transparent) border-box', border: '1px solid transparent', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
         <div className="flex flex-col gap-4">
@@ -71,7 +71,7 @@ const PerformanceGrade = ({ report }) => {
               }`}
             >
               <span className="sm:hidden">False Pos</span>
-              <span className="hidden sm:inline">False Positive</span>
+              <span className="hidden sm:inline">False Positives</span>
             </button>
           </div>
           <div className="flex flex-col items-center gap-4 sm:gap-6 lg:flex-row-reverse lg:items-center">
