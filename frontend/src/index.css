@@ -112,8 +112,12 @@ code {
   outline: none !important;
 }
 
-/* Mobile table scroll wrapper */
+/* Mobile table scroll wrapper + grab-to-scroll on desktop */
 .mobile-scroll-wrapper {
   -webkit-overflow-scrolling: touch;
+  cursor: grab;
+}
+.mobile-scroll-wrapper:active {
+  cursor: grabbing;
 }
 

@@ -69,7 +69,7 @@ const ActionHistory = ({ history: rawHistory }) => {
           <thead>
             <tr className="text-xs sm:text-sm uppercase text-gray-400 tracking-wider">
               <th className="w-10 px-2 sm:px-4 py-3 font-medium"></th>
-              <th className="w-12 px-1 sm:px-2 py-3 font-medium text-center">Level</th>
+              <th className="w-12 px-1 sm:px-2 py-3 font-medium"></th>
               <th className="w-full px-2 sm:px-4 py-3 font-medium">Title</th>
               <th className="px-2 sm:px-4 py-3 font-medium text-center">Result</th>
             </tr>
@@ -97,13 +97,19 @@ const ActionHistory = ({ history: rawHistory }) => {
                       </svg>
                     </td>
                     <td className="w-12 px-1 sm:px-2 py-4 text-center">
-                      {item.level && (
-                        <span className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full inline-flex items-center justify-center text-xs font-bold border-[3px] ${
-                          item.correct ? 'border-[#6fa868]' : 'border-[#b26666]'
-                        } text-white`}>
-                          {item.level}
-                        </span>
-                      )}
+                      <span className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full inline-flex items-center justify-center border-[3px] ${
+                        item.correct ? 'border-[#6fa868]' : 'border-[#b26666]'
+                      } text-white`}>
+                        {item.correct ? (
+                          <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : (
+                          <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        )}
+                      </span>
                     </td>
                     <td className="px-2 sm:px-4 py-4">
                       <p className="text-sm sm:text-base font-medium text-gray-200 whitespace-nowrap">

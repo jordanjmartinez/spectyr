@@ -320,7 +320,7 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
         </div>
       ) : (
         <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper" style={{ minHeight: `${(alertsPerPage * 49) + 48}px` }}>
-          <table className="w-full min-w-[900px] sm:min-w-[1000px] log-text text-left text-gray-300 border-separate border-spacing-0 table-fixed">
+          <table className="w-full min-w-[900px] sm:min-w-[1000px] log-text text-left text-gray-300 border-separate border-spacing-0">
             <thead>
               <tr className="text-xs sm:text-sm uppercase text-gray-400 tracking-wider">
                 <th className="px-2 sm:px-4 py-3 font-medium w-10"></th>
@@ -378,7 +378,7 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
                       <td className="px-2 sm:px-4 py-4 text-gray-200 sm:whitespace-nowrap text-center">
                         {alert.destination_ip || '—'}
                       </td>
-                      <td className="px-2 sm:px-4 py-4 text-gray-200 truncate" title={alert.message || '—'}>
+                      <td className="px-2 sm:px-4 py-4 text-gray-200 whitespace-nowrap" title={alert.message || '—'}>
                         {alert.message || '—'}
                       </td>
                     </tr>

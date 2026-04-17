@@ -59,8 +59,13 @@ def create_session():
         "timer_start": None,
         "analyst_name": None,
         "used_alert_ids": set(),
-        "selected_level_option": None,
+        "alert_queue": [],
+        "queue_length": 5,
+        "resolved_count": 0,
+        "injected_count": 0,
+        "next_drip_at": None,
         "scenario_history": [],
+        "scenario_start_time": None,
         "last_active": datetime.now(timezone.utc),
     }
     with sessions_lock:
@@ -737,21 +742,58 @@ CAMPAIGN_LEVELS = [
 
 def select_level_scenarios(level_config):
     """
-    Randomly select ONE category from the level's pool of 3.
-    Returns selected_option dict with scenario details and metadata.
+    Legacy: Randomly select ONE category from the level's pool.
+    Kept for backwards compatibility; new flow uses build_alert_queue.
     """
-    # Pick one category randomly from the pool
     selected_category = random.choice(level_config["category_pool"])
-
-    # Get the scenario for that category
     scenario = level_config["scenarios"][selected_category]
-
     return {
         "scenario_label": scenario["scenario_label"],
         "category": selected_category,
         "ticket_title": scenario["ticket_title"],
         "storyline": scenario["storyline"]
     }
+
+
+def build_alert_queue(n=5, fp_min=1, fp_max=2):
+    """
+    Build a randomized queue of N unique scenarios drawn from the full pool of
+    15 across all CAMPAIGN_LEVELS, with 1-2 FPs (or scaled fp_min/fp_max).
+    Levels do not constrain selection — any scenario can land at any slot.
+    Returns a list ordered by queue_position 1..N.
+    """
+    threat_pool = []
+    fp_pool = []
+    for level_config in CAMPAIGN_LEVELS:
+        for category, scenario in level_config["scenarios"].items():
+            entry = {
+                "scenario_label": scenario["scenario_label"],
+                "category": category,
+                "ticket_title": scenario["ticket_title"],
+                "storyline": scenario["storyline"],
+                "is_fp": category == "False Positive",
+                "source_level": level_config["level"],
+            }
+            if entry["is_fp"]:
+                fp_pool.append(entry)
+            else:
+                threat_pool.append(entry)
+
+    fp_count = random.randint(fp_min, fp_max)
+    fp_count = min(fp_count, len(fp_pool), n)
+    threat_count = min(n - fp_count, len(threat_pool))
+
+    sampled = random.sample(fp_pool, fp_count) + random.sample(threat_pool, threat_count)
+    random.shuffle(sampled)
+
+    for i, entry in enumerate(sampled):
+        entry["queue_position"] = i + 1
+        entry["scenario_id"] = None
+        entry["injected_at"] = None
+        entry["chain_complete_at"] = None
+        entry["resolved_at"] = None
+
+    return sampled
 
 
 # Realistic corporate network configuration
@@ -2157,24 +2199,105 @@ def generate_normal_event(scenario_id=None):
         "process_id": random.randint(1000, 65535),
         "parent_process_id": random.randint(500, 5000),
     }
-def log_writer(session, interval=1):
-    count = 0
+def build_attack_chain_logs(session, scenario_entry):
+    """Build the list of attack logs for a scenario entry from the queue.
+    Mutates scenario_entry in place to set scenario_id.
+    Returns the list of log dicts, or None if the chain definition is missing.
+    """
+    scenario_label = scenario_entry["scenario_label"]
+    if scenario_label not in attack_chains:
+        return None
 
-    # Randomize when attack is injected (position in the log stream)
-    inject_at = random.randint(3, 15)  # Attack can start anywhere from position 3-15
-    total_logs_target = random.randint(18, 25)  # Total logs before pause
+    chain = attack_chains[scenario_label]
+    scenario_id = generate_scenario_id()
+    scenario_entry["scenario_id"] = scenario_id
 
-    # Attack queue for staggered injection
-    attack_queue = []
-    logs_since_last_attack = 0
-    next_attack_gap = random.randint(2, 3)  # 2-3 normal logs between attack events
-    pending_scenario_info = None  # Store scenario info until all logs are written
-    trailing_logs_remaining = 0  # Normal logs to generate after last attack before pausing
-
-    fake_log_path = session["paths"]["generated_logs"]
+    base_time = datetime.now(timezone.utc)
+    emp = random.choice(EMPLOYEES)
+    chain_subs = {
+        "{src_ip}": emp["ip"],
+        "{hostname}": emp["workstation"],
+        "{username}": emp["name"],
+        "{user_domain}": f"ACME\\{emp['name']}",
+        "{user_fullname}": emp["full_name"],
+        "{user_email}": emp["email"],
+        "{dns_server}": SERVERS["dns"]["ip"],
+        "{file_server}": SERVERS["file"]["ip"],
+        "{dc_server}": SERVERS["dc"]["ip"],
+        "{print_server}": SERVERS["print"]["ip"],
+    }
 
     while True:
-        # Exit if session was cleaned up
+        alert_id = f"INC-{random.randint(1000, 9999)}"
+        if alert_id not in session["used_alert_ids"]:
+            session["used_alert_ids"].add(alert_id)
+            break
+
+    threat_logs = []
+    prev_offset = 0
+    for i, original in enumerate(chain):
+        log = copy.deepcopy(original)
+        log = apply_substitution_with_subs(log, chain_subs)
+        if i == 0:
+            prev_offset = 0
+        else:
+            custom_offset = original.get("time_offset_seconds")
+            if custom_offset:
+                prev_offset += custom_offset
+            else:
+                prev_offset += random.randint(3, 8)
+        log.pop("time_offset_seconds", None)
+        log["timestamp"] = (base_time + timedelta(seconds=prev_offset)).isoformat()
+        log["id"] = str(uuid.uuid4())
+        if "severity" not in log or not log["severity"]:
+            log["severity"] = "high"
+        log["scenario_id"] = scenario_id
+        log["status"] = "active"
+        log["level"] = scenario_entry["queue_position"]
+        log["level_name"] = scenario_entry["ticket_title"]
+        log["storyline"] = scenario_entry.get("storyline", "")
+        log["category"] = scenario_entry["category"]
+        log["flagged"] = True
+        log["alert_id"] = alert_id
+        if "source_type" not in log or not log["source_type"]:
+            log["source_type"] = get_source_type(log.get("detected_by", "Unknown"))
+        threat_logs.append(log)
+
+    return threat_logs
+
+
+def finalize_chain(session, scenario_id):
+    """Mark all logs for a scenario as chain_complete so the frontend renders it."""
+    if not scenario_id:
+        return
+    fake_log_path = session["paths"]["generated_logs"]
+    if not os.path.exists(fake_log_path):
+        return
+    with open(fake_log_path, "r") as f:
+        all_logs = [json.loads(line) for line in f if line.strip()]
+    changed = False
+    for log in all_logs:
+        if log.get("scenario_id") == scenario_id and not log.get("chain_complete"):
+            log["chain_complete"] = True
+            changed = True
+    if changed:
+        with open(fake_log_path, "w") as f:
+            for log in all_logs:
+                f.write(json.dumps(log) + "\n")
+
+
+def log_writer(session, interval=1):
+    """Rolling-queue log writer: continuously emits normal traffic and drips
+    attack chains from session['alert_queue'] every 60-120 seconds.
+    No per-level pause; only pauses when all alerts are resolved or session
+    is explicitly paused.
+    """
+    fake_log_path = session["paths"]["generated_logs"]
+    attack_queue = []  # pending attack log dicts to write, interleaved with normals
+    logs_since_last_attack = 0
+    next_attack_gap = random.randint(2, 3)
+
+    while True:
         if session["id"] not in sessions:
             print(f"[SESSION EXPIRED] Thread for {session['id'][:8]} exiting.", flush=True)
             return
@@ -2183,172 +2306,67 @@ def log_writer(session, interval=1):
             time.sleep(1)
             continue
 
-        # Check if we've completed all levels
-        if session["current_level"] >= len(CAMPAIGN_LEVELS):
-            print("[CAMPAIGN COMPLETE] All levels finished!", flush=True)
+        # Session complete: all queued alerts resolved
+        if session["queue_length"] > 0 and session["resolved_count"] >= session["queue_length"]:
             session["paused"] = True
+            print(f"[SESSION COMPLETE] All {session['queue_length']} alerts resolved!", flush=True)
             time.sleep(1)
             continue
 
-        # Check if we're in trailing logs phase (after all attacks written)
-        if trailing_logs_remaining > 0 and pending_scenario_info:
-            normal_log = generate_normal_event()
-            with open(fake_log_path, "a") as f:
-                f.write(json.dumps(normal_log) + "\n")
-            trailing_logs_remaining -= 1
-
-            # If done with trailing logs, now pause
-            if trailing_logs_remaining == 0:
-                session["current_scenario"] = pending_scenario_info
-                pending_scenario_info = None
-                session["paused"] = True
-
-                # Mark all logs for this scenario as chain complete
-                scenario_id = session["current_scenario"].get("scenario_id")
-                if scenario_id:
-                    with open(fake_log_path, "r") as f:
-                        all_logs = [json.loads(line) for line in f if line.strip()]
-                    for log in all_logs:
-                        if log.get("scenario_id") == scenario_id:
-                            log["chain_complete"] = True
-                    with open(fake_log_path, "w") as f:
-                        for log in all_logs:
-                            f.write(json.dumps(log) + "\n")
-
-                # Start timer in hardcore mode
-                if session["game_mode"] == "hardcore":
-                    session["timer_start"] = datetime.now(timezone.utc)
-                    print(f"[TIMER] Started - {get_timer_duration(session['current_level'])} seconds to respond!", flush=True)
-
-                # Reset for next level with new random positions
-                count = 0
-                inject_at = random.randint(3, 15)
-                total_logs_target = random.randint(18, 25)
-            count += 1
-            time.sleep(interval)
+        # Log stream capped: all scenarios injected and their chains fully drained.
+        # Don't emit any more events while the analyst works through the queue.
+        if (session["injected_count"] >= session["queue_length"]
+                and not attack_queue):
+            time.sleep(1)
             continue
 
-        # Check if we should inject an attack log from the queue
+        now = datetime.now(timezone.utc)
+
+        # Drip: time to inject next queued scenario?
+        if (session["next_drip_at"] is not None
+                and now >= session["next_drip_at"]
+                and session["injected_count"] < len(session["alert_queue"])):
+            scenario_entry = session["alert_queue"][session["injected_count"]]
+            chain_logs = build_attack_chain_logs(session, scenario_entry)
+            if chain_logs:
+                attack_queue.extend(chain_logs)
+                scenario_entry["injected_at"] = now.isoformat()
+                session["injected_count"] += 1
+                print(f"[DRIP {session['injected_count']}/{session['queue_length']}] "
+                      f"{scenario_entry['ticket_title']} ({scenario_entry['category']})",
+                      flush=True)
+                # Schedule next drip 60-120s out
+                session["next_drip_at"] = now + timedelta(seconds=random.randint(60, 120))
+            else:
+                print(f"[ERROR] No attack chain for {scenario_entry['scenario_label']}, skipping",
+                      flush=True)
+                session["injected_count"] += 1
+                session["next_drip_at"] = now + timedelta(seconds=5)
+
+        # Write an attack log from the queue if gap satisfied
         if attack_queue and logs_since_last_attack >= next_attack_gap:
             attack_log = attack_queue.pop(0)
-            print(f"[SCENARIO] {attack_log.get('event_type', 'N/A')} | {attack_log.get('message', '')[:60]}...", flush=True)
             with open(fake_log_path, "a") as f:
                 f.write(json.dumps(attack_log) + "\n")
             logs_since_last_attack = 0
             next_attack_gap = random.randint(2, 3)
 
-            # If queue is now empty, calculate trailing logs to reach target
-            if not attack_queue and pending_scenario_info:
-                # Random trailing logs (at least 2, but vary based on where we are)
-                trailing_logs_remaining = random.randint(2, max(3, total_logs_target - count))
-                continue
+            # If this was the last log of its scenario's chain, finalize it
+            current_sid = attack_log.get("scenario_id")
+            next_same_scenario = attack_queue and attack_queue[0].get("scenario_id") == current_sid
+            if not next_same_scenario:
+                finalize_chain(session, current_sid)
+                # Mark the queue entry as visible (chain has fully written)
+                entry = next((e for e in session["alert_queue"] if e.get("scenario_id") == current_sid), None)
+                if entry and not entry.get("chain_complete_at"):
+                    entry["chain_complete_at"] = datetime.now(timezone.utc).isoformat()
+        else:
+            # Normal traffic tick
+            normal_log = generate_normal_event()
+            with open(fake_log_path, "a") as f:
+                f.write(json.dumps(normal_log) + "\n")
+            logs_since_last_attack += 1
 
-        if count == inject_at and not attack_queue and session["selected_level_option"]:
-            # Use the already-selected scenario (selected at start or level advance)
-            level_config = CAMPAIGN_LEVELS[session["current_level"]]
-            selected = session["selected_level_option"]
-
-            print(f"\n[INJECTING] Level {level_config['level']} - {selected['ticket_title']}", flush=True)
-            print(f"[CATEGORY] {selected['category']}", flush=True)
-
-            scenario_label = selected["scenario_label"]
-            scenario_id = generate_scenario_id()
-
-            # Get the attack chain for this scenario
-            if scenario_label in attack_chains:
-                chain = attack_chains[scenario_label]
-            else:
-                print(f"[ERROR] Scenario '{scenario_label}' not found, skipping", flush=True)
-                count += 1
-                continue
-
-            # Inject all events from the attack chain
-            chain_to_inject = chain
-            print(f"[SCENARIO] {scenario_label} - {len(chain_to_inject)} events", flush=True)
-
-            # Build the logs for this scenario with progressive timestamps
-            threat_logs = []
-            base_time = datetime.now(timezone.utc)
-
-            # Pick employee ONCE for entire chain - all events share same user/host/ip
-            emp = random.choice(EMPLOYEES)
-            chain_subs = {
-                "{src_ip}": emp["ip"],
-                "{hostname}": emp["workstation"],
-                "{username}": emp["name"],
-                "{user_domain}": f"ACME\\{emp['name']}",
-                "{user_fullname}": emp["full_name"],
-                "{user_email}": emp["email"],
-                "{dns_server}": SERVERS["dns"]["ip"],
-                "{file_server}": SERVERS["file"]["ip"],
-                "{dc_server}": SERVERS["dc"]["ip"],
-                "{print_server}": SERVERS["print"]["ip"],
-            }
-
-            prev_offset = 0
-            for i, original in enumerate(chain_to_inject):
-                log = copy.deepcopy(original)
-                # Apply chain-level substitution (same employee for all events)
-                log = apply_substitution_with_subs(log, chain_subs)
-                # Progressive timestamps - use custom offset if specified, otherwise 3-8 seconds
-                if i == 0:
-                    prev_offset = 0
-                else:
-                    custom_offset = original.get("time_offset_seconds")
-                    if custom_offset:
-                        prev_offset += custom_offset
-                    else:
-                        prev_offset += random.randint(3, 8)
-                log.pop("time_offset_seconds", None)
-                log["timestamp"] = (base_time + timedelta(seconds=prev_offset)).isoformat()
-                log["id"] = str(uuid.uuid4())
-                # Preserve severity from attack template; fallback to "high"
-                if "severity" not in log or not log["severity"]:
-                    log["severity"] = "high"
-                log["scenario_id"] = scenario_id
-                log["status"] = "active"
-                log["level"] = level_config["level"]
-                log["level_name"] = selected["ticket_title"]
-                log["category"] = selected["category"]
-                log["flagged"] = True  # Auto-promoted to incident
-                if "source_type" not in log or not log["source_type"]:
-                    log["source_type"] = get_source_type(log.get("detected_by", "Unknown"))
-                threat_logs.append(log)
-
-            # Assign alert ID to this scenario's logs
-            while True:
-                alert_id = f"INC-{random.randint(1000, 9999)}"
-                if alert_id not in session["used_alert_ids"]:
-                    session["used_alert_ids"].add(alert_id)
-                    break
-            for log in threat_logs:
-                log["alert_id"] = alert_id
-
-            # Queue the attack logs for staggered injection
-            attack_queue.extend(threat_logs)
-            logs_since_last_attack = 0
-            next_attack_gap = random.randint(2, 3)
-
-            # Store scenario info to set after all logs are written
-            pending_scenario_info = {
-                "label": selected["scenario_label"],
-                "logs": threat_logs,
-                "scenario_id": scenario_id,
-                "level": level_config["level"],
-                "level_name": selected["ticket_title"],
-                "storyline": selected["storyline"],
-                "category": selected["category"]
-            }
-
-            count += 1
-            continue
-
-        # Generate normal traffic log
-        normal_log = generate_normal_event()
-        with open(fake_log_path, "a") as f:
-            f.write(json.dumps(normal_log) + "\n")
-        logs_since_last_attack += 1
-        count += 1
         time.sleep(interval)
 
 @app.route('/api/fake-events', methods=['GET'])
@@ -2380,7 +2398,11 @@ def reset_simulator():
     s["timer_start"] = None
     s["analyst_name"] = None
     s["used_alert_ids"] = set()
-    s["selected_level_option"] = None
+    s["alert_queue"] = []
+    s["queue_length"] = 5
+    s["resolved_count"] = 0
+    s["injected_count"] = 0
+    s["next_drip_at"] = None
     s["scenario_start_time"] = None
     s["scenario_history"] = []
 
@@ -2388,104 +2410,68 @@ def reset_simulator():
         with open(filepath, "w") as f:
             f.truncate(0)
 
-    print("[RESET] Files cleared. Level reset to 1. Waiting for analyst to resume.")
-    return jsonify({"message": "Simulator reset. Click 'Simulate Events' to restart from Level 1."}), 200
+    print("[RESET] Files cleared. Queue cleared. Waiting for analyst to start.")
+    return jsonify({"message": "Simulator reset."}), 200
 
 
 @app.route("/api/current-level", methods=["GET"])
 def get_current_level():
     s = g.session
 
-    # Build level results from action history
+    # Build level_results keyed by queue_position (1..N) from scenario_history
     level_results = {}
-    if os.path.exists(s["paths"]["analyst_actions"]):
-        with open(s["paths"]["analyst_actions"], "r") as f:
-            actions = [json.loads(line) for line in f if line.strip()]
+    for entry in s.get("scenario_history", []):
+        pos = entry.get("level")
+        if pos is None:
+            continue
+        level_results[str(pos)] = "correct" if entry.get("correct") else "incorrect"
 
-        # Get scenario info from logs
-        scenario_info = {}
-        if os.path.exists(s["paths"]["generated_logs"]):
-            with open(s["paths"]["generated_logs"], "r") as f:
-                for line in f:
-                    if line.strip():
-                        log = json.loads(line)
-                        sid = log.get("scenario_id")
-                        if sid and sid not in scenario_info:
-                            scenario_info[sid] = {
-                                "category": log.get("category", ""),
-                                "level": log.get("level")
-                            }
+    queue_length = s.get("queue_length", 5) or 5
+    resolved_count = s.get("resolved_count", 0)
+    completed = queue_length > 0 and resolved_count >= queue_length and s.get("injected_count", 0) > 0
 
-        # Track all actions per level: {level: {correct: X, total: Y}}
-        level_stats = {}
-        seen_scenarios = set()  # Avoid counting same scenario twice
-
-        # Filter to only scenario-level actions (classify only, no more resolve)
-        scenario_actions = [a for a in actions if a.get("action") == "classify"]
-        for action in scenario_actions:
-            sid = action.get("scenario_id")
-            info = scenario_info.get(sid, {})
-            level = info.get("level")
-
-            if level is None or sid in seen_scenarios:
-                continue
-            seen_scenarios.add(sid)
-
-            true_category = info.get("category", "")
-
-            # Determine if action was correct (category match)
-            selected = action.get("selected_category", "")
-            correct = (selected == true_category)
-
-            # Track stats per level
-            level_key = str(level)
-            if level_key not in level_stats:
-                level_stats[level_key] = {"correct": 0, "total": 0}
-            level_stats[level_key]["total"] += 1
-            if correct:
-                level_stats[level_key]["correct"] += 1
-
-        # Convert stats to results: "correct" or "incorrect"
-        for level_key, stats in level_stats.items():
-            if stats["correct"] == stats["total"]:
-                level_results[level_key] = "correct"
-            else:
-                level_results[level_key] = "incorrect"
-
-    if s["current_level"] >= len(CAMPAIGN_LEVELS):
+    if completed:
         return jsonify({
             "completed": True,
-            "total_levels": len(CAMPAIGN_LEVELS),
+            "total_levels": queue_length,
             "level_results": level_results,
             "scenario_history": s.get("scenario_history", []),
-            "message": "Congratulations! You've completed all levels!"
+            "message": "Congratulations! You've completed your simulation!"
         })
 
-    level_config = CAMPAIGN_LEVELS[s["current_level"]]
+    # Next queue slot to be resolved (1-based) for CampaignProgress "current" indicator
+    current_slot = min(resolved_count + 1, queue_length) if queue_length > 0 else 0
 
-    # Use selected_level_option if available (randomized scenario), otherwise show placeholder
-    if s["selected_level_option"]:
-        ticket_title = s["selected_level_option"].get("ticket_title", "Unknown")
-        storyline = s["selected_level_option"].get("storyline", "")
-        category = s["selected_level_option"].get("category", "Unknown")
-    else:
-        # No scenario selected yet - return null so frontend hides the card
-        ticket_title = None
-        storyline = None
-        category = None
+    # Build active_scenarios: queue entries whose chain has fully written
+    # (chain_complete_at is set) and are not yet resolved.
+    active_scenarios = [
+        {
+            "level": e.get("queue_position"),
+            "ticket_title": e.get("ticket_title"),
+            "storyline": e.get("storyline"),
+            "scenario_id": e.get("scenario_id"),
+            "startTime": e.get("chain_complete_at"),
+        }
+        for e in s.get("alert_queue", [])
+        if e.get("chain_complete_at") and not e.get("resolved_at")
+    ]
 
     return jsonify({
         "completed": False,
-        "current_level": level_config["level"],
-        "ticket_title": ticket_title,
-        "storyline": storyline,
-        "category": category,
-        "category_pool": level_config.get("category_pool", []),
-        "total_levels": len(CAMPAIGN_LEVELS),
-        "progress": f"{s['current_level']}/{len(CAMPAIGN_LEVELS)}",
+        "current_level": current_slot,
+        "ticket_title": None,
+        "storyline": None,
+        "category": None,
+        "category_pool": [],
+        "total_levels": queue_length,
+        "progress": f"{resolved_count}/{queue_length}",
         "level_results": level_results,
         "scenario_history": s.get("scenario_history", []),
-        "scenario_start_time": s.get("scenario_start_time")
+        "scenario_start_time": s.get("scenario_start_time"),
+        "resolved_count": resolved_count,
+        "injected_count": s.get("injected_count", 0),
+        "queue_length": queue_length,
+        "active_scenarios": active_scenarios,
     })
 
 
@@ -2783,74 +2769,29 @@ def resume_generation():
         answer_wrong = True
         failure_reason = f"Wrong category: selected {selected_category}, was {existing_category}"
 
-    # Handle hardcore mode failure
+    # Hardcore failure (wrong classify) — reset semantics will move to the
+    # 3-strike system in a future stage. For now, log it but don't hard-reset.
     if answer_wrong and s["game_mode"] == "hardcore":
-        print(f"\n[HARDCORE FAILURE] {failure_reason}", flush=True)
-        print(f"[HARDCORE] Resetting to Level 1...", flush=True)
+        print(f"[HARDCORE WRONG] {failure_reason}", flush=True)
 
-        # Reset game state - stay paused until user selects difficulty again
-        s["current_level"] = 0
-        s["timer_start"] = None
-        s["current_scenario"] = None
-        s["paused"] = True
-
-        # Clear log files
-        for path in [s["paths"]["generated_logs"], s["paths"]["analyst_actions"], s["paths"]["incident_reports"]]:
-            if os.path.exists(path):
-                os.remove(path)
-
-        return jsonify({
-            "status": "hardcore_failure",
-            "action": action,
-            "failure_reason": failure_reason,
-            "category": existing_category or "Unknown"
+    # Mark this scenario resolved in the queue and push to history
+    queue_entry = next((e for e in s.get("alert_queue", []) if e.get("scenario_id") == scenario_id), None)
+    if queue_entry and not queue_entry.get("resolved_at"):
+        queue_entry["resolved_at"] = datetime.now(timezone.utc).isoformat()
+        s["resolved_count"] = s.get("resolved_count", 0) + 1
+        s["scenario_history"].append({
+            "level": queue_entry.get("queue_position"),
+            "ticket_title": queue_entry.get("ticket_title", "Unknown"),
+            "storyline": queue_entry.get("storyline", ""),
+            "startTime": queue_entry.get("chain_complete_at") or queue_entry.get("injected_at"),
+            "correct": bool(category_correct),
         })
-
-    # Check if all incidents for current level are resolved
-    if os.path.exists(s["paths"]["generated_logs"]):
-        with open(s["paths"]["generated_logs"], "r") as f:
-            all_logs = [json.loads(line) for line in f if line.strip()]
-
-        # Get current level number
-        current_level_num = CAMPAIGN_LEVELS[s["current_level"]]["level"] if s["current_level"] < len(CAMPAIGN_LEVELS) else None
-
-        # Find all active incidents for current level
-        active_for_level = [
-            log for log in all_logs
-            if log.get("level") == current_level_num
-            and log.get("status") == "active"
-            and log.get("label") != "normal_traffic"
-        ]
-
-        # Get unique scenario_ids that are still active
-        active_scenarios = set(log.get("scenario_id") for log in active_for_level)
-
-        if len(active_scenarios) == 0:
-            # Save completed scenario to history
-            if s["selected_level_option"]:
-                s["scenario_history"].append({
-                    "level": current_level_num,
-                    "ticket_title": s["selected_level_option"].get("ticket_title", "Unknown"),
-                    "storyline": s["selected_level_option"].get("storyline", ""),
-                    "startTime": s.get("scenario_start_time"),
-                })
-            # All incidents resolved - advance to next level
-            s["current_level"] += 1
-            s["timer_start"] = None  # Reset timer for next level
-            if s["current_level"] < len(CAMPAIGN_LEVELS):
-                # Select next scenario immediately so Scenario Card shows
-                next_level = CAMPAIGN_LEVELS[s["current_level"]]
-                s["selected_level_option"] = select_level_scenarios(next_level)
-                s["scenario_start_time"] = time.time() * 1000
-                print(f"[LEVEL UP] Advancing to Level {next_level['level']}", flush=True)
-                print(f"[SCENARIO SELECTED] {s['selected_level_option']['ticket_title']} ({s['selected_level_option']['category']})", flush=True)
-            else:
-                s["selected_level_option"] = None
-                print("[CAMPAIGN COMPLETE] All levels finished!", flush=True)
-            s["paused"] = False  # Unpause to allow next level injection
-        else:
-            print(f"[WAITING] {len(active_scenarios)} incident(s) still active for this level", flush=True)
-            # Stay paused - don't inject new scenarios until all are resolved
+        print(f"[RESOLVED {s['resolved_count']}/{s['queue_length']}] "
+              f"{queue_entry.get('ticket_title')} — {'correct' if category_correct else 'wrong'}",
+              flush=True)
+        if s["resolved_count"] >= s["queue_length"]:
+            s["paused"] = True
+            print("[SESSION COMPLETE] All alerts resolved!", flush=True)
 
     s["current_scenario"] = None
     return jsonify({"status": "action logged", "action": action})
@@ -2884,6 +2825,8 @@ def get_grouped_alerts():
                 "status": log.get("status", "unknown"),
                 "severity": log.get("severity", "unknown"),
                 "category": log.get("category", ""),
+                "ticket_title": log.get("level_name", ""),
+                "storyline": log.get("storyline", ""),
                 "analyst_category": log.get("analyst_category", ""),
                 "alert_id": log.get("alert_id", ""),
                 "level": log.get("level"),
@@ -2966,8 +2909,11 @@ def submit_report():
     # Fallback: if category not in log, look it up from CAMPAIGN_LEVELS using label
     if not correct_category and scenario_label:
         for level_config in CAMPAIGN_LEVELS:
-            if level_config["scenario_label"] == scenario_label:
-                correct_category = level_config["category"]
+            for category, scenario in level_config.get("scenarios", {}).items():
+                if scenario.get("scenario_label") == scenario_label:
+                    correct_category = category
+                    break
+            if correct_category:
                 break
 
     is_correct = (submitted_category or "").lower() == (correct_category or "").lower()
@@ -3011,30 +2957,26 @@ def submit_report():
         with open(s["paths"]["analyst_actions"], "a") as f:
             f.write(json.dumps(action_log) + "\n")
 
-        # Save completed scenario to history
-        if s["selected_level_option"]:
-            completed_level_num = CAMPAIGN_LEVELS[s["current_level"]]["level"] if s["current_level"] < len(CAMPAIGN_LEVELS) else None
-            if completed_level_num is not None:
-                s["scenario_history"].append({
-                    "level": completed_level_num,
-                    "ticket_title": s["selected_level_option"].get("ticket_title", "Unknown"),
-                    "storyline": s["selected_level_option"].get("storyline", ""),
-                    "startTime": s.get("scenario_start_time"),
-                })
-
-        s["current_level"] += 1
-        if s["current_level"] < len(CAMPAIGN_LEVELS):
-            next_level = CAMPAIGN_LEVELS[s["current_level"]]
-            s["selected_level_option"] = select_level_scenarios(next_level)
-            s["scenario_start_time"] = time.time() * 1000
-            print(f"[LEVEL UP] Advancing to Level {next_level['level']} (categories: {next_level.get('category_pool', [])})", flush=True)
-            print(f"[SCENARIO SELECTED] {s['selected_level_option']['ticket_title']} ({s['selected_level_option']['category']})", flush=True)
-        else:
-            s["selected_level_option"] = None
-            print("[CAMPAIGN COMPLETE] All levels finished!", flush=True)
+        # Mark scenario resolved in the queue (if not already resolved via classify)
+        queue_entry = next((e for e in s.get("alert_queue", []) if e.get("scenario_id") == scenario_id), None)
+        if queue_entry and not queue_entry.get("resolved_at"):
+            queue_entry["resolved_at"] = datetime.now(timezone.utc).isoformat()
+            s["resolved_count"] = s.get("resolved_count", 0) + 1
+            s["scenario_history"].append({
+                "level": queue_entry.get("queue_position"),
+                "ticket_title": queue_entry.get("ticket_title", "Unknown"),
+                "storyline": queue_entry.get("storyline", ""),
+                "startTime": queue_entry.get("chain_complete_at") or queue_entry.get("injected_at"),
+                "correct": bool(is_correct),
+            })
+            print(f"[RESOLVED {s['resolved_count']}/{s['queue_length']}] "
+                  f"{queue_entry.get('ticket_title')} via report — "
+                  f"{'correct' if is_correct else 'wrong'}", flush=True)
+            if s["resolved_count"] >= s["queue_length"]:
+                s["paused"] = True
+                print("[SESSION COMPLETE] All alerts resolved!", flush=True)
 
         s["current_scenario"] = None
-        s["paused"] = False
 
     return jsonify({"message": "Report submitted and scenario resolved"}), 200
 
@@ -3117,15 +3059,21 @@ def update_report(report_id):
 
 @app.route('/api/game-state', methods=['GET'])
 def get_game_state():
-    """Returns current game state including mode, timer, etc."""
+    """Returns current game state. Timer runs continuously from session start.
+    Hardcore caps the whole session at get_timer_duration(1) seconds; Training
+    reports elapsed but no cap.
+    """
     s = g.session
 
     timer_remaining = None
     timer_expired = False
+    elapsed = None
 
-    if s["game_mode"] == "hardcore" and s["timer_start"]:
+    if s["timer_start"]:
         elapsed = (datetime.now(timezone.utc) - s["timer_start"]).total_seconds()
-        duration = get_timer_duration(s["current_level"])
+
+    if s["game_mode"] == "hardcore" and elapsed is not None:
+        duration = get_timer_duration(1)
         timer_remaining = max(0, duration - elapsed)
         timer_expired = timer_remaining <= 0
 
@@ -3133,35 +3081,33 @@ def get_game_state():
         "game_mode": s["game_mode"],
         "timer_remaining": timer_remaining,
         "timer_expired": timer_expired,
-        "timer_duration": get_timer_duration(s["current_level"]),
+        "timer_duration": get_timer_duration(1),
+        "elapsed": elapsed,
         "paused": s["paused"],
-        "current_level": s["current_level"],
-        "analyst_name": s["analyst_name"]
+        "current_level": s.get("current_level", 0),
+        "analyst_name": s["analyst_name"],
+        "resolved_count": s.get("resolved_count", 0),
+        "queue_length": s.get("queue_length", 5),
+        "injected_count": s.get("injected_count", 0),
     })
 
 
 @app.route('/api/game-timeout', methods=['POST'])
 def handle_game_timeout():
-    """Handle timeout in hardcore mode - reset to level 1."""
+    """Hardcore session-timer expired. Pause the session; UI shows FailureModal.
+    The 3-strike / full-reset behavior will be added with the future hardcore
+    redesign. For now we just halt the session.
+    """
     s = g.session
 
     if s["game_mode"] != "hardcore":
         return jsonify({"error": "Not in hardcore mode"}), 400
 
-    print(f"\n[TIMEOUT] Time's up! Resetting to Level 1...", flush=True)
-
-    # Reset game state - stay paused until user selects difficulty again
-    s["current_level"] = 0
-    s["timer_start"] = None
-    s["current_scenario"] = None
+    print(f"[TIMEOUT] Hardcore session timer expired.", flush=True)
     s["paused"] = True
+    s["current_scenario"] = None
 
-    # Clear log files
-    for path in [s["paths"]["generated_logs"], s["paths"]["analyst_actions"], s["paths"]["incident_reports"]]:
-        if os.path.exists(path):
-            os.remove(path)
-
-    return jsonify({"message": "Game reset due to timeout", "reset": True})
+    return jsonify({"message": "Hardcore timer expired", "reset": False})
 
 
 @app.route('/api/start-simulator', methods=['POST'])
@@ -3170,30 +3116,37 @@ def start_simulator():
 
     data = request.json or {}
     s["game_mode"] = data.get("game_mode", "training")
-    s["timer_start"] = None
     s["analyst_name"] = data.get("analyst_name")
 
     print(f"\n[GAME MODE] Starting in {s['game_mode'].upper()} mode (session {s['id'][:8]})", flush=True)
     if s["analyst_name"]:
         print(f"[ANALYST] {s['analyst_name']}", flush=True)
 
-    # Select scenario for current level immediately so Scenario Card shows
-    if s["current_level"] < len(CAMPAIGN_LEVELS):
-        level_config = CAMPAIGN_LEVELS[s["current_level"]]
-        s["selected_level_option"] = select_level_scenarios(level_config)
-        s["scenario_start_time"] = time.time() * 1000
-        print(f"[SCENARIO SELECTED] {s['selected_level_option']['ticket_title']} ({s['selected_level_option']['category']})", flush=True)
+    # Build a fresh alert queue for the session
+    s["alert_queue"] = build_alert_queue(n=5, fp_min=1, fp_max=2)
+    s["queue_length"] = len(s["alert_queue"])
+    s["resolved_count"] = 0
+    s["injected_count"] = 0
+    s["scenario_history"] = []
+    now = datetime.now(timezone.utc)
+    s["timer_start"] = now
+    s["next_drip_at"] = now  # First alert drips immediately
+    s["scenario_start_time"] = time.time() * 1000
+    s["current_level"] = 1
+
+    fp_total = sum(1 for e in s["alert_queue"] if e.get("is_fp"))
+    print(f"[QUEUE BUILT] {s['queue_length']} alerts, {fp_total} FP(s):", flush=True)
+    for entry in s["alert_queue"]:
+        print(f"  {entry['queue_position']}. {entry['ticket_title']} ({entry['category']})", flush=True)
 
     thread_name = f"LogWriter-{s['id']}"
     running_threads = [t.name for t in threading.enumerate()]
     thread_exists = thread_name in running_threads
 
-    # If thread exists and is paused, just unpause it
     if thread_exists and s["paused"]:
         s["paused"] = False
         return jsonify({"message": "Simulator resumed", "game_mode": s["game_mode"]}), 200
 
-    # If thread doesn't exist, start it
     if not thread_exists:
         s["paused"] = False
         thread = threading.Thread(target=log_writer, args=(s,), kwargs={"interval": 1}, daemon=True)
@@ -3201,7 +3154,6 @@ def start_simulator():
         thread.start()
         return jsonify({"message": "Simulator started", "game_mode": s["game_mode"]}), 200
 
-    # Thread exists and not paused - already running
     return jsonify({"message": "Simulator already running", "game_mode": s["game_mode"]}), 200
 
 

@@ -42,20 +42,21 @@ const Dashboard = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Auto-detect new incidents when game pauses (attack chain complete)
-  const wasPausedRef = useRef(true);
+  // Auto-detect new incidents as alerts drip into the queue (injected_count increases)
+  const lastInjectedRef = useRef(0);
   useEffect(() => {
     const checkForIncidents = () => {
       apiFetch('/api/game-state')
         .then(res => res.json())
         .then(data => {
-          if (wasPausedRef.current === false && data.paused === true) {
-            // Transition from running to paused = attack chain complete
+          const injected = data.injected_count ?? 0;
+          if (injected > lastInjectedRef.current) {
+            const delta = injected - lastInjectedRef.current;
             if (view !== 'grouped') {
-              setIncidentBadge(prev => prev + 1);
+              setIncidentBadge(prev => prev + delta);
             }
           }
-          wasPausedRef.current = data.paused;
+          lastInjectedRef.current = injected;
         })
         .catch(() => {});
     };
@@ -256,7 +257,7 @@ const Dashboard = () => {
           <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl">
             <h3 className="text-lg font-semibold text-white text-center mb-4">Reset Simulation</h3>
             <p className="text-gray-400 mb-6 text-center">
-              This will clear all events, alerts, and reports. Your progress will be reset to Level 1. This action cannot be undone.
+              This will clear all events, alerts, and reports. Your progress will be reset. This action cannot be undone.
             </p>
             <div className="flex justify-center gap-3">
               <button
@@ -298,7 +299,7 @@ const Dashboard = () => {
           <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl">
             <h3 className="text-lg font-semibold text-white text-center mb-4">Simulation Active</h3>
             <p className="text-gray-400 mb-6 text-center">
-              You have <span className="text-white font-medium">{existingLogCount} events</span> from an active session. Use <span className="text-white font-medium">Reset Simulation</span> to restart from Level 1.
+              You have <span className="text-white font-medium">{existingLogCount} events</span> from an active session. Use <span className="text-white font-medium">Reset Simulation</span> to start fresh.
             </p>
             <div className="flex justify-center">
               <button

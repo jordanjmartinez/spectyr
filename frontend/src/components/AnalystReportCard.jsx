@@ -5,6 +5,17 @@ const AnalystReportCard = ({ report }) => {
     return <div className="text-red-400">Error loading report.</div>;
   }
 
+  const threatsCorrect = report?.threats_caught || 0;
+  const threatsTotal = threatsCorrect + (report?.wrong_category || 0);
+  const fpCorrect = report?.fp_identified || 0;
+  const fpTotal = fpCorrect + (report?.fp_missed || 0);
+
+  const grade = (() => {
+    if (!report?.total_actions) return '-';
+    const acc = report.accuracy || 0;
+    return acc >= 100 ? 'A' : acc >= 80 ? 'B' : acc >= 60 ? 'C' : acc >= 40 ? 'D' : 'F';
+  })();
+
   return (
     <div className="h-full flex flex-col">
       <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Report Card</h2>
@@ -13,41 +24,25 @@ const AnalystReportCard = ({ report }) => {
       <table className="w-full h-full text-xs sm:text-base">
         <colgroup>
           <col />
-          <col className="w-16" />
+          <col className="w-20" />
         </colgroup>
         <tbody className="text-gray-300">
           <tr>
-            <td className="py-3">Correct</td>
+            <td className="py-3">Threats</td>
             <td className="py-3 text-center">
-              <span className="text-white font-semibold">{(report?.threats_caught || 0) + (report?.fp_identified || 0)}</span>
+              <span className="text-white font-semibold">{threatsCorrect}/{threatsTotal}</span>
             </td>
           </tr>
           <tr className="border-t border-gray-800">
-            <td className="py-3">Missed</td>
+            <td className="py-3">False Positive</td>
             <td className="py-3 text-center">
-              <span className="text-white font-semibold">{(report?.wrong_category || 0) + (report?.fp_missed || 0)}</span>
-            </td>
-          </tr>
-          <tr className="border-t border-gray-800">
-            <td className="py-3">FP Caught</td>
-            <td className="py-3 text-center">
-              <span className="text-white font-semibold">{report?.fp_identified || 0}</span>
-            </td>
-          </tr>
-          <tr className="border-t border-gray-800">
-            <td className="py-3">FP Missed</td>
-            <td className="py-3 text-center">
-              <span className="text-white font-semibold">{report?.fp_missed || 0}</span>
+              <span className="text-white font-semibold">{fpCorrect}/{fpTotal}</span>
             </td>
           </tr>
           <tr className="border-t border-gray-700">
             <td className="py-3 font-normal text-gray-300">Overall Grade</td>
             <td className="py-3 text-center">
-              <span className="text-white font-bold text-xl">{(() => {
-                if (!report?.total_actions) return '-';
-                const acc = report.accuracy || 0;
-                return acc >= 100 ? 'A' : acc >= 80 ? 'B' : acc >= 60 ? 'C' : acc >= 40 ? 'D' : 'F';
-              })()}</span>
+              <span className="text-white font-bold text-xl">{grade}</span>
             </td>
           </tr>
         </tbody>
