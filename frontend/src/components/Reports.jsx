@@ -474,7 +474,6 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
             onClick={() => setEditReport(null)}
           />
           <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-3 sm:p-5 w-full max-w-xl mx-2 sm:mx-4 shadow-2xl">
-            <h2 className="text-lg sm:text-xl font-semibold text-white mb-4">Incident Report</h2>
             <IncidentReportForm
               initialData={editReport}
               onSubmit={async (updated) => {

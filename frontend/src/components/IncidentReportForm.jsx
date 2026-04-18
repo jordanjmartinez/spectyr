@@ -8,7 +8,6 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
     description: '',
     severity: 'Low',
     mitre_tactic: '',
-    kill_chain: '',
     affected_hosts: '',
     mitigation: '',
     status: 'Open',
@@ -27,7 +26,6 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
         description: initialData.description || '',
         severity: initialData.severity || '',
         mitre_tactic: initialData.mitre_tactic || '',
-        kill_chain: initialData.kill_chain || '',
         affected_hosts: initialData.affected_hosts || '',
         mitigation: initialData.mitigation || '',
         status: initialData.status || 'Open',
@@ -41,7 +39,6 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: null }));
     }
@@ -64,18 +61,6 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
     await onSubmit(formData);
   };
 
-  const severities = ['Low', 'Medium', 'High', 'Critical'];
-
-  const killChainPhases = [
-    'Reconnaissance',
-    'Weaponization',
-    'Delivery',
-    'Exploitation',
-    'Installation',
-    'Command & Control',
-    'Actions on Objectives',
-  ];
-
   const mitreTactics = [
     'Initial Access',
     'Execution',
@@ -91,13 +76,30 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
     'Impact',
   ];
 
+  const inputClass = "w-full bg-[#161b22] text-sm sm:text-base text-white placeholder-gray-600 border border-gray-700 focus:border-gray-500 rounded-md px-3 py-2 outline-none transition-colors";
+
   return (
     <div className={`text-white ${inline ? 'w-full' : 'p-8 w-full max-w-2xl bg-[#161b22] rounded-xl border border-gray-700 shadow-2xl'}`}>
+      {/* Header: title + close X */}
+      <div className="relative mb-4">
+        <h2 className="text-lg sm:text-xl font-medium text-white pr-8">Incident Report</h2>
+        <button
+          type="button"
+          onClick={onCancel}
+          aria-label="Close"
+          className="absolute top-0 right-0 -mt-1 -mr-1 p-1 text-gray-400 hover:text-white transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
 
-      
-      <div className="space-y-3 sm:space-y-4">
+      {/* Gradient divider (matches Post-Incident Review) */}
+      <div className="mb-5" style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
 
-        {/* Title - Clean underline style */}
+      {/* Form fields */}
+      <div className="space-y-4">
         <div>
           <label className="block text-sm text-gray-300 mb-1">Title{errors.title && <span className="text-red-400"> *</span>}</label>
           <input
@@ -105,12 +107,10 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
             value={formData.title}
             onChange={handleChange}
             maxLength={60}
-            className="w-full bg-transparent text-sm sm:text-base text-white placeholder-gray-600 border-b border-gray-700 focus:border-gray-500 outline-none pb-1.5 sm:pb-2 transition-colors"
+            className={inputClass}
           />
         </div>
 
-
-        {/* Description */}
         <div>
           <label className="block text-sm text-gray-300 mb-1">Description{errors.description && <span className="text-red-400"> *</span>}</label>
           <textarea
@@ -118,8 +118,8 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
             value={formData.description}
             onChange={handleChange}
             maxLength={300}
-            rows={2}
-            className="w-full bg-[#161b22] text-sm sm:text-base text-white placeholder-gray-600 border border-gray-700 focus:border-gray-500 rounded-md px-3 py-2 outline-none transition-colors resize-none"
+            rows={5}
+            className={`${inputClass} resize-none`}
           />
         </div>
 
@@ -130,7 +130,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
             value={formData.affected_hosts}
             onChange={handleChange}
             maxLength={100}
-            className="w-full bg-transparent text-sm sm:text-base text-white placeholder-gray-600 border-b border-gray-700 focus:border-gray-500 outline-none pb-2 transition-colors"
+            className={inputClass}
           />
         </div>
 
@@ -142,64 +142,46 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
             onChange={handleChange}
             maxLength={200}
             rows={2}
-            className="w-full bg-[#161b22] text-sm sm:text-base text-white placeholder-gray-600 border border-gray-700 rounded-md px-3 py-2 outline-none focus:border-gray-500 transition-colors resize-none"
+            className={`${inputClass} resize-none`}
           />
         </div>
 
-        {/* MITRE ATT&CK & Kill Chain Phase - Side by side dropdowns */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm text-gray-300 mb-1">MITRE ATT&CK</label>
-            <select
-              name="mitre_tactic"
-              value={formData.mitre_tactic}
-              onChange={handleChange}
-              className="w-full bg-[#161b22] text-sm sm:text-base text-white border border-gray-700 focus:border-gray-500 rounded-md px-3 py-2 outline-none transition-colors appearance-none cursor-pointer"
-              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.25rem' }}
-            >
-              <option value="">Select tactic...</option>
-              {mitreTactics.map(tactic => (
-                <option key={tactic} value={tactic}>{tactic}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm text-gray-300 mb-1">Kill Chain Phase</label>
-            <select
-              name="kill_chain"
-              value={formData.kill_chain}
-              onChange={handleChange}
-              className="w-full bg-[#161b22] text-sm sm:text-base text-white border border-gray-700 focus:border-gray-500 rounded-md px-3 py-2 outline-none transition-colors appearance-none cursor-pointer"
-              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.25rem' }}
-            >
-              <option value="">Select phase...</option>
-              {killChainPhases.map(phase => (
-                <option key={phase} value={phase}>{phase}</option>
-              ))}
-            </select>
-          </div>
+        <div>
+          <label className="block text-sm text-gray-300 mb-1">MITRE ATT&CK</label>
+          <select
+            name="mitre_tactic"
+            value={formData.mitre_tactic}
+            onChange={handleChange}
+            className={`${inputClass} appearance-none cursor-pointer`}
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.25rem' }}
+          >
+            <option value="">Select tactic...</option>
+            {mitreTactics.map(tactic => (
+              <option key={tactic} value={tactic}>{tactic}</option>
+            ))}
+          </select>
         </div>
+      </div>
 
-        {/* Actions */}
-        <div className="flex justify-end gap-3 pt-2 sm:pt-3">
-          <button
-            onClick={onCancel}
-            className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className={`px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 ${
-              isSubmitting
-                ? 'bg-[#21262d] text-gray-500 border-gray-700 cursor-not-allowed'
-                : 'bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600'
-            }`}
-          >
-            {isSubmitting ? 'Saving...' : initialData?.id ? 'Save Report' : 'Create Report'}
-          </button>
-        </div>
+      {/* Footer */}
+      <div className="mt-5 flex justify-end gap-3">
+        <button
+          onClick={onCancel}
+          className="px-3 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border border-gray-700 bg-transparent hover:bg-white/5 text-gray-300 transition focus:outline-none focus:ring-2 focus:ring-gray-500"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+          className={`px-3 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 ${
+            isSubmitting
+              ? 'bg-[#21262d] text-gray-500 border-gray-700 cursor-not-allowed'
+              : 'bg-[#30363d] hover:bg-[#3d444b] text-white border-gray-600'
+          }`}
+        >
+          {isSubmitting ? 'Saving...' : isEditing ? 'Save Report' : 'Create Report'}
+        </button>
       </div>
     </div>
   );

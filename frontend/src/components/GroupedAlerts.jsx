@@ -1192,7 +1192,6 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
             onClick={() => { setShowReportForm(false); setReportScenario(null); }}
           />
           <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-2xl mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Incident Report</h2>
             <IncidentReportForm
               initialData={{
                 title: reportScenario.ticket_title || reportScenario.logs?.[0]?.level_name || '',
