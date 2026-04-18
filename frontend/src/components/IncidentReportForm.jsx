@@ -34,7 +34,8 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
         scenario_id: initialData.scenario_id || '',
       });
     }
-  }, [initialData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData?.id, initialData?.scenario_id]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
