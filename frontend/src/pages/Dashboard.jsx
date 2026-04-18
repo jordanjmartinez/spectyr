@@ -170,7 +170,7 @@ const Dashboard = () => {
                 setView("grouped");
                 setIncidentBadge(0);
               }}
-              className={`relative py-3 sm:py-4 text-[11px] sm:text-base whitespace-nowrap font-medium flex items-center justify-center transition-colors duration-200 ${
+              className={`relative py-3 sm:py-4 text-[11px] sm:text-base whitespace-nowrap font-medium flex items-center justify-center gap-1.5 sm:gap-2 transition-colors duration-200 ${
                 view === "grouped" ? "text-white" : "text-gray-400 hover:text-white"
               }`}
             >
@@ -181,16 +181,16 @@ const Dashboard = () => {
                     view === "grouped" ? "bg-white" : "bg-transparent"
                   }`}
                 />
-                {groupedAlertCount > 0 && (
-                  <span className="absolute left-full top-1/2 -translate-y-[100%] ml-1.5 sm:ml-2 inline-flex items-center justify-center h-3.5 sm:h-4 min-w-[0.875rem] sm:min-w-[1rem] px-1 sm:px-1.5 text-[9px] sm:text-[11px] font-semibold rounded-full bg-[#b26666] text-white">
-                    {groupedAlertCount}
-                  </span>
-                )}
               </span>
+              {groupedAlertCount > 0 && (
+                <span className="inline-flex items-center px-2 py-0.5 text-[10px] sm:text-xs font-medium rounded-full bg-[#b26666] text-white">
+                  {groupedAlertCount}
+                </span>
+              )}
             </button>
             <button
               onClick={() => setView("table")}
-              className={`relative py-3 sm:py-4 text-[11px] sm:text-base whitespace-nowrap font-medium flex items-center justify-center transition-colors duration-200 ${
+              className={`relative py-3 sm:py-4 text-[11px] sm:text-base whitespace-nowrap font-medium flex items-center justify-center gap-1.5 sm:gap-2 transition-colors duration-200 ${
                 view === "table" ? "text-white" : "text-gray-400 hover:text-white"
               }`}
             >
@@ -205,7 +205,7 @@ const Dashboard = () => {
             </button>
             <button
               onClick={() => setView("analytics")}
-              className={`relative py-3 sm:py-4 text-[11px] sm:text-base whitespace-nowrap font-medium flex items-center justify-center transition-colors duration-200 ${
+              className={`relative py-3 sm:py-4 text-[11px] sm:text-base whitespace-nowrap font-medium flex items-center justify-center gap-1.5 sm:gap-2 transition-colors duration-200 ${
                 view === "analytics" ? "text-white" : "text-gray-400 hover:text-white"
               }`}
             >
@@ -216,16 +216,16 @@ const Dashboard = () => {
                     view === "analytics" ? "bg-white" : "bg-transparent"
                   }`}
                 />
-                {analyticsCount > 0 && (
-                  <span className="absolute left-full top-1/2 -translate-y-[100%] ml-1.5 sm:ml-2 inline-flex items-center justify-center h-3.5 sm:h-4 min-w-[0.875rem] sm:min-w-[1rem] px-1 sm:px-1.5 text-[9px] sm:text-[11px] font-semibold rounded-full bg-[#30363d] text-gray-300">
-                    {analyticsCount}
-                  </span>
-                )}
               </span>
+              {analyticsCount > 0 && (
+                <span className="inline-flex items-center px-2 py-0.5 text-[10px] sm:text-xs font-medium rounded-full bg-[#30363d] text-gray-300">
+                  {analyticsCount}
+                </span>
+              )}
             </button>
             <button
               onClick={() => setView("reports")}
-              className={`relative py-3 sm:py-4 text-[11px] sm:text-base whitespace-nowrap font-medium flex items-center justify-center transition-colors duration-200 ${
+              className={`relative py-3 sm:py-4 text-[11px] sm:text-base whitespace-nowrap font-medium flex items-center justify-center gap-1.5 sm:gap-2 transition-colors duration-200 ${
                 view === "reports" ? "text-white" : "text-gray-400 hover:text-white"
               }`}
             >
@@ -236,12 +236,12 @@ const Dashboard = () => {
                     view === "reports" ? "bg-white" : "bg-transparent"
                   }`}
                 />
-                {reportCount > 0 && (
-                  <span className="absolute left-full top-1/2 -translate-y-[100%] ml-1.5 sm:ml-2 inline-flex items-center justify-center h-3.5 sm:h-4 min-w-[0.875rem] sm:min-w-[1rem] px-1 sm:px-1.5 text-[9px] sm:text-[11px] font-semibold rounded-full bg-[#30363d] text-gray-300">
-                    {reportCount}
-                  </span>
-                )}
               </span>
+              {reportCount > 0 && (
+                <span className="inline-flex items-center px-2 py-0.5 text-[10px] sm:text-xs font-medium rounded-full bg-[#30363d] text-gray-300">
+                  {reportCount}
+                </span>
+              )}
             </button>
           </div>
 
