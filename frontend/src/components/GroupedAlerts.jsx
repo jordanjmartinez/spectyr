@@ -743,21 +743,13 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                       <div className="min-w-0 flex items-center lg:flex-1 lg:pl-4 xl:pl-6">
                         <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:gap-y-3 lg:grid-cols-1 lg:gap-3 text-xs sm:text-base md:text-xs lg:text-sm">
                         {dashView === 'total' && (() => {
-                          const queueLength = currentLevel?.queue_length ?? 0;
-                          const resolvedCount = currentLevel?.resolved_count ?? 0;
                           const activeCount = (currentLevel?.active_scenarios || []).length;
-                          const queuedCount = Math.max(0, queueLength - resolvedCount - activeCount);
                           return (
                           <>
                             <div className="flex items-center gap-1.5 min-w-0">
                               <span className="w-2.5 h-2.5 flex-shrink-0 rounded-md" style={{backgroundColor: '#b26666'}} />
                               <span className="text-gray-300 truncate">Active</span>
                               <span className="text-white font-semibold flex-shrink-0">{activeCount}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="w-2.5 h-2.5 flex-shrink-0 rounded-md" style={{backgroundColor: '#4b5563'}} />
-                              <span className="text-gray-300 truncate">Queued</span>
-                              <span className="text-white font-semibold flex-shrink-0">{queuedCount}</span>
                             </div>
                           </>
                           );
@@ -971,7 +963,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                               {group.ticket_title || 'Unknown'}
                             </p>
                             <p className="text-xs sm:text-sm text-gray-400 mt-0.5">
-                              {group.alert_id && <span className="text-gray-300 font-medium">{group.alert_id}</span>}
+                              {group.alert_id && <span className="font-medium">{group.alert_id}</span>}
                               {group.alert_id && <span className="text-gray-600 mx-2">·</span>}
                               <span>{group.log_count} {group.log_count === 1 ? 'Event' : 'Events'}</span>
                             </p>

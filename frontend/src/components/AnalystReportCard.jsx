@@ -6,9 +6,11 @@ const AnalystReportCard = ({ report }) => {
   }
 
   const threatsCorrect = report?.threats_caught || 0;
-  const threatsTotal = threatsCorrect + (report?.wrong_category || 0);
+  const threatsMissed = report?.wrong_category || 0;
+  const threatsTotal = threatsCorrect + threatsMissed;
   const fpCorrect = report?.fp_identified || 0;
-  const fpTotal = fpCorrect + (report?.fp_missed || 0);
+  const fpMissed = report?.fp_missed || 0;
+  const fpTotal = fpCorrect + fpMissed;
 
   const grade = (() => {
     if (!report?.total_actions) return '-';
@@ -28,16 +30,32 @@ const AnalystReportCard = ({ report }) => {
         </colgroup>
         <tbody className="text-gray-300">
           <tr>
-            <td className="py-3">Threats</td>
-            <td className="py-3 text-center">
+            <td className="pt-2 pb-1">Threats</td>
+            <td className="pt-2 pb-1 text-center">
               <span className="text-white font-semibold">{threatsCorrect}/{threatsTotal}</span>
             </td>
           </tr>
+          <tr>
+            <td className="py-1 pl-4 sm:pl-6 text-gray-400">Correct</td>
+            <td className="py-1 text-center">{threatsCorrect}</td>
+          </tr>
+          <tr>
+            <td className="py-1 pb-2 pl-4 sm:pl-6 text-gray-400">Missed</td>
+            <td className="py-1 pb-2 text-center">{threatsMissed}</td>
+          </tr>
           <tr className="border-t border-gray-800">
-            <td className="py-3">False Positives</td>
-            <td className="py-3 text-center">
+            <td className="pt-2 pb-1">False Positives</td>
+            <td className="pt-2 pb-1 text-center">
               <span className="text-white font-semibold">{fpCorrect}/{fpTotal}</span>
             </td>
+          </tr>
+          <tr>
+            <td className="py-1 pl-4 sm:pl-6 text-gray-400">Correct</td>
+            <td className="py-1 text-center">{fpCorrect}</td>
+          </tr>
+          <tr>
+            <td className="py-1 pb-2 pl-4 sm:pl-6 text-gray-400">Missed</td>
+            <td className="py-1 pb-2 text-center">{fpMissed}</td>
           </tr>
           <tr className="border-t border-gray-700">
             <td className="py-3 font-normal text-gray-300">Overall Grade</td>

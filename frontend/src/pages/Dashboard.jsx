@@ -164,49 +164,84 @@ const Dashboard = () => {
       <div className="flex flex-col flex-1 gap-2 sm:gap-4">
 
         <div className="bg-[#161b22] p-3 sm:p-6 flex-1 flex flex-col">
-          <div className="grid grid-cols-4 sm:grid-cols-[8rem_8rem_8.5rem_8rem] border-b border-gray-700 mb-6">
+          <div className="grid grid-cols-4 sm:grid-cols-[9rem_9rem_9rem_9rem] border-b border-gray-700 mb-6">
             <button
               onClick={() => {
                 setView("grouped");
                 setIncidentBadge(0);
               }}
-              className={`py-3 sm:py-4 text-xs sm:text-lg whitespace-nowrap transition-all duration-200 font-medium ${
-                view === "grouped"
-                  ? "text-white"
-                  : "text-gray-400 hover:text-white"
+              className={`relative py-3 sm:py-4 text-[11px] sm:text-base whitespace-nowrap font-medium flex items-center justify-center transition-colors duration-200 ${
+                view === "grouped" ? "text-white" : "text-gray-400 hover:text-white"
               }`}
             >
-              Alerts <span className={`font-normal ml-1 ${groupedAlertCount > 0 ? "text-gray-500" : "invisible"}`}>{groupedAlertCount || "0"}</span>
+              <span className="relative">
+                Alerts
+                <span
+                  className={`absolute left-0 right-0 h-0.5 -bottom-[13px] sm:-bottom-[17px] ${
+                    view === "grouped" ? "bg-white" : "bg-transparent"
+                  }`}
+                />
+                {groupedAlertCount > 0 && (
+                  <span className="absolute left-full top-1/2 -translate-y-[100%] ml-1.5 sm:ml-2 inline-flex items-center justify-center h-3.5 sm:h-4 min-w-[0.875rem] sm:min-w-[1rem] px-1 sm:px-1.5 text-[9px] sm:text-[11px] font-semibold rounded-full bg-[#b26666] text-white leading-none">
+                    {groupedAlertCount}
+                  </span>
+                )}
+              </span>
             </button>
             <button
               onClick={() => setView("table")}
-              className={`py-3 sm:py-4 text-xs sm:text-lg whitespace-nowrap transition-all duration-200 font-medium ${
-                view === "table"
-                  ? "text-white"
-                  : "text-gray-400 hover:text-white"
+              className={`relative py-3 sm:py-4 text-[11px] sm:text-base whitespace-nowrap font-medium flex items-center justify-center transition-colors duration-200 ${
+                view === "table" ? "text-white" : "text-gray-400 hover:text-white"
               }`}
             >
-              Events <span className={`font-normal ml-1 ${alertCount > 0 ? "text-gray-500" : "invisible"}`}>{alertCount || "0"}</span>
+              <span className="relative">
+                Events
+                <span
+                  className={`absolute left-0 right-0 h-0.5 -bottom-[13px] sm:-bottom-[17px] ${
+                    view === "table" ? "bg-white" : "bg-transparent"
+                  }`}
+                />
+              </span>
             </button>
             <button
               onClick={() => setView("analytics")}
-              className={`py-3 sm:py-4 text-xs sm:text-lg whitespace-nowrap transition-all duration-200 font-medium ${
-                view === "analytics"
-                  ? "text-white"
-                  : "text-gray-400 hover:text-white"
+              className={`relative py-3 sm:py-4 text-[11px] sm:text-base whitespace-nowrap font-medium flex items-center justify-center transition-colors duration-200 ${
+                view === "analytics" ? "text-white" : "text-gray-400 hover:text-white"
               }`}
             >
-              Analytics <span className={`font-normal ml-1 ${analyticsCount > 0 ? "text-gray-500" : "invisible"}`}>{analyticsCount || "0"}</span>
+              <span className="relative">
+                Analytics
+                <span
+                  className={`absolute left-0 right-0 h-0.5 -bottom-[13px] sm:-bottom-[17px] ${
+                    view === "analytics" ? "bg-white" : "bg-transparent"
+                  }`}
+                />
+                {analyticsCount > 0 && (
+                  <span className="absolute left-full top-1/2 -translate-y-[100%] ml-1.5 sm:ml-2 inline-flex items-center justify-center h-3.5 sm:h-4 min-w-[0.875rem] sm:min-w-[1rem] px-1 sm:px-1.5 text-[9px] sm:text-[11px] font-semibold rounded-full bg-[#30363d] text-gray-300 leading-none">
+                    {analyticsCount}
+                  </span>
+                )}
+              </span>
             </button>
             <button
               onClick={() => setView("reports")}
-              className={`py-3 sm:py-4 text-xs sm:text-lg whitespace-nowrap transition-all duration-200 font-medium ${
-                view === "reports"
-                  ? "text-white"
-                  : "text-gray-400 hover:text-white"
+              className={`relative py-3 sm:py-4 text-[11px] sm:text-base whitespace-nowrap font-medium flex items-center justify-center transition-colors duration-200 ${
+                view === "reports" ? "text-white" : "text-gray-400 hover:text-white"
               }`}
             >
-              Reports <span className={`font-normal ml-1 ${reportCount > 0 ? "text-gray-500" : "invisible"}`}>{reportCount || "0"}</span>
+              <span className="relative">
+                Reports
+                <span
+                  className={`absolute left-0 right-0 h-0.5 -bottom-[13px] sm:-bottom-[17px] ${
+                    view === "reports" ? "bg-white" : "bg-transparent"
+                  }`}
+                />
+                {reportCount > 0 && (
+                  <span className="absolute left-full top-1/2 -translate-y-[100%] ml-1.5 sm:ml-2 inline-flex items-center justify-center h-3.5 sm:h-4 min-w-[0.875rem] sm:min-w-[1rem] px-1 sm:px-1.5 text-[9px] sm:text-[11px] font-semibold rounded-full bg-[#30363d] text-gray-300 leading-none">
+                    {reportCount}
+                  </span>
+                )}
+              </span>
             </button>
           </div>
 
