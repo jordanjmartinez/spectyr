@@ -182,7 +182,7 @@ const Dashboard = () => {
                   }`}
                 />
                 {groupedAlertCount > 0 && (
-                  <span className="absolute left-full top-1/2 -translate-y-[100%] ml-1.5 sm:ml-2 inline-flex items-center justify-center h-3.5 sm:h-4 min-w-[0.875rem] sm:min-w-[1rem] px-1 sm:px-1.5 text-[9px] sm:text-[11px] font-semibold rounded-full bg-[#b26666] text-white leading-none">
+                  <span className="absolute left-full top-1/2 -translate-y-[100%] ml-1.5 sm:ml-2 inline-flex items-center justify-center h-3.5 sm:h-4 min-w-[0.875rem] sm:min-w-[1rem] px-1 sm:px-1.5 text-[9px] sm:text-[11px] font-semibold rounded-full bg-[#b26666] text-white">
                     {groupedAlertCount}
                   </span>
                 )}
@@ -217,7 +217,7 @@ const Dashboard = () => {
                   }`}
                 />
                 {analyticsCount > 0 && (
-                  <span className="absolute left-full top-1/2 -translate-y-[100%] ml-1.5 sm:ml-2 inline-flex items-center justify-center h-3.5 sm:h-4 min-w-[0.875rem] sm:min-w-[1rem] px-1 sm:px-1.5 text-[9px] sm:text-[11px] font-semibold rounded-full bg-[#30363d] text-gray-300 leading-none">
+                  <span className="absolute left-full top-1/2 -translate-y-[100%] ml-1.5 sm:ml-2 inline-flex items-center justify-center h-3.5 sm:h-4 min-w-[0.875rem] sm:min-w-[1rem] px-1 sm:px-1.5 text-[9px] sm:text-[11px] font-semibold rounded-full bg-[#30363d] text-gray-300">
                     {analyticsCount}
                   </span>
                 )}
@@ -237,7 +237,7 @@ const Dashboard = () => {
                   }`}
                 />
                 {reportCount > 0 && (
-                  <span className="absolute left-full top-1/2 -translate-y-[100%] ml-1.5 sm:ml-2 inline-flex items-center justify-center h-3.5 sm:h-4 min-w-[0.875rem] sm:min-w-[1rem] px-1 sm:px-1.5 text-[9px] sm:text-[11px] font-semibold rounded-full bg-[#30363d] text-gray-300 leading-none">
+                  <span className="absolute left-full top-1/2 -translate-y-[100%] ml-1.5 sm:ml-2 inline-flex items-center justify-center h-3.5 sm:h-4 min-w-[0.875rem] sm:min-w-[1rem] px-1 sm:px-1.5 text-[9px] sm:text-[11px] font-semibold rounded-full bg-[#30363d] text-gray-300">
                     {reportCount}
                   </span>
                 )}
