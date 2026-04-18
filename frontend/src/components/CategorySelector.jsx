@@ -114,17 +114,17 @@ const CategorySelector = ({ onSelect, onCancel, scenarioInfo }) => {
         <div className="px-6 py-4 flex justify-end gap-3">
           <button
             onClick={onCancel}
-            className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-gray-400 hover:text-white bg-[#21262d] hover:bg-[#30363d] border border-gray-600 rounded-md transition-colors"
+            className="px-3 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border border-gray-700 bg-transparent hover:bg-white/5 text-gray-300 transition focus:outline-none focus:ring-2 focus:ring-gray-500"
           >
             Cancel
           </button>
           <button
             onClick={() => selected && onSelect(selected.id, selected.label)}
             disabled={!selected}
-            className={`px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition ${
+            className={`px-3 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 ${
               selected
-                ? 'bg-[#21262d] hover:bg-[#30363d] text-gray-300 border-gray-600 cursor-pointer'
-                : 'bg-[#21262d] text-gray-500 border-gray-700 opacity-50 cursor-not-allowed'
+                ? 'bg-[#30363d] hover:bg-[#3d444b] text-white border-gray-600'
+                : 'bg-[#21262d] text-gray-500 border-gray-700 cursor-not-allowed'
             }`}
           >
             Confirm
