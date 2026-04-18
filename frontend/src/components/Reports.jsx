@@ -337,7 +337,14 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
           <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; No matching reports for "{searchTerm}"</p>
         </div>
       ) : (
-      <div className="bg-[#161b22] p-3 sm:p-6 rounded-xl">
+      <div
+        className="p-3 sm:p-6 rounded-xl"
+        style={{
+          background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(88,130,180,0.3), transparent) border-box',
+          border: '1px solid transparent',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+        }}
+      >
         <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper">
           <table className="w-full min-w-[600px] log-text text-left text-gray-300 border-separate border-spacing-0">
             <thead>

@@ -488,7 +488,14 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
       {/* Alert Scenario */}
       <div className="mt-3 mb-6">
         {(gameStarted && (Array.isArray(currentLevel?.active_scenarios) && currentLevel.active_scenarios.length > 0)) || scenarioHistory.length > 0 ? (
-          <div className="bg-[#161b22] p-3 sm:p-6 rounded-xl">
+          <div
+            className="p-3 sm:p-6 rounded-xl"
+            style={{
+              background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(88,130,180,0.3), transparent) border-box',
+              border: '1px solid transparent',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+            }}
+          >
             {(() => {
               const allActive = Array.isArray(currentLevel?.active_scenarios) ? currentLevel.active_scenarios : [];
               const activeMatches = filterActive && !currentLevel?.completed

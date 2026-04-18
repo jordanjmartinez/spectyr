@@ -306,7 +306,14 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
         </>
       )}
 
-    <div className="bg-[#161b22] p-3 sm:p-6 rounded-xl flex-1 flex flex-col">
+    <div
+      className="p-3 sm:p-6 rounded-xl flex-1 flex flex-col"
+      style={{
+        background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(88,130,180,0.3), transparent) border-box',
+        border: '1px solid transparent',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+      }}
+    >
 
       {noAlertsLoaded ? (
         <div className="flex flex-col items-center justify-center py-8 flex-1">
