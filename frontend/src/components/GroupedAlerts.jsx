@@ -4,6 +4,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { apiFetch } from '../api';
 
 import CategorySelector from '../components/CategorySelector';
+import ClassificationSelector from '../components/ClassificationSelector';
 import IncidentReportForm from '../components/IncidentReportForm';
 
 const PieTooltip = ({ active, payload }) => {
@@ -27,6 +28,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
   const [disappearingId, setDisappearingId] = useState(null);
   const [showCategorySelector, setShowCategorySelector] = useState(false);
   const [categoryScenario, setCategoryScenario] = useState(null);
+  const [showClassificationSelector, setShowClassificationSelector] = useState(false);
+  const [classificationScenario, setClassificationScenario] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [submittingIds, setSubmittingIds] = useState(new Set());
   const [currentLevel, setCurrentLevel] = useState(null);
@@ -620,7 +623,14 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
             })()}
           </div>
         ) : (
-          <div className="bg-[#161b22] p-3 sm:p-6 rounded-xl">
+          <div
+            className="p-3 sm:p-6 rounded-xl"
+            style={{
+              background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(88,130,180,0.3), transparent) border-box',
+              border: '1px solid transparent',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+            }}
+          >
             <div className="flex flex-col items-center justify-center py-4">
               <img src="/ghost_scenario.PNG" alt="Ghost Scenario" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
               <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; Start simulation to receive your first briefing.</p>
@@ -639,12 +649,12 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
             <div className="rounded-2xl p-4 sm:p-6 flex-1" style={{ background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(88,130,180,0.3), transparent) border-box', border: '1px solid transparent', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
               {(() => {
                 const SOURCE_TYPES = [
-                  { name: 'Sysmon', color: '#5a7caa' },
-                  { name: 'Firewall', color: '#4f98a0' },
-                  { name: 'Win Security', key: 'Windows Security', color: '#5da88a' },
-                  { name: 'Proxy', color: '#a3a35c' },
-                  { name: 'DNS', color: '#c28e46' },
-                  { name: 'Azure AD', color: '#b26666' },
+                  { name: 'DNS', color: '#5dc8ec' },
+                  { name: 'Firewall', color: '#2a96b8' },
+                  { name: 'Win Security', key: 'Windows Security', color: '#4d7099' },
+                  { name: 'Sysmon', color: '#3a5fb8' },
+                  { name: 'Azure', key: 'Azure AD', color: '#1d3370' },
+                  { name: 'Proxy', color: '#6b54b8' },
                 ];
                 const sb = alertStats.source_breakdown || {};
                 const sourceSegments = SOURCE_TYPES.map(s => ({ ...s, value: sb[s.key || s.name] || 0 }));
@@ -684,17 +694,17 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                           const resolvedCount = currentLevel?.resolved_count ?? 0;
                           const activeCount = (currentLevel?.active_scenarios || []).length;
                           const queuedCount = Math.max(0, queueLength - resolvedCount - activeCount);
-                          const incompleteTotal = activeCount + queuedCount;
+                          const ringTotal = activeCount + resolvedCount;
                           return (
                           <div className="relative w-36 h-36 sm:w-80 sm:h-80 md:w-40 md:h-40 lg:w-56 lg:h-56 xl:w-80 xl:h-80 aspect-square border-dashed border-2 border-gray-700 rounded-full p-2">
                             <ResponsiveContainer width="100%" height="100%">
                               <PieChart>
                                 <Pie
                                   data={(() => {
-                                    if (incompleteTotal === 0) return [{ name: 'Empty', value: 1 }];
+                                    if (ringTotal === 0) return [{ name: 'Empty', value: 1 }];
                                     const segs = [];
                                     if (activeCount > 0) segs.push({ name: 'Active', value: activeCount, color: '#b26666' });
-                                    if (queuedCount > 0) segs.push({ name: 'Queued', value: queuedCount, color: '#4b5563' });
+                                    if (resolvedCount > 0) segs.push({ name: 'Completed', value: resolvedCount, color: '#6fa868' });
                                     return segs;
                                   })()}
                                   innerRadius="70%"
@@ -705,10 +715,10 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                   stroke="none"
                                 >
                                   {(() => {
-                                    if (incompleteTotal === 0) return [<Cell key="empty" fill="#374151" />];
+                                    if (ringTotal === 0) return [<Cell key="empty" fill="#374151" />];
                                     const cells = [];
                                     if (activeCount > 0) cells.push(<Cell key="active" fill="#b26666" />);
-                                    if (queuedCount > 0) cells.push(<Cell key="queued" fill="#4b5563" />);
+                                    if (resolvedCount > 0) cells.push(<Cell key="completed" fill="#6fa868" />);
                                     return cells;
                                   })()}
                                 </Pie>
@@ -716,7 +726,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                               </PieChart>
                             </ResponsiveContainer>
                             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                              <span className="text-5xl sm:text-8xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white">{activeCount}</span>
+                              <span className="text-5xl sm:text-8xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white">{currentLevel?.completed ? resolvedCount : activeCount}</span>
                             </div>
                           </div>
                           );
@@ -750,6 +760,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                       <div className="min-w-0 flex items-center lg:flex-1 lg:pl-4 xl:pl-6">
                         <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:gap-y-3 lg:grid-cols-1 lg:gap-3 text-xs sm:text-base md:text-xs lg:text-sm">
                         {dashView === 'total' && (() => {
+                          const resolvedCount = currentLevel?.resolved_count ?? 0;
                           const activeCount = (currentLevel?.active_scenarios || []).length;
                           return (
                           <>
@@ -757,6 +768,11 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                               <span className="w-2.5 h-2.5 flex-shrink-0 rounded-md" style={{backgroundColor: '#b26666'}} />
                               <span className="text-gray-300 truncate">Active</span>
                               <span className="text-white font-semibold flex-shrink-0">{activeCount}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="w-2.5 h-2.5 flex-shrink-0 rounded-md" style={{backgroundColor: '#6fa868'}} />
+                              <span className="text-gray-300 truncate">Completed</span>
+                              <span className="text-white font-semibold flex-shrink-0">{resolvedCount}</span>
                             </div>
                           </>
                           );
@@ -789,7 +805,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                   { name: 'Phishing', key: 'Phishing', color: '#4f98a0' },
                   { name: 'Defense Evasion', key: 'Defense Evasion', color: '#5da88a' },
                   { name: 'Lateral Movement', key: 'Lateral Movement', color: '#6fa868' },
-                  { name: 'Command & Control', key: 'Command & Control', color: '#a3a35c' },
+                  { name: 'Command & Control', key: 'Command & Control', color: '#d4cc6e' },
                   { name: 'Brute Force', key: 'Brute Force', color: '#c28e46' },
                   { name: 'Data Exfiltration', key: 'Data Exfiltration', color: '#c4755a' },
                   { name: 'Insider Threat', key: 'Insider Threat', color: '#b26666' },
@@ -803,7 +819,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                 const sb = alertStats.severity_breakdown;
                 const sevSegments = [
                   { name: 'Low', value: sb.low, color: '#6fa868' },
-                  { name: 'Medium', value: sb.medium, color: '#a3a35c' },
+                  { name: 'Medium', value: sb.medium, color: '#d4cc6e' },
                   { name: 'High', value: sb.high, color: '#c28e46' },
                   { name: 'Critical', value: sb.critical, color: '#b26666' },
                 ];
@@ -908,7 +924,6 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
 
       <div className="mt-6">
         <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Notable Events</h2>
-        <div className="mb-4" style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
         {filteredGroups.length === 0 ? (
           <div
             className="p-3 sm:p-6 rounded-xl"
@@ -946,6 +961,9 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                   {filteredGroups.map(group => {
                     const groupKey = `${group.scenario_id}_${group.threat_pattern}`;
                     const isExpanded = !groupCollapsed[groupKey];
+                    const severityColors = { Critical: '#b26666', High: '#c28e46', Medium: '#d4cc6e', Low: '#6fa868' };
+                    const groupSeverity = group.severity_breakdown ? getHighestSeverity(group.severity_breakdown) : 'Low';
+                    const triangleColor = severityColors[groupSeverity];
                     return (
                       <React.Fragment key={groupKey}>
                         <tr
@@ -970,7 +988,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                               fill="none" strokeWidth={2.25} viewBox="0 0 24 24"
                             >
                               <path
-                                stroke="#c28e46" strokeLinecap="round" strokeLinejoin="round"
+                                stroke={triangleColor} strokeLinecap="round" strokeLinejoin="round"
                                 d="M2.697 16.126c-.866 1.5 .217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z"
                               />
                               <path
@@ -993,87 +1011,31 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                             className="w-32 sm:w-36 px-2 sm:px-4 py-4 text-center"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <div className="relative inline-block" ref={openDropdownId === groupKey ? dropdownRef : null}>
+                            <div className="inline-flex items-center gap-2">
                               <button
                                 type="button"
-                                aria-haspopup="menu"
-                                aria-expanded={openDropdownId === groupKey}
+                                disabled={submittingIds.has(group.scenario_id)}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (openDropdownId === groupKey) {
-                                    setOpenDropdownId(null);
-                                    return;
-                                  }
-                                  const rect = e.currentTarget.getBoundingClientRect();
-                                  setDropdownPos({
-                                    top: rect.bottom + 4,
-                                    right: window.innerWidth - rect.right,
-                                  });
-                                  setOpenDropdownId(groupKey);
+                                  setClassificationScenario(group);
+                                  setShowClassificationSelector(true);
                                 }}
-                                className="inline-flex items-center justify-center gap-1 px-2 sm:px-4 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                                className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:text-gray-600 disabled:cursor-not-allowed disabled:hover:bg-[#21262d]"
                               >
-                                <svg
-                                  className={`w-4 h-4 transition-transform ${openDropdownId === groupKey ? 'rotate-180' : ''}`}
-                                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                >
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                                Actions
+                                Classify
                               </button>
-                              {openDropdownId === groupKey && dropdownPos && createPortal(
-                                <div
-                                  ref={menuRef}
-                                  role="menu"
-                                  style={{
-                                    position: 'fixed',
-                                    top: `${dropdownPos.top}px`,
-                                    right: `${dropdownPos.right}px`,
-                                    zIndex: 50,
-                                  }}
-                                  className="bg-[#161b22] border border-gray-700 rounded py-1 flex flex-col"
-                                >
-                                  <button
-                                    role="menuitem"
-                                    disabled={submittingIds.has(group.scenario_id)}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setOpenDropdownId(null);
-                                      setCategoryScenario(group);
-                                      setShowCategorySelector(true);
-                                    }}
-                                    className="text-left px-2.5 sm:px-3 py-2 sm:py-2.5 text-xs hover:bg-gray-700 transition text-gray-400 disabled:text-gray-600 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-                                  >
-                                    Classify Threat
-                                  </button>
-                                  <button
-                                    role="menuitem"
-                                    disabled={submittingIds.has(group.scenario_id)}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setOpenDropdownId(null);
-                                      handleCategorySelect('false_positive', 'False Positive', group);
-                                    }}
-                                    className="text-left px-2.5 sm:px-3 py-2 sm:py-2.5 text-xs hover:bg-gray-700 transition text-gray-400 disabled:text-gray-600 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-                                  >
-                                    False Positive
-                                  </button>
-                                  <button
-                                    role="menuitem"
-                                    disabled={reportedScenarios.has(group.scenario_id)}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setOpenDropdownId(null);
-                                      setReportScenario(group);
-                                      setShowReportForm(true);
-                                    }}
-                                    className="text-left px-2.5 sm:px-3 py-2 sm:py-2.5 text-xs hover:bg-gray-700 transition text-gray-400 disabled:text-gray-600 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-                                  >
-                                    {reportedScenarios.has(group.scenario_id) ? 'Reported' : 'Create Report'}
-                                  </button>
-                                </div>,
-                                document.body
-                              )}
+                              <button
+                                type="button"
+                                disabled={reportedScenarios.has(group.scenario_id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setReportScenario(group);
+                                  setShowReportForm(true);
+                                }}
+                                className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:text-gray-600 disabled:cursor-not-allowed disabled:hover:bg-[#21262d]"
+                              >
+                                {reportedScenarios.has(group.scenario_id) ? 'Reported' : 'Report'}
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -1195,6 +1157,26 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
         )}
       </div>
 
+      {showClassificationSelector && classificationScenario && (
+        <ClassificationSelector
+          onSelect={(classificationId) => {
+            const scenario = classificationScenario;
+            setShowClassificationSelector(false);
+            setClassificationScenario(null);
+            if (classificationId === 'false_positive') {
+              handleCategorySelect('false_positive', 'False Positive', scenario);
+            } else {
+              setCategoryScenario(scenario);
+              setShowCategorySelector(true);
+            }
+          }}
+          onCancel={() => {
+            setShowClassificationSelector(false);
+            setClassificationScenario(null);
+          }}
+        />
+      )}
+
       {showCategorySelector && categoryScenario && (
         <CategorySelector
           scenarioInfo={categoryScenario}
@@ -1212,7 +1194,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
             className="absolute inset-0 bg-black/70"
             onClick={() => { setShowReportForm(false); setReportScenario(null); }}
           />
-          <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-2xl mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-2xl mx-4 shadow-2xl max-h-[90vh] overflow-y-auto animate-modalIn">
             <IncidentReportForm
               initialData={{
                 title: reportScenario.ticket_title || reportScenario.logs?.[0]?.level_name || '',

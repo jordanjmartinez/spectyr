@@ -164,13 +164,13 @@ const Dashboard = () => {
       <div className="flex flex-col flex-1 gap-2 sm:gap-4">
 
         <div className="bg-[#161b22] p-3 sm:p-6 flex-1 flex flex-col">
-          <div className="grid grid-cols-4 sm:grid-cols-[9rem_9rem_9rem_9rem] border-b border-gray-700 mb-6">
+          <div className="flex overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] border-b border-gray-700 mb-6">
             <button
               onClick={() => {
                 setView("grouped");
                 setIncidentBadge(0);
               }}
-              className={`relative py-3 sm:py-4 text-[11px] sm:text-base whitespace-nowrap font-medium flex items-center justify-center gap-1.5 sm:gap-2 transition-colors duration-200 ${
+              className={`relative py-3 sm:py-4 px-2 sm:px-6 text-[13px] sm:text-base whitespace-nowrap font-medium flex items-center justify-center transition-colors duration-200 ${
                 view === "grouped" ? "text-white" : "text-gray-400 hover:text-white"
               }`}
             >
@@ -182,15 +182,11 @@ const Dashboard = () => {
                   }`}
                 />
               </span>
-              {groupedAlertCount > 0 && (
-                <span className="inline-flex items-center px-2 py-0.5 text-[10px] sm:text-xs font-medium rounded-full bg-[#b26666] text-white">
-                  {groupedAlertCount}
-                </span>
-              )}
+              {groupedAlertCount > 0 && <span className="text-gray-500 font-normal ml-1.5">{groupedAlertCount}</span>}
             </button>
             <button
               onClick={() => setView("table")}
-              className={`relative py-3 sm:py-4 text-[11px] sm:text-base whitespace-nowrap font-medium flex items-center justify-center gap-1.5 sm:gap-2 transition-colors duration-200 ${
+              className={`relative py-3 sm:py-4 px-2 sm:px-6 text-[13px] sm:text-base whitespace-nowrap font-medium flex items-center justify-center transition-colors duration-200 ${
                 view === "table" ? "text-white" : "text-gray-400 hover:text-white"
               }`}
             >
@@ -205,27 +201,23 @@ const Dashboard = () => {
             </button>
             <button
               onClick={() => setView("analytics")}
-              className={`relative py-3 sm:py-4 text-[11px] sm:text-base whitespace-nowrap font-medium flex items-center justify-center gap-1.5 sm:gap-2 transition-colors duration-200 ${
+              className={`relative py-3 sm:py-4 px-2 sm:px-6 text-[13px] sm:text-base whitespace-nowrap font-medium flex items-center justify-center transition-colors duration-200 ${
                 view === "analytics" ? "text-white" : "text-gray-400 hover:text-white"
               }`}
             >
               <span className="relative">
-                Analytics
+                Metrics
                 <span
                   className={`absolute left-0 right-0 h-0.5 -bottom-[13px] sm:-bottom-[17px] ${
                     view === "analytics" ? "bg-white" : "bg-transparent"
                   }`}
                 />
               </span>
-              {analyticsCount > 0 && (
-                <span className="inline-flex items-center px-2 py-0.5 text-[10px] sm:text-xs font-medium rounded-full bg-[#30363d] text-gray-300">
-                  {analyticsCount}
-                </span>
-              )}
+              {analyticsCount > 0 && <span className="text-gray-500 font-normal ml-1.5">{analyticsCount}</span>}
             </button>
             <button
               onClick={() => setView("reports")}
-              className={`relative py-3 sm:py-4 text-[11px] sm:text-base whitespace-nowrap font-medium flex items-center justify-center gap-1.5 sm:gap-2 transition-colors duration-200 ${
+              className={`relative py-3 sm:py-4 px-2 sm:px-6 text-[13px] sm:text-base whitespace-nowrap font-medium flex items-center justify-center transition-colors duration-200 ${
                 view === "reports" ? "text-white" : "text-gray-400 hover:text-white"
               }`}
             >
@@ -237,11 +229,7 @@ const Dashboard = () => {
                   }`}
                 />
               </span>
-              {reportCount > 0 && (
-                <span className="inline-flex items-center px-2 py-0.5 text-[10px] sm:text-xs font-medium rounded-full bg-[#30363d] text-gray-300">
-                  {reportCount}
-                </span>
-              )}
+              {reportCount > 0 && <span className="text-gray-500 font-normal ml-1.5">{reportCount}</span>}
             </button>
           </div>
 
@@ -289,19 +277,23 @@ const Dashboard = () => {
             className="absolute inset-0 bg-black/70"
             onClick={() => !isResetting && setShowResetModal(false)}
           />
-          <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl">
-            <h3 className="text-lg font-semibold text-white text-center mb-4">Reset Simulation</h3>
-            <p className="text-gray-400 mb-6 text-center">
+          <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl animate-modalIn">
+            <button
+              type="button"
+              onClick={() => !isResetting && setShowResetModal(false)}
+              aria-label="Close"
+              className="absolute top-3 right-3 p-1 text-gray-400 hover:text-white transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <h3 className="text-lg font-semibold text-white mb-4">Reset Simulation</h3>
+            <div className="mb-5" style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
+            <p className="text-gray-400 mb-6">
               This will clear all events, alerts, and reports. Your progress will be reset. This action cannot be undone.
             </p>
-            <div className="flex justify-center gap-3">
-              <button
-                onClick={() => setShowResetModal(false)}
-                disabled={isResetting}
-                className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-300 border border-gray-600 transition disabled:opacity-50"
-              >
-                No, go back
-              </button>
+            <div className="flex justify-end">
               <button
                 onClick={handleResetSimulator}
                 disabled={isResetting}
@@ -331,19 +323,22 @@ const Dashboard = () => {
             className="absolute inset-0 bg-black/70"
             onClick={() => setShowSimulateModal(false)}
           />
-          <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl">
-            <h3 className="text-lg font-semibold text-white text-center mb-4">Simulation Active</h3>
-            <p className="text-gray-400 mb-6 text-center">
+          <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl animate-modalIn">
+            <button
+              type="button"
+              onClick={() => setShowSimulateModal(false)}
+              aria-label="Close"
+              className="absolute top-3 right-3 p-1 text-gray-400 hover:text-white transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <h3 className="text-lg font-semibold text-white mb-4">Simulation Active</h3>
+            <div className="mb-5" style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
+            <p className="text-gray-400">
               You have <span className="text-white font-medium">{existingLogCount} events</span> from an active session. Use <span className="text-white font-medium">Reset Simulation</span> to start fresh.
             </p>
-            <div className="flex justify-center">
-              <button
-                onClick={() => setShowSimulateModal(false)}
-                className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-300 border border-gray-600 transition"
-              >
-                Got it
-              </button>
-            </div>
           </div>
         </div>
       )}

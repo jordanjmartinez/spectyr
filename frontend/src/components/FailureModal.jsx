@@ -15,7 +15,7 @@ const FailureModal = ({ onRetry, onQuit }) => {
       />
 
 
-      <div className="relative text-center px-6 max-w-lg mx-auto">
+      <div className="relative text-center px-6 max-w-lg mx-auto animate-modalIn">
         {/* Glitch title */}
         <div className="relative mb-6">
           <h1

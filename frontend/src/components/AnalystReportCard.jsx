@@ -30,7 +30,7 @@ const AnalystReportCard = ({ report }) => {
         </colgroup>
         <tbody className="text-gray-300">
           <tr>
-            <td className="pt-2 pb-1">Threats</td>
+            <td className="pt-2 pb-1">True Positives</td>
             <td className="pt-2 pb-1 text-center">
               <span className="text-white font-semibold">{threatsCorrect}/{threatsTotal}</span>
             </td>

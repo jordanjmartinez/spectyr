@@ -2434,6 +2434,8 @@ def get_current_level():
         return jsonify({
             "completed": True,
             "total_levels": queue_length,
+            "queue_length": queue_length,
+            "resolved_count": resolved_count,
             "level_results": level_results,
             "scenario_history": s.get("scenario_history", []),
             "message": "Congratulations! You've completed your simulation!"

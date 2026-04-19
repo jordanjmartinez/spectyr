@@ -325,7 +325,14 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
 
 
       {filteredReports.length === 0 && !searchTerm ? (
-        <div className="bg-[#161b22] p-6 rounded-xl flex-1 flex flex-col">
+        <div
+          className="p-6 rounded-xl flex-1 flex flex-col"
+          style={{
+            background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(88,130,180,0.3), transparent) border-box',
+            border: '1px solid transparent',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+          }}
+        >
           <div className="flex flex-col items-center justify-center py-8 flex-1">
             <img src="/ghost-reports.png" alt="Ghost" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
             <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; Write a report from Alerts to document your findings.</p>
@@ -422,13 +429,9 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
                               <span className="text-sm sm:text-base text-white font-medium">Mitigation Steps</span>
                               <p className="text-gray-300 mt-2 leading-relaxed text-sm sm:text-base break-words">{report.mitigation || '—'}</p>
                             </div>
-                            <div className="mb-4">
+                            <div>
                               <span className="text-sm sm:text-base text-white font-medium">MITRE ATT&CK</span>
                               <p className="text-gray-300 mt-1 text-sm sm:text-base">{report.mitre_tactic || '—'}</p>
-                            </div>
-                            <div>
-                              <span className="text-sm sm:text-base text-white font-medium">Kill Chain Phase</span>
-                              <p className="text-gray-300 mt-1 text-sm sm:text-base">{report.kill_chain || '—'}</p>
                             </div>
                           </div>
                         </div>
@@ -450,7 +453,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
             className="absolute inset-0 bg-black/70"
             onClick={() => setDeleteConfirmId(null)}
           />
-          <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl">
+          <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl animate-modalIn">
             <h3 className="text-lg font-semibold text-white text-center mb-4">Delete Report</h3>
             <p className="text-gray-400 mb-6 text-center">
               Are you sure you want to delete this report? This action cannot be undone.
@@ -480,7 +483,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
             className="absolute inset-0 bg-black/70"
             onClick={() => setEditReport(null)}
           />
-          <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-3 sm:p-5 w-full max-w-xl mx-2 sm:mx-4 shadow-2xl">
+          <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-3 sm:p-5 w-full max-w-xl mx-2 sm:mx-4 shadow-2xl animate-modalIn">
             <IncidentReportForm
               initialData={editReport}
               onSubmit={async (updated) => {

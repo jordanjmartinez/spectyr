@@ -23,7 +23,14 @@ const CampaignProgress = ({ levelData, onReset, analystName }) => {
             <span className="sm:hidden">Reset Sim</span><span className="hidden sm:inline">Reset Simulation</span>
           </button>
         </div>
-        <div className="mb-4" style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
+        <div
+          className="p-6 rounded-xl"
+          style={{
+            background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(88,130,180,0.3), transparent) border-box',
+            border: '1px solid transparent',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+          }}
+        >
         <div className={`flex flex-col items-center text-center transition-all duration-700 ease-out ${ghostVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           <img
             src="/ghost-celebrate.png"
@@ -75,6 +82,7 @@ const CampaignProgress = ({ levelData, onReset, analystName }) => {
             );
           })}
         </div>
+        </div>
       </div>
     );
   }
@@ -82,12 +90,17 @@ const CampaignProgress = ({ levelData, onReset, analystName }) => {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl sm:text-2xl font-semibold text-white">Simulation Status</h2>
+        <h2 className="text-xl sm:text-2xl font-semibold text-white">Simulation</h2>
       </div>
-      <div className="mb-6" style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
-
       {/* Level stepper */}
-      <div className="flex items-center justify-between px-4 sm:px-8 pt-5 pb-5">
+      <div
+        className="flex items-center justify-between px-4 sm:px-8 pt-5 pb-5 rounded-xl"
+        style={{
+          background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(88,130,180,0.3), transparent) border-box',
+          border: '1px solid transparent',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+        }}
+      >
         {Array.from({ length: total_levels }).map((_, i) => {
           const level = i + 1;
           const result = level_results[level] ?? level_results[String(level)];

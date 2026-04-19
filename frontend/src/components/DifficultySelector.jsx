@@ -19,10 +19,19 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
         className="absolute inset-0 bg-black/70"
         onClick={onCancel}
       />
-      <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-lg mx-4 shadow-2xl">
-        <div className="text-center mb-6">
-          <h3 className="text-2xl font-bold text-white mb-2">Select Mode</h3>
-        </div>
+      <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-lg mx-4 shadow-2xl animate-modalIn">
+        <button
+          type="button"
+          onClick={onCancel}
+          aria-label="Close"
+          className="absolute top-3 right-3 p-1 text-gray-400 hover:text-white transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        <h3 className="text-lg font-semibold text-white mb-4 pr-8">Select Mode</h3>
+        <div className="mb-5" style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
 
         <div className="mb-6">
           <input
@@ -31,7 +40,7 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
             onChange={(e) => setAnalystName(e.target.value)}
             placeholder="Your Name"
             maxLength={12}
-            className="w-full px-4 py-2 text-sm font-medium rounded-md bg-[#21262d] border border-gray-600 text-gray-300 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition"
+            className="w-full px-4 py-2 rounded-md bg-[#0d1117] border border-gray-700 text-white text-sm placeholder-gray-400 focus:border-gray-500 focus:outline-none transition-colors"
           />
         </div>
 
@@ -87,20 +96,14 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
           </button>
         </div>
 
-        <div className="flex justify-center gap-3">
-          <button
-            onClick={onCancel}
-            className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-300 border border-gray-600 transition"
-          >
-            Cancel
-          </button>
+        <div className="flex justify-end">
           <button
             onClick={handleStart}
             disabled={!canStart}
-            className={`px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition ${
+            className={`px-3 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 ${
               canStart
-                ? 'bg-[#21262d] hover:bg-[#30363d] text-gray-300 border-gray-600 cursor-pointer'
-                : 'bg-[#21262d] text-gray-500 border-gray-700 opacity-50 cursor-not-allowed'
+                ? 'bg-[#30363d] hover:bg-[#3d444b] text-white border-gray-600'
+                : 'bg-[#21262d] text-gray-500 border-gray-700 cursor-not-allowed'
             }`}
           >
             Start
