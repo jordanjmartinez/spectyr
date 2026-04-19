@@ -2,16 +2,12 @@ import React, { useState } from 'react';
 
 const DifficultySelector = ({ onSelect, onCancel }) => {
   const [analystName, setAnalystName] = useState('');
-  const [selectedMode, setSelectedMode] = useState(null);
-
-  const handleStart = () => {
-    if (analystName.trim() && selectedMode) {
-      onSelect(selectedMode, analystName.trim());
-    }
-  };
 
   const isNameValid = analystName.trim().length > 0;
-  const canStart = isNameValid && selectedMode;
+
+  const pickMode = (mode) => {
+    if (isNameValid) onSelect(mode, analystName.trim());
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -44,16 +40,14 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-6 items-stretch">
+        <div className="grid grid-cols-2 gap-4 items-stretch">
           {/* Training Mode */}
           <button
-            onClick={() => setSelectedMode('training')}
+            onClick={() => pickMode('training')}
             disabled={!isNameValid}
             className={`group relative bg-[#21262d] border-2 rounded-xl p-4 sm:p-6 text-center transition-all duration-200 ${
               !isNameValid
                 ? 'border-gray-700 opacity-50 cursor-not-allowed'
-                : selectedMode === 'training'
-                ? 'border-gray-300 shadow-[0_0_12px_rgba(209,213,219,0.15)] cursor-pointer'
                 : 'border-gray-600 hover:border-gray-400 hover:shadow-[0_0_10px_rgba(156,163,175,0.1)] cursor-pointer'
             }`}
           >
@@ -72,13 +66,11 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
 
           {/* Hardcore Mode */}
           <button
-            onClick={() => setSelectedMode('hardcore')}
+            onClick={() => pickMode('hardcore')}
             disabled={!isNameValid}
             className={`group relative bg-[#21262d] border-2 rounded-xl p-4 sm:p-6 text-center transition-all duration-200 ${
               !isNameValid
                 ? 'border-gray-700 opacity-50 cursor-not-allowed'
-                : selectedMode === 'hardcore'
-                ? 'border-gray-300 shadow-[0_0_12px_rgba(209,213,219,0.15)] cursor-pointer'
                 : 'border-gray-600 hover:border-gray-400 hover:shadow-[0_0_10px_rgba(156,163,175,0.1)] cursor-pointer'
             }`}
           >
@@ -93,20 +85,6 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
               <li>No room for error</li>
               <li>For seasoned analysts</li>
             </ul>
-          </button>
-        </div>
-
-        <div className="flex justify-end">
-          <button
-            onClick={handleStart}
-            disabled={!canStart}
-            className={`px-3 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 ${
-              canStart
-                ? 'bg-[#30363d] hover:bg-[#3d444b] text-white border-gray-600'
-                : 'bg-[#21262d] text-gray-500 border-gray-700 cursor-not-allowed'
-            }`}
-          >
-            Start
           </button>
         </div>
       </div>
