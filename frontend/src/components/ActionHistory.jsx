@@ -67,7 +67,6 @@ const ActionHistory = ({ history: rawHistory }) => {
   return (
     <div>
       <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Post-Incident Review</h2>
-      <div className="mb-4" style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
 
       <div
         className="p-3 sm:p-6 rounded-xl"

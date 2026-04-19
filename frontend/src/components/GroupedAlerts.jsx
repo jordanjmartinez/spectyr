@@ -726,7 +726,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                               </PieChart>
                             </ResponsiveContainer>
                             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                              <span className="text-5xl sm:text-8xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white">{currentLevel?.completed ? resolvedCount : activeCount}</span>
+                              <span className="text-5xl sm:text-8xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white">{activeCount}</span>
                             </div>
                           </div>
                           );
@@ -801,20 +801,19 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
             <div className="rounded-2xl p-4 sm:p-6 flex-1" style={{ background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(88,130,180,0.3), transparent) border-box', border: '1px solid transparent', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
               {(() => {
                 const ALL_CATEGORIES = [
-                  { name: 'Malware', key: 'Malware', color: '#5a7caa' },
+                  { name: 'Malware', key: 'Malware', color: '#5da88a' },
                   { name: 'Phishing', key: 'Phishing', color: '#4f98a0' },
-                  { name: 'Defense Evasion', key: 'Defense Evasion', color: '#5da88a' },
-                  { name: 'Lateral Movement', key: 'Lateral Movement', color: '#6fa868' },
-                  { name: 'Command & Control', key: 'Command & Control', color: '#d4cc6e' },
-                  { name: 'Brute Force', key: 'Brute Force', color: '#c28e46' },
-                  { name: 'Data Exfiltration', key: 'Data Exfiltration', color: '#c4755a' },
-                  { name: 'Insider Threat', key: 'Insider Threat', color: '#b26666' },
-                  { name: 'False Positive', key: 'False Positive', color: '#9ca3af' },
+                  { name: 'Lateral Movement', key: 'Lateral Movement', color: '#4682b4' },
+                  { name: 'Data Exfiltration', key: 'Data Exfiltration', color: '#5a7caa' },
+                  { name: 'Command & Control', key: 'Command & Control', color: '#4e4d8c' },
+                  { name: 'Insider Threat', key: 'Insider Threat', color: '#8e6b87' },
+                  { name: 'Brute Force', key: 'Brute Force', color: '#b08989' },
+                  { name: 'Defense Evasion', key: 'Defense Evasion', color: '#b26666' },
                 ];
                 const cb = classificationData.categoryBreakdown;
-                const catSegments = ALL_CATEGORIES.map(c => ({ ...c, value: cb[c.key] || 0 })).filter(s => s.value > 0);
+                const catSegments = ALL_CATEGORIES.map(c => ({ ...c, value: cb[c.key] || 0 }));
                 const catTotal = catSegments.reduce((sum, s) => sum + s.value, 0);
-                const catChartData = catTotal > 0 ? catSegments : [{ name: 'None', value: 1, color: '#374151' }];
+                const catChartData = catTotal > 0 ? catSegments.filter(s => s.value > 0) : [{ name: 'None', value: 1, color: '#374151' }];
 
                 const sb = alertStats.severity_breakdown;
                 const sevSegments = [

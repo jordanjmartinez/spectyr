@@ -2288,7 +2288,7 @@ def finalize_chain(session, scenario_id):
 
 def log_writer(session, interval=1):
     """Rolling-queue log writer: continuously emits normal traffic and drips
-    attack chains from session['alert_queue'] every 60-120 seconds.
+    attack chains from session['alert_queue'] every 40-80 seconds.
     No per-level pause; only pauses when all alerts are resolved or session
     is explicitly paused.
     """
@@ -2335,8 +2335,8 @@ def log_writer(session, interval=1):
                 print(f"[DRIP {session['injected_count']}/{session['queue_length']}] "
                       f"{scenario_entry['ticket_title']} ({scenario_entry['category']})",
                       flush=True)
-                # Schedule next drip 60-120s out
-                session["next_drip_at"] = now + timedelta(seconds=random.randint(60, 120))
+                # Schedule next drip 40-80s out
+                session["next_drip_at"] = now + timedelta(seconds=random.randint(40, 80))
             else:
                 print(f"[ERROR] No attack chain for {scenario_entry['scenario_label']}, skipping",
                       flush=True)

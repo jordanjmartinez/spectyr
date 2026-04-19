@@ -182,7 +182,7 @@ const Dashboard = () => {
                   }`}
                 />
               </span>
-              {groupedAlertCount > 0 && <span className="text-gray-500 font-normal ml-1.5">{groupedAlertCount}</span>}
+              <span className={`font-normal ml-1.5 ${groupedAlertCount > 0 ? "text-gray-500" : "invisible"}`}>{groupedAlertCount || "0"}</span>
             </button>
             <button
               onClick={() => setView("table")}
@@ -198,6 +198,7 @@ const Dashboard = () => {
                   }`}
                 />
               </span>
+              <span className="font-normal ml-1.5 invisible">0</span>
             </button>
             <button
               onClick={() => setView("analytics")}
@@ -213,7 +214,7 @@ const Dashboard = () => {
                   }`}
                 />
               </span>
-              {analyticsCount > 0 && <span className="text-gray-500 font-normal ml-1.5">{analyticsCount}</span>}
+              <span className={`font-normal ml-1.5 ${analyticsCount > 0 ? "text-gray-500" : "invisible"}`}>{analyticsCount || "0"}</span>
             </button>
             <button
               onClick={() => setView("reports")}
@@ -229,7 +230,7 @@ const Dashboard = () => {
                   }`}
                 />
               </span>
-              {reportCount > 0 && <span className="text-gray-500 font-normal ml-1.5">{reportCount}</span>}
+              <span className={`font-normal ml-1.5 ${reportCount > 0 ? "text-gray-500" : "invisible"}`}>{reportCount || "0"}</span>
             </button>
           </div>
 
