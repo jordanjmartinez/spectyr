@@ -356,11 +356,11 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
           <table className="w-full min-w-[600px] log-text text-left text-gray-300 border-separate border-spacing-0">
             <thead>
               <tr className="text-xs sm:text-sm uppercase text-gray-400 tracking-wider">
-                <th className="w-10 px-2 sm:px-4 py-3 font-medium"></th>
-                <th className="px-2 sm:px-4 py-3 font-medium whitespace-nowrap">Title</th>
-                <th className="w-[110px] sm:w-[140px] px-2 sm:px-4 py-3 font-medium whitespace-nowrap text-center">Severity</th>
-                <th className="w-[100px] sm:w-[130px] px-2 sm:px-4 py-3 font-medium whitespace-nowrap text-center">Status</th>
-                <th className="w-[110px] sm:w-[190px] px-2 sm:px-4 py-3 font-medium whitespace-nowrap text-center">Actions</th>
+                <th className="w-10 px-2 sm:px-4 py-3 font-medium border-b border-gray-600"></th>
+                <th className="px-2 sm:px-4 py-3 font-medium whitespace-nowrap border-b border-gray-600">Title</th>
+                <th className="w-[110px] sm:w-[140px] px-2 sm:px-4 py-3 font-medium whitespace-nowrap text-center border-b border-gray-600">Severity</th>
+                <th className="w-[100px] sm:w-[130px] px-2 sm:px-4 py-3 font-medium whitespace-nowrap text-center border-b border-gray-600">Status</th>
+                <th className="w-[110px] sm:w-[190px] px-2 sm:px-4 py-3 font-medium whitespace-nowrap text-center border-b border-gray-600">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
@@ -412,7 +412,8 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
                         expandedIndex === index ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
                       }`}>
                         <div className="overflow-hidden min-h-0">
-                          <div className="border-t border-gray-700 px-6 py-4">
+                          <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
+                          <div className="px-6 py-4">
                             <div className="mb-4">
                               <span className="text-sm sm:text-base text-white font-medium">Title</span>
                               <p className="text-gray-300 mt-1 text-sm sm:text-base break-words">{report.title || '—'}</p>

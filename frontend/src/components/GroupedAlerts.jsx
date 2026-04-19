@@ -41,7 +41,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
   const [reportedScenarios, setReportedScenarios] = useState(new Set());
   const [leftView, setLeftView] = useState('types');
   const [scenarioExpanded, setScenarioExpanded] = useState(new Set());
-  const [groupCollapsed, setGroupCollapsed] = useState({});
+  const [groupExpanded, setGroupExpanded] = useState({});
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [dropdownPos, setDropdownPos] = useState(null);
   const dropdownRef = useRef(null);
@@ -519,10 +519,10 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
               <table className="w-full min-w-[600px] log-text text-left text-gray-300 border-separate border-spacing-0">
                 <thead>
                   <tr className="text-xs sm:text-sm uppercase text-gray-400 tracking-wider">
-                    <th className="w-10 px-2 sm:px-4 py-3 font-medium"></th>
-                    <th className="w-12 px-1 sm:px-2 py-3 font-medium"></th>
-                    <th className="px-2 sm:px-4 py-3 font-medium">Title</th>
-                    <th className="w-24 sm:w-28 px-2 sm:px-4 py-3 font-medium text-center">Status</th>
+                    <th className="w-10 px-2 sm:px-4 py-3 font-medium border-b border-gray-600"></th>
+                    <th className="w-12 px-1 sm:px-2 py-3 font-medium border-b border-gray-600"></th>
+                    <th className="px-2 sm:px-4 py-3 font-medium border-b border-gray-600">Title</th>
+                    <th className="w-24 sm:w-28 px-2 sm:px-4 py-3 font-medium text-center border-b border-gray-600">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700">
@@ -563,7 +563,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                               isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
                             }`}>
                               <div className="overflow-hidden min-h-0">
-                                <div className="border-t border-gray-700 px-6 py-4">
+                                <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
+                                <div className="px-6 py-4">
                                   <p className="text-gray-300 text-sm sm:text-base leading-relaxed">{scenario.storyline}</p>
                                 </div>
                               </div>
@@ -607,7 +608,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                             scenarioExpanded.has(scenario.level) ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
                           }`}>
                             <div className="overflow-hidden min-h-0">
-                              <div className="border-t border-gray-700 px-6 py-4">
+                              <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
+                              <div className="px-6 py-4">
                                 <p className="text-gray-300 text-sm sm:text-base leading-relaxed">{scenario.storyline}</p>
                               </div>
                             </div>
@@ -950,16 +952,16 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
               <table className="w-full min-w-[600px] log-text text-left text-gray-300 border-separate border-spacing-0">
                 <thead>
                   <tr className="text-xs sm:text-sm uppercase text-gray-400 tracking-wider">
-                    <th className="w-10 px-2 sm:px-4 py-3 font-medium"></th>
-                    <th className="w-12 px-1 sm:px-2 py-3 font-medium"></th>
-                    <th className="px-2 sm:px-4 py-3 font-medium">Title</th>
-                    <th className="w-32 sm:w-36 px-2 sm:px-4 py-3 font-medium text-center">Actions</th>
+                    <th className="w-10 px-2 sm:px-4 py-3 font-medium border-b border-gray-600"></th>
+                    <th className="w-12 px-1 sm:px-2 py-3 font-medium border-b border-gray-600"></th>
+                    <th className="px-2 sm:px-4 py-3 font-medium border-b border-gray-600">Title</th>
+                    <th className="w-32 sm:w-36 px-2 sm:px-4 py-3 font-medium text-center border-b border-gray-600">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700">
                   {filteredGroups.map(group => {
                     const groupKey = `${group.scenario_id}_${group.threat_pattern}`;
-                    const isExpanded = !groupCollapsed[groupKey];
+                    const isExpanded = !!groupExpanded[groupKey];
                     const severityColors = { Critical: '#b26666', High: '#c28e46', Medium: '#d4cc6e', Low: '#6fa868' };
                     const groupSeverity = group.severity_breakdown ? getHighestSeverity(group.severity_breakdown) : 'Low';
                     const triangleColor = severityColors[groupSeverity];
@@ -969,7 +971,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                           className={`hover:bg-white/5 transition-colors cursor-pointer border-b border-gray-700/50 transition-opacity duration-300 ${
                             disappearingId === group.scenario_id ? 'opacity-0' : 'opacity-100'
                           }`}
-                          onClick={() => setGroupCollapsed(p => ({ ...p, [groupKey]: !p[groupKey] }))}
+                          onClick={() => setGroupExpanded(p => ({ ...p, [groupKey]: !p[groupKey] }))}
                         >
                           <td className="w-10 pl-0 pr-1 sm:pr-2 py-4">
                             <svg
@@ -1044,7 +1046,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                               isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
                             }`}>
                               <div className="overflow-hidden min-h-0">
-                                <div className="border-t border-gray-700 px-6 py-4">
+                                <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
+                                <div className="px-6 py-4">
                                   {group.status === 'classified' && group.analyst_category && (
                                     <p className="text-sm text-gray-400 mb-3">
                                       Classified as: <span className="text-blue-400 font-medium">{group.analyst_category}</span>
@@ -1128,7 +1131,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                                   }`}
                                                 >
                                                   <div className="overflow-hidden min-h-0">
-                                                    <div className="border-t border-gray-700 px-6 py-4">
+                                                    <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
+                                                    <div className="px-6 py-4">
                                                       {renderCleanEventDetails(log)}
                                                     </div>
                                                   </div>

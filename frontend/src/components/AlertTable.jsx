@@ -330,13 +330,13 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
           <table className="w-full min-w-[900px] sm:min-w-[1000px] log-text text-left text-gray-300 border-separate border-spacing-0">
             <thead>
               <tr className="text-xs sm:text-sm uppercase text-gray-400 tracking-wider">
-                <th className="px-2 sm:px-4 py-3 font-medium w-10"></th>
-                <th className="px-2 sm:px-4 py-3 font-medium w-[100px] sm:w-[130px] whitespace-nowrap text-center">Time</th>
-                <th className="px-2 sm:px-4 py-3 font-medium w-[160px] sm:w-[240px] whitespace-nowrap text-center">Event Type</th>
-                <th className="px-2 sm:px-4 py-3 font-medium w-[110px] sm:w-[170px] whitespace-nowrap text-center">Src Type</th>
-                <th className="px-2 sm:px-4 py-3 font-medium w-[120px] sm:w-[160px] whitespace-nowrap text-center">Src IP</th>
-                <th className="px-2 sm:px-4 py-3 font-medium w-[120px] sm:w-[160px] whitespace-nowrap text-center">Dst IP</th>
-                <th className="px-2 sm:px-4 py-3 font-medium w-[240px] sm:w-auto whitespace-nowrap">Message</th>
+                <th className="px-2 sm:px-4 py-3 font-medium w-10 border-b border-gray-600"></th>
+                <th className="px-2 sm:px-4 py-3 font-medium w-[100px] sm:w-[130px] whitespace-nowrap text-center border-b border-gray-600">Time</th>
+                <th className="px-2 sm:px-4 py-3 font-medium w-[160px] sm:w-[240px] whitespace-nowrap text-center border-b border-gray-600">Event Type</th>
+                <th className="px-2 sm:px-4 py-3 font-medium w-[110px] sm:w-[170px] whitespace-nowrap text-center border-b border-gray-600">Src Type</th>
+                <th className="px-2 sm:px-4 py-3 font-medium w-[120px] sm:w-[160px] whitespace-nowrap text-center border-b border-gray-600">Src IP</th>
+                <th className="px-2 sm:px-4 py-3 font-medium w-[120px] sm:w-[160px] whitespace-nowrap text-center border-b border-gray-600">Dst IP</th>
+                <th className="px-2 sm:px-4 py-3 font-medium w-[240px] sm:w-auto whitespace-nowrap border-b border-gray-600">Message</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
@@ -399,7 +399,8 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
                           }`}
                         >
                           <div className="overflow-hidden min-h-0">
-                            <div className="border-t border-gray-700 px-6 py-4">
+                            <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
+                            <div className="px-6 py-4">
                               {renderCleanEventDetails(alert)}
                             </div>
                           </div>
