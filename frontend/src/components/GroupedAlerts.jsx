@@ -547,7 +547,9 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                             </svg>
                           </td>
                           <td className="w-12 px-1 sm:px-2 py-4 text-center">
-                            <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-full inline-flex items-center justify-center text-xs font-bold border-[3px] border-[#d1d5db] text-white">!</span>
+                            <svg className="w-5 h-5 sm:w-6 sm:h-6 inline-block text-[#d1d5db]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
                           </td>
                           <td className="px-2 sm:px-4 py-4">
                             <p className="text-sm sm:text-base font-medium text-gray-200 whitespace-nowrap">{scenario.ticket_title}</p>
@@ -592,7 +594,9 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                           </svg>
                         </td>
                         <td className="w-12 px-1 sm:px-2 py-4 text-center">
-                          <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-full inline-flex items-center justify-center text-xs font-bold border-[3px] border-gray-600 text-gray-500">!</span>
+                          <svg className="w-5 h-5 sm:w-6 sm:h-6 inline-block text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
                         </td>
                         <td className="px-2 sm:px-4 py-4">
                           <p className="text-sm sm:text-base font-medium text-gray-200 whitespace-nowrap">{scenario.ticket_title}</p>
