@@ -24,7 +24,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterOpen, setFilterOpen] = useState(true);
-  const [filterClosed, setFilterClosed] = useState(true);
+  const [filterClosed, setFilterClosed] = useState(false);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [, setTick] = useState(0);
   const [fadingOutId, setFadingOutId] = useState(null);

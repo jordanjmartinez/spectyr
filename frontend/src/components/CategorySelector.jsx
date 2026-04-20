@@ -37,7 +37,7 @@ const CategorySelector = ({ onSelect, onCancel, scenarioInfo }) => {
               <button
                 key={category.id}
                 onClick={() => onSelect(category.id, category.label)}
-                className="flex items-center justify-center px-3 py-5 rounded-lg border-2 transition-all duration-200 group border-gray-600 bg-[#21262d] hover:bg-[#30363d] hover:border-gray-400 hover:shadow-[0_0_10px_rgba(156,163,175,0.1)]"
+                className="flex items-center justify-center px-3 py-5 rounded-lg border-2 transition-all duration-200 group border-gray-600 bg-[#21262d] hover:bg-[#30363d] hover:border-[#5882b4]"
               >
                 <span className="text-sm font-medium text-center text-gray-300 group-hover:text-white">
                   {category.label}
