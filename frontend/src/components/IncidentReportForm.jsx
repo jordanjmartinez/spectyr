@@ -104,7 +104,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
     'Impact',
   ];
 
-  const inputClass = "w-full bg-[#0d1117] text-xs sm:text-sm text-white placeholder-gray-600 border border-gray-700 focus:border-gray-500 rounded-md px-3 py-2 outline-none transition-colors";
+  const inputClass = "w-full bg-[#0d1117] text-xs sm:text-sm text-white placeholder-gray-600 border border-gray-700 focus:border-[#5882b4] rounded-md px-3 py-2 outline-none transition-colors";
 
   return (
     <div className={`text-white ${inline ? 'w-full' : 'p-8 w-full max-w-2xl bg-[#161b22] rounded-xl border border-gray-700 shadow-2xl'}`}>

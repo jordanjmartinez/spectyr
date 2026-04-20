@@ -2782,6 +2782,7 @@ def resume_generation():
             "storyline": queue_entry.get("storyline", ""),
             "startTime": queue_entry.get("chain_complete_at") or queue_entry.get("injected_at"),
             "correct": bool(category_correct),
+            "scenario_id": queue_entry.get("scenario_id"),
         })
         print(f"[RESOLVED {s['resolved_count']}/{s['queue_length']}] "
               f"{queue_entry.get('ticket_title')} — {'correct' if category_correct else 'wrong'}",
@@ -2976,6 +2977,7 @@ def submit_report():
                 "storyline": queue_entry.get("storyline", ""),
                 "startTime": queue_entry.get("chain_complete_at") or queue_entry.get("injected_at"),
                 "correct": bool(is_correct),
+                "scenario_id": queue_entry.get("scenario_id"),
             })
             print(f"[RESOLVED {s['resolved_count']}/{s['queue_length']}] "
                   f"{queue_entry.get('ticket_title')} via report — "

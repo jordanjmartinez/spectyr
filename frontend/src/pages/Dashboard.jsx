@@ -178,7 +178,7 @@ const Dashboard = () => {
                 Alerts
                 <span
                   className={`absolute left-0 right-0 h-0.5 -bottom-[13px] sm:-bottom-[17px] ${
-                    view === "grouped" ? "bg-white" : "bg-transparent"
+                    view === "grouped" ? "bg-[#5882b4]" : "bg-transparent"
                   }`}
                 />
               </span>
@@ -194,7 +194,7 @@ const Dashboard = () => {
                 Events
                 <span
                   className={`absolute left-0 right-0 h-0.5 -bottom-[13px] sm:-bottom-[17px] ${
-                    view === "table" ? "bg-white" : "bg-transparent"
+                    view === "table" ? "bg-[#5882b4]" : "bg-transparent"
                   }`}
                 />
               </span>
@@ -210,7 +210,7 @@ const Dashboard = () => {
                 Metrics
                 <span
                   className={`absolute left-0 right-0 h-0.5 -bottom-[13px] sm:-bottom-[17px] ${
-                    view === "analytics" ? "bg-white" : "bg-transparent"
+                    view === "analytics" ? "bg-[#5882b4]" : "bg-transparent"
                   }`}
                 />
               </span>
@@ -226,7 +226,7 @@ const Dashboard = () => {
                 Reports
                 <span
                   className={`absolute left-0 right-0 h-0.5 -bottom-[13px] sm:-bottom-[17px] ${
-                    view === "reports" ? "bg-white" : "bg-transparent"
+                    view === "reports" ? "bg-[#5882b4]" : "bg-transparent"
                   }`}
                 />
               </span>
@@ -246,7 +246,7 @@ const Dashboard = () => {
               <div className="flex items-center gap-2 sm:gap-4">
                 <button
                   onClick={handleSimulateEvents}
-                  className="inline-flex items-center px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 transition focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  className="inline-flex items-center px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md bg-[#5882b4] hover:bg-[#7aa4d4] text-white border border-[#5882b4] hover:border-[#7aa4d4] transition focus:outline-none focus:ring-2 focus:ring-[#5882b4]"
                 >
                   <span className="sm:hidden">Start Sim</span><span className="hidden sm:inline">Start Simulation</span>
                 </button>

@@ -6,6 +6,7 @@ import { apiFetch } from '../api';
 import CategorySelector from '../components/CategorySelector';
 import ClassificationSelector from '../components/ClassificationSelector';
 import IncidentReportForm from '../components/IncidentReportForm';
+import SeverityPill from '../components/SeverityPill';
 
 const PieTooltip = ({ active, payload }) => {
   if (!active || !payload?.length) return null;
@@ -81,6 +82,19 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
   const [filterCompleted, setFilterCompleted] = useState(false);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [fadingOutScenarioLevel, setFadingOutScenarioLevel] = useState(null);
+  const [highlightedScenarioId, setHighlightedScenarioId] = useState(null);
+
+  const scrollToNotableEvent = (group) => {
+    if (!group) return;
+    const groupKey = `${group.scenario_id}_${group.threat_pattern}`;
+    setGroupExpanded(prev => ({ ...prev, [groupKey]: true }));
+    setHighlightedScenarioId(group.scenario_id);
+    setTimeout(() => {
+      const el = document.getElementById(`notable-event-${group.scenario_id}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 80);
+    setTimeout(() => setHighlightedScenarioId(null), 1600);
+  };
 
   const fetchGroupedAlerts = () => {
     apiFetch('/api/grouped-alerts')
@@ -469,7 +483,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           maxLength={300}
-          className="w-full pl-4 pr-10 py-2 rounded-md bg-[#0d1117] border border-gray-700 text-white text-sm placeholder-gray-400 focus:border-gray-500 focus:outline-none transition-colors"
+          className="w-full pl-4 pr-10 py-2 rounded-md bg-[#0d1117] border border-gray-700 text-white text-sm placeholder-gray-400 focus:border-[#5882b4] focus:outline-none transition-colors"
         />
         {!searchTerm && (
           <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -521,7 +535,9 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                   <tr className="text-xs sm:text-sm uppercase text-gray-400 tracking-wider">
                     <th className="w-10 px-2 sm:px-4 py-3 font-medium border-b border-gray-600"></th>
                     <th className="w-12 px-1 sm:px-2 py-3 font-medium border-b border-gray-600"></th>
-                    <th className="px-2 sm:px-4 py-3 font-medium border-b border-gray-600">Title</th>
+                    <th className="px-2 sm:px-4 py-3 font-medium border-b border-gray-600">Ticket</th>
+                    <th className="w-[110px] sm:w-[140px] px-2 sm:px-4 py-3 font-medium whitespace-nowrap text-center border-b border-gray-600">Severity</th>
+                    <th className="w-[110px] sm:w-[140px] px-2 sm:px-4 py-3 font-medium whitespace-nowrap text-center border-b border-gray-600">Assigned</th>
                     <th className="w-24 sm:w-28 px-2 sm:px-4 py-3 font-medium text-center border-b border-gray-600">Status</th>
                   </tr>
                 </thead>
@@ -553,14 +569,37 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                           </td>
                           <td className="px-2 sm:px-4 py-4">
                             <p className="text-sm sm:text-base font-medium text-gray-200 whitespace-nowrap">{scenario.ticket_title}</p>
-                            {scenario.startTime && <p className="text-xs sm:text-sm text-gray-400 mt-0.5">Created {getRelativeTime(scenario.startTime)}</p>}
+                            {(() => {
+                              const match = groups.find(g => g.scenario_id === scenario.scenario_id);
+                              const alertId = match?.alert_id;
+                              if (!alertId && !scenario.startTime) return null;
+                              return (
+                                <p className="text-xs sm:text-sm text-gray-400 mt-0.5">
+                                  {alertId && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); scrollToNotableEvent(match); }}
+                                      className="text-[#5882b4] hover:text-[#7aa4d4] hover:underline font-medium transition-colors"
+                                    >{alertId}</button>
+                                  )}
+                                  {alertId && scenario.startTime && <span className="text-gray-600 mx-2">·</span>}
+                                  {scenario.startTime && `Created ${getRelativeTime(scenario.startTime)}`}
+                                </p>
+                              );
+                            })()}
+                          </td>
+                          <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
+                            <SeverityPill level={groups.find(g => g.scenario_id === scenario.scenario_id)?.group_severity} />
+                          </td>
+                          <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
+                            <span className="text-gray-300">{analystName || 'Unassigned'}</span>
                           </td>
                           <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
                             <span className="text-gray-300">Active</span>
                           </td>
                         </tr>
                         <tr>
-                          <td colSpan="4" className="p-0">
+                          <td colSpan="6" className="p-0">
                             <div className={`grid transition-all duration-300 ease-in-out ${
                               isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
                             }`}>
@@ -600,14 +639,31 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                         </td>
                         <td className="px-2 sm:px-4 py-4">
                           <p className="text-sm sm:text-base font-medium text-gray-200 whitespace-nowrap">{scenario.ticket_title}</p>
-                          {scenario.startTime && <p className="text-xs sm:text-sm text-gray-400 mt-0.5">Created {getRelativeTime(scenario.startTime)}</p>}
+                          {(() => {
+                            const match = groups.find(g => g.scenario_id === scenario.scenario_id);
+                            const alertId = match?.alert_id;
+                            if (!alertId && !scenario.startTime) return null;
+                            return (
+                              <p className="text-xs sm:text-sm text-gray-400 mt-0.5">
+                                {alertId && <span className="text-[#5882b4] font-medium">{alertId}</span>}
+                                {alertId && scenario.startTime && <span className="text-gray-600 mx-2">·</span>}
+                                {scenario.startTime && `Created ${getRelativeTime(scenario.startTime)}`}
+                              </p>
+                            );
+                          })()}
+                        </td>
+                        <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
+                          <SeverityPill level={groups.find(g => g.scenario_id === scenario.scenario_id)?.group_severity} />
+                        </td>
+                        <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
+                          <span className="text-gray-300">{analystName || 'Unassigned'}</span>
                         </td>
                         <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
                           <span className="text-gray-300">Completed</span>
                         </td>
                       </tr>
                       <tr>
-                        <td colSpan="4" className="p-0">
+                        <td colSpan="6" className="p-0">
                           <div className={`grid transition-all duration-300 ease-in-out ${
                             scenarioExpanded.has(scenario.level) ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
                           }`}>
@@ -673,7 +729,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                         onClick={() => setDashView('total')}
                         className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
                           dashView === 'total'
-                            ? 'bg-[#30363d] text-white border-gray-600'
+                            ? 'bg-[#5882b4] text-white border-[#5882b4]'
                             : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
                         }`}
                       >
@@ -684,7 +740,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                         onClick={() => setDashView('source')}
                         className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
                           dashView === 'source'
-                            ? 'bg-[#30363d] text-white border-gray-600'
+                            ? 'bg-[#5882b4] text-white border-[#5882b4]'
                             : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
                         }`}
                       >
@@ -840,7 +896,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                         onClick={() => setLeftView('types')}
                         className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
                           leftView === 'types'
-                            ? 'bg-[#30363d] text-white border-gray-600'
+                            ? 'bg-[#5882b4] text-white border-[#5882b4]'
                             : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
                         }`}
                       >
@@ -851,7 +907,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                         onClick={() => setLeftView('categories')}
                         className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
                           leftView === 'categories'
-                            ? 'bg-[#30363d] text-white border-gray-600'
+                            ? 'bg-[#5882b4] text-white border-[#5882b4]'
                             : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
                         }`}
                       >
@@ -958,7 +1014,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                   <tr className="text-xs sm:text-sm uppercase text-gray-400 tracking-wider">
                     <th className="w-10 px-2 sm:px-4 py-3 font-medium border-b border-gray-600"></th>
                     <th className="w-12 px-1 sm:px-2 py-3 font-medium border-b border-gray-600"></th>
-                    <th className="px-2 sm:px-4 py-3 font-medium border-b border-gray-600">Title</th>
+                    <th className="px-2 sm:px-4 py-3 font-medium border-b border-gray-600">Events</th>
                     <th className="w-32 sm:w-36 px-2 sm:px-4 py-3 font-medium text-center border-b border-gray-600">Actions</th>
                   </tr>
                 </thead>
@@ -972,9 +1028,10 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                     return (
                       <React.Fragment key={groupKey}>
                         <tr
+                          id={`notable-event-${group.scenario_id}`}
                           className={`hover:bg-white/5 transition-colors cursor-pointer border-b border-gray-700/50 transition-opacity duration-300 ${
                             disappearingId === group.scenario_id ? 'opacity-0' : 'opacity-100'
-                          }`}
+                          } ${highlightedScenarioId === group.scenario_id ? 'bg-[rgba(88,130,180,0.18)]' : ''}`}
                           onClick={() => setGroupExpanded(p => ({ ...p, [groupKey]: !p[groupKey] }))}
                         >
                           <td className="w-10 pl-0 pr-1 sm:pr-2 py-4">
@@ -1007,7 +1064,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                               {group.ticket_title || 'Unknown'}
                             </p>
                             <p className="text-xs sm:text-sm text-gray-400 mt-0.5">
-                              {group.alert_id && <span className="font-medium">{group.alert_id}</span>}
+                              {group.alert_id && <span className="text-[#5882b4] font-medium">{group.alert_id}</span>}
                               {group.alert_id && <span className="text-gray-600 mx-2">·</span>}
                               <span>{group.log_count} {group.log_count === 1 ? 'Event' : 'Events'}</span>
                             </p>

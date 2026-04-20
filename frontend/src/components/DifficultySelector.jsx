@@ -36,7 +36,7 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
             onChange={(e) => setAnalystName(e.target.value)}
             placeholder="Your Name"
             maxLength={12}
-            className="w-full px-4 py-2 rounded-md bg-[#0d1117] border border-gray-700 text-white text-sm placeholder-gray-400 focus:border-gray-500 focus:outline-none transition-colors"
+            className="w-full px-4 py-2 rounded-md bg-[#0d1117] border border-gray-700 text-white text-sm placeholder-gray-400 focus:border-[#5882b4] focus:outline-none transition-colors"
           />
         </div>
 
@@ -48,7 +48,7 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
             className={`group relative bg-[#21262d] border-2 rounded-xl p-4 sm:p-6 text-center transition-all duration-200 ${
               !isNameValid
                 ? 'border-gray-700 opacity-50 cursor-not-allowed'
-                : 'border-gray-600 hover:border-gray-400 hover:shadow-[0_0_10px_rgba(156,163,175,0.1)] cursor-pointer'
+                : 'border-gray-600 hover:border-[#5882b4] hover:shadow-[0_0_14px_rgba(88,130,180,0.35)] cursor-pointer'
             }`}
           >
             <div className="flex flex-col items-center mb-3">
@@ -71,7 +71,7 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
             className={`group relative bg-[#21262d] border-2 rounded-xl p-4 sm:p-6 text-center transition-all duration-200 ${
               !isNameValid
                 ? 'border-gray-700 opacity-50 cursor-not-allowed'
-                : 'border-gray-600 hover:border-gray-400 hover:shadow-[0_0_10px_rgba(156,163,175,0.1)] cursor-pointer'
+                : 'border-gray-600 hover:border-[#5882b4] hover:shadow-[0_0_14px_rgba(88,130,180,0.35)] cursor-pointer'
             }`}
           >
             <div className="flex flex-col items-center mb-3">

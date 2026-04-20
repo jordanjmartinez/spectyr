@@ -3,6 +3,7 @@ import { apiFetch } from '../api';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import IncidentReportForm from '../components/IncidentReportForm';
+import SeverityPill from '../components/SeverityPill';
 
 const STATUS_OPTIONS = ['Open', 'Closed'];
 const SEVERITY_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
@@ -298,7 +299,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             maxLength={300}
-            className="w-full pl-4 pr-10 py-2 rounded-md bg-[#0d1117] border border-gray-700 text-white text-sm placeholder-gray-400 focus:border-gray-500 focus:outline-none transition-colors"
+            className="w-full pl-4 pr-10 py-2 rounded-md bg-[#0d1117] border border-gray-700 text-white text-sm placeholder-gray-400 focus:border-[#5882b4] focus:outline-none transition-colors"
           />
           {!searchTerm && (
             <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -382,10 +383,10 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
                     </td>
                     <td className="px-2 sm:px-4 py-4">
                       <p className="text-sm sm:text-base font-medium text-gray-200 whitespace-nowrap">{report.title || 'Untitled Report'}</p>
-                      <p className="text-xs sm:text-sm text-gray-400 mt-0.5">{report.alert_id || `INC-${getReportNumber(report.id)}`} · {getRelativeTime(report.timestamp)}</p>
+                      <p className="text-xs sm:text-sm text-gray-400 mt-0.5"><span className="text-[#5882b4] font-medium">{report.alert_id || `INC-${getReportNumber(report.id)}`}</span> · {getRelativeTime(report.timestamp)}</p>
                     </td>
                     <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
-                      <span className="text-gray-300">{report.severity || 'Unset'}</span>
+                      <SeverityPill level={report.severity} />
                     </td>
                     <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center" onClick={(e) => e.stopPropagation()}>
                       <button

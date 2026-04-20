@@ -56,7 +56,7 @@ const PerformanceGrade = ({ report }) => {
               onClick={() => setResultsView('threats')}
               className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
                 resultsView === 'threats'
-                  ? 'bg-[#30363d] text-white border-gray-600'
+                  ? 'bg-[#5882b4] text-white border-[#5882b4]'
                   : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
               }`}
             >
@@ -66,7 +66,7 @@ const PerformanceGrade = ({ report }) => {
               onClick={() => setResultsView('fp')}
               className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
                 resultsView === 'fp'
-                  ? 'bg-[#30363d] text-white border-gray-600'
+                  ? 'bg-[#5882b4] text-white border-[#5882b4]'
                   : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
               }`}
             >
