@@ -290,15 +290,21 @@ const Dashboard = () => {
               </svg>
             </button>
             <h3 className="text-lg font-semibold text-white mb-4">Reset Simulation</h3>
-            <div className="mb-5" style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
             <p className="text-gray-400 mb-6">
               This will clear all events, alerts, and reports. Your progress will be reset. This action cannot be undone.
             </p>
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowResetModal(false)}
+                disabled={isResetting}
+                className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
+              >
+                Cancel
+              </button>
               <button
                 onClick={handleResetSimulator}
                 disabled={isResetting}
-                className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-300 border border-gray-600 transition disabled:opacity-50 inline-flex items-center gap-2"
+                className="inline-flex items-center justify-center gap-2 px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#5882b4] hover:bg-[#7aa4d4] text-white border-[#5882b4] hover:border-[#7aa4d4] focus:outline-none focus:ring-2 focus:ring-[#5882b4] disabled:opacity-50"
               >
                 {isResetting ? (
                   <>
@@ -309,7 +315,7 @@ const Dashboard = () => {
                     Resetting...
                   </>
                 ) : (
-                  'Yes, reset it'
+                  'Reset'
                 )}
               </button>
             </div>
@@ -337,9 +343,17 @@ const Dashboard = () => {
             </button>
             <h3 className="text-lg font-semibold text-white mb-4">Simulation Active</h3>
             <div className="mb-5" style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
-            <p className="text-gray-400">
+            <p className="text-gray-400 mb-6">
               You have <span className="text-white font-medium">{existingLogCount} events</span> from an active session. Use <span className="text-white font-medium">Reset Simulation</span> to start fresh.
             </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowSimulateModal(false)}
+                className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

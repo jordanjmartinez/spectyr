@@ -282,15 +282,18 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
       </div>
 
       {/* Footer */}
-      <div className="mt-5 flex justify-end">
+      <div className="mt-5 flex justify-end gap-2">
+        <button
+          onClick={onCancel}
+          disabled={isSubmitting}
+          className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
+        >
+          Cancel
+        </button>
         <button
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className={`px-3 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 ${
-            isSubmitting
-              ? 'bg-[#21262d] text-gray-500 border-gray-700 cursor-not-allowed'
-              : 'bg-[#30363d] hover:bg-[#3d444b] text-white border-gray-600'
-          }`}
+          className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#5882b4] hover:bg-[#7aa4d4] text-white border-[#5882b4] hover:border-[#7aa4d4] focus:outline-none focus:ring-2 focus:ring-[#5882b4] disabled:opacity-50"
         >
           {isSubmitting ? 'Saving...' : isEditing ? 'Save' : 'Submit'}
         </button>
