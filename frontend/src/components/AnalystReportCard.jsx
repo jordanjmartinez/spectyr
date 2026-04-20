@@ -15,7 +15,7 @@ const AnalystReportCard = ({ report }) => {
   const grade = (() => {
     if (!report?.total_actions) return '-';
     const acc = report.accuracy || 0;
-    return acc >= 100 ? 'A' : acc >= 80 ? 'B' : acc >= 60 ? 'C' : acc >= 40 ? 'D' : 'F';
+    return acc >= 90 ? 'A' : acc >= 80 ? 'B' : acc >= 70 ? 'C' : acc >= 60 ? 'D' : 'F';
   })();
 
   return (
