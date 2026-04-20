@@ -11,7 +11,7 @@ const SeverityPill = ({ level }) => {
   const color = SEVERITY_COLORS[level] || '#9ca3af';
   return (
     <span
-      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border whitespace-nowrap"
+      className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium border whitespace-nowrap"
       style={{
         color,
         backgroundColor: hexToRgba(color, 0.15),

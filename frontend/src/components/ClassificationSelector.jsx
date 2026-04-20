@@ -1,16 +1,8 @@
 import React from 'react';
 
 const CLASSIFICATIONS = [
-  {
-    id: 'true_positive',
-    label: 'True Positive',
-    description: 'Confirmed threat that needs categorization',
-  },
-  {
-    id: 'false_positive',
-    label: 'False Positive',
-    description: 'Benign activity, not an actual threat',
-  },
+  { id: 'true_positive', label: 'True Positive' },
+  { id: 'false_positive', label: 'False Positive' },
 ];
 
 const ClassificationSelector = ({ onSelect, onCancel }) => {
@@ -37,12 +29,11 @@ const ClassificationSelector = ({ onSelect, onCancel }) => {
               <button
                 key={c.id}
                 onClick={() => onSelect(c.id)}
-                className="flex flex-col items-center justify-center gap-2 px-4 py-8 rounded-lg border-2 transition-all duration-200 group border-gray-600 bg-[#21262d] hover:bg-[#30363d] hover:border-[#5882b4]"
+                className="flex items-center justify-center px-4 py-8 rounded-lg border-2 transition-all duration-200 group border-gray-600 bg-[#21262d] hover:bg-[#30363d] hover:border-[#5882b4]"
               >
                 <span className="text-lg font-semibold text-center text-gray-300 group-hover:text-white">
                   {c.label}
                 </span>
-                <span className="text-xs text-gray-500 text-center">{c.description}</span>
               </button>
             ))}
           </div>

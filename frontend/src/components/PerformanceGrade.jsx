@@ -86,7 +86,7 @@ const PerformanceGrade = ({ report }) => {
                       startAngle={90}
                       endAngle={-270}
                       dataKey="value"
-                      stroke="none"
+                      stroke="#161b22" strokeWidth={2}
                     >
                       {total === 0
                         ? [<Cell key="empty" fill="#374151" />]

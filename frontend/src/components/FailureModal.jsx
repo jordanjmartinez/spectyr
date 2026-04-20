@@ -1,6 +1,28 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 const FailureModal = ({ onRetry, onQuit }) => {
+  const [selected, setSelected] = useState(0);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        setSelected(0);
+        e.preventDefault();
+      } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        setSelected(1);
+        e.preventDefault();
+      } else if (e.key === 'Enter') {
+        (selected === 0 ? onRetry : onQuit)?.();
+        e.preventDefault();
+      } else if (e.key === 'Escape') {
+        onQuit?.();
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selected, onRetry, onQuit]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Dark overlay */}
@@ -61,26 +83,31 @@ const FailureModal = ({ onRetry, onQuit }) => {
           className="text-gray-400 text-sm sm:text-base mb-8 tracking-wide"
           style={{ fontFamily: "'JetBrains Mono', sans-serif" }}
         >
-          &gt;<span className="animate-blink">|</span> The attacker is already inside.
+          The attacker is already inside.
         </p>
 
-        {/* Try Again prompt */}
-        <p className="text-gray-400 text-sm mb-4">
-          Try Again?
-        </p>
-
-        <div className="flex justify-center gap-3">
+        <div className="flex justify-center gap-6">
           <button
             onClick={onRetry}
-            className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-300 border border-gray-600 transition"
+            onMouseEnter={() => setSelected(0)}
+            className={`text-sm sm:text-base font-medium tracking-wide transition-colors ${
+              selected === 0 ? 'text-white' : 'text-gray-500 hover:text-gray-300'
+            }`}
+            style={{ fontFamily: "'JetBrains Mono', sans-serif" }}
           >
-            Yes, I'm brave
+            {selected === 0 && <>&gt;<span className="animate-blink">|</span> </>}
+            restart
           </button>
           <button
             onClick={onQuit}
-            className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-300 border border-gray-600 transition"
+            onMouseEnter={() => setSelected(1)}
+            className={`text-sm sm:text-base font-medium tracking-wide transition-colors ${
+              selected === 1 ? 'text-white' : 'text-gray-500 hover:text-gray-300'
+            }`}
+            style={{ fontFamily: "'JetBrains Mono', sans-serif" }}
           >
-            No, maybe later
+            {selected === 1 && <>&gt;<span className="animate-blink">|</span> </>}
+            exit
           </button>
         </div>
       </div>

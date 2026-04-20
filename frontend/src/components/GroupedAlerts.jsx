@@ -774,7 +774,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                   startAngle={90}
                                   endAngle={-270}
                                   dataKey="value"
-                                  stroke="none"
+                                  stroke="#161b22" strokeWidth={2}
                                 >
                                   {(() => {
                                     if (ringTotal === 0) return [<Cell key="empty" fill="#374151" />];
@@ -804,7 +804,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                   startAngle={90}
                                   endAngle={-270}
                                   dataKey="value"
-                                  stroke="none"
+                                  stroke="#161b22" strokeWidth={2}
                                 >
                                   {(sourceTotal > 0 ? sourceSegments.filter(s => s.value > 0).map(s => s.color) : ['#374151']).map((color, i) => (
                                     <Cell key={i} fill={color} />
@@ -929,7 +929,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                   startAngle={90}
                                   endAngle={-270}
                                   dataKey="value"
-                                  stroke="none"
+                                  stroke="#161b22" strokeWidth={2}
                                 >
                                   {sevChartData.map((s, i) => <Cell key={i} fill={s.color} />)}
                                 </Pie>
@@ -945,7 +945,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                           <div className="relative w-36 h-36 sm:w-80 sm:h-80 md:w-40 md:h-40 lg:w-56 lg:h-56 xl:w-80 xl:h-80 aspect-square border-dashed border-2 border-gray-700 rounded-full p-2">
                             <ResponsiveContainer width="100%" height="100%">
                               <PieChart>
-                                <Pie data={catChartData} innerRadius="70%" outerRadius="100%" startAngle={90} endAngle={-270} dataKey="value" stroke="none">
+                                <Pie data={catChartData} innerRadius="70%" outerRadius="100%" startAngle={90} endAngle={-270} dataKey="value" stroke="#161b22" strokeWidth={2}>
                                   {catChartData.map((s, i) => <Cell key={i} fill={s.color} />)}
                                 </Pie>
                                 <Tooltip content={<PieTooltip />} wrapperStyle={{ zIndex: 20, outline: 'none', border: 'none' }} />

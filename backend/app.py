@@ -609,7 +609,7 @@ CAMPAIGN_LEVELS = [
         "scenarios": {
             "Malware": {
                 "scenario_label": "malware_usb",
-                "ticket_title": "Suspicious Process from Removable Media",
+                "ticket_title": "Executable Launched from Removable Media",
                 "storyline": "A USB drive was discovered in the parking lot by an employee this morning. Against policy, they connected it to their workstation to identify the owner. Minutes later, the endpoint began generating alerts. The activity did not stop at execution.",
             },
             "Phishing": {
@@ -663,7 +663,7 @@ CAMPAIGN_LEVELS = [
         "scenarios": {
             "Phishing": {
                 "scenario_label": "phishing_link",
-                "ticket_title": "Suspicious Email Reported by Employee",
+                "ticket_title": "Employee-Reported Email from Third-Party Sender",
                 "storyline": "An employee contacted the help desk after interacting with an email they now believe may have been fraudulent. The email appeared to come from a trusted third-party service. Endpoint and proxy logs show activity on the workstation following the interaction.",
             },
             "Data Exfiltration": {
@@ -695,7 +695,7 @@ CAMPAIGN_LEVELS = [
             },
             "Lateral Movement": {
                 "scenario_label": "lateral_movement_2",
-                "ticket_title": "Suspicious Process Accessing System Memory",
+                "ticket_title": "Process Accessed Protected System Memory",
                 "storyline": "A workstation generated alerts indicating a process accessed sensitive system memory. A second tool was later executed from a temporary directory. Shortly after, a network authentication was recorded on an internal server from the same host.",
             },
             "Defense Evasion": {
