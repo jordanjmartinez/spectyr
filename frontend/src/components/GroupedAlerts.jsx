@@ -510,7 +510,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
               if (noResults) return (
                 <div className="flex flex-col items-center justify-center py-12">
                   <img src="/ghost-searching.png" alt="Ghost Searching" className="w-20 h-20 sm:w-28 sm:h-28 opacity-90 mb-3" />
-                  <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; {searchTerm ? `No matching alerts for "${searchTerm}"` : 'No alerts match the current filter'}</p>
+                  <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt;<span className="animate-blink">|</span> {searchTerm ? `No matching alerts for "${searchTerm}"` : 'No alerts match the current filter'}</p>
                 </div>
               );
 
@@ -635,7 +635,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
           >
             <div className="flex flex-col items-center justify-center py-4">
               <img src="/ghost_scenario.PNG" alt="Ghost Scenario" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
-              <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; Start simulation to receive your first briefing.</p>
+              <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt;<span className="animate-blink">|</span> Start simulation to receive your first briefing.</p>
             </div>
           </div>
         )}
@@ -936,7 +936,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
           >
             <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
               <img src="/ghost_incident.png" alt="Ghost Analyzing" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
-              <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; No alerts detected yet. Alerts will appear here automatically.</p>
+              <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt;<span className="animate-blink">|</span> No alerts detected yet. Alerts will appear here automatically.</p>
             </div>
           </div>
         ) : (

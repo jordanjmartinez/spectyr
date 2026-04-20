@@ -335,13 +335,13 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
         >
           <div className="flex flex-col items-center justify-center py-8 flex-1">
             <img src="/ghost-reports.png" alt="Ghost" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
-            <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; Write a report from Alerts to document your findings.</p>
+            <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt;<span className="animate-blink">|</span> Write a report from Alerts to document your findings.</p>
           </div>
         </div>
       ) : filteredReports.length === 0 && searchTerm ? (
         <div className="flex flex-col items-center justify-center py-12">
           <img src="/ghost-searching.png" alt="Ghost Searching" className="w-20 h-20 sm:w-28 sm:h-28 opacity-90 mb-3" />
-          <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; No matching reports for "{searchTerm}"</p>
+          <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt;<span className="animate-blink">|</span> No matching reports for "{searchTerm}"</p>
         </div>
       ) : (
       <div

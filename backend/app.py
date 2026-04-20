@@ -60,7 +60,7 @@ def create_session():
         "analyst_name": None,
         "used_alert_ids": set(),
         "alert_queue": [],
-        "queue_length": 5,
+        "queue_length": 10,
         "resolved_count": 0,
         "injected_count": 0,
         "next_drip_at": None,
@@ -755,7 +755,7 @@ def select_level_scenarios(level_config):
     }
 
 
-def build_alert_queue(n=5, fp_min=1, fp_max=2):
+def build_alert_queue(n=10, fp_min=1, fp_max=2):
     """
     Build a randomized queue of N unique scenarios drawn from the full pool of
     15 across all CAMPAIGN_LEVELS, with 1-2 FPs (or scaled fp_min/fp_max).
@@ -2335,8 +2335,8 @@ def log_writer(session, interval=1):
                 print(f"[DRIP {session['injected_count']}/{session['queue_length']}] "
                       f"{scenario_entry['ticket_title']} ({scenario_entry['category']})",
                       flush=True)
-                # Schedule next drip 40-80s out
-                session["next_drip_at"] = now + timedelta(seconds=random.randint(40, 80))
+                # Schedule next drip 20-40s out
+                session["next_drip_at"] = now + timedelta(seconds=random.randint(20, 40))
             else:
                 print(f"[ERROR] No attack chain for {scenario_entry['scenario_label']}, skipping",
                       flush=True)
@@ -2399,7 +2399,7 @@ def reset_simulator():
     s["analyst_name"] = None
     s["used_alert_ids"] = set()
     s["alert_queue"] = []
-    s["queue_length"] = 5
+    s["queue_length"] = 10
     s["resolved_count"] = 0
     s["injected_count"] = 0
     s["next_drip_at"] = None
@@ -2426,7 +2426,7 @@ def get_current_level():
             continue
         level_results[str(pos)] = "correct" if entry.get("correct") else "incorrect"
 
-    queue_length = s.get("queue_length", 5) or 5
+    queue_length = s.get("queue_length", 10) or 10
     resolved_count = s.get("resolved_count", 0)
     completed = queue_length > 0 and resolved_count >= queue_length and s.get("injected_count", 0) > 0
 
@@ -3102,7 +3102,7 @@ def get_game_state():
         "current_level": s.get("current_level", 0),
         "analyst_name": s["analyst_name"],
         "resolved_count": s.get("resolved_count", 0),
-        "queue_length": s.get("queue_length", 5),
+        "queue_length": s.get("queue_length", 10),
         "injected_count": s.get("injected_count", 0),
     })
 
@@ -3138,7 +3138,7 @@ def start_simulator():
         print(f"[ANALYST] {s['analyst_name']}", flush=True)
 
     # Build a fresh alert queue for the session
-    s["alert_queue"] = build_alert_queue(n=5, fp_min=1, fp_max=2)
+    s["alert_queue"] = build_alert_queue(n=10, fp_min=1, fp_max=2)
     s["queue_length"] = len(s["alert_queue"])
     s["resolved_count"] = 0
     s["injected_count"] = 0

@@ -57,7 +57,7 @@ const ActionHistory = ({ history: rawHistory }) => {
         >
           <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
             <img src="/ghost_analytics.png" alt="Ghost Analyzing" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
-            <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt; Your post-incident review will appear after your first triage.</p>
+            <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt;<span className="animate-blink">|</span> Your post-incident review will appear after your first triage.</p>
           </div>
         </div>
       </div>

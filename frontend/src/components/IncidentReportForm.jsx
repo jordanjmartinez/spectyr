@@ -22,6 +22,9 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
   const [mitreTacticsSelected, setMitreTacticsSelected] = useState([]);
   const [mitreDropdownOpen, setMitreDropdownOpen] = useState(false);
   const [mitreDropdownPos, setMitreDropdownPos] = useState(null);
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches
+  );
   const mitreDropdownRef = useRef(null);
   const mitreTriggerRef = useRef(null);
 
@@ -51,6 +54,13 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
     setFormData(prev => ({ ...prev, mitre_tactic: mitreTacticsSelected.join(', ') }));
   }, [mitreTacticsSelected]);
 
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 639px)');
+    const handler = (e) => setIsMobile(e.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -76,7 +86,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
     await onSubmit(formData);
   };
 
-  const VISIBLE_MITRE_CHIPS = 3;
+  const VISIBLE_MITRE_CHIPS = isMobile ? 2 : 3;
   const mitreTactics = [
     'Reconnaissance',
     'Resource Development',

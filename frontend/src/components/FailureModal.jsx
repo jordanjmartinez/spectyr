@@ -61,7 +61,7 @@ const FailureModal = ({ onRetry, onQuit }) => {
           className="text-gray-400 text-sm sm:text-base mb-8 tracking-wide"
           style={{ fontFamily: "'JetBrains Mono', sans-serif" }}
         >
-          &gt; The attacker is already inside.
+          &gt;<span className="animate-blink">|</span> The attacker is already inside.
         </p>
 
         {/* Try Again prompt */}
