@@ -1,5 +1,16 @@
 import React from "react";
 
+const formatDuration = (seconds) => {
+  if (seconds == null || seconds < 0) return null;
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  if (m < 60) return s === 0 ? `${m}m` : `${m}m ${s}s`;
+  const h = Math.floor(m / 60);
+  const rem = m % 60;
+  return rem === 0 ? `${h}h` : `${h}h ${rem}m`;
+};
+
 const AnalystReportCard = ({ report }) => {
   if (report?.error) {
     return <div className="text-red-400">Error loading report.</div>;
@@ -30,32 +41,24 @@ const AnalystReportCard = ({ report }) => {
         </colgroup>
         <tbody className="text-gray-300">
           <tr>
-            <td className="pt-2 pb-1">True Positives</td>
-            <td className="pt-2 pb-1 text-center">
+            <td className="py-3">True Positives</td>
+            <td className="py-3 text-center">
               <span className="text-white font-semibold">{threatsCorrect}/{threatsTotal}</span>
             </td>
           </tr>
-          <tr>
-            <td className="py-1 pl-4 sm:pl-6 text-gray-400">Correct</td>
-            <td className="py-1 text-center">{threatsCorrect}</td>
-          </tr>
-          <tr>
-            <td className="py-1 pb-2 pl-4 sm:pl-6 text-gray-400">Missed</td>
-            <td className="py-1 pb-2 text-center">{threatsMissed}</td>
-          </tr>
           <tr className="border-t border-gray-800">
-            <td className="pt-2 pb-1">False Positives</td>
-            <td className="pt-2 pb-1 text-center">
+            <td className="py-3">False Positives</td>
+            <td className="py-3 text-center">
               <span className="text-white font-semibold">{fpCorrect}/{fpTotal}</span>
             </td>
           </tr>
-          <tr>
-            <td className="py-1 pl-4 sm:pl-6 text-gray-400">Correct</td>
-            <td className="py-1 text-center">{fpCorrect}</td>
-          </tr>
-          <tr>
-            <td className="py-1 pb-2 pl-4 sm:pl-6 text-gray-400">Missed</td>
-            <td className="py-1 pb-2 text-center">{fpMissed}</td>
+          <tr className="border-t border-gray-800">
+            <td className="py-3">Mean Time to Resolve</td>
+            <td className="py-3 text-center">
+              <span className="text-white font-semibold">
+                {formatDuration(report?.avg_time_to_resolve_seconds ?? 0)}
+              </span>
+            </td>
           </tr>
           <tr className="border-t border-gray-700">
             <td className="py-3 font-normal text-gray-300">Overall Grade</td>

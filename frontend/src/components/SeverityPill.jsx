@@ -9,13 +9,14 @@ const hexToRgba = (hex, alpha) => {
 
 const SeverityPill = ({ level }) => {
   const color = SEVERITY_COLORS[level] || '#9ca3af';
+  const filled = level === 'Critical' || level === 'High';
   return (
     <span
       className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium border whitespace-nowrap"
       style={{
-        color,
-        backgroundColor: hexToRgba(color, 0.15),
-        borderColor: hexToRgba(color, 0.45),
+        color: filled ? '#d1d5db' : color,
+        backgroundColor: filled ? color : hexToRgba(color, 0.15),
+        borderColor: filled ? color : hexToRgba(color, 0.45),
       }}
     >
       {level || 'Unset'}

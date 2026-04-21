@@ -13,6 +13,8 @@ const CampaignProgress = ({ levelData, onReset, analystName }) => {
 
   const { completed, total_levels, ticket_title, level_results = {} } = levelData;
 
+  const resultsInOrder = Object.values(level_results || {});
+
   const rowCount = Math.ceil((total_levels || 0) / CIRCLE_ROW_SIZE);
   const rows = Array.from({ length: rowCount }, (_, r) => {
     const start = r * CIRCLE_ROW_SIZE;
@@ -22,7 +24,7 @@ const CampaignProgress = ({ levelData, onReset, analystName }) => {
   });
 
   const renderCircle = (level, showCurrent) => {
-    const result = level_results[level] ?? level_results[String(level)];
+    const result = resultsInOrder[level - 1];
     const isCompleted = result !== undefined;
     const isCorrect = result === "correct" || result === true;
     const isCurrent = showCurrent && !isCompleted && !completed;

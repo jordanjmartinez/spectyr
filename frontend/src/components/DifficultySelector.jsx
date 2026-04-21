@@ -45,7 +45,7 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
           <button
             onClick={() => pickMode('training')}
             disabled={!isNameValid}
-            className={`group relative bg-[#21262d] border-2 rounded-xl p-4 sm:p-6 text-center transition-all duration-200 ${
+            className={`group relative bg-[#0d1117] border-2 rounded-xl p-4 sm:p-6 text-center transition-all duration-200 ${
               !isNameValid
                 ? 'border-gray-700 opacity-50 cursor-not-allowed'
                 : 'border-gray-600 hover:border-[#5882b4] cursor-pointer'
@@ -68,7 +68,7 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
           <button
             onClick={() => pickMode('hardcore')}
             disabled={!isNameValid}
-            className={`group relative bg-[#21262d] border-2 rounded-xl p-4 sm:p-6 text-center transition-all duration-200 ${
+            className={`group relative bg-[#0d1117] border-2 rounded-xl p-4 sm:p-6 text-center transition-all duration-200 ${
               !isNameValid
                 ? 'border-gray-700 opacity-50 cursor-not-allowed'
                 : 'border-gray-600 hover:border-[#5882b4] cursor-pointer'

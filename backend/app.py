@@ -2536,13 +2536,14 @@ def get_analyst_report_card():
             with open(s["paths"]["generated_logs"], "r") as f:
                 all_logs = [json.loads(line) for line in f if line.strip()]
 
-        # Build lookup: scenario_id -> category
+        # Build lookup: scenario_id -> category + scenario_label
         scenario_info = {}
         for log in all_logs:
             sid = log.get("scenario_id")
             if sid and sid not in scenario_info:
                 scenario_info[sid] = {
-                    "category": log.get("category", "")
+                    "category": log.get("category", ""),
+                    "scenario_label": log.get("label", ""),
                 }
 
         correct_threat_identified = 0  # Correctly classified real threats
@@ -2590,6 +2591,50 @@ def get_analyst_report_card():
         total_flags = correct_flags + wrong_flags
         flag_accuracy = round((correct_flags / total_flags) * 100, 2) if total_flags else 0
 
+        # Average time-to-resolve across all resolved scenarios, and split by TP vs FP
+        all_times = []
+        tp_times = []
+        fp_times = []
+        scenario_resolve_times = []
+        scenario_correct_map = {}
+        for a in actions:
+            if a.get("action") == "classify":
+                asid = a.get("scenario_id")
+                if asid:
+                    scenario_correct_map[asid] = bool(a.get("category_correct", False))
+        for entry in s.get("scenario_history", []):
+            ttr = entry.get("time_to_resolve_seconds")
+            sid = entry.get("scenario_id")
+            if not isinstance(ttr, int) or not sid:
+                continue
+            all_times.append(ttr)
+            is_fp = scenario_info.get(sid, {}).get("category", "").lower() == "false positive"
+            if is_fp:
+                fp_times.append(ttr)
+            else:
+                tp_times.append(ttr)
+            sinfo = scenario_info.get(sid, {})
+            label = sinfo.get("scenario_label", "")
+            category = sinfo.get("category", "")
+            incident_name = (
+                TRIAGE_REVIEWS.get(label, {}).get("what_is_it", {}).get("title")
+                or category
+                or entry.get("ticket_title", "")
+                or "Unknown"
+            )
+            scenario_resolve_times.append({
+                "scenario_id": sid,
+                "ticket_title": entry.get("ticket_title", ""),
+                "incident_name": incident_name,
+                "category": category,
+                "seconds": ttr,
+                "is_fp": is_fp,
+                "correct": scenario_correct_map.get(sid, False),
+            })
+        avg_time_to_resolve_seconds = int(sum(all_times) / len(all_times)) if all_times else None
+        avg_time_to_resolve_tp_seconds = int(sum(tp_times) / len(tp_times)) if tp_times else None
+        avg_time_to_resolve_fp_seconds = int(sum(fp_times) / len(fp_times)) if fp_times else None
+
         return jsonify({
             "threats_caught": correct_threat_identified,
             "wrong_category": wrong_category,
@@ -2600,7 +2645,11 @@ def get_analyst_report_card():
             "correct_flags": correct_flags,
             "wrong_flags": wrong_flags,
             "total_flags": total_flags,
-            "flag_accuracy": flag_accuracy
+            "flag_accuracy": flag_accuracy,
+            "avg_time_to_resolve_seconds": avg_time_to_resolve_seconds,
+            "avg_time_to_resolve_tp_seconds": avg_time_to_resolve_tp_seconds,
+            "avg_time_to_resolve_fp_seconds": avg_time_to_resolve_fp_seconds,
+            "scenario_resolve_times": scenario_resolve_times,
         })
 
     except Exception as e:
@@ -2636,6 +2685,12 @@ def get_action_history():
                     "scenario_label": log.get("label", "")
                 }
 
+        resolve_info = {
+            entry.get("scenario_id"): entry.get("time_to_resolve_seconds")
+            for entry in s.get("scenario_history", [])
+            if entry.get("scenario_id")
+        }
+
         history = []
         # Filter to only classify actions
         scenario_actions = [a for a in actions if a.get("action") == "classify"]
@@ -2667,7 +2722,8 @@ def get_action_history():
                 "correct": correct,
                 "true_category": true_category,
                 "feedback": feedback,
-                "scenario_label": scenario_label
+                "scenario_label": scenario_label,
+                "time_to_resolve_seconds": resolve_info.get(sid),
             })
 
         return jsonify(history[:10])  # Return last 10 actions
@@ -2782,6 +2838,16 @@ def resume_generation():
     if queue_entry and not queue_entry.get("resolved_at"):
         queue_entry["resolved_at"] = datetime.now(timezone.utc).isoformat()
         s["resolved_count"] = s.get("resolved_count", 0) + 1
+        injected_at = queue_entry.get("injected_at")
+        resolved_at = queue_entry.get("resolved_at")
+        time_to_resolve_seconds = None
+        if injected_at and resolved_at:
+            try:
+                time_to_resolve_seconds = int(
+                    (datetime.fromisoformat(resolved_at) - datetime.fromisoformat(injected_at)).total_seconds()
+                )
+            except (ValueError, TypeError):
+                pass
         s["scenario_history"].append({
             "level": queue_entry.get("queue_position"),
             "ticket_title": queue_entry.get("ticket_title", "Unknown"),
@@ -2789,6 +2855,7 @@ def resume_generation():
             "startTime": queue_entry.get("chain_complete_at") or queue_entry.get("injected_at"),
             "correct": bool(category_correct),
             "scenario_id": queue_entry.get("scenario_id"),
+            "time_to_resolve_seconds": time_to_resolve_seconds,
         })
         print(f"[RESOLVED {s['resolved_count']}/{s['queue_length']}] "
               f"{queue_entry.get('ticket_title')} — {'correct' if category_correct else 'wrong'}",
@@ -2977,6 +3044,16 @@ def submit_report():
         if queue_entry and not queue_entry.get("resolved_at"):
             queue_entry["resolved_at"] = datetime.now(timezone.utc).isoformat()
             s["resolved_count"] = s.get("resolved_count", 0) + 1
+            injected_at = queue_entry.get("injected_at")
+            resolved_at = queue_entry.get("resolved_at")
+            time_to_resolve_seconds = None
+            if injected_at and resolved_at:
+                try:
+                    time_to_resolve_seconds = int(
+                        (datetime.fromisoformat(resolved_at) - datetime.fromisoformat(injected_at)).total_seconds()
+                    )
+                except (ValueError, TypeError):
+                    pass
             s["scenario_history"].append({
                 "level": queue_entry.get("queue_position"),
                 "ticket_title": queue_entry.get("ticket_title", "Unknown"),
@@ -2984,6 +3061,7 @@ def submit_report():
                 "startTime": queue_entry.get("chain_complete_at") or queue_entry.get("injected_at"),
                 "correct": bool(is_correct),
                 "scenario_id": queue_entry.get("scenario_id"),
+                "time_to_resolve_seconds": time_to_resolve_seconds,
             })
             print(f"[RESOLVED {s['resolved_count']}/{s['queue_length']}] "
                   f"{queue_entry.get('ticket_title')} via report — "

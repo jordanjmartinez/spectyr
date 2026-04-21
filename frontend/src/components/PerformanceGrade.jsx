@@ -5,30 +5,62 @@ import {
   Cell,
   Tooltip,
   ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ReferenceLine,
 } from "recharts";
+
+const formatDuration = (seconds) => {
+  if (seconds == null || seconds < 0) return '0s';
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  if (m < 60) return s === 0 ? `${m}m` : `${m}m ${s}s`;
+  const h = Math.floor(m / 60);
+  const rem = m % 60;
+  return rem === 0 ? `${h}h` : `${h}h ${rem}m`;
+};
 
 const PieTooltip = ({ active, payload }) => {
   if (!active || !payload?.length) return null;
   const { name, value } = payload[0];
   if (name === 'Empty' || name === 'None') return null;
   return (
-    <div style={{ backgroundColor: '#161b22', border: '1px solid #30363d', borderRadius: '8px', padding: '6px 12px', fontSize: '13px' }}>
+    <div style={{ backgroundColor: '#161b22', border: '1px solid #30363d', borderRadius: '8px', padding: '6px 12px', fontSize: '13px', whiteSpace: 'nowrap' }}>
       <span style={{ color: '#e5e7eb' }}>{name}: <span style={{ color: '#fff', fontWeight: 600 }}>{value}</span></span>
     </div>
   );
 };
 
+const MttrTooltip = ({ active, payload }) => {
+  if (!active || !payload?.length) return null;
+  const p = payload[0].payload;
+  if (p.synthetic) return null;
+  return (
+    <div style={{ backgroundColor: '#161b22', border: '1px solid #30363d', borderRadius: '8px', padding: '6px 12px', fontSize: '13px', whiteSpace: 'nowrap' }}>
+      <div style={{ color: '#e5e7eb' }}>{p.incident_name || p.category || 'Scenario'}</div>
+      <div style={{ color: '#fff', fontWeight: 600 }}>{formatDuration(p.seconds)}</div>
+    </div>
+  );
+};
+
+const GRADE_MESSAGES = {
+  A: 'Pack it up. The attackers went home.',
+  B: 'Clean work. The coffee is still warm.',
+  C: 'You did not get called at 3 AM. Victory.',
+  D: 'You are not fired. Congratulations.',
+  F: 'You are the data breach.',
+};
+
 const PerformanceGrade = ({ report }) => {
-  const [resultsView, setResultsView] = useState('threats');
+  const [resultsView, setResultsView] = useState('grade');
 
   const hasData = report && report.total_actions > 0;
-  const threatsCorrect = hasData ? report.threats_caught : 0;
-  const threatsMissed = hasData ? report.wrong_category : 0;
-  const fpCorrect = hasData ? report.fp_identified : 0;
-  const fpMissed = hasData ? report.fp_missed : 0;
-
-  const correct = resultsView === 'threats' ? threatsCorrect : fpCorrect;
-  const missed = resultsView === 'threats' ? threatsMissed : fpMissed;
+  const correct = hasData ? (report.threats_caught + report.fp_identified) : 0;
+  const missed = hasData ? (report.wrong_category + report.fp_missed) : 0;
   const total = correct + missed;
 
   const grade = (() => {
@@ -44,39 +76,73 @@ const PerformanceGrade = ({ report }) => {
         ...(missed > 0 ? [{ name: 'Missed', value: missed, color: '#b26666' }] : []),
       ];
 
+  const resolveTimes = report?.scenario_resolve_times || [];
+  const mttrData = [
+    { index: 0, seconds: 0, synthetic: true },
+    ...resolveTimes.map((r, i) => ({
+      index: i + 1,
+      ticket_title: r.ticket_title,
+      incident_name: r.incident_name,
+      category: r.category,
+      seconds: r.seconds,
+      is_fp: r.is_fp,
+      correct: r.correct,
+    })),
+  ];
+  const avgMttr = report?.avg_time_to_resolve_seconds ?? 0;
+
+  const MttrDot = (props) => {
+    const { cx, cy, payload } = props;
+    if (cx == null || cy == null) return null;
+    if (payload?.synthetic) return null;
+    const color = payload?.correct ? '#6fa868' : '#b26666';
+    const size = 10;
+    const half = size / 2;
+    return (
+      <rect
+        x={cx - half}
+        y={cy - half}
+        width={size}
+        height={size}
+        fill="#161b22"
+        stroke={color}
+        strokeWidth={2}
+        transform={`rotate(45 ${cx} ${cy})`}
+      />
+    );
+  };
+
   return (
     <div className="h-full flex flex-col">
-      <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">
-        {resultsView === 'threats' ? 'True Positives' : 'False Positives'}
-      </h2>
+      <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Performance</h2>
       <div className="rounded-2xl p-4 sm:p-6 flex-1" style={{ background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(88,130,180,0.3), transparent) border-box', border: '1px solid transparent', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-start gap-2">
             <button
-              onClick={() => setResultsView('threats')}
-              className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
-                resultsView === 'threats'
+              onClick={() => setResultsView('grade')}
+              className={`px-2 sm:px-3 py-1.5 min-w-[5rem] sm:min-w-[6rem] text-xs sm:text-sm font-medium rounded-md border transition ${
+                resultsView === 'grade'
                   ? 'bg-[#5882b4] text-white border-[#5882b4]'
                   : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
               }`}
             >
-              <span className="sm:hidden">True Pos</span><span className="hidden sm:inline">True Positives</span>
+              Grade
             </button>
             <button
-              onClick={() => setResultsView('fp')}
-              className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
-                resultsView === 'fp'
+              onClick={() => setResultsView('mttr')}
+              className={`px-2 sm:px-3 py-1.5 min-w-[5rem] sm:min-w-[6rem] text-xs sm:text-sm font-medium rounded-md border transition ${
+                resultsView === 'mttr'
                   ? 'bg-[#5882b4] text-white border-[#5882b4]'
                   : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
               }`}
             >
-              <span className="sm:hidden">False Pos</span>
-              <span className="hidden sm:inline">False Positives</span>
+              MTTR
             </button>
           </div>
-          <div className="flex flex-col items-center gap-4 sm:gap-6 lg:flex-row-reverse lg:items-center">
-            <div className="flex-shrink-0 flex items-center lg:pr-2 xl:pr-6">
-              <div className="relative w-36 h-36 sm:w-80 sm:h-80 md:w-40 md:h-40 lg:w-56 lg:h-56 xl:w-80 xl:h-80 aspect-square border-dashed border-2 border-gray-700 rounded-full p-2">
+          {resultsView !== 'mttr' ? (
+          <>
+            <div className="flex items-center justify-center">
+              <div className="relative w-56 h-56 sm:w-80 sm:h-80 aspect-square border-dashed border-2 border-gray-700 rounded-full p-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -96,25 +162,32 @@ const PerformanceGrade = ({ report }) => {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-5xl sm:text-8xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white">{grade}</span>
+                  <span className="text-7xl sm:text-9xl font-bold text-white">{grade}</span>
                 </div>
               </div>
             </div>
-            <div className="min-w-0 flex items-center lg:flex-1 lg:pl-4 xl:pl-6">
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:gap-y-3 lg:grid-cols-1 lg:gap-3 text-xs sm:text-base md:text-xs lg:text-sm">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="w-2.5 h-2.5 flex-shrink-0 rounded-md" style={{backgroundColor: '#6fa868'}} />
-                  <span className="text-gray-300 truncate">Correct</span>
-                  <span className="text-white font-semibold flex-shrink-0">{correct}</span>
-                </div>
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="w-2.5 h-2.5 flex-shrink-0 rounded-md" style={{backgroundColor: '#b26666'}} />
-                  <span className="text-gray-300 truncate">Missed</span>
-                  <span className="text-white font-semibold flex-shrink-0">{missed}</span>
-                </div>
-              </div>
-            </div>
+            {GRADE_MESSAGES[grade] && (
+              <p className="font-mono text-xs sm:text-sm text-gray-400 text-center">
+                &gt;<span className="animate-blink">|</span> {GRADE_MESSAGES[grade]}
+              </p>
+            )}
+          </>
+          ) : (
+          <div className="w-full h-56 sm:h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={mttrData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#30363d" />
+                <XAxis dataKey="index" stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: 14 }} tickFormatter={(v) => v === 0 ? '' : v} />
+                <YAxis stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: 14 }} tickFormatter={(v) => formatDuration(v)} width={68} />
+                <Tooltip content={<MttrTooltip />} wrapperStyle={{ zIndex: 20, outline: 'none', border: 'none' }} />
+                {avgMttr > 0 && (
+                  <ReferenceLine y={avgMttr} stroke="#5882b4" strokeDasharray="4 4" />
+                )}
+                <Line type="monotone" dataKey="seconds" stroke="#4b5563" strokeWidth={2} strokeDasharray="4 4" dot={<MttrDot />} activeDot={<MttrDot />} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
+          )}
         </div>
       </div>
     </div>

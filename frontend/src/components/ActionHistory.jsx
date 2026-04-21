@@ -1,6 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { apiFetch } from '../api';
 
+const formatDuration = (seconds) => {
+  if (seconds == null || seconds < 0) return null;
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  if (m < 60) return s === 0 ? `${m}m` : `${m}m ${s}s`;
+  const h = Math.floor(m / 60);
+  const rem = m % 60;
+  return rem === 0 ? `${h}h` : `${h}h ${rem}m`;
+};
+
 const ActionHistory = ({ history: rawHistory }) => {
   const history = Array.isArray(rawHistory) ? rawHistory : [];
   const [triageReviews, setTriageReviews] = useState({});
@@ -77,12 +88,14 @@ const ActionHistory = ({ history: rawHistory }) => {
         }}
       >
         <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper">
-          <table className="w-full min-w-[600px] log-text text-left text-gray-300 border-separate border-spacing-0">
+          <table className="w-full min-w-[860px] log-text text-left text-gray-300 border-separate border-spacing-0">
           <thead>
             <tr className="text-xs sm:text-sm uppercase text-gray-400 tracking-wider">
               <th className="w-10 px-2 sm:px-4 py-3 font-medium border-b border-gray-600"></th>
               <th className="w-12 px-1 sm:px-2 py-3 font-medium border-b border-gray-600"></th>
-              <th className="w-full px-2 sm:px-4 py-3 font-medium border-b border-gray-600">Title</th>
+              <th className="w-full px-2 sm:px-4 py-3 font-medium border-b border-gray-600">Incident</th>
+              <th className="w-32 px-2 sm:px-4 py-3 font-medium text-center border-b border-gray-600">Classification</th>
+              <th className="w-40 px-2 sm:px-4 py-3 font-medium text-center whitespace-nowrap border-b border-gray-600">MITRE ATT&amp;CK</th>
               <th className="px-2 sm:px-4 py-3 font-medium text-center border-b border-gray-600">Result</th>
             </tr>
           </thead>
@@ -127,13 +140,40 @@ const ActionHistory = ({ history: rawHistory }) => {
                       <p className="text-sm sm:text-base font-medium text-gray-200 whitespace-nowrap">
                         {review?.what_is_it?.title || item.true_category || 'Unknown'}
                       </p>
+                      {formatDuration(item.time_to_resolve_seconds) && (
+                        <p className="text-xs sm:text-sm text-gray-400 mt-0.5">
+                          Resolved in {formatDuration(item.time_to_resolve_seconds)}
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
+                      <span className="text-gray-300">{item.true_category || '—'}</span>
+                    </td>
+                    <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
+                      {review?.mitre?.id ? (
+                        <a
+                          href={review.mitre.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-2 bg-[#21262d] text-gray-300 text-xs sm:text-sm px-3 py-1.5 rounded-md border border-gray-700 hover:bg-[#30363d] transition-colors"
+                          style={{ fontFamily: "'Inter', sans-serif" }}
+                        >
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" fill="none"/>
+                          </svg>
+                          <span className="font-semibold">{review.mitre.id}</span>
+                        </a>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
                     </td>
                     <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
                       <span className="text-gray-300">{resultLabel}</span>
                     </td>
                   </tr>
                   <tr>
-                    <td colSpan="4" className="p-0">
+                    <td colSpan="6" className="p-0">
                       <div className={`grid transition-all duration-300 ease-in-out ${
                         isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
                       }`}>

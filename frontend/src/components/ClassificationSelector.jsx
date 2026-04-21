@@ -29,7 +29,7 @@ const ClassificationSelector = ({ onSelect, onCancel }) => {
               <button
                 key={c.id}
                 onClick={() => onSelect(c.id)}
-                className="flex items-center justify-center px-4 py-8 rounded-lg border-2 transition-all duration-200 group border-gray-600 bg-[#21262d] hover:bg-[#30363d] hover:border-[#5882b4]"
+                className="flex items-center justify-center px-4 py-8 rounded-lg border-2 transition-all duration-200 group border-gray-600 bg-[#0d1117] hover:bg-[#30363d] hover:border-[#5882b4]"
               >
                 <span className="text-lg font-semibold text-center text-gray-300 group-hover:text-white">
                   {c.label}

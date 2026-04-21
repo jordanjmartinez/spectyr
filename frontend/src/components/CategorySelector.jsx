@@ -37,7 +37,7 @@ const CategorySelector = ({ onSelect, onCancel, scenarioInfo }) => {
               <button
                 key={category.id}
                 onClick={() => onSelect(category.id, category.label)}
-                className="flex items-center justify-center h-20 px-3 rounded-lg border-2 transition-all duration-200 group border-gray-600 bg-[#21262d] hover:bg-[#30363d] hover:border-[#5882b4]"
+                className="flex items-center justify-center h-20 px-3 rounded-lg border-2 transition-all duration-200 group border-gray-600 bg-[#0d1117] hover:bg-[#30363d] hover:border-[#5882b4]"
               >
                 <span className="text-sm font-medium text-center text-gray-300 group-hover:text-white">
                   {category.label}

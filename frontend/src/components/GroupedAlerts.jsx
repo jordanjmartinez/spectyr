@@ -13,7 +13,7 @@ const PieTooltip = ({ active, payload }) => {
   const { name, value } = payload[0];
   if (name === 'Empty' || name === 'None') return null;
   return (
-    <div style={{ backgroundColor: '#161b22', border: '1px solid #30363d', borderRadius: '8px', padding: '6px 12px', fontSize: '13px' }}>
+    <div style={{ backgroundColor: '#161b22', border: '1px solid #30363d', borderRadius: '8px', padding: '6px 12px', fontSize: '13px', whiteSpace: 'nowrap' }}>
       <span style={{ color: '#e5e7eb' }}>{name}: <span style={{ color: '#fff', fontWeight: 600 }}>{value}</span></span>
     </div>
   );
@@ -727,7 +727,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                     <div className="flex items-center justify-start gap-2">
                       <button
                         onClick={() => setDashView('total')}
-                        className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
+                        className={`px-2 sm:px-3 py-1.5 min-w-[5rem] sm:min-w-[8rem] text-xs sm:text-sm font-medium rounded-md border transition ${
                           dashView === 'total'
                             ? 'bg-[#5882b4] text-white border-[#5882b4]'
                             : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
@@ -738,7 +738,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                       </button>
                       <button
                         onClick={() => setDashView('source')}
-                        className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
+                        className={`px-2 sm:px-3 py-1.5 min-w-[5rem] sm:min-w-[8rem] text-xs sm:text-sm font-medium rounded-md border transition ${
                           dashView === 'source'
                             ? 'bg-[#5882b4] text-white border-[#5882b4]'
                             : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
@@ -894,7 +894,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                     <div className="flex items-center justify-start gap-2">
                       <button
                         onClick={() => setLeftView('types')}
-                        className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
+                        className={`px-2 sm:px-3 py-1.5 min-w-[5rem] sm:min-w-[8rem] text-xs sm:text-sm font-medium rounded-md border transition ${
                           leftView === 'types'
                             ? 'bg-[#5882b4] text-white border-[#5882b4]'
                             : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
@@ -905,7 +905,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                       </button>
                       <button
                         onClick={() => setLeftView('categories')}
-                        className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md border transition ${
+                        className={`px-2 sm:px-3 py-1.5 min-w-[5rem] sm:min-w-[8rem] text-xs sm:text-sm font-medium rounded-md border transition ${
                           leftView === 'categories'
                             ? 'bg-[#5882b4] text-white border-[#5882b4]'
                             : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
