@@ -140,40 +140,33 @@ const PerformanceGrade = ({ report }) => {
             </button>
           </div>
           {resultsView !== 'mttr' ? (
-          <>
-            <div className="flex items-center justify-center">
-              <div className="relative w-56 h-56 sm:w-80 sm:h-80 aspect-square border-dashed border-2 border-gray-700 rounded-full p-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      innerRadius="70%"
-                      outerRadius="100%"
-                      startAngle={90}
-                      endAngle={-270}
-                      dataKey="value"
-                      stroke="#161b22" strokeWidth={2}
-                    >
-                      {total === 0
-                        ? [<Cell key="empty" fill="#374151" />]
-                        : pieData.map((seg, i) => <Cell key={i} fill={seg.color} />)}
-                    </Pie>
-                    <Tooltip content={<PieTooltip />} wrapperStyle={{ zIndex: 20, outline: 'none', border: 'none' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-7xl sm:text-9xl font-bold text-white">{grade}</span>
-                </div>
+          <div className="flex items-center justify-center">
+            <div className="relative w-52 h-52 sm:w-72 sm:h-72 aspect-square border-dashed border-2 border-gray-700 rounded-full p-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    innerRadius="70%"
+                    outerRadius="100%"
+                    startAngle={90}
+                    endAngle={-270}
+                    dataKey="value"
+                    stroke="#161b22" strokeWidth={2}
+                  >
+                    {total === 0
+                      ? [<Cell key="empty" fill="#374151" />]
+                      : pieData.map((seg, i) => <Cell key={i} fill={seg.color} />)}
+                  </Pie>
+                  <Tooltip content={<PieTooltip />} wrapperStyle={{ zIndex: 20, outline: 'none', border: 'none' }} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-7xl sm:text-9xl font-bold text-white">{grade}</span>
               </div>
             </div>
-            {GRADE_MESSAGES[grade] && (
-              <p className="font-mono text-xs sm:text-sm text-gray-400 text-center">
-                &gt;<span className="animate-blink">|</span> {GRADE_MESSAGES[grade]}
-              </p>
-            )}
-          </>
+          </div>
           ) : (
-          <div className="w-full h-56 sm:h-80">
+          <div className="w-full h-52 sm:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={mttrData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#30363d" />
@@ -188,6 +181,13 @@ const PerformanceGrade = ({ report }) => {
             </ResponsiveContainer>
           </div>
           )}
+          <p className="font-mono text-xs sm:text-sm text-gray-400 text-center">
+            {resultsView !== 'mttr' && GRADE_MESSAGES[grade] ? (
+              <>&gt;<span className="animate-blink">|</span> {GRADE_MESSAGES[grade]}</>
+            ) : (
+              <>&nbsp;</>
+            )}
+          </p>
         </div>
       </div>
     </div>
