@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   PieChart,
   Pie,
@@ -57,6 +57,14 @@ const GRADE_MESSAGES = {
 
 const PerformanceGrade = ({ report }) => {
   const [resultsView, setResultsView] = useState('grade');
+  const [isSmUp, setIsSmUp] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 640px)').matches);
+
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 640px)');
+    const onChange = (e) => setIsSmUp(e.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
 
   const hasData = report && report.total_actions > 0;
   const correct = hasData ? (report.threats_caught + report.fp_identified) : 0;
@@ -171,7 +179,7 @@ const PerformanceGrade = ({ report }) => {
               <LineChart data={mttrData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#30363d" />
                 <XAxis dataKey="index" stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: 14 }} tickFormatter={(v) => v === 0 ? '' : v} />
-                <YAxis stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: 14 }} tickFormatter={(v) => formatDuration(v)} width={68} />
+                <YAxis stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: isSmUp ? 14 : 12 }} tickFormatter={(v) => formatDuration(v)} width={isSmUp ? 64 : 68} />
                 <Tooltip content={<MttrTooltip />} wrapperStyle={{ zIndex: 20, outline: 'none', border: 'none' }} />
                 {avgMttr > 0 && (
                   <ReferenceLine y={avgMttr} stroke="#5882b4" strokeDasharray="4 4" />

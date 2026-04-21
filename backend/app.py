@@ -367,7 +367,7 @@ TRIAGE_REVIEWS = {
             "url": "https://attack.mitre.org/techniques/T1560/001/"
         },
         "what_is_it": {
-            "title": "Data Archiving and Exfiltration to Cloud Storage",
+            "title": "Archived Data Exfiltration",
             "description": "Data exfiltration is when stolen files are transferred out of the network. Attackers often compress and password-protect data using tools like 7-Zip before uploading it to cloud storage services like Mega.nz. The password protection prevents DLP tools from inspecting the contents, and services with anonymous accounts make the destination harder to trace."
         },
         "response_actions": [
@@ -484,7 +484,7 @@ TRIAGE_REVIEWS = {
             "url": "https://attack.mitre.org/techniques/T1071/004/"
         },
         "what_is_it": {
-            "title": "DNS Tunneling: Covert C2 Channel",
+            "title": "DNS Tunneling",
             "description": "DNS tunneling is when malware hides command and control communication inside DNS queries by encoding data into long subdomain labels that route through normal DNS infrastructure to an attacker-controlled server. Because DNS traffic is rarely blocked or inspected, the channel operates over port 53 without triggering most security tools."
         },
         "response_actions": [

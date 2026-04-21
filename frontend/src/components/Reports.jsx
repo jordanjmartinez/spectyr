@@ -341,7 +341,15 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
         </div>
       ) : filteredReports.length === 0 && searchTerm ? (
         <div className="flex flex-col items-center justify-center py-12">
-          <img src="/ghost-searching.png" alt="Ghost Searching" className="w-20 h-20 sm:w-28 sm:h-28 opacity-90 mb-3" />
+          <svg
+            className="w-12 h-12 sm:w-16 sm:h-16 text-gray-500 mb-3"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+          </svg>
           <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt;<span className="animate-blink">|</span> No matching reports for "{searchTerm}"</p>
         </div>
       ) : (
