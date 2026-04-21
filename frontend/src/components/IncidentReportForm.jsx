@@ -74,6 +74,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
     if (!formData.title.trim()) newErrors.title = "Required";
     if (!formData.severity) newErrors.severity = "Required";
     if (!formData.description.trim()) newErrors.description = "Required";
+    if (!formData.mitigation.trim()) newErrors.mitigation = "Required";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -105,6 +106,9 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
   ];
 
   const inputClass = "w-full bg-[#0d1117] text-xs sm:text-sm text-white placeholder-gray-600 border border-gray-700 focus:border-[#5882b4] rounded-md px-3 py-2 outline-none transition-colors";
+  const requiredMark = (fieldName) => (
+    <span className={errors[fieldName] ? 'text-red-400' : 'text-gray-500'}> *</span>
+  );
 
   return (
     <div className={`text-white ${inline ? 'w-full' : 'p-8 w-full max-w-2xl bg-[#161b22] rounded-xl border border-gray-700 shadow-2xl'}`}>
@@ -129,7 +133,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
       {/* Form fields */}
       <div className="space-y-4">
         <div>
-          <label className="block text-xs text-gray-300 mb-1">Title{errors.title && <span className="text-red-400"> *</span>}</label>
+          <label className="block text-xs text-gray-300 mb-1">Title{requiredMark('title')}</label>
           <input
             name="title"
             value={formData.title}
@@ -140,7 +144,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
         </div>
 
         <div>
-          <label className="block text-xs text-gray-300 mb-1">Description{errors.description && <span className="text-red-400"> *</span>}</label>
+          <label className="block text-xs text-gray-300 mb-1">Description{requiredMark('description')}</label>
           <textarea
             name="description"
             value={formData.description}
@@ -163,7 +167,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
         </div>
 
         <div>
-          <label className="block text-xs text-gray-300 mb-1">Mitigation Steps</label>
+          <label className="block text-xs text-gray-300 mb-1">Mitigation Steps{requiredMark('mitigation')}</label>
           <textarea
             name="mitigation"
             value={formData.mitigation}

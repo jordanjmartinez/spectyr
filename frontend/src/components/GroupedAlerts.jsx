@@ -1262,7 +1262,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
             <IncidentReportForm
               initialData={{
                 title: reportScenario.ticket_title || reportScenario.logs?.[0]?.level_name || '',
-                description: reportScenario.storyline || reportScenario.logs?.[0]?.storyline || '',
+                description: '',
                 severity: getHighestSeverity(reportScenario.severity_breakdown),
                 affected_hosts: [...new Set(reportScenario.logs.map(l => l.hostname).filter(Boolean))].join(', '),
                 scenario_id: reportScenario.scenario_id,

@@ -23,6 +23,8 @@ os.makedirs(LOG_DIR, exist_ok=True)
 
 TIMER_DURATIONS = {1: 900, 2: 900, 3: 900, 4: 900, 5: 900}
 
+CONCURRENT_QUEUE_CAP = 3  # Max in-flight (injected, unresolved) scenarios
+
 def get_timer_duration(level):
     return TIMER_DURATIONS.get(level, 900)
 
@@ -2323,9 +2325,13 @@ def log_writer(session, interval=1):
         now = datetime.now(timezone.utc)
 
         # Drip: time to inject next queued scenario?
+        # Gate on concurrent cap: skip (don't advance timer) so the next drip
+        # fires immediately once a scenario resolves and capacity frees up.
+        in_flight = session["injected_count"] - session["resolved_count"]
         if (session["next_drip_at"] is not None
                 and now >= session["next_drip_at"]
-                and session["injected_count"] < len(session["alert_queue"])):
+                and session["injected_count"] < len(session["alert_queue"])
+                and in_flight < CONCURRENT_QUEUE_CAP):
             scenario_entry = session["alert_queue"][session["injected_count"]]
             chain_logs = build_attack_chain_logs(session, scenario_entry)
             if chain_logs:
