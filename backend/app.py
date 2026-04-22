@@ -616,17 +616,17 @@ CAMPAIGN_LEVELS = [
             },
             "Phishing": {
                 "scenario_label": "phishing_1",
-                "ticket_title": "Microsoft 365 Account Login from Unusual Location",
+                "ticket_title": "M365 Account Login from Unusual Location",
                 "storyline": "An employee received a Microsoft 365 password reset email and clicked the link. The page looked like a normal Microsoft sign-in. The proxy logged the connection but did not block it. Shortly after, account activity was detected from an unexpected location.",
             },
             "Defense Evasion": {
                 "scenario_label": "defense_evasion",
-                "ticket_title": "Endpoint Protection Disabled on Workstation",
+                "ticket_title": "Endpoint Protection Disabled",
                 "storyline": "Unusual activity was detected on a workstation outside of business hours. No user was logged in at the time. Review the logs and determine the scope of what occurred.",
             },
             "False Positive": {
                 "scenario_label": "false_positive_pentest",
-                "ticket_title": "Suspicious Password Reset Email Reported",
+                "ticket_title": "Suspicious Password Reset Email",
                 "storyline": "An employee reported receiving a password reset email they did not request. The email contained a link to what appears to be a lookalike domain. Proxy logs show the user clicked the link. SPF checks passed. The security awareness team recently onboarded a new training vendor.",
             }
         }
@@ -638,17 +638,17 @@ CAMPAIGN_LEVELS = [
         "scenarios": {
             "Lateral Movement": {
                 "scenario_label": "lateral_movement_1",
-                "ticket_title": "Internal Port Scan from Workstation",
+                "ticket_title": "Rapid Internal Connection Attempts",
                 "storyline": "Unexpected network activity was detected originating from an internal workstation with no scheduled maintenance or administrative tasks. The firewall logged multiple connection attempts to an internal server in rapid succession.",
             },
             "Command & Control": {
                 "scenario_label": "c2_http",
-                "ticket_title": "Unusual HTTPS Traffic to Unrecognized External Domain",
+                "ticket_title": "Unusual HTTPS Traffic",
                 "storyline": "An endpoint began generating repeated outbound HTTPS connections to an external domain not present on any internal allowlist. The connections appear to follow a regular interval.",
             },
             "Brute Force": {
                 "scenario_label": "brute_force_attack",
-                "ticket_title": "Account Locked After External Login Failures",
+                "ticket_title": "Unexpected Account Lockout",
                 "storyline": "The Domain Controller began logging unusual authentication activity from an external source outside of business hours. The targeted account has since been locked out.",
             },
             "False Positive": {
@@ -665,12 +665,12 @@ CAMPAIGN_LEVELS = [
         "scenarios": {
             "Phishing": {
                 "scenario_label": "phishing_link",
-                "ticket_title": "Employee-Reported Email from Third-Party Sender",
+                "ticket_title": "Rogue Program on Workstation",
                 "storyline": "An employee contacted the help desk after interacting with an email they now believe may have been fraudulent. The email appeared to come from a trusted third-party service. Endpoint and proxy logs show activity on the workstation following the interaction.",
             },
             "Data Exfiltration": {
                 "scenario_label": "data_exfil_archive",
-                "ticket_title": "Encrypted Archive Followed by External Upload",
+                "ticket_title": "After-Hours Outbound Transfer",
                 "storyline": "A compression utility was executed on an endpoint outside of business hours. No software deployment or IT task was scheduled for this host. Shortly after, outbound connections were established to an external file hosting service.",
             },
             "Insider Threat": {
@@ -680,7 +680,7 @@ CAMPAIGN_LEVELS = [
             },
             "False Positive": {
                 "scenario_label": "false_positive_veeam",
-                "ticket_title": "Beaconing-Like Pattern from Workstation",
+                "ticket_title": "Unusual Off-Hours Network Activity",
                 "storyline": "An endpoint began generating repeated outbound connections to an internal server at regular intervals outside of business hours. The process runs under SYSTEM and has transferred over 1.75 GB of data. The backup team recently deployed Veeam agents to all workstations as part of the endpoint protection initiative.",
             }
         }
@@ -719,12 +719,12 @@ CAMPAIGN_LEVELS = [
         "scenarios": {
             "Insider Threat": {
                 "scenario_label": "insider_shadow_it",
-                "ticket_title": "Possible Data Leak via Unauthorized Application",
+                "ticket_title": "Unauthorized App Data Transfer",
                 "storyline": "A workstation launched an application not on the approved software list. Shortly after, multiple sensitive documents were moved into a folder associated with the application, and the proxy logged an upload to an external cloud storage provider. The employee has not submitted a software installation request.",
             },
             "Brute Force": {
                 "scenario_label": "password_spray",
-                "ticket_title": "Multiple Account Logon Failures from Single Source",
+                "ticket_title": "Multiple Account Logon Failures",
                 "storyline": "The Domain Controller logged a cluster of failed logon attempts from the same source. Each attempt targets a different user account in quick succession using NTLM authentication. One account then logged on successfully. None of the targeted accounts have reported issues.",
             },
             "Command & Control": {
@@ -734,7 +734,7 @@ CAMPAIGN_LEVELS = [
             },
             "False Positive": {
                 "scenario_label": "false_positive_ssl_inspection",
-                "ticket_title": "Repeated TLS Failures from Multiple Workstations",
+                "ticket_title": "Repeated TLS Failures",
                 "storyline": "Multiple workstations are generating repeated failed TLS connections to Microsoft 365 endpoints. The connection pattern resembles command-and-control beaconing with consistent retry intervals. The network team recently expanded the corporate proxy's SSL inspection policy to cover additional domains.",
             }
         }

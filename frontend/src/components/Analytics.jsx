@@ -52,7 +52,7 @@ const Analytics = ({ onReset, analystName, setAnalyticsCount }) => {
   return (
     <div className="space-y-6">
       {/* Campaign Progress - Full Width */}
-      <CampaignProgress levelData={levelData} onReset={onReset} analystName={analystName} />
+      <CampaignProgress levelData={levelData} report={report} onReset={onReset} analystName={analystName} />
 
       {/* Report Card and Performance Grade */}
       <div className="grid gap-6 grid-cols-1 md:grid-cols-2">

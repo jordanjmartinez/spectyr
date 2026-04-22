@@ -2,7 +2,34 @@ import React, { useState, useEffect } from "react";
 
 const CIRCLE_ROW_SIZE = 5;
 
-const CampaignProgress = ({ levelData, onReset, analystName }) => {
+const WIN_ART = `██╗   ██╗ ██████╗ ██╗   ██╗    ██╗    ██╗██╗███╗   ██╗██╗
+╚██╗ ██╔╝██╔═══██╗██║   ██║    ██║    ██║██║████╗  ██║██║
+ ╚████╔╝ ██║   ██║██║   ██║    ██║ █╗ ██║██║██╔██╗ ██║██║
+  ╚██╔╝  ██║   ██║██║   ██║    ██║███╗██║██║██║╚██╗██║╚═╝
+   ██║   ╚██████╔╝╚██████╔╝    ╚███╔███╔╝██║██║ ╚████║██╗
+   ╚═╝    ╚═════╝  ╚═════╝      ╚══╝╚══╝ ╚═╝╚═╝  ╚═══╝╚═╝`;
+
+const PASS_ART = `██╗   ██╗ ██████╗ ██╗   ██╗    ██████╗  █████╗ ███████╗███████╗██╗
+╚██╗ ██╔╝██╔═══██╗██║   ██║    ██╔══██╗██╔══██╗██╔════╝██╔════╝██║
+ ╚████╔╝ ██║   ██║██║   ██║    ██████╔╝███████║███████╗███████╗██║
+  ╚██╔╝  ██║   ██║██║   ██║    ██╔═══╝ ██╔══██║╚════██║╚════██║╚═╝
+   ██║   ╚██████╔╝╚██████╔╝    ██║     ██║  ██║███████║███████║██╗
+   ╚═╝    ╚═════╝  ╚═════╝     ╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝`;
+
+const LOSE_ART = `██╗   ██╗ ██████╗ ██╗   ██╗    ██╗      ██████╗ ███████╗███████╗██╗
+╚██╗ ██╔╝██╔═══██╗██║   ██║    ██║     ██╔═══██╗██╔════╝██╔════╝██║
+ ╚████╔╝ ██║   ██║██║   ██║    ██║     ██║   ██║███████╗█████╗  ██║
+  ╚██╔╝  ██║   ██║██║   ██║    ██║     ██║   ██║╚════██║██╔══╝  ╚═╝
+   ██║   ╚██████╔╝╚██████╔╝    ███████╗╚██████╔╝███████║███████╗██╗
+   ╚═╝    ╚═════╝  ╚═════╝     ╚══════╝ ╚═════╝ ╚══════╝╚══════╝╚═╝`;
+
+const gradeOf = (report) => {
+  if (!report?.total_actions) return '-';
+  const acc = report.accuracy || 0;
+  return acc >= 90 ? 'A' : acc >= 80 ? 'B' : acc >= 70 ? 'C' : acc >= 60 ? 'D' : 'F';
+};
+
+const CampaignProgress = ({ levelData, onReset, analystName, report }) => {
   const [ghostVisible, setGhostVisible] = useState(false);
 
   useEffect(() => {
@@ -91,6 +118,16 @@ const CampaignProgress = ({ levelData, onReset, analystName }) => {
     });
 
   if (completed) {
+    const grade = gradeOf(report);
+    const useWin = grade === 'A' || grade === 'B' || grade === '-';
+    const useFailed = grade === 'F';
+    const banner = useWin ? WIN_ART : useFailed ? LOSE_ART : PASS_ART;
+    const bannerLabel = useWin ? 'You Win!' : useFailed ? 'You Lose!' : 'You Pass!';
+    const message = useWin
+      ? `Well done${analystName ? `, ${analystName}` : ''}. You've completed your simulation. The threats never stood a chance.`
+      : useFailed
+        ? `Tough run${analystName ? `, ${analystName}` : ''}. Reset and run it back.`
+        : `Not bad${analystName ? `, ${analystName}` : ''}. A few slipped by, but you held the line.`;
     return (
       <div>
         <div className="flex items-center justify-between mb-4">
@@ -111,12 +148,17 @@ const CampaignProgress = ({ levelData, onReset, analystName }) => {
           }}
         >
         <div className={`flex flex-col items-center text-center transition-all duration-700 ease-out ${ghostVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          <img
-            src="/ghost-celebrate.png"
-            alt="Ghost Celebrating"
-            className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3"
-          />
-          <p className="font-mono text-xs sm:text-sm text-gray-400 mb-6">&gt;<span className="animate-blink">|</span> Well done{analystName ? `, ${analystName}` : ''}. You've completed your simulation. The threats never stood a chance.</p>
+          <pre
+            aria-label={bannerLabel}
+            className={`font-mono text-[7px] sm:text-[10px] leading-tight ${useFailed ? 'text-[#b45858]' : useWin ? 'text-[#58b458]' : 'text-[#5882b4]'} mb-3 select-none`}
+          >
+            {banner.split('').map((ch, i) =>
+              ch === '█'
+                ? <span key={i} className="text-white">{ch}</span>
+                : ch
+            )}
+          </pre>
+          <p className="font-mono text-xs sm:text-sm text-gray-400 mb-6">&gt;<span className="animate-blink">|</span> {message}</p>
         </div>
         {/* Level stepper with results - snake/backwards-C layout */}
         <div className={`flex flex-col pt-5 pb-5 transition-all duration-700 delay-300 ease-out ${ghostVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
