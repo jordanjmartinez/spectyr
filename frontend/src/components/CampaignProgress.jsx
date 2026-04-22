@@ -140,7 +140,7 @@ const CampaignProgress = ({ levelData, onReset, analystName, report }) => {
           </button>
         </div>
         <div
-          className="p-6 rounded-xl"
+          className="px-6 pt-8 pb-6 rounded-xl"
           style={{
             background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(88,130,180,0.3), transparent) border-box',
             border: '1px solid transparent',
