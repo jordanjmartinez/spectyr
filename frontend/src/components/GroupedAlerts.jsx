@@ -827,35 +827,19 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                           </div>
                         )}
                       </div>
-                      <div className="min-w-0 flex items-center lg:flex-1 lg:pl-4 xl:pl-6">
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:gap-y-3 lg:grid-cols-1 lg:gap-3 text-xs sm:text-base md:text-xs lg:text-sm">
-                        {dashView === 'total' && (() => {
-                          const resolvedCount = currentLevel?.resolved_count ?? 0;
-                          const activeCount = (currentLevel?.active_scenarios || []).length;
-                          return (
-                          <>
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="w-2.5 h-2.5 flex-shrink-0 rounded-md" style={{backgroundColor: '#b26666'}} />
-                              <span className="text-gray-300 truncate">Active</span>
-                              <span className="text-white font-semibold flex-shrink-0">{activeCount}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="w-2.5 h-2.5 flex-shrink-0 rounded-md" style={{backgroundColor: '#6fa868'}} />
-                              <span className="text-gray-300 truncate">Completed</span>
-                              <span className="text-white font-semibold flex-shrink-0">{resolvedCount}</span>
-                            </div>
-                          </>
-                          );
-                        })()}
-                        {dashView === 'source' && sourceSegments.map(item => (
-                          <div key={item.name} className="flex items-center gap-1.5 min-w-0">
-                            <span className="w-2.5 h-2.5 flex-shrink-0 rounded-md" style={{ backgroundColor: item.color }} />
-                            <span className="text-gray-300 truncate">{item.name}</span>
-                            <span className="text-white font-semibold flex-shrink-0">{item.value}</span>
+                      {dashView === 'source' && (
+                        <div className="min-w-0 flex items-center lg:flex-1 lg:pl-4 xl:pl-6">
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:gap-y-3 lg:grid-cols-1 lg:gap-3 text-xs sm:text-base md:text-xs lg:text-sm">
+                            {sourceSegments.map(item => (
+                              <div key={item.name} className="flex items-center gap-1.5 min-w-0">
+                                <span className="w-2.5 h-2.5 flex-shrink-0 rounded-md" style={{ backgroundColor: item.color }} />
+                                <span className="text-gray-300 truncate">{item.name}</span>
+                                <span className="text-white font-semibold flex-shrink-0">{item.value}</span>
+                              </div>
+                            ))}
                           </div>
-                        ))}
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 );
