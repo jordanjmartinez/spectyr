@@ -1,26 +1,47 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { apiFetch } from '../api';
 
+// Structured Events search: `field=value` tokens filter by column (AND-ed);
+// bare words are all-field substring. e.g. `source_ip=10.0.1.24 event_type=4625`
+// or `host=ACME-WS12 malware`. Sharpens the Analyst-mode entity pivot.
+const FIELD_ALIASES = {
+  event_type: 'event_type', type: 'event_type', event: 'event_type',
+  source_type: 'source_type', source: 'source_type', src_type: 'source_type',
+  source_ip: 'source_ip', src_ip: 'source_ip', src: 'source_ip',
+  destination_ip: 'destination_ip', dst_ip: 'destination_ip', dst: 'destination_ip',
+  protocol: 'protocol', proto: 'protocol',
+  message: 'message', msg: 'message',
+  hostname: 'hostname', host: 'hostname',
+  severity: 'severity', sev: 'severity',
+};
+
+const parseEventQuery = (term) => {
+  const fieldFilters = [];
+  const free = [];
+  for (const tok of term.trim().split(/\s+/)) {
+    if (!tok) continue;
+    const eq = tok.indexOf('=');
+    if (eq > 0) {
+      const field = FIELD_ALIASES[tok.slice(0, eq).toLowerCase()];
+      const val = tok.slice(eq + 1).toLowerCase();
+      if (field && val) { fieldFilters.push([field, val]); continue; }
+    }
+    free.push(tok.toLowerCase());
+  }
+  return { fieldFilters, free: free.join(' ') };
+};
+
+const alertFieldValue = (alert, field) =>
+  field === 'source_type' ? (alert.source_type || alert.detected_by || '') : (alert[field] ?? '');
+
 const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
   const [alerts, setAlerts] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [alertsPerPage, setAlertsPerPage] = useState(20);
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchField, setSearchField] = useState('all');
   const [expandedRows, setExpandedRows] = useState({});
   const [pageSizeOpen, setPageSizeOpen] = useState(false);
   const pageSizeRef = useRef(null);
-
-  const searchFields = [
-    { value: 'all', label: 'All Fields' },
-    { value: 'event_type', label: 'Event Type' },
-    { value: 'source_type', label: 'Source Type' },
-    { value: 'source_ip', label: 'Source IP' },
-    { value: 'destination_ip', label: 'Destination IP' },
-    { value: 'protocol', label: 'Protocol' },
-    { value: 'message', label: 'Message' },
-    { value: 'hostname', label: 'Hostname' },
-  ];
 
   const fetchAlerts = () => {
     apiFetch('/api/fake-events')
@@ -60,19 +81,17 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
   useEffect(() => {
     if (pivotQuery?.value) {
       setSearchTerm(pivotQuery.value);
-      setSearchField('all');
       setCurrentPage(1);
     }
   }, [pivotQuery]);
 
+  const { fieldFilters, free } = parseEventQuery(searchTerm);
   const filteredAlerts = alerts.filter(alert => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    if (searchField === 'all') {
-      return JSON.stringify(alert).toLowerCase().includes(term);
+    for (const [field, val] of fieldFilters) {
+      if (!String(alertFieldValue(alert, field)).toLowerCase().includes(val)) return false;
     }
-    const fieldValue = alert[searchField];
-    return fieldValue && String(fieldValue).toLowerCase().includes(term);
+    if (free && !JSON.stringify(alert).toLowerCase().includes(free)) return false;
+    return true;
   });
 
   useEffect(() => {
@@ -224,11 +243,10 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
           <div className="relative">
             <input
               type="text"
-              placeholder="Search events..."
+              placeholder="Search events — e.g. source_ip=10.0.1.24 event_type=4625"
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
-                setSearchField('all');
                 setCurrentPage(1);
               }}
               maxLength={300}
