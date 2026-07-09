@@ -53,8 +53,8 @@ const Landing = () => {
           style={{ animationDelay: '0ms' }}
         >
           <span
-            className="text-2xl md:text-3xl tracking-wider"
-            style={{ fontFamily: "'Aldrich', sans-serif" }}
+            className="text-2xl md:text-3xl font-semibold tracking-tight"
+            style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}
           >
             Spectyr
           </span>
@@ -128,8 +128,8 @@ const Landing = () => {
         <div className="flex flex-col md:flex-row md:items-end gap-8">
           <div className="flex-1">
             <h1
-              className="animate-blur-fade-up text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-medium leading-[1.1] mb-4 md:mb-6"
-              style={{ animationDelay: '300ms', fontFamily: "'Montserrat', sans-serif", letterSpacing: '-0.02em' }}
+              className="animate-blur-fade-up text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold leading-[1.1] mb-4 md:mb-6"
+              style={{ animationDelay: '300ms', fontFamily: "'IBM Plex Sans', sans-serif", letterSpacing: '-0.02em' }}
             >
               <span className="block">Triage Real Alerts.</span>
               <span className="block">Build Real Instincts.</span>
@@ -146,10 +146,10 @@ const Landing = () => {
             <div className="flex flex-wrap gap-3 sm:gap-4">
               <Link
                 to="/sim"
-                className="animate-blur-fade-up flex items-center gap-2 bg-white text-black rounded-full font-medium px-6 sm:px-8 py-2.5 sm:py-3 hover:bg-gray-200 transition-colors"
+                className="animate-blur-fade-up flex items-center gap-2 bg-white text-[#0f2942] rounded-full font-medium px-6 sm:px-8 py-2.5 sm:py-3 hover:bg-gray-100 transition-colors"
                 style={{ animationDelay: '500ms' }}
               >
-                <Play size={18} className="fill-black" />
+                <Play size={18} className="fill-[#0f2942]" />
                 Enter the Sim
               </Link>
             </div>
