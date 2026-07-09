@@ -54,7 +54,6 @@ def create_session():
         "id": session_id,
         "paths": paths,
         "session_dir": session_dir,
-        "current_scenario": None,
         "paused": True,
         "current_level": 0,
         "game_mode": "training",
@@ -740,21 +739,6 @@ CAMPAIGN_LEVELS = [
         }
     }
 ]
-
-
-def select_level_scenarios(level_config):
-    """
-    Legacy: Randomly select ONE category from the level's pool.
-    Kept for backwards compatibility; new flow uses build_alert_queue.
-    """
-    selected_category = random.choice(level_config["category_pool"])
-    scenario = level_config["scenarios"][selected_category]
-    return {
-        "scenario_label": scenario["scenario_label"],
-        "category": selected_category,
-        "ticket_title": scenario["ticket_title"],
-        "storyline": scenario["storyline"]
-    }
 
 
 def build_alert_queue(n=10, fp_min=1, fp_max=2):
@@ -1951,133 +1935,8 @@ NORMAL_TRAFFIC_TEMPLATES = [
 def get_random_employee():
     return random.choice(EMPLOYEES)
 
-def get_random_server(server_type=None):
-    if server_type:
-        return SERVERS.get(server_type)
-    return random.choice(list(SERVERS.values()))
-
-
 def generate_scenario_id():
     return str(uuid.uuid4())
-
-def infer_event_type(config, dynamic_fields, config_key):
-    """Infer realistic event_type based on event_source and event_id per EVENT_TYPE_MAPPINGS.md"""
-    # If explicit event_type_name is set, use it
-    if "event_type_name" in config:
-        return config["event_type_name"]
-
-    event_source = config.get("event_source", "Unknown").lower()
-    event_id = dynamic_fields.get("event_id") or dynamic_fields.get("event_type_id")
-
-    # Sysmon event mapping
-    if "sysmon" in event_source:
-        sysmon_map = {
-            1: "ProcessCreate",
-            2: "FileCreateTime",
-            3: "NetworkConnect",
-            5: "ProcessTerminate",
-            6: "DriverLoad",
-            7: "ImageLoad",
-            8: "CreateRemoteThread",
-            10: "ProcessAccess",
-            11: "FileCreate",
-            12: "RegistryEvent",
-            13: "RegistryEvent",
-            14: "RegistryEvent",
-            15: "FileCreateStreamHash",
-            17: "PipeEvent",
-            18: "PipeEvent",
-            22: "DNSQuery",
-            23: "FileDelete",
-        }
-        if event_id and int(event_id) in sysmon_map:
-            return sysmon_map[int(event_id)]
-        # Default for Sysmon process events
-        if dynamic_fields.get("process_path"):
-            return "ProcessCreate"
-
-    # Windows Security events - use Event ID as event_type
-    if "windows security" in event_source or "active directory" in event_source:
-        if event_id:
-            return str(event_id)
-        # Infer from config key
-        if "lockout" in config_key:
-            return "4740"
-        if "failed" in config_key or "brute" in config_key:
-            return "4625"
-        if "login" in config_key or "signin" in config_key:
-            return "4624"
-
-    # Zeek/Network logs
-    if "zeek" in event_source:
-        zeek_map = {
-            "dns_query": "dns",
-            "ssl_conn": "ssl",
-            "conn_log": "conn",
-            "http_log": "http",
-            "smb_files": "smb_files",
-        }
-        if config_key in zeek_map:
-            return zeek_map[config_key]
-        # Extract type from event_source (e.g., "Zeek HTTP" -> "http")
-        parts = config.get("event_source", "").split()
-        if len(parts) > 1:
-            return parts[1].lower()
-
-    # Proxy logs
-    if "proxy" in event_source:
-        return "TCP_MISS"
-
-    # Firewall logs
-    if "firewall" in event_source:
-        return "ALLOW"
-
-    # Email logs
-    if "exchange" in event_source or "email" in event_source or "mail" in event_source:
-        if "recv" in config_key or "received" in config_key:
-            return "RECEIVE"
-        if "sent" in config_key or "send" in config_key:
-            return "SEND"
-        return "RECEIVE"
-
-    # EDR/Endpoint logs with process info
-    if "edr" in event_source and dynamic_fields.get("process_path"):
-        return "ProcessCreate"
-
-    # Print Server - Windows Print Event ID 307
-    if "print" in event_source:
-        return "307"
-
-    # VPN logs - Generic VPN event
-    if "vpn" in event_source:
-        return "SessionConnect"
-
-    # Azure AD / Identity
-    if "azure" in event_source or "aad" in event_source or "identity" in event_source:
-        return "SignInLogs"
-
-    # Backup logs - Veeam Event ID 190 (job completed)
-    if "backup" in event_source or "veeam" in event_source:
-        return "190"
-
-    # DHCP - Windows DHCP Event ID 10 (new lease)
-    if "dhcp" in event_source:
-        return "10"
-
-    # SQL/Database - SQL Server Audit Event ID
-    if "sql" in event_source or "database" in event_source:
-        return "33205"
-
-    # AV/Antivirus - Windows Defender Event ID 1001 (scan completed)
-    if "antivirus" in event_source or "defender" in event_source or " av" in event_source:
-        return "1001"
-
-    # Wireless Controller - 802.1X authentication events
-    if "wireless" in event_source or "wifi" in event_source:
-        return "5632"  # Windows WLAN-AutoConfig Event ID for 802.1X auth
-
-    # Default: use config key but cleaned up
-    return config_key
 
 def substitute_placeholders(text, subs):
     """Replace placeholders like {src_ip} with actual values."""
@@ -2091,37 +1950,6 @@ def substitute_dict(d, subs):
     """Apply placeholder substitution to all string values in a dict."""
     result = {}
     for k, v in d.items():
-        if isinstance(v, str):
-            result[k] = substitute_placeholders(v, subs)
-        elif isinstance(v, dict):
-            result[k] = substitute_dict(v, subs)
-        else:
-            result[k] = v
-    return result
-
-def apply_dynamic_substitution(log_dict):
-    """Apply dynamic employee/server substitution to a scenario log.
-
-    Replaces placeholders like {username}, {hostname}, {src_ip} with
-    randomly selected employee data for realistic log generation.
-    """
-    emp = random.choice(EMPLOYEES)
-
-    subs = {
-        "{src_ip}": emp["ip"],
-        "{hostname}": emp["workstation"],
-        "{username}": emp["name"],
-        "{user_domain}": f"ACME\\{emp['name']}",
-        "{user_fullname}": emp["full_name"],
-        "{user_email}": emp["email"],
-        "{dns_server}": SERVERS["dns"]["ip"],
-        "{file_server}": SERVERS["file"]["ip"],
-        "{dc_server}": SERVERS["dc"]["ip"],
-        "{print_server}": SERVERS["print"]["ip"],
-    }
-
-    result = {}
-    for k, v in log_dict.items():
         if isinstance(v, str):
             result[k] = substitute_placeholders(v, subs)
         elif isinstance(v, dict):
@@ -2398,7 +2226,6 @@ def reset_simulator():
     s = g.session
 
     s["paused"] = True
-    s["current_scenario"] = None
     s["current_level"] = 0
     s["game_mode"] = "training"
     s["timer_start"] = None
@@ -2484,42 +2311,6 @@ def get_current_level():
 
 
 
-@app.route('/api/analytics', methods=['GET'])
-def get_analytics():
-    s = g.session
-    if not os.path.exists(s["paths"]["generated_logs"]):
-        return jsonify({
-            "total_alerts": 0,
-            "critical_alerts": 0,
-            "high_severity_rate": 0.0,
-            "weekly_alerts": []
-        })
-
-    with open(s["paths"]["generated_logs"], "r") as f:
-        logs = [json.loads(line) for line in f if line.strip()]
-
-    total = len(logs)
-    critical = sum(1 for log in logs if log.get("severity") == "critical" and log.get("status") in ["active"])
-    high = sum(1 for log in logs if log.get("severity") == "high")
-    rate = round(((critical + high) / total) * 100, 2) if total else 0.0
-
-    weekdays = {d: 0 for d in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]}
-    for log in logs:
-        try:
-            ts = datetime.fromisoformat(log["timestamp"].replace("Z", ""))
-            d = ts.strftime("%a")
-            if d in weekdays:
-                weekdays[d] += 1
-        except Exception:
-            continue
-
-    return jsonify({
-        "total_alerts": total,
-        "critical_alerts": critical,
-        "high_severity_rate": rate,
-        "weekly_alerts": [{"day": d, "alerts": c} for d, c in weekdays.items()]
-    })
-
 @app.route("/api/analytics/report_card", methods=["GET"])
 def get_analyst_report_card():
     s = g.session
@@ -2551,21 +2342,9 @@ def get_analyst_report_card():
         fp_identified = 0              # False positives correctly identified
         fp_missed = 0                  # False positives wrongly classified as real threats
 
-        # Flag accuracy tracking
-        correct_flags = 0
-        wrong_flags = 0
-
         for action in actions:
             sid = action.get("scenario_id")
             act = action.get("action")
-
-            # Handle flag actions
-            if act == "flag":
-                if action.get("correct", False):
-                    correct_flags += 1
-                else:
-                    wrong_flags += 1
-                continue
 
             if act == "classify":
                 if action.get("correct_category", "").lower() == "false positive":
@@ -2586,10 +2365,6 @@ def get_analyst_report_card():
         total_classifications = len(classification_actions)
         total_correct = correct_threat_identified + fp_identified
         classification_accuracy = round((total_correct / total_classifications) * 100, 2) if total_classifications else 0
-
-        # Calculate flag accuracy
-        total_flags = correct_flags + wrong_flags
-        flag_accuracy = round((correct_flags / total_flags) * 100, 2) if total_flags else 0
 
         # Average time-to-resolve across all resolved scenarios, and split by TP vs FP
         all_times = []
@@ -2642,10 +2417,6 @@ def get_analyst_report_card():
             "accuracy": classification_accuracy,
             "fp_identified": fp_identified,
             "fp_missed": fp_missed,
-            "correct_flags": correct_flags,
-            "wrong_flags": wrong_flags,
-            "total_flags": total_flags,
-            "flag_accuracy": flag_accuracy,
             "avg_time_to_resolve_seconds": avg_time_to_resolve_seconds,
             "avg_time_to_resolve_tp_seconds": avg_time_to_resolve_tp_seconds,
             "avg_time_to_resolve_fp_seconds": avg_time_to_resolve_fp_seconds,
@@ -2744,11 +2515,6 @@ def get_triage_review(scenario_label):
         **review
     })
 
-
-@app.route("/api/current-scenario", methods=["GET"])
-def get_current_scenario():
-    s = g.session
-    return jsonify(s["current_scenario"] if s["current_scenario"] else {})
 
 @app.route("/api/resume", methods=["POST"])
 def resume_generation():
@@ -2863,8 +2629,6 @@ def resume_generation():
         if s["resolved_count"] >= s["queue_length"]:
             s["paused"] = True
             print("[SESSION COMPLETE] All alerts resolved!", flush=True)
-
-    s["current_scenario"] = None
 
     if answer_wrong and s["game_mode"] == "hardcore":
         print(f"[HARDCORE FAILURE] {failure_reason}", flush=True)
@@ -3070,8 +2834,6 @@ def submit_report():
                 s["paused"] = True
                 print("[SESSION COMPLETE] All alerts resolved!", flush=True)
 
-        s["current_scenario"] = None
-
     return jsonify({"message": "Report submitted and scenario resolved"}), 200
 
 
@@ -3206,7 +2968,6 @@ def handle_game_timeout():
 
     print(f"[TIMEOUT] Hardcore session timer expired.", flush=True)
     s["paused"] = True
-    s["current_scenario"] = None
 
     return jsonify({"message": "Hardcore timer expired", "reset": False})
 
