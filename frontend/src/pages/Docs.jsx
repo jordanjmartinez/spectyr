@@ -2,19 +2,18 @@ import React, { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 const NAV = [
-  { id: 'campaign', label: 'Campaign' },
+  { id: 'queue', label: 'Queue' },
   { id: 'game-modes', label: 'Game Modes' },
   { id: 'scenarios', label: 'Scenarios' },
   { id: 'analytics', label: 'Analytics' },
   { id: 'reports', label: 'Reports' },
 ];
 
-const LEVELS = [
-  { level: 1, categories: 'Malware · Phishing · Defense Evasion' },
-  { level: 2, categories: 'Lateral Movement · Command & Control · Brute Force' },
-  { level: 3, categories: 'Phishing · Data Exfiltration · Insider Threat' },
-  { level: 4, categories: 'Malware · Lateral Movement · Defense Evasion' },
-  { level: 5, categories: 'Insider Threat · Brute Force · Command & Control' },
+const QUEUE_FACTS = [
+  ['Queue length', '10 scenarios per run'],
+  ['Catalog', '20 scenarios — 15 attack chains + 5 false positives'],
+  ['False positives', '1–2 mixed into every run'],
+  ['In flight at once', 'Up to 3 unresolved scenarios'],
 ];
 
 const CATEGORIES = [
@@ -104,44 +103,44 @@ const Docs = () => {
             <li>Watch the Alert Queue as events stream in from across the network.</li>
             <li>A scenario begins — an attack chain (or a false alarm) hidden in the noise.</li>
             <li>Investigate the related alerts, then classify the threat category — or flag the whole thing as a false positive.</li>
-            <li>Read the triage review, file your incident report, and advance to the next level.</li>
+            <li>Read the triage review, file your incident report, and keep working as the next alerts drip in.</li>
           </ol>
         </div>
 
-        <Section id="campaign" title="Campaign">
+        <Section id="queue" title="The Alert Queue">
           <p>
-            The campaign is five levels of increasing difficulty. Each level draws one scenario at
-            random from four possibilities — three attack categories plus one false positive — so
-            no two runs play the same and you can never assume an alert storm is real.
+            Each run builds a queue of ten scenarios, drawn at random from a catalog of twenty —
+            fifteen attack chains and five false positives — then shuffled, with one or two false
+            positives guaranteed in the mix. No two runs play the same, and you can never assume an
+            alert storm is real.
           </p>
           <div className="overflow-x-auto">
             <table className="w-full text-sm border border-[#e2e6ea] rounded-lg overflow-hidden">
-              <thead>
-                <tr className="bg-[#f0f2f5] text-[#1a2332]">
-                  <th className="text-left px-4 py-2 font-medium w-24">Level</th>
-                  <th className="text-left px-4 py-2 font-medium">Possible attack categories</th>
-                </tr>
-              </thead>
               <tbody>
-                {LEVELS.map(({ level, categories }) => (
-                  <tr key={level} className="border-t border-[#e2e6ea]">
-                    <td className="px-4 py-2 font-mono text-[#1a2332]">{level}</td>
-                    <td className="px-4 py-2 text-[#57606a]">{categories} · False Positive</td>
+                {QUEUE_FACTS.map(([fact, value]) => (
+                  <tr key={fact} className="border-t border-[#e2e6ea] first:border-t-0">
+                    <td className="px-4 py-2 font-medium text-[#1a2332] bg-[#f0f2f5] w-40 sm:w-56 align-top">{fact}</td>
+                    <td className="px-4 py-2 text-[#57606a]">{value}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           <p>
-            Attack events don't arrive in a tidy batch. They're scattered through normal traffic a
-            few events apart, with progressing timestamps — and the whole chain stays tied to the
-            same employee, workstation, and source IP. Pivoting on those shared indicators is how
-            you separate the chain from the noise.
+            Scenarios don't all land at once. They drip into your queue twenty to forty seconds
+            apart, with at most three unresolved at any time, so the pressure builds as you work.
+            Classify or dismiss a scenario and it clears; resolve all ten and the run is complete.
           </p>
           <p>
-            When a category repeats across levels, the scenario doesn't: Level 1 malware might be a
-            USB-delivered payload while Level 4 malware is ransomware staging. Every scenario in
-            the campaign is unique.
+            Attack events don't arrive in a tidy batch either. They're scattered through normal
+            traffic a few events apart, with progressing timestamps — and the whole chain stays
+            tied to the same employee, workstation, and source IP. Pivoting on those shared
+            indicators is how you separate the chain from the noise.
+          </p>
+          <p>
+            When a category comes up more than once, the scenario doesn't: one malware run might be
+            a USB-delivered payload while another is ransomware staging. Every scenario in the
+            catalog is unique.
           </p>
         </Section>
 
@@ -158,9 +157,9 @@ const Docs = () => {
             <div className="rounded-xl bg-white border border-[#e2e6ea] p-5" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
               <p className="font-medium text-[#1a2332] mb-2">Hardcore Mode</p>
               <p className="text-sm">
-                15:00 on the clock per level and a single-strike rule: one wrong classification —
-                or a timer hitting zero — resets the entire campaign to Level 1. The countdown
-                changes color as it runs down.
+                A single 15:00 timer covers the whole queue, and it's one-strike: one wrong
+                classification — or the clock reaching zero — ends the run. Retrying starts a fresh
+                queue from scratch. The countdown shifts color as time runs low.
               </p>
             </div>
           </div>
@@ -185,9 +184,10 @@ const Docs = () => {
           </dl>
           <h3 className="text-lg font-medium text-[#1a2332] pt-2">False positives</h3>
           <p>
-            Every level hides one scenario that's benign activity tripping real detection rules —
-            the calls that make Tier-1 work hard. Dismissing them correctly scores just like
-            catching an attack; escalating them counts against you. Examples of what you'll see:
+            Every run mixes in one or two scenarios that are benign activity tripping real
+            detection rules — the calls that make Tier-1 work hard. Dismissing them correctly
+            scores just like catching an attack; escalating them counts against you. Examples of
+            what you'll see:
           </p>
           <ul className="list-disc list-inside space-y-1 text-sm">
             {FALSE_POSITIVES.map((fp) => (
@@ -224,9 +224,9 @@ const Docs = () => {
           </ul>
           <p>
             Accuracy is <span className="font-mono text-sm text-[#1a2332]">(correct + FP caught) / total classifications</span>.
-            The Analytics tab tracks it all: your report card, a results chart, the campaign
-            progress stepper with per-level pass/fail, and a review of your recent decisions with
-            feedback on each. Finish the campaign and you get a final grade.
+            The Analytics tab tracks it all: your report card, a results chart, a progress tracker
+            for the ten scenarios in your queue, and a review of your recent decisions with
+            feedback on each. Finish the queue and you get a final grade.
           </p>
         </Section>
 

@@ -5,7 +5,7 @@ import { Menu, X, Play } from 'lucide-react';
 const VIDEO_URL = '/videos/spectyrvideo.mp4';
 
 const NAV_LINKS = [
-  { label: 'Campaign', to: '/docs#campaign' },
+  { label: 'Queue', to: '/docs#queue' },
   { label: 'Game Modes', to: '/docs#game-modes' },
   { label: 'Scenarios', to: '/docs#scenarios' },
   { label: 'Analytics', to: '/docs#analytics' },
