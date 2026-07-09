@@ -61,12 +61,12 @@ sweep_orphaned_session_dirs()
 def _read_ndjson_unlocked(path):
     if not os.path.exists(path):
         return []
-    with open(path, "r") as f:
+    with open(path, "r", encoding="utf-8") as f:
         return [json.loads(line) for line in f if line.strip()]
 
 
 def _write_ndjson_unlocked(path, records):
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         for r in records:
             f.write(json.dumps(r) + "\n")
 
@@ -80,7 +80,7 @@ def read_ndjson(session, key):
 def append_ndjson(session, key, record):
     """Locked single-record append."""
     with session["io_lock"]:
-        with open(session["paths"][key], "a") as f:
+        with open(session["paths"][key], "a", encoding="utf-8") as f:
             f.write(json.dumps(record) + "\n")
 
 
@@ -111,7 +111,7 @@ def create_session():
         "incident_reports": os.path.join(session_dir, "incident_reports.ndjson"),
     }
     for p in paths.values():
-        open(p, "a").close()
+        open(p, "a", encoding="utf-8").close()
 
     session = {
         "id": session_id,
@@ -203,7 +203,7 @@ _cleanup = threading.Thread(target=session_cleanup_thread, daemon=True)
 _cleanup.name = "SessionCleanup"
 _cleanup.start()
 
-with open(SCENARIO_PATH, "r") as f:
+with open(SCENARIO_PATH, "r", encoding="utf-8") as f:
     all_scenarios = [json.loads(line) for line in f if line.strip()]
 
 attack_chains = {}
@@ -2291,7 +2291,7 @@ def reset_simulator():
 
     with s["io_lock"]:
         for filepath in [s["paths"]["generated_logs"], s["paths"]["analyst_actions"], s["paths"]["incident_reports"]]:
-            with open(filepath, "w") as f:
+            with open(filepath, "w", encoding="utf-8") as f:
                 f.truncate(0)
 
     print("[RESET] Files cleared. Queue cleared. Waiting for analyst to start.")
