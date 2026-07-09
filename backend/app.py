@@ -211,11 +211,13 @@ for log in all_scenarios:
     label = log.get("label", "generic")
     attack_chains.setdefault(label, []).append(log)
 
-# Scenario source: "ndjson" (default, legacy) or "yaml" (Phase 1 loader).
-# Kept behind a flag until a seeded parity diff against the NDJSON path is
-# clean; the YAML catalog is loaded eagerly when selected so a bad file fails
-# at boot, not mid-session.
-SCENARIO_SOURCE = os.environ.get("SPECTYR_SCENARIO_SOURCE", "ndjson").lower()
+# Scenario source: "yaml" (Phase 1 loader, default) or "ndjson" (legacy).
+# YAML became the default after a seeded parity diff showed 20/20 chains
+# content-identical to the NDJSON path on every analyst-visible field. The
+# legacy NDJSON path is retained as a one-line revert: run with
+# SPECTYR_SCENARIO_SOURCE=ndjson to fall back. The selected catalog loads
+# eagerly at boot so a bad file fails fast, not mid-session.
+SCENARIO_SOURCE = os.environ.get("SPECTYR_SCENARIO_SOURCE", "yaml").lower()
 yaml_catalog = None
 yaml_triage_reviews = None
 if SCENARIO_SOURCE == "yaml":
