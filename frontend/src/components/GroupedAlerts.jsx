@@ -317,9 +317,11 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
     return 'Low';
   };
 
-  // Distinct entity values on a group's visible (trigger) logs, used as the
-  // Analyst-mode pivot chips. Host/IP/user are what an analyst filters on.
+  // Analyst-mode pivot chips. The backend supplies pivot_values (distinguishing
+  // entity values with infra servers excluded, so a pivot lands on this chain
+  // and not the whole domain's noise); fall back to a local derivation if absent.
   const pivotChipsFor = (group) => {
+    if (Array.isArray(group.pivot_values)) return group.pivot_values;
     const vals = new Set();
     (group.logs || []).forEach(log => {
       [log.source_ip, log.destination_ip, log.hostname].forEach(v => {

@@ -2807,6 +2807,14 @@ def get_grouped_alerts():
     # below (group severity, breakdowns, aggregate stats) then reflects only
     # the revealed logs, so nothing leaks the hidden chain's composition.
     analyst_mode = s.get("game_mode") == "analyst"
+    # Infra host/IP values are shared by unrelated network noise, so pivoting on
+    # them returns the whole domain's traffic rather than this chain. Excluded
+    # from pivot chips (matching fairness_check's pivot_values rule); external
+    # destinations like C2/exfil IPs are kept — those are useful pivots.
+    infra_values = set()
+    for srv in SERVERS.values():
+        infra_values.add(srv["ip"])
+        infra_values.add(srv["hostname"])
     for grp in result:
         grp["total_log_count"] = grp["log_count"]
         if analyst_mode:
@@ -2820,6 +2828,15 @@ def get_grouped_alerts():
                 if sev in sb:
                     sb[sev] += 1
             grp["severity_breakdown"] = sb
+            # Distinguishing entity values on the trigger log(s), infra excluded
+            pivots = []
+            for l in grp["logs"]:
+                candidates = [l.get("source_ip"), l.get("destination_ip"), l.get("hostname")]
+                candidates.append((l.get("key_value_pairs") or {}).get("account_name"))
+                for v in candidates:
+                    if v and v not in ("-", "—") and v not in infra_values and v not in pivots:
+                        pivots.append(v)
+            grp["pivot_values"] = pivots
         grp["hidden_count"] = grp["total_log_count"] - grp["log_count"]
 
     # Compute unified group severity (highest in the group)
