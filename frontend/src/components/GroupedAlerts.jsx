@@ -30,8 +30,8 @@ const RingCard = ({ title, segments, centerValue }) => {
     <div className="flex flex-col">
       <h3 className="text-base font-semibold text-[#1a2332] mb-3">{title}</h3>
       <div className="rounded-2xl p-4 sm:p-5 flex-1" style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
-        <div className="flex items-center gap-4 sm:gap-5">
-          <div className="relative w-28 h-28 sm:w-32 sm:h-32 shrink-0 aspect-square border-dashed border-2 border-[#b4bcc4] rounded-full p-1.5">
+        <div className="flex flex-col items-center gap-4 py-2">
+          <div className="relative w-32 h-32 sm:w-40 sm:h-40 shrink-0 aspect-square border-dashed border-2 border-[#b4bcc4] rounded-full p-1.5">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={data} innerRadius="70%" outerRadius="100%" startAngle={90} endAngle={-270} dataKey="value" stroke="#ffffff" strokeWidth={2}>
@@ -41,19 +41,17 @@ const RingCard = ({ title, segments, centerValue }) => {
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <span className="text-2xl sm:text-3xl font-bold text-[#1a2332]">{centerValue}</span>
+              <span className="text-3xl sm:text-4xl font-bold text-[#1a2332]">{centerValue}</span>
             </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="grid grid-cols-1 gap-1.5 text-xs sm:text-sm">
-              {segments.map(item => (
-                <div key={item.name} className="flex items-center gap-1.5 min-w-0">
-                  <span className="w-2.5 h-2.5 flex-shrink-0 rounded-md" style={{ backgroundColor: item.color }} />
-                  <span className="text-[#57606a] truncate flex-1">{item.name}</span>
-                  <span className="text-[#1a2332] font-semibold flex-shrink-0">{item.value}</span>
-                </div>
-              ))}
-            </div>
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs sm:text-sm">
+            {segments.map(item => (
+              <div key={item.name} className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 flex-shrink-0 rounded-md" style={{ backgroundColor: item.color }} />
+                <span className="text-[#57606a]">{item.name}</span>
+                <span className="text-[#1a2332] font-semibold">{item.value}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -65,12 +63,13 @@ const RingCard = ({ title, segments, centerValue }) => {
 // easier to compare magnitudes than a donut.
 const BarList = ({ title, segments }) => {
   const max = Math.max(1, ...segments.map(s => s.value || 0));
+  const sorted = [...segments].sort((a, b) => (b.value || 0) - (a.value || 0));
   return (
     <div className="flex flex-col">
       <h3 className="text-base font-semibold text-[#1a2332] mb-3">{title}</h3>
       <div className="rounded-2xl p-4 sm:p-5 flex-1" style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
         <div className="flex flex-col gap-2.5">
-          {segments.map(item => (
+          {sorted.map(item => (
             <div key={item.name} className="flex items-center gap-3">
               <span className="w-24 sm:w-32 shrink-0 text-xs sm:text-sm text-[#57606a] truncate">{item.name}</span>
               <div className="flex-1 h-5 rounded bg-[#f0f2f5] overflow-hidden">
@@ -636,7 +635,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
             <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper">
               <table className="w-full min-w-[600px] log-text text-left text-[#1a2332] border-separate border-spacing-0">
                 <thead>
-                  <tr className="text-xs sm:text-sm uppercase text-[#57606a] tracking-wider">
+                  <tr className="text-xs sm:text-sm text-[#57606a] tracking-wider">
                     <th className="w-10 px-2 sm:px-4 py-3 font-medium border-b border-[#d0d7de]"></th>
                     <th className="w-12 px-1 sm:px-2 py-3 font-medium border-b border-[#d0d7de]"></th>
                     <th className="px-2 sm:px-4 py-3 font-medium border-b border-[#d0d7de]">Ticket</th>
@@ -683,7 +682,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                     <button
                                       type="button"
                                       onClick={(e) => { e.stopPropagation(); scrollToNotableEvent(match); }}
-                                      className="text-[#8b949e] hover:text-[#f0f6fc] hover:underline font-medium transition-colors"
+                                      className="text-[#0f2942] hover:text-[#16436b] hover:underline font-medium transition-colors"
                                     >{alertId}</button>
                                   )}
                                   {alertId && scenario.startTime && <span className="text-[#8b949e] mx-2">·</span>}
@@ -749,7 +748,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                             if (!alertId && !scenario.startTime) return null;
                             return (
                               <p className="text-xs sm:text-sm text-[#57606a] mt-0.5">
-                                {alertId && <span className="text-[#8b949e] font-medium">{alertId}</span>}
+                                {alertId && <span className="text-[#0f2942] font-medium">{alertId}</span>}
                                 {alertId && scenario.startTime && <span className="text-[#8b949e] mx-2">·</span>}
                                 {scenario.startTime && `Created ${getRelativeTime(scenario.startTime)}`}
                               </p>
@@ -852,10 +851,10 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
 
           return (
             <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
-              <RingCard title="Alert Queue" centerValue={activeCount} segments={queueSegments} />
-              <BarList title="Alert Severity" segments={sevSegments} />
-              <BarList title="Alert Source" segments={sourceSegments} />
-              <BarList title="Alert Category" segments={catSegments} />
+              <RingCard title="Queue" centerValue={activeCount} segments={queueSegments} />
+              <BarList title="Severity" segments={sevSegments} />
+              <BarList title="Source" segments={sourceSegments} />
+              <BarList title="Category" segments={catSegments} />
             </div>
           );
         })()}
@@ -890,7 +889,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
             <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper">
               <table className="w-full min-w-[600px] log-text text-left text-[#1a2332] border-separate border-spacing-0">
                 <thead>
-                  <tr className="text-xs sm:text-sm uppercase text-[#57606a] tracking-wider">
+                  <tr className="text-xs sm:text-sm text-[#57606a] tracking-wider">
                     <th className="w-10 px-2 sm:px-4 py-3 font-medium border-b border-[#d0d7de]"></th>
                     <th className="w-12 px-1 sm:px-2 py-3 font-medium border-b border-[#d0d7de]"></th>
                     <th className="px-2 sm:px-4 py-3 font-medium border-b border-[#d0d7de]">Events</th>
@@ -943,7 +942,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                               {group.ticket_title || 'Unknown'}
                             </p>
                             <p className="text-xs sm:text-sm text-[#57606a] mt-0.5">
-                              {group.alert_id && <span className="text-[#8b949e] font-medium">{group.alert_id}</span>}
+                              {group.alert_id && <span className="text-[#0f2942] font-medium">{group.alert_id}</span>}
                               {group.alert_id && <span className="text-[#8b949e] mx-2">·</span>}
                               <span>{group.log_count} {group.log_count === 1 ? 'Event' : 'Events'}</span>
                             </p>
@@ -995,7 +994,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                         {group.hidden_count} related event{group.hidden_count === 1 ? '' : 's'} from this host are in the stream — pivot to reconstruct the chain before you classify.
                                       </p>
                                       <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                                        <span className="text-xs uppercase tracking-wider text-[#6e7781]">Pivot on</span>
+                                        <span className="text-xs tracking-wider text-[#6e7781]">Pivot on</span>
                                         {pivotChipsFor(group).map(v => (
                                           <button
                                             key={v}
@@ -1027,7 +1026,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                   <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper">
                                     <table className="w-full min-w-[1000px] sm:min-w-[1100px] log-text text-left text-[#1a2332] border-separate border-spacing-0">
                                       <thead>
-                                        <tr className="text-xs sm:text-sm uppercase text-[#57606a] tracking-wider">
+                                        <tr className="text-xs sm:text-sm text-[#57606a] tracking-wider">
                                           <th className="w-10 px-2 py-3"></th>
                                           <th className="px-2 sm:px-4 py-3 font-medium w-[100px] whitespace-nowrap text-center">Alert ID</th>
                                           <th className="px-2 sm:px-4 py-3 font-medium w-[100px] sm:w-[130px] whitespace-nowrap text-center">Time</th>

@@ -94,43 +94,35 @@ export const GradeCard = ({ report }) => {
       ];
 
   return (
-    <div className="h-full flex flex-col">
-      <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">Grade</h2>
-      <div className="rounded-2xl p-4 sm:p-6 flex-1" style={CARD_STYLE}>
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-center">
-            <div className="relative w-52 h-52 sm:w-72 sm:h-72 aspect-square border-dashed border-2 border-[#b4bcc4] rounded-full p-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    innerRadius="70%"
-                    outerRadius="100%"
-                    startAngle={90}
-                    endAngle={-270}
-                    dataKey="value"
-                    stroke="#ffffff" strokeWidth={2}
-                  >
-                    {total === 0
-                      ? [<Cell key="empty" fill="#e5e7eb" />]
-                      : pieData.map((seg, i) => <Cell key={i} fill={seg.color} />)}
-                  </Pie>
-                  <Tooltip content={<PieTooltip />} wrapperStyle={{ zIndex: 20, outline: 'none', border: 'none' }} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-7xl sm:text-9xl font-bold text-[#1a2332]">{grade}</span>
-              </div>
+    <div className="h-full">
+      <h3 className="text-base font-semibold text-[#1a2332] mb-3">Grade</h3>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-center">
+          <div className="relative w-48 h-48 sm:w-64 sm:h-64 aspect-square border-dashed border-2 border-[#b4bcc4] rounded-full p-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  innerRadius="70%"
+                  outerRadius="100%"
+                  startAngle={90}
+                  endAngle={-270}
+                  dataKey="value"
+                  stroke="#ffffff" strokeWidth={2}
+                >
+                  {total === 0
+                    ? [<Cell key="empty" fill="#e5e7eb" />]
+                    : pieData.map((seg, i) => <Cell key={i} fill={seg.color} />)}
+                </Pie>
+                <Tooltip content={<PieTooltip />} wrapperStyle={{ zIndex: 20, outline: 'none', border: 'none' }} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span className="text-6xl sm:text-8xl font-bold text-[#1a2332]">{grade}</span>
             </div>
           </div>
-          <p className="font-mono text-xs sm:text-sm text-[#57606a] text-center">
-            {GRADE_MESSAGES[grade] ? (
-              <>&gt;<span className="animate-blink">|</span> {GRADE_MESSAGES[grade]}</>
-            ) : (
-              <>&nbsp;</>
-            )}
-          </p>
         </div>
+        <p className="text-sm text-[#57606a] text-center min-h-[1.25rem]">{GRADE_MESSAGES[grade] || ' '}</p>
       </div>
     </div>
   );

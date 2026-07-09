@@ -367,7 +367,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
         <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper" style={{ minHeight: `${(alertsPerPage * 49) + 48}px` }}>
           <table className="w-full min-w-[900px] sm:min-w-[1000px] log-text text-left text-[#1a2332] border-separate border-spacing-0">
             <thead>
-              <tr className="text-xs sm:text-sm uppercase text-[#57606a] tracking-wider">
+              <tr className="text-xs sm:text-sm text-[#57606a] tracking-wider">
                 <th className="px-2 sm:px-4 py-3 font-medium w-10 border-b border-[#d0d7de]"></th>
                 <th className="px-2 sm:px-4 py-3 font-medium w-[100px] sm:w-[130px] whitespace-nowrap text-center border-b border-[#d0d7de]">Time</th>
                 <th className="px-2 sm:px-4 py-3 font-medium w-[160px] sm:w-[240px] whitespace-nowrap text-center border-b border-[#d0d7de]">Event Type</th>

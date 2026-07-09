@@ -14,7 +14,7 @@ const SeverityPill = ({ level }) => {
     <span
       className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium border whitespace-nowrap"
       style={{
-        color: filled ? '#d1d5db' : color,
+        color: filled ? '#ffffff' : color,
         backgroundColor: filled ? color : hexToRgba(color, 0.15),
         borderColor: filled ? color : hexToRgba(color, 0.45),
       }}

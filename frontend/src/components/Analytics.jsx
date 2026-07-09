@@ -54,10 +54,16 @@ const Analytics = ({ onReset, analystName, setAnalyticsCount }) => {
       {/* Campaign Progress - Full Width */}
       <CampaignProgress levelData={levelData} report={report} onReset={onReset} analystName={analystName} />
 
-      {/* Report Card + Grade side by side, MTTR trend full width below */}
-      <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
-        <AnalystReportCard report={report} />
-        <GradeCard report={report} />
+      {/* Report Card + Grade in one container with a separator; MTTR below */}
+      <div className="rounded-2xl" style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+        <div className="grid grid-cols-1 md:grid-cols-2">
+          <div className="p-4 sm:p-6 border-b md:border-b-0 md:border-r border-[#e2e6ea]">
+            <AnalystReportCard report={report} />
+          </div>
+          <div className="p-4 sm:p-6">
+            <GradeCard report={report} />
+          </div>
+        </div>
       </div>
       <MttrCard report={report} />
 
