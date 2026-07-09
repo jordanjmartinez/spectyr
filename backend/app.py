@@ -211,6 +211,18 @@ for log in all_scenarios:
     label = log.get("label", "generic")
     attack_chains.setdefault(label, []).append(log)
 
+# Scenario source: "ndjson" (default, legacy) or "yaml" (Phase 1 loader).
+# Kept behind a flag until a seeded parity diff against the NDJSON path is
+# clean; the YAML catalog is loaded eagerly when selected so a bad file fails
+# at boot, not mid-session.
+SCENARIO_SOURCE = os.environ.get("SPECTYR_SCENARIO_SOURCE", "ndjson").lower()
+yaml_catalog = None
+yaml_triage_reviews = None
+if SCENARIO_SOURCE == "yaml":
+    import scenario_loader
+    yaml_catalog, yaml_triage_reviews = scenario_loader.load_scenarios()
+    print(f"[SCENARIOS] yaml source: {len(yaml_catalog)} scenarios loaded", flush=True)
+
 # Pool of scenarios that SPECTYR can auto-detect (appear in NOTABLE EVENTS without manual flagging)
 # Map detected_by/event_source values to standardized source_type values
 SOURCE_TYPE_MAP = {
@@ -2093,21 +2105,11 @@ def generate_normal_event(scenario_id=None):
         "process_id": random.randint(1000, 65535),
         "parent_process_id": random.randint(500, 5000),
     }
-def build_attack_chain_logs(session, scenario_entry):
-    """Build the list of attack logs for a scenario entry from the queue.
-    Mutates scenario_entry in place to set scenario_id.
-    Returns the list of log dicts, or None if the chain definition is missing.
-    """
-    scenario_label = scenario_entry["scenario_label"]
+def _raw_chain_ndjson(scenario_label, emp):
+    """Legacy source: substituted base logs + per-step delay from the NDJSON.
+    Returns (list_of_base_log_dicts, list_of_gap_seconds) or None."""
     if scenario_label not in attack_chains:
         return None
-
-    chain = attack_chains[scenario_label]
-    scenario_id = generate_scenario_id()
-    scenario_entry["scenario_id"] = scenario_id
-
-    base_time = datetime.now(timezone.utc)
-    emp = random.choice(EMPLOYEES)
     chain_subs = {
         "{src_ip}": emp["ip"],
         "{hostname}": emp["workstation"],
@@ -2120,6 +2122,68 @@ def build_attack_chain_logs(session, scenario_entry):
         "{dc_server}": SERVERS["dc"]["ip"],
         "{print_server}": SERVERS["print"]["ip"],
     }
+    base_logs, gaps = [], []
+    for i, original in enumerate(attack_chains[scenario_label]):
+        log = apply_substitution_with_subs(copy.deepcopy(original), chain_subs)
+        custom = log.pop("time_offset_seconds", None)
+        gaps.append(0 if i == 0 else (custom if custom else random.randint(3, 8)))
+        base_logs.append(log)
+    return base_logs, gaps
+
+
+def _raw_chain_yaml(scenario_label, emp):
+    """Phase 1 source: resolved base logs + authored per-step offset from YAML.
+    Produces the same base-log keys the NDJSON path yields (label +
+    threat_pattern + step fields + key_value_pairs)."""
+    scenario = yaml_catalog.get(scenario_label)
+    if not scenario:
+        return None
+    resolved = scenario_loader.resolve_entities(
+        scenario, EMPLOYEES, SERVERS, rng=_ForcedChoice(emp)
+    )
+    base_logs, gaps = [], []
+    for i, step in enumerate(scenario["chain"]):
+        off = step.get("offset", 0)
+        gap = 0 if i == 0 else (random.randint(off[0], off[1]) if isinstance(off, list) else off)
+        gaps.append(gap)
+        log = scenario_loader.substitute_deep(
+            {k: v for k, v in step.items() if k != "offset"}, resolved
+        )
+        log["label"] = scenario_label
+        log["threat_pattern"] = scenario.get("threat_pattern", "")
+        base_logs.append(log)
+    return base_logs, gaps
+
+
+class _ForcedChoice(random.Random):
+    """rng whose choice() always returns a fixed value, so the same employee
+    threads the whole chain (mirrors the NDJSON path's single emp pick)."""
+    def __init__(self, forced):
+        super().__init__()
+        self._forced = forced
+
+    def choice(self, seq):
+        return self._forced
+
+
+def build_attack_chain_logs(session, scenario_entry, employee=None):
+    """Build the list of attack logs for a scenario entry from the queue.
+    Mutates scenario_entry in place to set scenario_id.
+    Returns the list of log dicts, or None if the chain definition is missing.
+    Source (NDJSON vs YAML) is selected by SCENARIO_SOURCE.
+    """
+    scenario_label = scenario_entry["scenario_label"]
+    emp = employee or random.choice(EMPLOYEES)
+
+    producer = _raw_chain_yaml if SCENARIO_SOURCE == "yaml" else _raw_chain_ndjson
+    raw = producer(scenario_label, emp)
+    if raw is None:
+        return None
+    base_logs, gaps = raw
+
+    scenario_id = generate_scenario_id()
+    scenario_entry["scenario_id"] = scenario_id
+    base_time = datetime.now(timezone.utc)
 
     while True:
         alert_id = f"INC-{random.randint(1000, 9999)}"
@@ -2129,21 +2193,11 @@ def build_attack_chain_logs(session, scenario_entry):
 
     threat_logs = []
     prev_offset = 0
-    for i, original in enumerate(chain):
-        log = copy.deepcopy(original)
-        log = apply_substitution_with_subs(log, chain_subs)
-        if i == 0:
-            prev_offset = 0
-        else:
-            custom_offset = original.get("time_offset_seconds")
-            if custom_offset:
-                prev_offset += custom_offset
-            else:
-                prev_offset += random.randint(3, 8)
-        log.pop("time_offset_seconds", None)
+    for log, gap in zip(base_logs, gaps):
+        prev_offset += gap
         log["timestamp"] = (base_time + timedelta(seconds=prev_offset)).isoformat()
         log["id"] = str(uuid.uuid4())
-        if "severity" not in log or not log["severity"]:
+        if not log.get("severity"):
             log["severity"] = "high"
         log["scenario_id"] = scenario_id
         log["status"] = "active"
@@ -2153,7 +2207,7 @@ def build_attack_chain_logs(session, scenario_entry):
         log["category"] = scenario_entry["category"]
         log["flagged"] = True
         log["alert_id"] = alert_id
-        if "source_type" not in log or not log["source_type"]:
+        if not log.get("source_type"):
             log["source_type"] = get_source_type(log.get("detected_by", "Unknown"))
         threat_logs.append(log)
 
@@ -2552,7 +2606,8 @@ def get_action_history():
 @app.route("/api/triage-review/<scenario_label>", methods=["GET"])
 def get_triage_review(scenario_label):
     """Get educational triage review content for a scenario."""
-    review = TRIAGE_REVIEWS.get(scenario_label)
+    reviews = yaml_triage_reviews if SCENARIO_SOURCE == "yaml" else TRIAGE_REVIEWS
+    review = reviews.get(scenario_label)
     if not review:
         return jsonify({"error": f"No triage review found for {scenario_label}"}), 404
     return jsonify({
