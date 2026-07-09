@@ -51,6 +51,39 @@ def sweep_orphaned_session_dirs():
 
 sweep_orphaned_session_dirs()
 
+
+# --- Session NDJSON IO ---
+# Each session's log-writer thread appends to generated_logs.ndjson while
+# request handlers read-modify-rewrite the same file. All access goes through
+# these locked helpers; read-modify-write sections hold session["io_lock"]
+# explicitly around the _unlocked primitives so the whole RMW is atomic.
+
+def _read_ndjson_unlocked(path):
+    if not os.path.exists(path):
+        return []
+    with open(path, "r") as f:
+        return [json.loads(line) for line in f if line.strip()]
+
+
+def _write_ndjson_unlocked(path, records):
+    with open(path, "w") as f:
+        for r in records:
+            f.write(json.dumps(r) + "\n")
+
+
+def read_ndjson(session, key):
+    """Locked snapshot read of a session NDJSON file."""
+    with session["io_lock"]:
+        return _read_ndjson_unlocked(session["paths"][key])
+
+
+def append_ndjson(session, key, record):
+    """Locked single-record append."""
+    with session["io_lock"]:
+        with open(session["paths"][key], "a") as f:
+            f.write(json.dumps(record) + "\n")
+
+
 TIMER_DURATIONS = {1: 900, 2: 900, 3: 900, 4: 900, 5: 900}
 
 CONCURRENT_QUEUE_CAP = 3  # Max in-flight (injected, unresolved) scenarios
@@ -84,6 +117,7 @@ def create_session():
         "id": session_id,
         "paths": paths,
         "session_dir": session_dir,
+        "io_lock": threading.Lock(),
         "paused": True,
         "current_level": 0,
         "game_mode": "training",
@@ -2131,19 +2165,15 @@ def finalize_chain(session, scenario_id):
     if not scenario_id:
         return
     fake_log_path = session["paths"]["generated_logs"]
-    if not os.path.exists(fake_log_path):
-        return
-    with open(fake_log_path, "r") as f:
-        all_logs = [json.loads(line) for line in f if line.strip()]
-    changed = False
-    for log in all_logs:
-        if log.get("scenario_id") == scenario_id and not log.get("chain_complete"):
-            log["chain_complete"] = True
-            changed = True
-    if changed:
-        with open(fake_log_path, "w") as f:
-            for log in all_logs:
-                f.write(json.dumps(log) + "\n")
+    with session["io_lock"]:
+        all_logs = _read_ndjson_unlocked(fake_log_path)
+        changed = False
+        for log in all_logs:
+            if log.get("scenario_id") == scenario_id and not log.get("chain_complete"):
+                log["chain_complete"] = True
+                changed = True
+        if changed:
+            _write_ndjson_unlocked(fake_log_path, all_logs)
 
 
 def log_writer(session, interval=1):
@@ -2152,7 +2182,6 @@ def log_writer(session, interval=1):
     No per-level pause; only pauses when all alerts are resolved or session
     is explicitly paused.
     """
-    fake_log_path = session["paths"]["generated_logs"]
     attack_queue = []  # pending attack log dicts to write, interleaved with normals
     logs_since_last_attack = 0
     next_attack_gap = random.randint(2, 3)
@@ -2210,8 +2239,7 @@ def log_writer(session, interval=1):
         # Write an attack log from the queue if gap satisfied
         if attack_queue and logs_since_last_attack >= next_attack_gap:
             attack_log = attack_queue.pop(0)
-            with open(fake_log_path, "a") as f:
-                f.write(json.dumps(attack_log) + "\n")
+            append_ndjson(session, "generated_logs", attack_log)
             logs_since_last_attack = 0
             next_attack_gap = random.randint(2, 3)
 
@@ -2227,8 +2255,7 @@ def log_writer(session, interval=1):
         else:
             # Normal traffic tick
             normal_log = generate_normal_event()
-            with open(fake_log_path, "a") as f:
-                f.write(json.dumps(normal_log) + "\n")
+            append_ndjson(session, "generated_logs", normal_log)
             logs_since_last_attack += 1
 
         time.sleep(interval)
@@ -2238,17 +2265,10 @@ def get_fake_events():
     s = g.session
     seen_ids = set()
     unique_logs = []
-    try:
-        with open(s["paths"]["generated_logs"], "r") as f:
-            for line in f:
-                if not line.strip():
-                    continue
-                log = json.loads(line)
-                if log["id"] not in seen_ids:
-                    seen_ids.add(log["id"])
-                    unique_logs.append(log)
-    except FileNotFoundError:
-        return jsonify({"error": "Fake log file not found"}), 404
+    for log in read_ndjson(s, "generated_logs"):
+        if log["id"] not in seen_ids:
+            seen_ids.add(log["id"])
+            unique_logs.append(log)
     return jsonify(unique_logs)
 
 @app.route("/api/reset-simulator", methods=["POST"])
@@ -2269,9 +2289,10 @@ def reset_simulator():
     s["scenario_start_time"] = None
     s["scenario_history"] = []
 
-    for filepath in [s["paths"]["generated_logs"], s["paths"]["analyst_actions"], s["paths"]["incident_reports"]]:
-        with open(filepath, "w") as f:
-            f.truncate(0)
+    with s["io_lock"]:
+        for filepath in [s["paths"]["generated_logs"], s["paths"]["analyst_actions"], s["paths"]["incident_reports"]]:
+            with open(filepath, "w") as f:
+                f.truncate(0)
 
     print("[RESET] Files cleared. Queue cleared. Waiting for analyst to start.")
     return jsonify({"message": "Simulator reset."}), 200
@@ -2345,17 +2366,8 @@ def get_current_level():
 def get_analyst_report_card():
     s = g.session
     try:
-        # Handle missing files gracefully
-        actions = []
-        all_logs = []
-
-        if os.path.exists(s["paths"]["analyst_actions"]):
-            with open(s["paths"]["analyst_actions"], "r") as f:
-                actions = [json.loads(line) for line in f if line.strip()]
-
-        if os.path.exists(s["paths"]["generated_logs"]):
-            with open(s["paths"]["generated_logs"], "r") as f:
-                all_logs = [json.loads(line) for line in f if line.strip()]
+        actions = read_ndjson(s, "analyst_actions")
+        all_logs = read_ndjson(s, "generated_logs")
 
         # Build lookup: scenario_id -> category + scenario_label
         scenario_info = {}
@@ -2463,16 +2475,8 @@ def get_action_history():
     """Returns detailed history of analyst actions with correctness feedback."""
     s = g.session
     try:
-        actions = []
-        all_logs = []
-
-        if os.path.exists(s["paths"]["analyst_actions"]):
-            with open(s["paths"]["analyst_actions"], "r") as f:
-                actions = [json.loads(line) for line in f if line.strip()]
-
-        if os.path.exists(s["paths"]["generated_logs"]):
-            with open(s["paths"]["generated_logs"], "r") as f:
-                all_logs = [json.loads(line) for line in f if line.strip()]
+        actions = read_ndjson(s, "analyst_actions")
+        all_logs = read_ndjson(s, "generated_logs")
 
         # Build lookups
         scenario_info = {}
@@ -2563,10 +2567,13 @@ def resume_generation():
         print(f"[CATEGORY SELECTED] {selected_category}", flush=True)
 
     existing_category = None
+    category_correct = False
+    already_classified = False
 
-    if os.path.exists(s["paths"]["generated_logs"]):
-        with open(s["paths"]["generated_logs"], "r") as f:
-            all_logs = [json.loads(line) for line in f if line.strip()]
+    # Atomic read-modify-write: the log-writer thread appends to this file
+    # concurrently, so the whole section holds the session IO lock.
+    with s["io_lock"]:
+        all_logs = _read_ndjson_unlocked(s["paths"]["generated_logs"])
 
         for log in all_logs:
             if log.get("scenario_id") == scenario_id:
@@ -2579,30 +2586,29 @@ def resume_generation():
             log.get("scenario_id") == scenario_id and log.get("status") == "classified"
             for log in all_logs
         )
-        if already_classified and action == "classify":
-            return jsonify({"status": "already_classified", "category": existing_category or "Unknown"})
 
-        # Determine correctness for classify action
-        category_correct = False
-        if action == "classify" and selected_category:
-            category_correct = selected_category.lower() == (existing_category or "").lower()
-            print(f"[SCORING] Selected: {selected_category}, Actual: {existing_category}, Match: {category_correct}", flush=True)
+        if not (already_classified and action == "classify"):
+            # Determine correctness for classify action
+            if action == "classify" and selected_category:
+                category_correct = selected_category.lower() == (existing_category or "").lower()
+                print(f"[SCORING] Selected: {selected_category}, Actual: {existing_category}, Match: {category_correct}", flush=True)
 
-        updated_logs = []
-        for log in all_logs:
-            if log.get("scenario_id") == scenario_id:
-                if action == "classify":
-                    log["status"] = "classified"
-                    log["analyst_category"] = selected_category
-                    log["category_correct"] = category_correct
-                else:
-                    log["status"] = action
-                log["analyst_action"] = action
-            updated_logs.append(log)
+            updated_logs = []
+            for log in all_logs:
+                if log.get("scenario_id") == scenario_id:
+                    if action == "classify":
+                        log["status"] = "classified"
+                        log["analyst_category"] = selected_category
+                        log["category_correct"] = category_correct
+                    else:
+                        log["status"] = action
+                    log["analyst_action"] = action
+                updated_logs.append(log)
 
-        with open(s["paths"]["generated_logs"], "w") as f:
-            for log in updated_logs:
-                f.write(json.dumps(log) + "\n")
+            _write_ndjson_unlocked(s["paths"]["generated_logs"], updated_logs)
+
+    if already_classified and action == "classify":
+        return jsonify({"status": "already_classified", "category": existing_category or "Unknown"})
 
     action_log = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -2617,8 +2623,7 @@ def resume_generation():
         action_log["correct_category"] = existing_category
         action_log["category_correct"] = category_correct
 
-    with open(s["paths"]["analyst_actions"], "a") as f:
-        f.write(json.dumps(action_log) + "\n")
+    append_ndjson(s, "analyst_actions", action_log)
 
     # Determine if answer was wrong for hardcore mode failure
     answer_wrong = False
@@ -2676,11 +2681,7 @@ def resume_generation():
 @app.route('/api/grouped-alerts', methods=['GET'])
 def get_grouped_alerts():
     s = g.session
-    if not os.path.exists(s["paths"]["generated_logs"]):
-        return jsonify({"alerts": [], "stats": {"total_alerts": 0, "closed_alerts": 0, "open_alerts": 0, "severity_breakdown": {"low": 0, "medium": 0, "high": 0, "critical": 0}, "source_breakdown": {}}})
-
-    with open(s["paths"]["generated_logs"], "r") as f:
-        logs = [json.loads(line) for line in f if line.strip()]
+    logs = read_ndjson(s, "generated_logs")
 
     grouped = {}
 
@@ -2773,14 +2774,11 @@ def submit_report():
     correct_category = None
     scenario_label = None
 
-    if os.path.exists(s["paths"]["generated_logs"]):
-        with open(s["paths"]["generated_logs"], "r") as f:
-            for line in f:
-                log = json.loads(line)
-                if log.get("scenario_id") == scenario_id:
-                    correct_category = log.get("category")
-                    scenario_label = log.get("label")
-                    break
+    for log in read_ndjson(s, "generated_logs"):
+        if log.get("scenario_id") == scenario_id:
+            correct_category = log.get("category")
+            scenario_label = log.get("label")
+            break
 
     # Fallback: if category not in log, look it up from CAMPAIGN_LEVELS using label
     if not correct_category and scenario_label:
@@ -2798,31 +2796,20 @@ def submit_report():
 
     print(f"[REPORT] scenario_id={scenario_id}, submitted={submitted_category}, correct={correct_category}, match={is_correct}", flush=True)
 
-    with open(s["paths"]["incident_reports"], "a") as f:
-        f.write(json.dumps(data) + "\n")
+    append_ndjson(s, "incident_reports", data)
 
     if scenario_id and not data.get("skip_advance"):
-        if os.path.exists(s["paths"]["generated_logs"]):
-            with open(s["paths"]["generated_logs"], "r") as f:
-                logs = [json.loads(line) for line in f if line.strip()]
-
+        # Atomic read-modify-write against the concurrent log-writer thread
+        with s["io_lock"]:
+            logs = _read_ndjson_unlocked(s["paths"]["generated_logs"])
             for log in logs:
                 if log.get("scenario_id") == scenario_id:
                     log["status"] = "investigating"
                     log["analyst_action"] = "investigate"
+            _write_ndjson_unlocked(s["paths"]["generated_logs"], logs)
 
-            with open(s["paths"]["generated_logs"], "w") as f:
-                for log in logs:
-                    f.write(json.dumps(log) + "\n")
-
-        label = "unknown"
-        if scenario_id and os.path.exists(s["paths"]["generated_logs"]):
-            with open(s["paths"]["generated_logs"], "r") as f:
-                for line in f:
-                    log = json.loads(line)
-                    if log.get("scenario_id") == scenario_id:
-                        label = log.get("label", "unknown")
-                        break
+        # scenario_label was already looked up from the same file above
+        label = scenario_label or "unknown"
 
         action_log = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -2830,8 +2817,7 @@ def submit_report():
             "action": "investigate",
             "label": label
         }
-        with open(s["paths"]["analyst_actions"], "a") as f:
-            f.write(json.dumps(action_log) + "\n")
+        append_ndjson(s, "analyst_actions", action_log)
 
         # Mark scenario resolved in the queue (if not already resolved via classify)
         queue_entry = next((e for e in s.get("alert_queue", []) if e.get("scenario_id") == scenario_id), None)
@@ -2870,39 +2856,28 @@ def submit_report():
 @app.route("/api/reports", methods=["GET"])
 def get_reports():
     s = g.session
-    if not os.path.exists(s["paths"]["incident_reports"]):
-        return jsonify([])
-    with open(s["paths"]["incident_reports"], "r") as f:
-        reports = [json.loads(line) for line in f if line.strip()]
-    return jsonify(reports)
+    return jsonify(read_ndjson(s, "incident_reports"))
 
 
 @app.route('/api/reports/<report_id>', methods=['DELETE'])
 def delete_report(report_id):
     s = g.session
     try:
-        if not os.path.exists(s["paths"]["incident_reports"]):
-            return jsonify({'error': 'Report storage not found'}), 404
-
         remaining_reports = []
         found = False
 
-        with open(s["paths"]["incident_reports"], 'r') as f:
-            for line in f:
-                if not line.strip():
-                    continue
-                report = json.loads(line)
+        with s["io_lock"]:
+            for report in _read_ndjson_unlocked(s["paths"]["incident_reports"]):
                 if report.get('id') == report_id:
                     found = True
                 else:
                     remaining_reports.append(report)
 
+            if found:
+                _write_ndjson_unlocked(s["paths"]["incident_reports"], remaining_reports)
+
         if not found:
             return jsonify({'error': 'Report not found'}), 404
-
-        with open(s["paths"]["incident_reports"], 'w') as f:
-            for report in remaining_reports:
-                f.write(json.dumps(report) + '\n')
 
         return jsonify({'message': 'Report deleted'}), 200
 
@@ -2915,26 +2890,17 @@ def delete_report(report_id):
 def update_report(report_id):
     s = g.session
     try:
-        if not os.path.exists(s["paths"]["incident_reports"]):
-            return jsonify({'error': 'Report storage not found'}), 404
-
         updated_data = request.json
         updated_data['id'] = report_id
         updated_reports = []
 
-        with open(s["paths"]["incident_reports"], 'r') as f:
-            for line in f:
-                if not line.strip():
-                    continue
-                report = json.loads(line)
+        with s["io_lock"]:
+            for report in _read_ndjson_unlocked(s["paths"]["incident_reports"]):
                 if report.get('id') == report_id:
                     updated_reports.append(updated_data)
                 else:
                     updated_reports.append(report)
-
-        with open(s["paths"]["incident_reports"], 'w') as f:
-            for report in updated_reports:
-                f.write(json.dumps(report) + '\n')
+            _write_ndjson_unlocked(s["paths"]["incident_reports"], updated_reports)
 
         return jsonify({'message': 'Report updated'}), 200
 
