@@ -725,6 +725,8 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                   { name: 'Sysmon', color: '#3a5fb8' },
                   { name: 'Azure', key: 'Azure AD', color: '#1d3370' },
                   { name: 'Proxy', color: '#6b54b8' },
+                  { name: 'Defender', color: '#7ba7cc' },
+                  { name: 'Veeam', color: '#2a6b7a' },
                 ];
                 const sb = alertStats.source_breakdown || {};
                 const sourceSegments = SOURCE_TYPES.map(s => ({ ...s, value: sb[s.key || s.name] || 0 }));

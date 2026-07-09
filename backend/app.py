@@ -872,7 +872,7 @@ SERVERS = {
 
 # Network firewalls
 FIREWALLS = {
-    "perimeter": {"hostname": "ACME-FW01", "ip": "10.0.1.1", "desc": "Perimeter Firewall"},
+    "perimeter": {"hostname": "ACME-FW01", "ip": "10.0.1.254", "desc": "Perimeter Firewall"},
 }
 
 # Legitimate external domains employees would access
@@ -924,7 +924,7 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS response sent for www.google.com.",
-        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "52315", "dest_port": 53, "transport": "udp", "query": "www.google.com", "query_type": "A", "message_type": "Response", "reply_code": "NoError", "answer": "142.250.191.46", "dvc": "ACME-FW01"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "52315", "dest_port": 53, "transport": "udp", "query": "www.google.com", "query_type": "A", "message_type": "Response", "reply_code": "NoError", "answer": "142.250.191.46", "dvc": "ACME-SVR03"}
     },
     {
         "event_type": "QUERY",
@@ -938,7 +938,7 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS response sent for outlook.office365.com.",
-        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "52419", "dest_port": 53, "transport": "udp", "query": "outlook.office365.com", "query_type": "A", "message_type": "Response", "reply_code": "NoError", "answer": "52.96.166.24", "dvc": "ACME-FW01"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "52419", "dest_port": 53, "transport": "udp", "query": "outlook.office365.com", "query_type": "A", "message_type": "Response", "reply_code": "NoError", "answer": "52.96.166.24", "dvc": "ACME-SVR03"}
     },
     {
         "event_type": "QUERY",
@@ -952,7 +952,7 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS response sent for www.google.com.",
-        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "52513", "dest_port": 53, "transport": "udp", "query": "www.google.com", "query_type": "AAAA", "message_type": "Response", "reply_code": "NoError", "answer": "2607:f8b0:4004:800::2004", "dvc": "ACME-FW01"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "52513", "dest_port": 53, "transport": "udp", "query": "www.google.com", "query_type": "AAAA", "message_type": "Response", "reply_code": "NoError", "answer": "2607:f8b0:4004:800::2004", "dvc": "ACME-SVR03"}
     },
     {
         "event_type": "QUERY",
@@ -966,7 +966,7 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS response sent for teams.microsoft.com.",
-        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "52621", "dest_port": 53, "transport": "udp", "query": "teams.microsoft.com", "query_type": "A", "message_type": "Response", "reply_code": "NoError", "answer": "13.107.42.16", "dvc": "ACME-FW01"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "52621", "dest_port": 53, "transport": "udp", "query": "teams.microsoft.com", "query_type": "A", "message_type": "Response", "reply_code": "NoError", "answer": "13.107.42.16", "dvc": "ACME-SVR03"}
     },
     {
         "event_type": "QUERY",
@@ -980,7 +980,7 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS response sent for slack.com.",
-        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53101", "dest_port": 53, "transport": "udp", "query": "slack.com", "query_type": "A", "message_type": "Response", "reply_code": "NoError", "answer": "99.181.64.71", "dvc": "ACME-FW01"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53101", "dest_port": 53, "transport": "udp", "query": "slack.com", "query_type": "A", "message_type": "Response", "reply_code": "NoError", "answer": "99.181.64.71", "dvc": "ACME-SVR03"}
     },
     {
         "event_type": "QUERY",
@@ -994,7 +994,7 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS response sent for github.com.",
-        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53201", "dest_port": 53, "transport": "udp", "query": "github.com", "query_type": "A", "message_type": "Response", "reply_code": "NoError", "answer": "140.82.112.4", "dvc": "ACME-FW01"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53201", "dest_port": 53, "transport": "udp", "query": "github.com", "query_type": "A", "message_type": "Response", "reply_code": "NoError", "answer": "140.82.112.4", "dvc": "ACME-SVR03"}
     },
     {
         "event_type": "QUERY",
@@ -1008,7 +1008,7 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS response sent for _dmarc.google.com.",
-        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53301", "dest_port": 53, "transport": "udp", "query": "_dmarc.google.com", "query_type": "TXT", "message_type": "Response", "reply_code": "NoError", "answer": "v=DMARC1; p=reject...", "dvc": "ACME-FW01"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53301", "dest_port": 53, "transport": "udp", "query": "_dmarc.google.com", "query_type": "TXT", "message_type": "Response", "reply_code": "NoError", "answer": "v=DMARC1; p=reject...", "dvc": "ACME-SVR03"}
     },
     {
         "event_type": "QUERY",
@@ -1022,7 +1022,7 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS response sent for _ldap._tcp.acme.local.",
-        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53401", "dest_port": 53, "transport": "udp", "query": "_ldap._tcp.acme.local", "query_type": "SRV", "message_type": "Response", "reply_code": "NoError", "answer": "ACME-SVR01.acme.local", "dvc": "ACME-FW01"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53401", "dest_port": 53, "transport": "udp", "query": "_ldap._tcp.acme.local", "query_type": "SRV", "message_type": "Response", "reply_code": "NoError", "answer": "ACME-SVR01.acme.local", "dvc": "ACME-SVR03"}
     },
     {
         "event_type": "QUERY",
@@ -1036,7 +1036,7 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS response sent for 200.1.0.10.in-addr.arpa.",
-        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53501", "dest_port": 53, "transport": "udp", "query": "200.1.0.10.in-addr.arpa", "query_type": "PTR", "message_type": "Response", "reply_code": "NoError", "answer": "ACME-SVR01.acme.local", "dvc": "ACME-FW01"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53501", "dest_port": 53, "transport": "udp", "query": "200.1.0.10.in-addr.arpa", "query_type": "PTR", "message_type": "Response", "reply_code": "NoError", "answer": "ACME-SVR01.acme.local", "dvc": "ACME-SVR03"}
     },
     {
         "event_type": "QUERY",
@@ -1050,77 +1050,77 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS query failed for wpad.acme.local.",
-        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "54891", "dest_port": 53, "transport": "udp", "query": "wpad.acme.local", "query_type": "A", "message_type": "Response", "reply_code": "NXDomain", "dvc": "ACME-FW01"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "54891", "dest_port": 53, "transport": "udp", "query": "wpad.acme.local", "query_type": "A", "message_type": "Response", "reply_code": "NXDomain", "dvc": "ACME-SVR03"}
     },
     {
         "event_type": "ALLOWED",
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS AAAA response sent for www.google.com.",
-        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53124", "dest_port": 53, "transport": "udp", "query": "www.google.com", "query_type": "AAAA", "message_type": "Response", "reply_code": "NoError", "answer": "2607:f8b0:4004:c08::6a", "dvc": "ACME-FW01"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53124", "dest_port": 53, "transport": "udp", "query": "www.google.com", "query_type": "AAAA", "message_type": "Response", "reply_code": "NoError", "answer": "2607:f8b0:4004:c08::6a", "dvc": "ACME-SVR03"}
     },
     {
         "event_type": "ALLOWED",
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS AAAA response sent for outlook.office365.com.",
-        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53892", "dest_port": 53, "transport": "udp", "query": "outlook.office365.com", "query_type": "AAAA", "message_type": "Response", "reply_code": "NoError", "answer": "2603:1006:1400:e::2", "dvc": "ACME-FW01"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "53892", "dest_port": 53, "transport": "udp", "query": "outlook.office365.com", "query_type": "AAAA", "message_type": "Response", "reply_code": "NoError", "answer": "2603:1006:1400:e::2", "dvc": "ACME-SVR03"}
     },
     {
         "event_type": "ALLOWED",
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS AAAA response sent for github.com.",
-        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "54683", "dest_port": 53, "transport": "udp", "query": "github.com", "query_type": "AAAA", "message_type": "Response", "reply_code": "NoError", "answer": "2606:50c0:8000::154", "dvc": "ACME-FW01"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "54683", "dest_port": 53, "transport": "udp", "query": "github.com", "query_type": "AAAA", "message_type": "Response", "reply_code": "NoError", "answer": "2606:50c0:8000::154", "dvc": "ACME-SVR03"}
     },
     {
-        "event_type": "NXDOMAIN",
+        "event_type": "ALLOWED",
         "source_type": "DNS",
         "source_ip": "{dns_server}",
-        "message": "DNS AAAA query failed for stackoverflow.com.",
-        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "54217", "dest_port": 53, "transport": "udp", "query": "stackoverflow.com", "query_type": "AAAA", "message_type": "Response", "reply_code": "NXDomain", "dvc": "ACME-FW01"}
+        "message": "DNS AAAA response sent for stackoverflow.com (no AAAA record).",
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "54217", "dest_port": 53, "transport": "udp", "query": "stackoverflow.com", "query_type": "AAAA", "message_type": "Response", "reply_code": "NoError", "dvc": "ACME-SVR03"}
     },
     {
         "event_type": "NXDOMAIN",
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS AAAA query failed for acme-print01.acme.local.",
-        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "55029", "dest_port": 53, "transport": "udp", "query": "acme-print01.acme.local", "query_type": "AAAA", "message_type": "Response", "reply_code": "NXDomain", "dvc": "ACME-FW01"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "55029", "dest_port": 53, "transport": "udp", "query": "acme-print01.acme.local", "query_type": "AAAA", "message_type": "Response", "reply_code": "NXDomain", "dvc": "ACME-SVR03"}
     },
     {
         "event_type": "ALLOWED",
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS SRV response sent for _ldap._tcp.acme.local.",
-        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "55471", "dest_port": 53, "transport": "udp", "query": "_ldap._tcp.acme.local", "query_type": "SRV", "message_type": "Response", "reply_code": "NoError", "answer": "0 100 389 acme-svr01.acme.local", "dvc": "ACME-FW01"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "55471", "dest_port": 53, "transport": "udp", "query": "_ldap._tcp.acme.local", "query_type": "SRV", "message_type": "Response", "reply_code": "NoError", "answer": "0 100 389 acme-svr01.acme.local", "dvc": "ACME-SVR03"}
     },
     {
         "event_type": "ALLOWED",
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS SRV response sent for _kerberos._tcp.acme.local.",
-        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "55892", "dest_port": 53, "transport": "udp", "query": "_kerberos._tcp.acme.local", "query_type": "SRV", "message_type": "Response", "reply_code": "NoError", "answer": "0 100 88 acme-svr01.acme.local", "dvc": "ACME-FW01"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "55892", "dest_port": 53, "transport": "udp", "query": "_kerberos._tcp.acme.local", "query_type": "SRV", "message_type": "Response", "reply_code": "NoError", "answer": "0 100 88 acme-svr01.acme.local", "dvc": "ACME-SVR03"}
     },
     {
         "event_type": "ALLOWED",
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS SRV response sent for _ldap._tcp.dc._msdcs.acme.local.",
-        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "56218", "dest_port": 53, "transport": "udp", "query": "_ldap._tcp.dc._msdcs.acme.local", "query_type": "SRV", "message_type": "Response", "reply_code": "NoError", "answer": "0 100 389 acme-svr01.acme.local", "dvc": "ACME-FW01"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "56218", "dest_port": 53, "transport": "udp", "query": "_ldap._tcp.dc._msdcs.acme.local", "query_type": "SRV", "message_type": "Response", "reply_code": "NoError", "answer": "0 100 389 acme-svr01.acme.local", "dvc": "ACME-SVR03"}
     },
     {
         "event_type": "ALLOWED",
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS PTR response sent for 200.1.0.10.in-addr.arpa.",
-        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "56541", "dest_port": 53, "transport": "udp", "query": "200.1.0.10.in-addr.arpa", "query_type": "PTR", "message_type": "Response", "reply_code": "NoError", "answer": "acme-svr01.acme.local", "dvc": "ACME-FW01"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "56541", "dest_port": 53, "transport": "udp", "query": "200.1.0.10.in-addr.arpa", "query_type": "PTR", "message_type": "Response", "reply_code": "NoError", "answer": "acme-svr01.acme.local", "dvc": "ACME-SVR03"}
     },
     {
         "event_type": "ALLOWED",
         "source_type": "DNS",
         "source_ip": "{dns_server}",
         "message": "DNS PTR response sent for 201.1.0.10.in-addr.arpa.",
-        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "56892", "dest_port": 53, "transport": "udp", "query": "201.1.0.10.in-addr.arpa", "query_type": "PTR", "message_type": "Response", "reply_code": "NoError", "answer": "acme-svr02.acme.local", "dvc": "ACME-FW01"}
+        "key_value_pairs": {"src_ip": "{src_ip}", "dst_ip": "{dns_server}", "src_port": "56892", "dest_port": 53, "transport": "udp", "query": "201.1.0.10.in-addr.arpa", "query_type": "PTR", "message_type": "Response", "reply_code": "NoError", "answer": "acme-svr02.acme.local", "dvc": "ACME-SVR03"}
     },
     # =========================================================================
     # FIREWALL LOGS (20 events) - Generic firewall syslog format
@@ -1692,7 +1692,7 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "key_value_pairs": {"event_id": 3, "channel": "Microsoft-Windows-Sysmon/Operational", "computer": "{hostname}", "rule_name": "", "process_id": "14804", "image": "C:\\Users\\{username}\\AppData\\Local\\slack\\slack.exe", "user": "{user_domain}", "protocol": "tcp", "initiated": True, "source_is_ipv6": False, "source_ip": "{src_ip}", "source_hostname": "{hostname}", "source_port_name": "", "destination_is_ipv6": False, "destination_ip": "99.181.64.71", "destination_hostname": "slack.com", "destination_port": "443", "destination_port_name": "https"}
     },
     {
-        "event_type": "ImageLoaded",
+        "event_type": "ProcessTerminate",
         "source_type": "Sysmon",
         "source_ip": "{src_ip}",
         "message": "Process terminated: chrome.exe.",
@@ -1790,7 +1790,7 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "source_type": "Windows Security",
         "source_ip": "{src_ip}",
         "message": "A new process has been created.",
-        "key_value_pairs": {"event_id": 4688, "channel": "WinEventLog:Security", "computer": "{hostname}", "subject_security_id": "S-1-5-18", "account_name": "ACME-WKS01$", "account_domain": "ACME", "subject_logon_id": "0x3e7", "target_security_id": "S-1-5-21-1547161642-1842894336-919524151-1105", "target_account_name": "{username}", "target_account_domain": "ACME", "target_logon_id": "0x1A2B3C", "new_process_id": "0x1234", "new_process_name": "C:\\Windows\\explorer.exe", "token_elevation_type": "%%1936", "mandatory_label": "S-1-16-8192", "creator_process_id": "0x4a8", "creator_process_name": "C:\\Windows\\System32\\winlogon.exe", "process_command_line": "C:\\Windows\\Explorer.EXE"}
+        "key_value_pairs": {"event_id": 4688, "channel": "WinEventLog:Security", "computer": "{hostname}", "subject_security_id": "S-1-5-18", "account_name": "{hostname}$", "account_domain": "ACME", "subject_logon_id": "0x3e7", "target_security_id": "S-1-5-21-1547161642-1842894336-919524151-1105", "target_account_name": "{username}", "target_account_domain": "ACME", "target_logon_id": "0x1A2B3C", "new_process_id": "0x1234", "new_process_name": "C:\\Windows\\explorer.exe", "token_elevation_type": "%%1936", "mandatory_label": "S-1-16-8192", "creator_process_id": "0x4a8", "creator_process_name": "C:\\Windows\\System32\\winlogon.exe", "process_command_line": "C:\\Windows\\Explorer.EXE"}
     },
     {
         "event_type": "4688",
@@ -1853,7 +1853,7 @@ NORMAL_TRAFFIC_TEMPLATES = [
         "source_type": "Windows Security",
         "source_ip": "{src_ip}",
         "message": "A new process has been created.",
-        "key_value_pairs": {"event_id": 4688, "channel": "WinEventLog:Security", "computer": "{hostname}", "subject_security_id": "S-1-5-18", "account_name": "ACME-WKS01$", "account_domain": "ACME", "subject_logon_id": "0x3e7", "target_security_id": "S-1-5-18", "target_account_name": "ACME-WKS01$", "target_account_domain": "ACME", "target_logon_id": "0x3e7", "new_process_id": "0x3580", "new_process_name": "C:\\Windows\\System32\\svchost.exe", "token_elevation_type": "%%1936", "mandatory_label": "S-1-16-16384", "creator_process_id": "0x2c8", "creator_process_name": "C:\\Windows\\System32\\services.exe", "process_command_line": "C:\\Windows\\System32\\svchost.exe -k netsvcs -p"}
+        "key_value_pairs": {"event_id": 4688, "channel": "WinEventLog:Security", "computer": "{hostname}", "subject_security_id": "S-1-5-18", "account_name": "{hostname}$", "account_domain": "ACME", "subject_logon_id": "0x3e7", "target_security_id": "S-1-5-18", "target_account_name": "{hostname}$", "target_account_domain": "ACME", "target_logon_id": "0x3e7", "new_process_id": "0x3580", "new_process_name": "C:\\Windows\\System32\\svchost.exe", "token_elevation_type": "%%1936", "mandatory_label": "S-1-16-16384", "creator_process_id": "0x2c8", "creator_process_name": "C:\\Windows\\System32\\services.exe", "process_command_line": "C:\\Windows\\System32\\svchost.exe -k netsvcs -p"}
     },
     {
         "event_type": "4624",
