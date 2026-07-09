@@ -2743,7 +2743,16 @@ def resume_generation():
             "reason": failure_reason,
         })
 
-    return jsonify({"status": "action logged", "action": action})
+    # Verdict fields let Training mode show immediate feedback without a second
+    # round-trip; harmless for Hardcore-correct classifications.
+    return jsonify({
+        "status": "action logged",
+        "action": action,
+        "category_correct": category_correct if action == "classify" else None,
+        "selected_category": selected_category,
+        "correct_category": existing_category,
+        "scenario_label": label,
+    })
 
 
 @app.route('/api/grouped-alerts', methods=['GET'])

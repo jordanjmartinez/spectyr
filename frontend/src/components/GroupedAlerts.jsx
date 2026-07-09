@@ -7,6 +7,7 @@ import CategorySelector from '../components/CategorySelector';
 import ClassificationSelector from '../components/ClassificationSelector';
 import IncidentReportForm from '../components/IncidentReportForm';
 import SeverityPill from '../components/SeverityPill';
+import TriageFeedback from '../components/TriageFeedback';
 
 const PieTooltip = ({ active, payload }) => {
   if (!active || !payload?.length) return null;
@@ -35,7 +36,9 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
   const [submittingIds, setSubmittingIds] = useState(new Set());
   const [currentLevel, setCurrentLevel] = useState(null);
   const [gameStarted, setGameStarted] = useState(false);
+  const [gameMode, setGameMode] = useState('training');
   const [analystName, setAnalystName] = useState('');
+  const [feedback, setFeedback] = useState(null);
   const [reportScenario, setReportScenario] = useState(null);
   const [showReportForm, setShowReportForm] = useState(false);
   const [reportSubmitting, setReportSubmitting] = useState(false);
@@ -129,6 +132,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
       .then(data => {
         setGameStarted(!!data.analyst_name);
         if (data.analyst_name) setAnalystName(data.analyst_name);
+        if (data.game_mode) setGameMode(data.game_mode);
       })
       .catch(err => console.error("Failed to fetch game state", err));
   };
@@ -154,6 +158,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
     setCurrentLevel(null);
     setExpanded(null);
     setGameStarted(false);
+    setFeedback(null);
     setClassificationData({ categoryBreakdown: {} });
     setScenarioHistory([]);
     setScenarioExpanded(new Set());
@@ -382,6 +387,18 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
 
       setShowCategorySelector(false);
       setCategoryScenario(null);
+
+      // Training mode: immediate triage feedback (Hardcore defers to end-of-run).
+      // data carries the verdict so no extra round-trip is needed.
+      if (gameMode !== 'hardcore') {
+        setFeedback({
+          scenario_label: scenario.label,
+          ticket_title: scenario.ticket_title || scenario.level_name || '',
+          selected_category: data.selected_category ?? categoryLabel,
+          correct_category: data.correct_category,
+          correct: !!data.category_correct,
+        });
+      }
     } catch (err) {
       console.error('Error classifying incident:', err);
     } finally {
@@ -1268,6 +1285,10 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
             />
           </div>
         </div>
+      )}
+
+      {feedback && (
+        <TriageFeedback result={feedback} onClose={() => setFeedback(null)} />
       )}
 
     </div>
