@@ -158,7 +158,7 @@ const ActionHistory = ({ history: rawHistory }) => {
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-2 bg-white text-[#1a2332] text-xs sm:text-sm px-3 py-1.5 rounded-md border border-[#e2e6ea] hover:bg-[#eef1f4] transition-colors"
+                          className="inline-flex items-center gap-2 bg-[#0f2942] text-white text-xs sm:text-sm px-3 py-1.5 rounded-md border border-transparent hover:bg-[#16436b] transition-colors"
                           style={{ fontFamily: "'Inter', sans-serif" }}
                         >
                           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
@@ -197,14 +197,14 @@ const ActionHistory = ({ history: rawHistory }) => {
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         onClick={(e) => e.stopPropagation()}
-                                        className="inline-flex items-center gap-2 bg-white text-[#1a2332] text-xs sm:text-sm px-3 py-1.5 rounded-md border border-[#e2e6ea] hover:bg-[#eef1f4] transition-colors"
+                                        className="inline-flex items-center gap-2 bg-[#0f2942] text-white text-xs sm:text-sm px-3 py-1.5 rounded-md border border-transparent hover:bg-[#16436b] transition-colors"
                                         style={{ fontFamily: "'Inter', sans-serif" }}
                                       >
                                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                                           <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" fill="none"/>
                                         </svg>
                                         <span className="font-semibold">{review.mitre.id}</span>
-                                        <span className="text-[#6e7781]">|</span>
+                                        <span className="text-white/40">|</span>
                                         <span>{review.mitre.name}</span>
                                       </a>
                                     </div>

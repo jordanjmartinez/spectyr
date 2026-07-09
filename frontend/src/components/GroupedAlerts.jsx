@@ -1085,7 +1085,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                 d="M2.697 16.126c-.866 1.5 .217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z"
                               />
                               <path
-                                stroke="#ffffff" strokeLinecap="round" strokeLinejoin="round"
+                                stroke={triangleColor} strokeLinecap="round" strokeLinejoin="round"
                                 d="M12 9v3.75 M12 15.75h.007v.008H12v-.008z"
                               />
                             </svg>
@@ -1113,7 +1113,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                   setClassificationScenario(group);
                                   setShowClassificationSelector(true);
                                 }}
-                                className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-white hover:bg-[#eef1f4] text-[#1a2332] border-[#d0d7de] focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:text-[#8b949e] disabled:cursor-not-allowed disabled:hover:bg-white"
+                                className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#0f2942] hover:bg-[#16436b] text-white border-transparent focus:outline-none focus:ring-2 focus:ring-[#0f2942]/40 disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 Classify
                               </button>
@@ -1125,7 +1125,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                   setReportScenario(group);
                                   setShowReportForm(true);
                                 }}
-                                className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-white hover:bg-[#eef1f4] text-[#1a2332] border-[#d0d7de] focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:text-[#8b949e] disabled:cursor-not-allowed disabled:hover:bg-white"
+                                className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#0f2942] hover:bg-[#16436b] text-white border-transparent focus:outline-none focus:ring-2 focus:ring-[#0f2942]/40 disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 {reportedScenarios.has(group.scenario_id) ? 'Reported' : 'Report'}
                               </button>
