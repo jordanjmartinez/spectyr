@@ -2802,6 +2802,26 @@ def get_grouped_alerts():
     # Only return groups where the full attack chain has been injected
     result = [grp for grp in grouped.values() if any(log.get("chain_complete") for log in grp["logs"])]
 
+    # Analyst mode: reveal only the trigger step(s); the rest of the chain is
+    # found by pivoting on the entity in the Events stream. Everything derived
+    # below (group severity, breakdowns, aggregate stats) then reflects only
+    # the revealed logs, so nothing leaks the hidden chain's composition.
+    analyst_mode = s.get("game_mode") == "analyst"
+    for grp in result:
+        grp["total_log_count"] = grp["log_count"]
+        if analyst_mode:
+            visible = [l for l in grp["logs"] if l.get("trigger")]
+            if visible:  # safety: if no trigger flagged, fall back to full chain
+                grp["logs"] = visible
+            grp["log_count"] = len(grp["logs"])
+            sb = {"low": 0, "medium": 0, "high": 0, "critical": 0}
+            for l in grp["logs"]:
+                sev = l.get("severity", "medium").lower()
+                if sev in sb:
+                    sb[sev] += 1
+            grp["severity_breakdown"] = sb
+        grp["hidden_count"] = grp["total_log_count"] - grp["log_count"]
+
     # Compute unified group severity (highest in the group)
     severity_order = {"critical": 4, "high": 3, "medium": 2, "low": 1}
     for grp in result:
