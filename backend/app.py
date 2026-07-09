@@ -21,6 +21,36 @@ LOG_DIR = "logs"
 SCENARIO_PATH = os.path.join(LOG_DIR, "simulated_attack_logs.ndjson")
 os.makedirs(LOG_DIR, exist_ok=True)
 
+
+def sweep_orphaned_session_dirs():
+    """Delete session directories left behind by previous runs.
+
+    Sessions live only in memory, so after a restart every UUID-named
+    directory under logs/ is unreachable; the TTL cleanup thread only
+    removes dirs for sessions it still knows about. Without this sweep
+    orphans accumulate forever (the audit found 306 on the deployed
+    instance).
+    """
+    removed = 0
+    for name in os.listdir(LOG_DIR):
+        path = os.path.join(LOG_DIR, name)
+        if not os.path.isdir(path):
+            continue  # never touch simulated_attack_logs.ndjson
+        try:
+            uuid.UUID(name)
+        except ValueError:
+            continue  # not a session dir
+        try:
+            shutil.rmtree(path)
+            removed += 1
+        except Exception as e:
+            print(f"[SWEEP ERROR] {name[:8]}: {e}", flush=True)
+    if removed:
+        print(f"[SWEEP] Removed {removed} orphaned session dir(s)", flush=True)
+
+
+sweep_orphaned_session_dirs()
+
 TIMER_DURATIONS = {1: 900, 2: 900, 3: 900, 4: 900, 5: 900}
 
 CONCURRENT_QUEUE_CAP = 3  # Max in-flight (injected, unresolved) scenarios
