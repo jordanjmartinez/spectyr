@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { apiFetch } from '../api';
 import AlertTable from '../components/AlertTable';
 import GroupedAlerts from '../components/GroupedAlerts';
@@ -27,6 +26,7 @@ const Dashboard = () => {
   const [analystName, setAnalystName] = useState(null);
   const [incidentBadge, setIncidentBadge] = useState(0);
   const [pivotQuery, setPivotQuery] = useState(null);
+  const [simActive, setSimActive] = useState(false);
 
   // Analyst-mode entity pivot: a chip click in the Alerts tab jumps to the
   // Events stream pre-filtered to that entity value.
@@ -57,6 +57,7 @@ const Dashboard = () => {
       apiFetch('/api/game-state')
         .then(res => res.json())
         .then(data => {
+          setSimActive(!!data.analyst_name);
           const injected = data.injected_count ?? 0;
           if (injected > lastInjectedRef.current) {
             const delta = injected - lastInjectedRef.current;
@@ -161,123 +162,99 @@ const Dashboard = () => {
     }
   };
 
-  const timerSlot = document.getElementById('navbar-timer-slot');
+  const tabs = [
+    { key: 'grouped', label: 'Alerts', count: groupedAlertCount,
+      icon: 'M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z' },
+    { key: 'table', label: 'Events', count: alertCount,
+      icon: 'M4 6h16M4 10h16M4 14h16M4 18h16' },
+    { key: 'analytics', label: 'Metrics', count: analyticsCount,
+      icon: 'M9 19v-6m4 6V5m4 14v-9M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z' },
+    { key: 'reports', label: 'Reports', count: reportCount,
+      icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+  ];
 
   return (
-    <div className="min-h-screen bg-[#0d1117] text-white pt-0 pb-8 flex flex-col">
-      {timerSlot && createPortal(
-        <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />,
-        timerSlot
-      )}
-      <div className="flex flex-col flex-1 gap-2 sm:gap-4">
-
-        <div className="bg-[#161b22] p-3 sm:p-6 flex-1 flex flex-col">
-          <div className="flex overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] border-b border-gray-700 mb-6">
-            <button
-              onClick={() => {
-                setView("grouped");
-                setIncidentBadge(0);
-              }}
-              className={`relative py-3 sm:py-4 px-2 sm:px-6 text-[13px] sm:text-base whitespace-nowrap font-medium flex items-center justify-center transition-colors duration-200 ${
-                view === "grouped" ? "text-white" : "text-gray-400 hover:text-white"
-              }`}
-            >
-              <span className="relative">
-                Alerts
-                <span
-                  className={`absolute left-0 right-0 h-0.5 -bottom-[13px] sm:-bottom-[17px] ${
-                    view === "grouped" ? "bg-[#f0f6fc]" : "bg-transparent"
-                  }`}
-                />
-              </span>
-              <span className={`font-normal ml-1.5 inline-block text-left ${groupedAlertCount > 0 ? "text-gray-500" : "invisible"}`} style={{ minWidth: '2ch' }}>{groupedAlertCount || "0"}</span>
-            </button>
-            <button
-              onClick={() => setView("table")}
-              className={`relative py-3 sm:py-4 px-2 sm:px-6 text-[13px] sm:text-base whitespace-nowrap font-medium flex items-center justify-center transition-colors duration-200 ${
-                view === "table" ? "text-white" : "text-gray-400 hover:text-white"
-              }`}
-            >
-              <span className="relative">
-                Events
-                <span
-                  className={`absolute left-0 right-0 h-0.5 -bottom-[13px] sm:-bottom-[17px] ${
-                    view === "table" ? "bg-[#f0f6fc]" : "bg-transparent"
-                  }`}
-                />
-              </span>
-              <span className="font-normal ml-1.5 inline-block text-left invisible" style={{ minWidth: '2ch' }}>0</span>
-            </button>
-            <button
-              onClick={() => setView("analytics")}
-              className={`relative py-3 sm:py-4 px-2 sm:px-6 text-[13px] sm:text-base whitespace-nowrap font-medium flex items-center justify-center transition-colors duration-200 ${
-                view === "analytics" ? "text-white" : "text-gray-400 hover:text-white"
-              }`}
-            >
-              <span className="relative">
-                Metrics
-                <span
-                  className={`absolute left-0 right-0 h-0.5 -bottom-[13px] sm:-bottom-[17px] ${
-                    view === "analytics" ? "bg-[#f0f6fc]" : "bg-transparent"
-                  }`}
-                />
-              </span>
-              <span className={`font-normal ml-1.5 inline-block text-left ${analyticsCount > 0 ? "text-gray-500" : "invisible"}`} style={{ minWidth: '2ch' }}>{analyticsCount || "0"}</span>
-            </button>
-            <button
-              onClick={() => setView("reports")}
-              className={`relative py-3 sm:py-4 px-2 sm:px-6 text-[13px] sm:text-base whitespace-nowrap font-medium flex items-center justify-center transition-colors duration-200 ${
-                view === "reports" ? "text-white" : "text-gray-400 hover:text-white"
-              }`}
-            >
-              <span className="relative">
-                Reports
-                <span
-                  className={`absolute left-0 right-0 h-0.5 -bottom-[13px] sm:-bottom-[17px] ${
-                    view === "reports" ? "bg-[#f0f6fc]" : "bg-transparent"
-                  }`}
-                />
-              </span>
-              <span className={`font-normal ml-1.5 inline-block text-left ${reportCount > 0 ? "text-gray-500" : "invisible"}`} style={{ minWidth: '2ch' }}>{reportCount || "0"}</span>
-            </button>
-          </div>
-
-          <div className={view === "grouped" ? "block" : "hidden"}>
-            <GroupedAlerts resetTrigger={resetTrigger} onHardcoreFailure={handleHardcoreFailure} onReset={() => { handleResetSimulator(); setView("table"); }} isVisible={view === "grouped"} setGroupedAlertCount={setGroupedAlertCount} onPivot={handlePivot} />
-          </div>
-
-          <div className={view === "table" ? "block" : "hidden"}>
-            <div className="flex flex-row items-center justify-between mb-3 gap-2 sm:gap-3">
-              <h2 className="text-xl sm:text-2xl font-semibold text-white whitespace-nowrap">
-                Events <span className={`font-normal ml-1 ${alertCount > 0 ? "text-gray-500" : "invisible"}`}>{alertCount || "0"}</span>
-              </h2>
-              <div className="flex items-center gap-2 sm:gap-4">
-                <button
-                  onClick={handleSimulateEvents}
-                  className="inline-flex items-center px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md bg-[#f0f6fc] hover:bg-white text-[#0d1117] border border-transparent transition focus:outline-none focus:ring-2 focus:ring-[#8b949e]"
-                >
-                  <span className="sm:hidden">Start Sim</span><span className="hidden sm:inline">Start Simulation</span>
-                </button>
-                <button
-                  onClick={() => setShowResetModal(true)}
-                  className="inline-flex items-center px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 transition focus:outline-none focus:ring-2 focus:ring-gray-500"
-                >
-                  <span className="sm:hidden">Reset Sim</span><span className="hidden sm:inline">Reset Simulation</span>
-                </button>
-              </div>
-            </div>
-            <AlertTable setAlertCount={setAlertCount} resetTrigger={resetTrigger} pivotQuery={pivotQuery} />
-          </div>
-
-          <div className={view === "analytics" ? "block" : "hidden"}>
-            <Analytics onReset={() => setShowResetModal(true)} analystName={analystName} setAnalyticsCount={setAnalyticsCount} />
-          </div>
-
-          <div className={view === "reports" ? "block" : "hidden"}>
-            <Reports setReportCount={setReportCount} reportCount={reportCount} analystName={analystName} resetTrigger={resetTrigger} />
-          </div>
+    <div className="min-h-screen flex bg-[#f6f8fa] text-[#1a2332]">
+      {/* Navy nav rail */}
+      <aside className="sticky top-0 self-start h-screen w-16 lg:w-56 shrink-0 bg-[#0f2942] text-gray-300 flex flex-col z-30">
+        <div className="flex items-center gap-2.5 h-16 px-3 lg:px-5 border-b border-white/10">
+          <img src="/spectyr_logo.png" alt="Spectyr" className="h-8 w-8 object-contain shrink-0" />
+          <span className="hidden lg:inline text-xl font-semibold tracking-tight text-white" style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>Spectyr</span>
         </div>
-      </div>
+
+        <nav className="flex-1 py-3 px-2 lg:px-3 flex flex-col gap-1">
+          {tabs.map(t => {
+            const active = view === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => { setView(t.key); if (t.key === 'grouped') setIncidentBadge(0); }}
+                title={t.label}
+                className={`group relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
+                  active ? 'bg-white/10 text-white' : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                {active && <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-white" />}
+                <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d={t.icon} />
+                </svg>
+                <span className="hidden lg:inline flex-1 text-left">{t.label}</span>
+                {t.count > 0 && <span className="hidden lg:inline text-xs text-gray-400">{t.count}</span>}
+                {t.count > 0 && <span className="lg:hidden absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-white/70" />}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="mt-auto p-2 lg:p-3 border-t border-white/10 flex flex-col gap-2">
+          <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />
+          {simActive ? (
+            <button
+              onClick={() => setShowResetModal(true)}
+              title="Reset Simulation"
+              className="flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium border border-white/20 text-white hover:bg-white/10 transition"
+            >
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span className="hidden lg:inline">Reset</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleSimulateEvents}
+              title="Start Simulation"
+              className="flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold bg-white text-[#0f2942] hover:bg-gray-100 transition"
+            >
+              <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+              <span className="hidden lg:inline">Start</span>
+            </button>
+          )}
+        </div>
+      </aside>
+
+      {/* Light content */}
+      <main className="flex-1 min-w-0 p-4 sm:p-6 overflow-x-hidden">
+        <div className={view === "grouped" ? "block" : "hidden"}>
+          <GroupedAlerts resetTrigger={resetTrigger} onHardcoreFailure={handleHardcoreFailure} onReset={() => { handleResetSimulator(); setView("table"); }} isVisible={view === "grouped"} setGroupedAlertCount={setGroupedAlertCount} onPivot={handlePivot} />
+        </div>
+
+        <div className={view === "table" ? "block" : "hidden"}>
+          <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] whitespace-nowrap mb-3">
+            Events <span className={`font-normal ml-1 ${alertCount > 0 ? "text-gray-400" : "invisible"}`}>{alertCount || "0"}</span>
+          </h2>
+          <AlertTable setAlertCount={setAlertCount} resetTrigger={resetTrigger} pivotQuery={pivotQuery} />
+        </div>
+
+        <div className={view === "analytics" ? "block" : "hidden"}>
+          <Analytics onReset={() => setShowResetModal(true)} analystName={analystName} setAnalyticsCount={setAnalyticsCount} />
+        </div>
+
+        <div className={view === "reports" ? "block" : "hidden"}>
+          <Reports setReportCount={setReportCount} reportCount={reportCount} analystName={analystName} resetTrigger={resetTrigger} />
+        </div>
+      </main>
 
       {/* Reset Confirmation Modal */}
       {showResetModal && (

@@ -92,8 +92,8 @@ function BackendGate({ children }) {
 
 function AppContent() {
   const location = useLocation();
-  // Landing hero and docs bring their own navbar/footer
-  const hideChrome = location.pathname === '/' || location.pathname === '/docs';
+  // Landing/docs bring their own headers; /sim has its own nav rail
+  const hideChrome = location.pathname === '/' || location.pathname === '/docs' || location.pathname === '/sim';
 
   return (
     <>

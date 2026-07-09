@@ -163,22 +163,22 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
           .filter(([, v]) => v)
           .map(([k, v]) => (
             <div key={k}>
-              <span className="text-gray-500">{k.padEnd(maxKeyLen)}</span>
-              <span className="text-gray-500"> = </span>
-              <span className="text-gray-100">{v}</span>
+              <span className="text-[#6e7781]">{k.padEnd(maxKeyLen)}</span>
+              <span className="text-[#6e7781]"> = </span>
+              <span className="text-[#1a2332]">{v}</span>
             </div>
           ))}
         {kvpFields.map(([k, v]) => (
           <div key={k}>
-            <span className="text-gray-500">{k.padEnd(maxKeyLen)}</span>
-            <span className="text-gray-500"> = </span>
-            <span className="text-gray-100">{String(v)}</span>
+            <span className="text-[#6e7781]">{k.padEnd(maxKeyLen)}</span>
+            <span className="text-[#6e7781]"> = </span>
+            <span className="text-[#1a2332]">{String(v)}</span>
           </div>
         ))}
         <div>
-          <span className="text-gray-500">{'message'.padEnd(maxKeyLen)}</span>
-          <span className="text-gray-500"> = </span>
-          <span className="text-gray-100">{trimmedMessage}</span>
+          <span className="text-[#6e7781]">{'message'.padEnd(maxKeyLen)}</span>
+          <span className="text-[#6e7781]"> = </span>
+          <span className="text-[#1a2332]">{trimmedMessage}</span>
         </div>
       </div>
     );
@@ -198,12 +198,12 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
     const end = Math.min(totalPages - 1, currentPage + visibleRange);
 
     const buttonClass = (isActive) =>
-      `w-7 h-7 flex items-center justify-center rounded-md text-xs font-medium transition border border-gray-600 ${
+      `w-7 h-7 flex items-center justify-center rounded-md text-xs font-medium transition border border-[#d0d7de] ${
         isActive
-          ? 'text-white'
-          : 'bg-[#21262d] text-gray-400 hover:bg-[#30363d] hover:text-gray-200'
+          ? 'text-[#1a2332]'
+          : 'bg-white text-[#57606a] hover:bg-[#eef1f4] hover:text-[#1a2332]'
       }`;
-    const activePageStyle = { backgroundColor: 'rgba(255,255,255,0.08)' };
+    const activePageStyle = { backgroundColor: 'rgba(0,0,0,0.06)' };
 
     buttons.push(
       <button key={1} onClick={() => changePage(1)} className={buttonClass(currentPage === 1)} style={currentPage === 1 ? activePageStyle : undefined}>
@@ -211,7 +211,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
       </button>
     );
 
-    if (start > 2) buttons.push(<span key="start-ellipsis" className="px-1 text-gray-600">...</span>);
+    if (start > 2) buttons.push(<span key="start-ellipsis" className="px-1 text-[#8b949e]">...</span>);
 
     for (let i = start; i <= end; i++) {
       buttons.push(
@@ -221,7 +221,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
       );
     }
 
-    if (end < totalPages - 1) buttons.push(<span key="end-ellipsis" className="px-1 text-gray-600">...</span>);
+    if (end < totalPages - 1) buttons.push(<span key="end-ellipsis" className="px-1 text-[#8b949e]">...</span>);
 
     if (totalPages > 1) {
       buttons.push(
@@ -250,10 +250,10 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
                 setCurrentPage(1);
               }}
               maxLength={300}
-              className="w-full pl-4 pr-10 py-2 rounded-md bg-[#0d1117] border border-gray-700 text-white text-sm placeholder-gray-400 focus:border-[#8b949e] focus:outline-none transition-colors"
+              className="w-full pl-4 pr-10 py-2 rounded-md bg-white border border-[#e2e6ea] text-[#1a2332] text-sm placeholder-[#8b949e] focus:border-[#8b949e] focus:outline-none transition-colors"
             />
             {!searchTerm && (
-              <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6e7781]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             )}
@@ -263,7 +263,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
                   setSearchTerm('');
                   setCurrentPage(1);
                 }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6e7781] hover:text-[#1a2332]"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -278,7 +278,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
             <div className="hidden sm:flex items-center relative" ref={pageSizeRef}>
               <button
                 onClick={() => setPageSizeOpen(!pageSizeOpen)}
-                className="inline-flex items-center justify-center gap-1 px-2 sm:px-4 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                className="inline-flex items-center justify-center gap-1 px-2 sm:px-4 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-white hover:bg-[#eef1f4] text-[#1a2332] border-[#d0d7de] focus:outline-none focus:ring-2 focus:ring-gray-500"
               >
                 <svg className={`w-4 h-4 transition-transform ${pageSizeOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -288,7 +288,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
               {pageSizeOpen && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setPageSizeOpen(false)} />
-                  <div className="absolute left-0 top-full mt-1 z-20 bg-[#161b22] border border-gray-700 rounded py-1 flex flex-col min-w-[100px] sm:min-w-[120px]">
+                  <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-[#e2e6ea] rounded py-1 flex flex-col min-w-[100px] sm:min-w-[120px]">
                     {[10, 20, 50].map((size) => (
                       <button
                         key={size}
@@ -297,9 +297,9 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
                           handlePageSizeChange({ target: { value: String(size) } });
                           setPageSizeOpen(false);
                         }}
-                        className="flex items-center gap-2 text-left px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs hover:bg-gray-700 transition text-gray-400"
+                        className="flex items-center gap-2 text-left px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs hover:bg-[#eef1f4] transition text-[#57606a]"
                       >
-                        <span className={`w-2.5 h-2.5 rounded border ${alertsPerPage === size ? 'bg-gray-300 border-gray-300' : 'border-gray-600'}`} />
+                        <span className={`w-2.5 h-2.5 rounded border ${alertsPerPage === size ? 'bg-gray-300 border-gray-300' : 'border-[#d0d7de]'}`} />
                         {size} Per Page
                       </button>
                     ))}
@@ -311,20 +311,20 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
               <button
                 onClick={() => changePage(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#21262d] transition"
+                className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs font-medium rounded-md bg-white hover:bg-[#eef1f4] text-[#1a2332] border border-[#d0d7de] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white transition"
               >
                 Prev
               </button>
               <div className="hidden sm:flex items-center gap-1 mx-1">
                 {renderPaginationButtons()}
               </div>
-              <span className="flex sm:hidden px-1.5 text-xs text-gray-400">
+              <span className="flex sm:hidden px-1.5 text-xs text-[#57606a]">
                 {currentPage} / {totalPages}
               </span>
               <button
                 onClick={() => changePage(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs font-medium rounded-md bg-[#21262d] hover:bg-[#30363d] text-gray-200 border border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#21262d] transition"
+                className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs font-medium rounded-md bg-white hover:bg-[#eef1f4] text-[#1a2332] border border-[#d0d7de] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white transition"
               >
                 Next
               </button>
@@ -337,23 +337,23 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
     <div
       className="p-3 sm:p-6 rounded-xl flex-1 flex flex-col"
       style={{
-        background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(240,246,252,0.1), transparent) border-box',
-        border: '1px solid transparent',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+        background: '#ffffff',
+        border: '1px solid #e2e6ea',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
       }}
     >
 
       {noAlertsLoaded ? (
         <div className="flex flex-col items-center justify-center py-16 flex-1">
-          <svg className="w-8 h-8 text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <svg className="w-8 h-8 text-[#8b949e] mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17V7m4 10V11m4 6V9M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z" />
           </svg>
-          <p className="text-sm text-gray-500">No events yet. Start a simulation to begin.</p>
+          <p className="text-sm text-[#6e7781]">No events yet. Start a simulation to begin.</p>
         </div>
       ) : noSearchResults ? (
         <div className="flex flex-col items-center justify-center py-12">
           <svg
-            className="w-12 h-12 sm:w-16 sm:h-16 text-gray-500 mb-3"
+            className="w-12 h-12 sm:w-16 sm:h-16 text-[#6e7781] mb-3"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -361,23 +361,23 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
           </svg>
-          <p className="text-sm text-gray-500">No matching events for "{searchTerm}"</p>
+          <p className="text-sm text-[#6e7781]">No matching events for "{searchTerm}"</p>
         </div>
       ) : (
         <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper" style={{ minHeight: `${(alertsPerPage * 49) + 48}px` }}>
-          <table className="w-full min-w-[900px] sm:min-w-[1000px] log-text text-left text-gray-300 border-separate border-spacing-0">
+          <table className="w-full min-w-[900px] sm:min-w-[1000px] log-text text-left text-[#1a2332] border-separate border-spacing-0">
             <thead>
-              <tr className="text-xs sm:text-sm uppercase text-gray-400 tracking-wider">
-                <th className="px-2 sm:px-4 py-3 font-medium w-10 border-b border-gray-600"></th>
-                <th className="px-2 sm:px-4 py-3 font-medium w-[100px] sm:w-[130px] whitespace-nowrap text-center border-b border-gray-600">Time</th>
-                <th className="px-2 sm:px-4 py-3 font-medium w-[160px] sm:w-[240px] whitespace-nowrap text-center border-b border-gray-600">Event Type</th>
-                <th className="px-2 sm:px-4 py-3 font-medium w-[110px] sm:w-[170px] whitespace-nowrap text-center border-b border-gray-600">Src Type</th>
-                <th className="px-2 sm:px-4 py-3 font-medium w-[120px] sm:w-[160px] whitespace-nowrap text-center border-b border-gray-600">Src IP</th>
-                <th className="px-2 sm:px-4 py-3 font-medium w-[120px] sm:w-[160px] whitespace-nowrap text-center border-b border-gray-600">Dst IP</th>
-                <th className="px-2 sm:px-4 py-3 font-medium w-[240px] sm:w-auto whitespace-nowrap border-b border-gray-600">Message</th>
+              <tr className="text-xs sm:text-sm uppercase text-[#57606a] tracking-wider">
+                <th className="px-2 sm:px-4 py-3 font-medium w-10 border-b border-[#d0d7de]"></th>
+                <th className="px-2 sm:px-4 py-3 font-medium w-[100px] sm:w-[130px] whitespace-nowrap text-center border-b border-[#d0d7de]">Time</th>
+                <th className="px-2 sm:px-4 py-3 font-medium w-[160px] sm:w-[240px] whitespace-nowrap text-center border-b border-[#d0d7de]">Event Type</th>
+                <th className="px-2 sm:px-4 py-3 font-medium w-[110px] sm:w-[170px] whitespace-nowrap text-center border-b border-[#d0d7de]">Src Type</th>
+                <th className="px-2 sm:px-4 py-3 font-medium w-[120px] sm:w-[160px] whitespace-nowrap text-center border-b border-[#d0d7de]">Src IP</th>
+                <th className="px-2 sm:px-4 py-3 font-medium w-[120px] sm:w-[160px] whitespace-nowrap text-center border-b border-[#d0d7de]">Dst IP</th>
+                <th className="px-2 sm:px-4 py-3 font-medium w-[240px] sm:w-auto whitespace-nowrap border-b border-[#d0d7de]">Message</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-700">
+            <tbody className="divide-y divide-[#e2e6ea]">
               {currentAlerts.map((alert) => {
                 const hasValue = (v) => v && v !== '—' && v !== 'N/A' && v !== '';
                 const isRegistryEvent = hasValue(alert.target_object) || hasValue(alert.registry_details);
@@ -389,12 +389,12 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
                 return (
                   <React.Fragment key={alert.id}>
                     <tr
-                      className="hover:bg-white/5 transition-colors cursor-pointer border-b border-gray-700/50"
+                      className="hover:bg-[#f6f8fa] transition-colors cursor-pointer border-b border-[#e2e6ea]/50"
                       onClick={() => toggleRow(alert.id)}
                     >
                       <td className="px-2 sm:px-4 py-4">
                         <svg
-                          className={`w-5 h-5 text-gray-500 hover:text-white transition-transform duration-300 ease-in-out ${
+                          className={`w-5 h-5 text-[#6e7781] hover:text-[#1a2332] transition-transform duration-300 ease-in-out ${
                             expandedRows[alert.id] ? 'rotate-180' : 'rotate-0'
                           }`}
                           fill="none"
@@ -405,25 +405,25 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
                         </svg>
                       </td>
                       <td className="px-2 sm:px-4 py-4 whitespace-nowrap border-l-4 border-l-transparent text-center">
-                        <span className="text-gray-300">
+                        <span className="text-[#1a2332]">
                           {alert.timestamp ? new Date(alert.timestamp).toLocaleTimeString('en-GB', {
                             hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
                           }) : '—'}
                         </span>
                       </td>
-                      <td className="px-2 sm:px-4 py-4 font-medium text-gray-200 whitespace-nowrap text-center" title={alert.event_type || '—'}>
+                      <td className="px-2 sm:px-4 py-4 font-medium text-[#1a2332] whitespace-nowrap text-center" title={alert.event_type || '—'}>
                         {alert.event_type || '—'}
                       </td>
-                      <td className="px-2 sm:px-4 py-4 text-gray-200 sm:whitespace-nowrap text-center">
+                      <td className="px-2 sm:px-4 py-4 text-[#1a2332] sm:whitespace-nowrap text-center">
                         {alert.source_type || alert.detected_by || 'Unknown'}
                       </td>
-                      <td className="px-2 sm:px-4 py-4 text-gray-200 sm:whitespace-nowrap text-center">
+                      <td className="px-2 sm:px-4 py-4 text-[#1a2332] sm:whitespace-nowrap text-center">
                         {alert.source_ip || '—'}
                       </td>
-                      <td className="px-2 sm:px-4 py-4 text-gray-200 sm:whitespace-nowrap text-center">
+                      <td className="px-2 sm:px-4 py-4 text-[#1a2332] sm:whitespace-nowrap text-center">
                         {alert.destination_ip || '—'}
                       </td>
-                      <td className="px-2 sm:px-4 py-4 text-gray-200 whitespace-nowrap" title={alert.message || '—'}>
+                      <td className="px-2 sm:px-4 py-4 text-[#1a2332] whitespace-nowrap" title={alert.message || '—'}>
                         {alert.message || '—'}
                       </td>
                     </tr>
@@ -437,7 +437,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
                           }`}
                         >
                           <div className="overflow-hidden min-h-0">
-                            <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(240,246,252,0.1), transparent)' }} />
+                            <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(0,0,0,0.08), transparent)' }} />
                             <div className="px-6 py-4">
                               {renderCleanEventDetails(alert)}
                             </div>
