@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { apiFetch } from '../api';
 import AnalystReportCard from '../components/AnalystReportCard';
-import PerformanceGrade from './PerformanceGrade';
+import { GradeCard, MttrCard } from './PerformanceGrade';
 import CampaignProgress from './CampaignProgress';
 import ActionHistory from './ActionHistory';
 
@@ -54,11 +54,12 @@ const Analytics = ({ onReset, analystName, setAnalyticsCount }) => {
       {/* Campaign Progress - Full Width */}
       <CampaignProgress levelData={levelData} report={report} onReset={onReset} analystName={analystName} />
 
-      {/* Report Card and Performance Grade */}
+      {/* Report Card + Grade side by side, MTTR trend full width below */}
       <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
         <AnalystReportCard report={report} />
-        <PerformanceGrade report={report} />
+        <GradeCard report={report} />
       </div>
+      <MttrCard report={report} />
 
       {/* Action History / Mistake Review */}
       <ActionHistory history={actionHistory} />
