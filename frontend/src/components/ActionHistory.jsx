@@ -61,14 +61,16 @@ const ActionHistory = ({ history: rawHistory }) => {
         <div
           className="p-3 sm:p-6 rounded-xl"
           style={{
-            background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(88,130,180,0.3), transparent) border-box',
+            background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(240,246,252,0.1), transparent) border-box',
             border: '1px solid transparent',
             boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
           }}
         >
           <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
-            <img src="/ghost_analytics.png" alt="Ghost Analyzing" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
-            <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt;<span className="animate-blink">|</span> Your post-incident review will appear after your first triage.</p>
+            <svg className="w-8 h-8 text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+            <p className="text-sm text-gray-500">Your post-incident review will appear after your first triage.</p>
           </div>
         </div>
       </div>
@@ -82,7 +84,7 @@ const ActionHistory = ({ history: rawHistory }) => {
       <div
         className="p-3 sm:p-6 rounded-xl"
         style={{
-          background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(88,130,180,0.3), transparent) border-box',
+          background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(240,246,252,0.1), transparent) border-box',
           border: '1px solid transparent',
           boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
         }}
@@ -178,7 +180,7 @@ const ActionHistory = ({ history: rawHistory }) => {
                         isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
                       }`}>
                         <div className="overflow-hidden min-h-0">
-                          <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
+                          <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(240,246,252,0.1), transparent)' }} />
                           <div className="px-6 py-4">
                             <div className="mb-4">
                               <span className="text-sm sm:text-base text-white font-medium">Classification</span>

@@ -28,7 +28,7 @@ const CategorySelector = ({ onSelect, onCancel, scenarioInfo }) => {
         <div className="px-6 py-4">
           <h2 className="text-xl font-semibold text-white">Select Attack Category</h2>
         </div>
-        <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
+        <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(240,246,252,0.1), transparent)' }} />
 
         {/* Category Grid */}
         <div className="p-4 sm:p-6">
@@ -37,7 +37,7 @@ const CategorySelector = ({ onSelect, onCancel, scenarioInfo }) => {
               <button
                 key={category.id}
                 onClick={() => onSelect(category.id, category.label)}
-                className="flex items-center justify-center h-20 px-3 rounded-lg border-2 transition-all duration-200 group border-gray-600 bg-[#0d1117] hover:bg-[#30363d] hover:border-[#5882b4]"
+                className="flex items-center justify-center h-20 px-3 rounded-lg border-2 transition-all duration-200 group border-gray-600 bg-[#0d1117] hover:bg-[#30363d] hover:border-[#8b949e]"
               >
                 <span className="text-sm font-medium text-center text-gray-300 group-hover:text-white">
                   {category.label}

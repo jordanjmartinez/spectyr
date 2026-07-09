@@ -250,7 +250,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
                 setCurrentPage(1);
               }}
               maxLength={300}
-              className="w-full pl-4 pr-10 py-2 rounded-md bg-[#0d1117] border border-gray-700 text-white text-sm placeholder-gray-400 focus:border-[#5882b4] focus:outline-none transition-colors"
+              className="w-full pl-4 pr-10 py-2 rounded-md bg-[#0d1117] border border-gray-700 text-white text-sm placeholder-gray-400 focus:border-[#8b949e] focus:outline-none transition-colors"
             />
             {!searchTerm && (
               <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -337,16 +337,18 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
     <div
       className="p-3 sm:p-6 rounded-xl flex-1 flex flex-col"
       style={{
-        background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(88,130,180,0.3), transparent) border-box',
+        background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(240,246,252,0.1), transparent) border-box',
         border: '1px solid transparent',
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
       }}
     >
 
       {noAlertsLoaded ? (
-        <div className="flex flex-col items-center justify-center py-8 flex-1">
-          <img src="/ghost-mascot.png" alt="Ghost" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
-          <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt;<span className="animate-blink">|</span> Click Start Simulation to begin.</p>
+        <div className="flex flex-col items-center justify-center py-16 flex-1">
+          <svg className="w-8 h-8 text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17V7m4 10V11m4 6V9M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
+          <p className="text-sm text-gray-500">No events yet. Start a simulation to begin.</p>
         </div>
       ) : noSearchResults ? (
         <div className="flex flex-col items-center justify-center py-12">
@@ -359,7 +361,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
           </svg>
-          <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt;<span className="animate-blink">|</span> No matching logs for "{searchTerm}"</p>
+          <p className="text-sm text-gray-500">No matching events for "{searchTerm}"</p>
         </div>
       ) : (
         <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper" style={{ minHeight: `${(alertsPerPage * 49) + 48}px` }}>
@@ -435,7 +437,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
                           }`}
                         >
                           <div className="overflow-hidden min-h-0">
-                            <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
+                            <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(240,246,252,0.1), transparent)' }} />
                             <div className="px-6 py-4">
                               {renderCleanEventDetails(alert)}
                             </div>

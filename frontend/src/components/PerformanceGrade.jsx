@@ -119,14 +119,14 @@ const PerformanceGrade = ({ report }) => {
   return (
     <div className="h-full flex flex-col">
       <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Performance</h2>
-      <div className="rounded-2xl p-4 sm:p-6 flex-1" style={{ background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(88,130,180,0.3), transparent) border-box', border: '1px solid transparent', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+      <div className="rounded-2xl p-4 sm:p-6 flex-1" style={{ background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(240,246,252,0.1), transparent) border-box', border: '1px solid transparent', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-start gap-2">
             <button
               onClick={() => setResultsView('grade')}
               className={`px-2 sm:px-3 py-1.5 min-w-[5rem] sm:min-w-[6rem] text-xs sm:text-sm font-medium rounded-md border transition ${
                 resultsView === 'grade'
-                  ? 'bg-[#5882b4] text-white border-[#5882b4]'
+                  ? 'bg-[#30363d] text-white border-[#8b949e]'
                   : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
               }`}
             >
@@ -136,7 +136,7 @@ const PerformanceGrade = ({ report }) => {
               onClick={() => setResultsView('mttr')}
               className={`px-2 sm:px-3 py-1.5 min-w-[5rem] sm:min-w-[6rem] text-xs sm:text-sm font-medium rounded-md border transition ${
                 resultsView === 'mttr'
-                  ? 'bg-[#5882b4] text-white border-[#5882b4]'
+                  ? 'bg-[#30363d] text-white border-[#8b949e]'
                   : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
               }`}
             >
@@ -178,7 +178,7 @@ const PerformanceGrade = ({ report }) => {
                 <YAxis stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: isSmUp ? 14 : 12 }} tickFormatter={(v) => formatDuration(v)} width={isSmUp ? 64 : 68} />
                 <Tooltip content={<MttrTooltip />} wrapperStyle={{ zIndex: 20, outline: 'none', border: 'none' }} />
                 {avgMttr > 0 && (
-                  <ReferenceLine y={avgMttr} stroke="#5882b4" strokeDasharray="4 4" />
+                  <ReferenceLine y={avgMttr} stroke="#8b949e" strokeDasharray="4 4" />
                 )}
                 <Line type="monotone" dataKey="seconds" stroke="#4b5563" strokeWidth={2} strokeDasharray="4 4" dot={<MttrDot />} activeDot={<MttrDot />} />
               </LineChart>

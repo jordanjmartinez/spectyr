@@ -105,7 +105,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
     'Impact',
   ];
 
-  const inputClass = "w-full bg-[#0d1117] text-xs sm:text-sm text-white placeholder-gray-600 border border-gray-700 focus:border-[#5882b4] rounded-md px-3 py-2 outline-none transition-colors";
+  const inputClass = "w-full bg-[#0d1117] text-xs sm:text-sm text-white placeholder-gray-600 border border-gray-700 focus:border-[#8b949e] rounded-md px-3 py-2 outline-none transition-colors";
   const requiredMark = (fieldName) => (
     <span className={errors[fieldName] ? 'text-red-400' : 'text-gray-500'}> *</span>
   );
@@ -128,7 +128,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
       </div>
 
       {/* Gradient divider (matches Post-Incident Review) */}
-      <div className="mb-5" style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
+      <div className="mb-5" style={{ height: '1px', background: 'linear-gradient(to right, rgba(240,246,252,0.1), transparent)' }} />
 
       {/* Form fields */}
       <div className="space-y-4">
@@ -297,7 +297,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
         <button
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#5882b4] hover:bg-[#7aa4d4] text-white border-[#5882b4] hover:border-[#7aa4d4] focus:outline-none focus:ring-2 focus:ring-[#5882b4] disabled:opacity-50"
+          className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#f0f6fc] hover:bg-white text-[#0d1117] border-transparent focus:outline-none focus:ring-2 focus:ring-[#8b949e] disabled:opacity-50"
         >
           {isSubmitting ? 'Saving...' : isEditing ? 'Save' : 'Submit'}
         </button>

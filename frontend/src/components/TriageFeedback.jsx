@@ -63,7 +63,7 @@ const TriageFeedback = ({ result, onClose }) => {
             </p>
           </div>
         </div>
-        <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
+        <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(240,246,252,0.1), transparent)' }} />
 
         {/* Triage review */}
         <div className="px-6 py-5">
@@ -130,7 +130,7 @@ const TriageFeedback = ({ result, onClose }) => {
         <div className="px-6 pb-6 flex justify-end">
           <button
             onClick={onClose}
-            className="inline-flex items-center justify-center px-5 py-2 text-sm font-medium rounded-md bg-[#5882b4] hover:bg-[#7aa4d4] text-white border border-[#5882b4] transition focus:outline-none focus:ring-2 focus:ring-[#5882b4]"
+            className="inline-flex items-center justify-center px-5 py-2 text-sm font-medium rounded-md bg-[#f0f6fc] hover:bg-white text-[#0d1117] border border-transparent transition focus:outline-none focus:ring-2 focus:ring-[#8b949e]"
           >
             Continue
           </button>

@@ -21,7 +21,7 @@ const ClassificationSelector = ({ onSelect, onCancel }) => {
         <div className="px-6 py-4">
           <h2 className="text-xl font-semibold text-white">Classification</h2>
         </div>
-        <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
+        <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(240,246,252,0.1), transparent)' }} />
 
         <div className="p-4 sm:p-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -29,7 +29,7 @@ const ClassificationSelector = ({ onSelect, onCancel }) => {
               <button
                 key={c.id}
                 onClick={() => onSelect(c.id)}
-                className="flex items-center justify-center px-4 py-8 rounded-lg border-2 transition-all duration-200 group border-gray-600 bg-[#0d1117] hover:bg-[#30363d] hover:border-[#5882b4]"
+                className="flex items-center justify-center px-4 py-8 rounded-lg border-2 transition-all duration-200 group border-gray-600 bg-[#0d1117] hover:bg-[#30363d] hover:border-[#8b949e]"
               >
                 <span className="text-lg font-semibold text-center text-gray-300 group-hover:text-white">
                   {c.label}

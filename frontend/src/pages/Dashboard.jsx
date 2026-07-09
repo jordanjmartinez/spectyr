@@ -186,7 +186,7 @@ const Dashboard = () => {
                 Alerts
                 <span
                   className={`absolute left-0 right-0 h-0.5 -bottom-[13px] sm:-bottom-[17px] ${
-                    view === "grouped" ? "bg-[#5882b4]" : "bg-transparent"
+                    view === "grouped" ? "bg-[#f0f6fc]" : "bg-transparent"
                   }`}
                 />
               </span>
@@ -202,7 +202,7 @@ const Dashboard = () => {
                 Events
                 <span
                   className={`absolute left-0 right-0 h-0.5 -bottom-[13px] sm:-bottom-[17px] ${
-                    view === "table" ? "bg-[#5882b4]" : "bg-transparent"
+                    view === "table" ? "bg-[#f0f6fc]" : "bg-transparent"
                   }`}
                 />
               </span>
@@ -218,7 +218,7 @@ const Dashboard = () => {
                 Metrics
                 <span
                   className={`absolute left-0 right-0 h-0.5 -bottom-[13px] sm:-bottom-[17px] ${
-                    view === "analytics" ? "bg-[#5882b4]" : "bg-transparent"
+                    view === "analytics" ? "bg-[#f0f6fc]" : "bg-transparent"
                   }`}
                 />
               </span>
@@ -234,7 +234,7 @@ const Dashboard = () => {
                 Reports
                 <span
                   className={`absolute left-0 right-0 h-0.5 -bottom-[13px] sm:-bottom-[17px] ${
-                    view === "reports" ? "bg-[#5882b4]" : "bg-transparent"
+                    view === "reports" ? "bg-[#f0f6fc]" : "bg-transparent"
                   }`}
                 />
               </span>
@@ -254,7 +254,7 @@ const Dashboard = () => {
               <div className="flex items-center gap-2 sm:gap-4">
                 <button
                   onClick={handleSimulateEvents}
-                  className="inline-flex items-center px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md bg-[#5882b4] hover:bg-[#7aa4d4] text-white border border-[#5882b4] hover:border-[#7aa4d4] transition focus:outline-none focus:ring-2 focus:ring-[#5882b4]"
+                  className="inline-flex items-center px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md bg-[#f0f6fc] hover:bg-white text-[#0d1117] border border-transparent transition focus:outline-none focus:ring-2 focus:ring-[#8b949e]"
                 >
                   <span className="sm:hidden">Start Sim</span><span className="hidden sm:inline">Start Simulation</span>
                 </button>
@@ -312,7 +312,7 @@ const Dashboard = () => {
               <button
                 onClick={handleResetSimulator}
                 disabled={isResetting}
-                className="inline-flex items-center justify-center gap-2 px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#5882b4] hover:bg-[#7aa4d4] text-white border-[#5882b4] hover:border-[#7aa4d4] focus:outline-none focus:ring-2 focus:ring-[#5882b4] disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#f0f6fc] hover:bg-white text-[#0d1117] border-transparent focus:outline-none focus:ring-2 focus:ring-[#8b949e] disabled:opacity-50"
               >
                 {isResetting ? (
                   <>
@@ -350,7 +350,7 @@ const Dashboard = () => {
               </svg>
             </button>
             <h3 className="text-lg font-semibold text-white mb-4">Simulation Active</h3>
-            <div className="mb-5" style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
+            <div className="mb-5" style={{ height: '1px', background: 'linear-gradient(to right, rgba(240,246,252,0.1), transparent)' }} />
             <p className="text-gray-400 mb-6">
               You have <span className="text-white font-medium">{existingLogCount} events</span> from an active session. Use <span className="text-white font-medium">Reset Simulation</span> to start fresh.
             </p>

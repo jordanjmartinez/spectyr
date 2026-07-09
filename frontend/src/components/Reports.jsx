@@ -299,7 +299,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             maxLength={300}
-            className="w-full pl-4 pr-10 py-2 rounded-md bg-[#0d1117] border border-gray-700 text-white text-sm placeholder-gray-400 focus:border-[#5882b4] focus:outline-none transition-colors"
+            className="w-full pl-4 pr-10 py-2 rounded-md bg-[#0d1117] border border-gray-700 text-white text-sm placeholder-gray-400 focus:border-[#8b949e] focus:outline-none transition-colors"
           />
           {!searchTerm && (
             <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -329,14 +329,16 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
         <div
           className="p-6 rounded-xl flex-1 flex flex-col"
           style={{
-            background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(88,130,180,0.3), transparent) border-box',
+            background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(240,246,252,0.1), transparent) border-box',
             border: '1px solid transparent',
             boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
           }}
         >
           <div className="flex flex-col items-center justify-center py-8 flex-1">
-            <img src="/ghost-reports.png" alt="Ghost" className="w-28 h-28 sm:w-40 sm:h-40 opacity-90 mb-3" />
-            <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt;<span className="animate-blink">|</span> Write a report from Alerts to document your findings.</p>
+            <svg className="w-8 h-8 text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <p className="text-sm text-gray-500">Write a report from Alerts to document your findings.</p>
           </div>
         </div>
       ) : filteredReports.length === 0 && searchTerm ? (
@@ -350,13 +352,13 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
           </svg>
-          <p className="font-mono text-xs sm:text-sm text-gray-400 text-center sm:text-left">&gt;<span className="animate-blink">|</span> No matching reports for "{searchTerm}"</p>
+          <p className="text-sm text-gray-500">No matching reports for "{searchTerm}"</p>
         </div>
       ) : (
       <div
         className="p-3 sm:p-6 rounded-xl"
         style={{
-          background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(88,130,180,0.3), transparent) border-box',
+          background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(240,246,252,0.1), transparent) border-box',
           border: '1px solid transparent',
           boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
         }}
@@ -391,7 +393,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
                     </td>
                     <td className="px-2 sm:px-4 py-4">
                       <p className="text-sm sm:text-base font-medium text-gray-200 whitespace-nowrap">{report.title || 'Untitled Report'}</p>
-                      <p className="text-xs sm:text-sm text-gray-400 mt-0.5"><span className="text-[#5882b4] font-medium">{report.alert_id || `INC-${getReportNumber(report.id)}`}</span> · {getRelativeTime(report.timestamp)}</p>
+                      <p className="text-xs sm:text-sm text-gray-400 mt-0.5"><span className="text-[#8b949e] font-medium">{report.alert_id || `INC-${getReportNumber(report.id)}`}</span> · {getRelativeTime(report.timestamp)}</p>
                     </td>
                     <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
                       <SeverityPill level={report.severity} />
@@ -427,7 +429,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
                         expandedIndex === index ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
                       }`}>
                         <div className="overflow-hidden min-h-0">
-                          <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
+                          <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(240,246,252,0.1), transparent)' }} />
                           <div className="px-6 py-4">
                             <div className="mb-4">
                               <span className="text-sm sm:text-base text-white font-medium">Title</span>
@@ -481,7 +483,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
               </svg>
             </button>
             <h3 className="text-lg font-semibold text-white mb-4">Delete Report</h3>
-            <div className="mb-5" style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
+            <div className="mb-5" style={{ height: '1px', background: 'linear-gradient(to right, rgba(240,246,252,0.1), transparent)' }} />
             <p className="text-gray-400 mb-6">
               Are you sure you want to delete this report? This action cannot be undone.
             </p>
@@ -494,7 +496,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
               </button>
               <button
                 onClick={() => handleDeleteReport(deleteConfirmId)}
-                className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#5882b4] hover:bg-[#7aa4d4] text-white border-[#5882b4] hover:border-[#7aa4d4] focus:outline-none focus:ring-2 focus:ring-[#5882b4]"
+                className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#f0f6fc] hover:bg-white text-[#0d1117] border-transparent focus:outline-none focus:ring-2 focus:ring-[#8b949e]"
               >
                 Delete
               </button>

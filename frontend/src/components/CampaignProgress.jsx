@@ -138,7 +138,7 @@ const CampaignProgress = ({ levelData, onReset, analystName, report }) => {
         <div
           className="px-6 pt-8 pb-6 rounded-xl"
           style={{
-            background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(88,130,180,0.3), transparent) border-box',
+            background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(240,246,252,0.1), transparent) border-box',
             border: '1px solid transparent',
             boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
           }}
@@ -146,7 +146,7 @@ const CampaignProgress = ({ levelData, onReset, analystName, report }) => {
         <div className={`flex flex-col items-center text-center transition-all duration-700 ease-out ${ghostVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           <pre
             aria-label={bannerLabel}
-            className={`font-mono text-[7px] sm:text-[10px] leading-tight ${useFailed ? 'text-[#b45858]' : useWin ? 'text-[#58b458]' : 'text-[#5882b4]'} mb-3 select-none`}
+            className={`font-mono text-[7px] sm:text-[10px] leading-tight ${useFailed ? 'text-[#b45858]' : useWin ? 'text-[#58b458]' : 'text-[#8b949e]'} mb-3 select-none`}
           >
             {banner.split('').map((ch, i) =>
               ch === '█'
@@ -174,7 +174,7 @@ const CampaignProgress = ({ levelData, onReset, analystName, report }) => {
       <div
         className="flex flex-col pt-5 pb-5 rounded-xl"
         style={{
-          background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(88,130,180,0.3), transparent) border-box',
+          background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(240,246,252,0.1), transparent) border-box',
           border: '1px solid transparent',
           boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
         }}
