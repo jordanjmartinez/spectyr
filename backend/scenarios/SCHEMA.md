@@ -47,13 +47,18 @@ Entity types: `employee` (roster-resolved: `.username .hostname .ip
 and exposes the SERVERS dict: `{infra.dns.ip}`, `{infra.file.ip}`,
 `{infra.dc.ip}`, `{infra.print.ip}`.
 
-**Placeholder grammar** — strictly `{name.field}`: two dot-separated
-identifiers where `name` is a declared entity (or `infra`). Anything else in
+**Placeholder grammar** — two forms:
+
+- `{entity.field}` — two dot-separated identifiers; `entity` is a declared
+  entity (`{victim.hostname}`, `{c2.ip}`).
+- `{infra.<server>.field}` — three parts, `infra` only (`{infra.dc.ip}`).
+
+The leading segment must start with a lowercase letter, so anything else in
 braces passes through verbatim — this matters because real log data contains
-brace-wrapped GUIDs (`{4d36e967-e325-...}`) and Windows logon GUIDs that must
-not be touched. The loader **errors** on a dotted two-part reference that
-doesn't match a declared entity (it's almost certainly a typo), and ignores
-everything else.
+brace-wrapped GUIDs (`{4d36e967-e325-...}`) and Windows logon GUIDs
+(`{00000000-...}`) that must not be touched. The loader **errors** on a
+placeholder whose entity isn't declared, or an employee field that doesn't
+exist (both almost certainly typos), and ignores every non-matching token.
 
 ## Chain steps
 
