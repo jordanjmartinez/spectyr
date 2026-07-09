@@ -15,7 +15,7 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
         className="absolute inset-0 bg-black/70"
         onClick={onCancel}
       />
-      <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-lg mx-4 shadow-2xl animate-modalIn">
+      <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-3xl mx-4 shadow-2xl animate-modalIn">
         <button
           type="button"
           onClick={onCancel}
@@ -40,12 +40,12 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4 items-stretch">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
           {/* Training Mode */}
           <button
             onClick={() => pickMode('training')}
             disabled={!isNameValid}
-            className={`group relative bg-[#0d1117] border-2 rounded-xl p-4 sm:p-6 text-center transition-all duration-200 ${
+            className={`group relative bg-[#0d1117] border-2 rounded-xl p-4 sm:p-5 text-center transition-all duration-200 ${
               !isNameValid
                 ? 'border-gray-700 opacity-50 cursor-not-allowed'
                 : 'border-gray-600 hover:border-[#5882b4] cursor-pointer'
@@ -53,14 +53,14 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
           >
             <div className="flex flex-col items-center mb-3">
               <h4 className="text-lg font-semibold text-white mb-2">Training</h4>
-              <div className="h-24 sm:h-28 flex items-center justify-center">
-                <img src="/ghost_training.PNG" alt="Training" className="w-24 h-28 sm:w-28 sm:h-32 object-contain" />
+              <div className="h-20 sm:h-24 flex items-center justify-center">
+                <img src="/ghost_training.PNG" alt="Training" className="w-20 h-24 sm:w-24 sm:h-28 object-contain" />
               </div>
             </div>
-            <ul className="space-y-2 text-sm text-gray-400">
+            <ul className="space-y-1.5 text-xs sm:text-sm text-gray-400">
               <li>No time pressure</li>
-              <li>Learn at your pace</li>
-              <li>Perfect for beginners</li>
+              <li>Feedback after each call</li>
+              <li>Chain shown grouped</li>
             </ul>
           </button>
 
@@ -68,7 +68,7 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
           <button
             onClick={() => pickMode('hardcore')}
             disabled={!isNameValid}
-            className={`group relative bg-[#0d1117] border-2 rounded-xl p-4 sm:p-6 text-center transition-all duration-200 ${
+            className={`group relative bg-[#0d1117] border-2 rounded-xl p-4 sm:p-5 text-center transition-all duration-200 ${
               !isNameValid
                 ? 'border-gray-700 opacity-50 cursor-not-allowed'
                 : 'border-gray-600 hover:border-[#5882b4] cursor-pointer'
@@ -76,14 +76,37 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
           >
             <div className="flex flex-col items-center mb-3">
               <h4 className="text-lg font-semibold text-white mb-2">Hardcore</h4>
-              <div className="h-24 sm:h-28 flex items-center justify-center">
-                <img src="/ghost_hacker.png" alt="Hardcore" className="w-24 h-28 sm:w-28 sm:h-32 object-contain" />
+              <div className="h-20 sm:h-24 flex items-center justify-center">
+                <img src="/ghost_hacker.png" alt="Hardcore" className="w-20 h-24 sm:w-24 sm:h-28 object-contain" />
               </div>
             </div>
-            <ul className="space-y-2 text-sm text-gray-400">
-              <li>Clock is ticking</li>
-              <li>No room for error</li>
-              <li>For seasoned analysts</li>
+            <ul className="space-y-1.5 text-xs sm:text-sm text-gray-400">
+              <li>15:00 on the clock</li>
+              <li>One wrong call ends it</li>
+              <li>Chain shown grouped</li>
+            </ul>
+          </button>
+
+          {/* Analyst Mode */}
+          <button
+            onClick={() => pickMode('analyst')}
+            disabled={!isNameValid}
+            className={`group relative bg-[#0d1117] border-2 rounded-xl p-4 sm:p-5 text-center transition-all duration-200 ${
+              !isNameValid
+                ? 'border-gray-700 opacity-50 cursor-not-allowed'
+                : 'border-gray-600 hover:border-[#5882b4] cursor-pointer'
+            }`}
+          >
+            <div className="flex flex-col items-center mb-3">
+              <h4 className="text-lg font-semibold text-white mb-2">Analyst</h4>
+              <div className="h-20 sm:h-24 flex items-center justify-center">
+                <img src="/ghost_hacker.PNG" alt="Analyst" className="w-20 h-24 sm:w-24 sm:h-28 object-contain" />
+              </div>
+            </div>
+            <ul className="space-y-1.5 text-xs sm:text-sm text-gray-400">
+              <li>Only the trigger fires</li>
+              <li>Pivot to find the chain</li>
+              <li>Investigate like the job</li>
             </ul>
           </button>
         </div>

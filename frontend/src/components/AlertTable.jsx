@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { apiFetch } from '../api';
 
-const AlertTable = ({ setAlertCount, resetTrigger }) => {
+const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
   const [alerts, setAlerts] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [alertsPerPage, setAlertsPerPage] = useState(20);
@@ -54,6 +54,16 @@ const AlertTable = ({ setAlertCount, resetTrigger }) => {
     fetchAlerts();
     setCurrentPage(1);
   }, [resetTrigger]);
+
+  // Entity pivot from the Alerts tab: prefill the search with the entity value.
+  // Keyed on a timestamp so repeated pivots to the same value still fire.
+  useEffect(() => {
+    if (pivotQuery?.value) {
+      setSearchTerm(pivotQuery.value);
+      setSearchField('all');
+      setCurrentPage(1);
+    }
+  }, [pivotQuery]);
 
   const filteredAlerts = alerts.filter(alert => {
     if (!searchTerm) return true;

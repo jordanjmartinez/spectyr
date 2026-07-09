@@ -20,7 +20,7 @@ const PieTooltip = ({ active, payload }) => {
   );
 };
 
-const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, setGroupedAlertCount }) => {
+const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, setGroupedAlertCount, onPivot }) => {
   const [groups, setGroups] = useState([]);
   const [expanded, setExpanded] = useState(null);
   const [expandedLogs, setExpandedLogs] = useState({});
@@ -315,6 +315,20 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
     if (breakdown.high > 0) return 'High';
     if (breakdown.medium > 0) return 'Medium';
     return 'Low';
+  };
+
+  // Distinct entity values on a group's visible (trigger) logs, used as the
+  // Analyst-mode pivot chips. Host/IP/user are what an analyst filters on.
+  const pivotChipsFor = (group) => {
+    const vals = new Set();
+    (group.logs || []).forEach(log => {
+      [log.source_ip, log.destination_ip, log.hostname].forEach(v => {
+        if (v && v !== '—') vals.add(v);
+      });
+      const acct = log.key_value_pairs?.account_name;
+      if (acct && acct !== '-') vals.add(acct);
+    });
+    return [...vals];
   };
 
   const handleReportSubmit = async (formData) => {
@@ -1120,6 +1134,31 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                               <div className="overflow-hidden min-h-0">
                                 <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(88,130,180,0.3), transparent)' }} />
                                 <div className="px-6 py-4">
+                                  {gameMode === 'analyst' && group.hidden_count > 0 && (
+                                    <div className="mb-4 rounded-lg border border-[#30363d] bg-[#0d1117] px-4 py-3">
+                                      <p className="text-xs sm:text-sm text-gray-300">
+                                        <span className="text-[#c28e46] font-medium">Detection fired on the event{group.log_count === 1 ? '' : 's'} below.</span>{' '}
+                                        {group.hidden_count} related event{group.hidden_count === 1 ? '' : 's'} from this host are in the stream — pivot to reconstruct the chain before you classify.
+                                      </p>
+                                      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                                        <span className="text-xs uppercase tracking-wider text-gray-500">Pivot on</span>
+                                        {pivotChipsFor(group).map(v => (
+                                          <button
+                                            key={v}
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); onPivot?.(v); }}
+                                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-mono border border-[#30363d] bg-[#161b22] text-[#5882b4] hover:bg-[#21262d] hover:text-[#7aa4d4] transition-colors"
+                                            title={`Filter Events by ${v}`}
+                                          >
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                            </svg>
+                                            {v}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
                                   {group.status === 'classified' && group.analyst_category && (
                                     <p className="text-sm text-gray-400 mb-3">
                                       Classified as: <span className="text-blue-400 font-medium">{group.analyst_category}</span>

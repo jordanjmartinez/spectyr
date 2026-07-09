@@ -26,6 +26,14 @@ const Dashboard = () => {
   const [failureType, setFailureType] = useState(null); // 'timeout' or 'wrong_answer'
   const [analystName, setAnalystName] = useState(null);
   const [incidentBadge, setIncidentBadge] = useState(0);
+  const [pivotQuery, setPivotQuery] = useState(null);
+
+  // Analyst-mode entity pivot: a chip click in the Alerts tab jumps to the
+  // Events stream pre-filtered to that entity value.
+  const handlePivot = (query) => {
+    setPivotQuery({ value: query, ts: Date.now() });
+    setView('table');
+  };
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -235,7 +243,7 @@ const Dashboard = () => {
           </div>
 
           <div className={view === "grouped" ? "block" : "hidden"}>
-            <GroupedAlerts resetTrigger={resetTrigger} onHardcoreFailure={handleHardcoreFailure} onReset={() => { handleResetSimulator(); setView("table"); }} isVisible={view === "grouped"} setGroupedAlertCount={setGroupedAlertCount} />
+            <GroupedAlerts resetTrigger={resetTrigger} onHardcoreFailure={handleHardcoreFailure} onReset={() => { handleResetSimulator(); setView("table"); }} isVisible={view === "grouped"} setGroupedAlertCount={setGroupedAlertCount} onPivot={handlePivot} />
           </div>
 
           <div className={view === "table" ? "block" : "hidden"}>
@@ -258,7 +266,7 @@ const Dashboard = () => {
                 </button>
               </div>
             </div>
-            <AlertTable setAlertCount={setAlertCount} resetTrigger={resetTrigger} />
+            <AlertTable setAlertCount={setAlertCount} resetTrigger={resetTrigger} pivotQuery={pivotQuery} />
           </div>
 
           <div className={view === "analytics" ? "block" : "hidden"}>
