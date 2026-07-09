@@ -44,6 +44,7 @@ chain:
       ssl_policy: "Inspect-All-HTTPS"
 
   - offset: [5, 15]
+    trigger: true
     event_type: "SSL_HANDSHAKE_FAILED"
     source_type: "Proxy"
     log_source: "Proxy"

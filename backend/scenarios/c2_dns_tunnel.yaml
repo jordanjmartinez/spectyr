@@ -70,6 +70,7 @@ chain:
       dvc: "{infra.dns.hostname}"
 
   - offset: [30, 60]
+    trigger: true
     event_type: "QUERY"
     source_type: "DNS"
     log_source: "DNS"

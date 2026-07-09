@@ -169,9 +169,12 @@ SPECS = {
     },
 
     # ---- tier 3: behavioral, cross-account / covert, judgment calls ----
+    # NOTE: the spray originates from {src_ip} (the victim workstation) in the
+    # source data, so there's no separate attacker entity to declare. Pivot is
+    # on the workstation.
     'password_spray': {
         'tier': 3,
-        'entities': {'victim': emp(), 'attacker': ('external_ip', {'ip': '203.0.113.42'})},
+        'entities': {'victim': emp()},
         'offsets': [0, [2, 4], [2, 4], [2, 4], [2, 4], [3, 6]],
     },
     'c2_dns_tunnel': {
@@ -218,6 +221,36 @@ SPECS = {
         },
         'offsets': [0, [5, 15], [2, 5], [3, 8], [10, 30]],
     },
+}
+
+# Trigger steps (0-based indices) per scenario: the event(s) a real detection
+# rule fires on. This is the entry point analysts see in Analyst mode; the rest
+# of the chain is found by pivoting on the shared entity. Chosen by hand because
+# correlation-detected scenarios (password_spray, c2_dns_tunnel) fire on a
+# specific anomalous event, not the loudest one. A fairness check
+# (fairness_check.py) verifies every non-trigger step shares an entity value
+# with a trigger, so the whole chain is always reachable by pivoting.
+TRIGGERS = {
+    'malware_usb': {1},                     # exec from removable media E:\
+    'malware_ransomware': {2},              # first .locked file (mass encryption)
+    'brute_force_attack': {4},              # 4740 account lockout
+    'phishing_1': {3},                      # Entra impossible-travel risk event
+    'false_positive_pentest': {2},          # credential-harvest POST (benign)
+    'defense_evasion': {1},                 # 5007 Defender real-time protection off
+    'phishing_link': {2},                   # payload process from the link
+    'lateral_movement_1': {4},              # 4624 anomalous logon on the server
+    'c2_http': {2},                         # beacon CONNECT to lookalike domain
+    'data_exfil_archive': {4},              # outbound CONNECT to mega.nz
+    'defense_evasion_log_clearing': {4},    # 1102 Security log cleared
+    'insider_staging': {4},                 # exfil CONNECT to personal cloud
+    'insider_shadow_it': {4},               # upload POST to unsanctioned cloud
+    'lateral_movement_2': {1},              # ProcessAccess on lsass.exe
+    'password_spray': {5},                  # 4624 success after the spray
+    'c2_dns_tunnel': {2},                   # anomalous TXT queries to tunnel domain
+    'false_positive_oauth': {3},            # impossible-travel risk event (benign)
+    'false_positive_robocopy': {0},         # robocopy bulk-copy launch (benign)
+    'false_positive_ssl_inspection': {1},   # repeated TLS handshake failures (benign)
+    'false_positive_veeam': {2},            # periodic outbound to backup server (benign)
 }
 
 # fields copied from each source log into the chain step, in this order
@@ -291,9 +324,12 @@ def convert(label):
         for field, literal in fields.items():
             L.append(f'    {field}: {emit_scalar(literal)}')
     L.append('')
+    triggers = TRIGGERS.get(label, set())
     L.append('chain:')
     for i, step in enumerate(chain):
         L.append(f'  - offset: {json.dumps(offsets[i])}')
+        if i in triggers:
+            L.append('    trigger: true')
         for f in STEP_FIELDS:
             if f in step and step[f] not in (None, ''):
                 L.append(f'    {f}: {emit_scalar(rewrite(step[f], rw))}')

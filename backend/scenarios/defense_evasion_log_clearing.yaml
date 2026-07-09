@@ -102,6 +102,7 @@ chain:
       parent_user: "{victim.user_domain}"
 
   - offset: [2, 5]
+    trigger: true
     event_type: "1102"
     source_type: "Windows Security"
     log_source: "Windows Security"

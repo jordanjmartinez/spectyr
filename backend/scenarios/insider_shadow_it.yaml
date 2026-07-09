@@ -111,6 +111,7 @@ chain:
       dvc: "{infra.dns.hostname}"
 
   - offset: [5, 15]
+    trigger: true
     event_type: "HTTP_POST"
     source_type: "Proxy"
     log_source: "Proxy"

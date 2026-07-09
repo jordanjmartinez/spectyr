@@ -89,6 +89,7 @@ chain:
       OperationName: "Sign-in activity"
 
   - offset: [5, 15]
+    trigger: true
     event_type: "AADUserRiskEvents"
     source_type: "Azure AD"
     log_source: "Azure AD"

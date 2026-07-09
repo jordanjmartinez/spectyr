@@ -28,6 +28,10 @@ import sys
 IGNORE = {
     "id", "scenario_id", "alert_id", "timestamp", "status", "flagged",
     "level", "level_name", "storyline", "category", "detected_by",
+    # trigger is Analyst-mode metadata authored only in the YAML; the legacy
+    # NDJSON path has no equivalent and doesn't support Analyst mode. Additive,
+    # never displayed, so not a divergence in analyst-visible log content.
+    "trigger",
 }
 
 # threat_pattern is scenario-level metadata used only in an internal React key

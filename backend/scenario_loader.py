@@ -142,6 +142,7 @@ def validate_scenario(doc, schema, filename):
     # every placeholder in the chain must bind to a declared entity (or infra),
     # and employee refs must use known fields
     text = json.dumps(doc["chain"])
+    referenced = set()
     for path, field in PLACEHOLDER.findall(text):
         if path.startswith("infra."):
             continue  # infra servers validated at resolution against SERVERS
@@ -149,11 +150,24 @@ def validate_scenario(doc, schema, filename):
             raise ScenarioError(
                 f"{filename}: chain references undeclared entity {{{path}.{field}}}"
             )
+        referenced.add(path)
         etype = doc["entities"][path]["type"]
         if etype == "employee" and field not in EMPLOYEE_FIELDS:
             raise ScenarioError(
                 f"{filename}: employee entity {path!r} has no field {field!r}"
             )
+
+    # a declared-but-unreferenced entity is almost always an authoring mistake
+    unused = declared - referenced
+    if unused:
+        raise ScenarioError(
+            f"{filename}: entities declared but never referenced in the chain: "
+            f"{sorted(unused)}"
+        )
+
+    # every scenario needs at least one trigger step for Analyst mode
+    if not any(step.get("trigger") for step in doc["chain"]):
+        raise ScenarioError(f"{filename}: no chain step marked trigger: true")
 
     # event_id <-> channel pairing
     for i, step in enumerate(doc["chain"]):

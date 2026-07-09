@@ -66,6 +66,7 @@ chain:
       bytes_received: "248576"
 
   - offset: [10, 30]
+    trigger: true
     event_type: "ProcessCreate"
     source_type: "Sysmon"
     log_source: "Sysmon"

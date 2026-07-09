@@ -21,6 +21,7 @@ entities:
 
 chain:
   - offset: 0
+    trigger: true
     event_type: "ProcessCreate"
     source_type: "Sysmon"
     log_source: "Sysmon"

@@ -73,6 +73,7 @@ chain:
       dvc: "{infra.dns.hostname}"
 
   - offset: [2, 5]
+    trigger: true
     event_type: "HTTP_CONNECT"
     source_type: "Proxy"
     log_source: "Proxy"

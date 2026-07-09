@@ -71,6 +71,7 @@ chain:
       parent_user: "NT AUTHORITY\\SYSTEM"
 
   - offset: [2, 5]
+    trigger: true
     event_type: "NetworkConnect"
     source_type: "Sysmon"
     log_source: "Sysmon"

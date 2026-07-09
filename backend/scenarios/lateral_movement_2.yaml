@@ -46,6 +46,7 @@ chain:
       parent_user: "{victim.user_domain}"
 
   - offset: [2, 5]
+    trigger: true
     event_type: "ProcessAccess"
     source_type: "Sysmon"
     log_source: "Sysmon"

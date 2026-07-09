@@ -49,6 +49,7 @@ chain:
       parent_user: "{victim.user_domain}"
 
   - offset: [2, 5]
+    trigger: true
     event_type: "5007"
     source_type: "Defender"
     log_source: "Defender"
