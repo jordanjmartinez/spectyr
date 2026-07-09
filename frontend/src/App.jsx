@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { apiFetch } from './api';
 
 import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
 import Analytics from './components/Analytics';
+import Landing from './pages/Landing';
+import Docs from './pages/Docs';
 
 const LOADING_MESSAGES = [
-  "Initializing SPECTYR...",
+  "Initializing Spectyr...",
   "Scanning threat feeds...",
   "Calibrating detection engines...",
   "Deploying honeypots...",
@@ -16,7 +18,9 @@ const LOADING_MESSAGES = [
   "Almost there...",
 ];
 
-function App() {
+// Gates the simulator behind the backend health check. Mounted only on sim routes,
+// so the landing page renders instantly and polling starts when the user enters the sim.
+function BackendGate({ children }) {
   const [backendReady, setBackendReady] = useState(false);
   const [messageIndex, setMessageIndex] = useState(0);
 
@@ -63,9 +67,9 @@ function App() {
   if (!backendReady) {
     return (
       <div className="min-h-screen bg-[#0d1117] flex flex-col items-center justify-center text-white">
-        <img src="/spectyr_logo.png" alt="SPECTYR Logo" className="h-32 w-32 mb-6 animate-pulse" />
-        <h1 className="text-4xl tracking-wider mb-4" style={{ fontFamily: "'Aldrich', sans-serif" }}>
-          SPECTYR
+        <img src="/spectyr_logo.png" alt="Spectyr Logo" className="h-32 w-32 mb-6 animate-pulse" />
+        <h1 className="text-4xl tracking-wider mb-4" style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>
+          Spectyr
         </h1>
         <p className="text-gray-400 text-lg mb-8">{LOADING_MESSAGES[messageIndex]}</p>
         {/* Progress bar */}
@@ -83,24 +87,44 @@ function App() {
     );
   }
 
+  return children;
+}
+
+function AppContent() {
+  const location = useLocation();
+  // Landing hero and docs bring their own navbar/footer
+  const hideChrome = location.pathname === '/' || location.pathname === '/docs';
+
   return (
-    <Router>
-      <Navbar />
+    <>
+      {!hideChrome && <Navbar />}
 
       <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/analytics" element={<Analytics />} />
+        <Route path="/" element={<Landing />} />
+        <Route path="/docs" element={<Docs />} />
+        <Route path="/sim" element={<BackendGate><Dashboard /></BackendGate>} />
+        <Route path="/analytics" element={<BackendGate><Analytics /></BackendGate>} />
       </Routes>
 
-      <footer className="bg-[#0d1117] px-4 sm:px-6 py-4 flex flex-col min-[674px]:flex-row items-center min-[674px]:justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <img src="/spectyr_logo.png" alt="Spectyr" className="h-8 w-8 object-contain" />
-          <span className="text-base tracking-wider text-white" style={{ fontFamily: "'Aldrich', sans-serif" }}>SPECTYR</span>
-          <span className="text-sm text-gray-500 hidden sm:inline">|</span>
-          <span className="text-sm text-white hidden sm:inline">SOC Simulation Training</span>
-        </div>
-        <span className="text-sm text-white">&copy; 2026 Spectyr. All rights reserved.</span>
-      </footer>
+      {!hideChrome && (
+        <footer className="bg-[#0d1117] px-4 sm:px-6 py-4 flex flex-col min-[674px]:flex-row items-center min-[674px]:justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <img src="/spectyr_logo.png" alt="Spectyr" className="h-8 w-8 object-contain" />
+            <span className="text-base tracking-wider text-white" style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>Spectyr</span>
+            <span className="text-sm text-gray-500 hidden sm:inline">|</span>
+            <span className="text-sm text-white hidden sm:inline">SOC Simulation Training</span>
+          </div>
+          <span className="text-sm text-white">&copy; 2026 Spectyr. All rights reserved.</span>
+        </footer>
+      )}
+    </>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }

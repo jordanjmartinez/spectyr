@@ -7,21 +7,31 @@ const Navbar = () => {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <nav className="sticky top-0 z-50 bg-[#0d1117]/90 backdrop-blur-md text-white px-4 pt-0 pb-0 sm:px-6 sm:pt-0 sm:pb-0 shadow-md flex items-center justify-between gap-4">
-      <div className="flex items-center gap-3 min-w-0">
+    <nav className="sticky top-0 z-50 bg-[#0d1117]/90 backdrop-blur-md text-white px-4 py-3 sm:px-6 border-b border-[#30363d] flex items-center justify-between gap-4">
+      <div className="flex items-center gap-2.5 min-w-0">
         <img
           src="/spectyr_logo.png"
           alt="Spectyr"
-          className="h-14 w-14 sm:h-20 sm:w-20 object-contain"
+          className="h-8 w-8 sm:h-9 sm:w-9 object-contain"
         />
         <span
-          className="text-3xl sm:text-5xl tracking-wider text-white hidden min-[460px]:inline"
-          style={{ fontFamily: "'Aldrich', sans-serif" }}
+          className="text-xl sm:text-2xl font-semibold tracking-tight text-white hidden min-[460px]:inline"
+          style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}
         >
-          SPECTYR
+          Spectyr
         </span>
       </div>
-      <div id="navbar-timer-slot" className="flex items-center shrink-0" />
+      <div className="flex items-center gap-3 shrink-0">
+        <div id="navbar-timer-slot" className="flex items-center" />
+        {!isActive('/sim') && (
+          <Link
+            to="/sim"
+            className="bg-[#f0f6fc] hover:bg-white text-[#0d1117] text-sm sm:text-base font-medium rounded-full px-4 sm:px-6 py-2 transition-colors shadow-[inset_0_2px_8px_0_rgba(255,255,255,0.35)] whitespace-nowrap"
+          >
+            Launch Sim
+          </Link>
+        )}
+      </div>
     </nav>
   );
 };
