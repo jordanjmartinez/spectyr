@@ -105,21 +105,21 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
     'Impact',
   ];
 
-  const inputClass = "w-full bg-[#0d1117] text-xs sm:text-sm text-white placeholder-gray-600 border border-gray-700 focus:border-[#8b949e] rounded-md px-3 py-2 outline-none transition-colors";
+  const inputClass = "w-full bg-white text-xs sm:text-sm text-[#1a2332] placeholder-gray-600 border border-[#e2e6ea] focus:border-[#8b949e] rounded-md px-3 py-2 outline-none transition-colors";
   const requiredMark = (fieldName) => (
-    <span className={errors[fieldName] ? 'text-red-400' : 'text-gray-500'}> *</span>
+    <span className={errors[fieldName] ? 'text-red-400' : 'text-[#6e7781]'}> *</span>
   );
 
   return (
-    <div className={`text-white ${inline ? 'w-full' : 'p-8 w-full max-w-2xl bg-[#161b22] rounded-xl border border-gray-700 shadow-2xl'}`}>
+    <div className={`text-[#1a2332] ${inline ? 'w-full' : 'p-8 w-full max-w-2xl bg-white rounded-xl border border-[#e2e6ea] shadow-2xl'}`}>
       {/* Header: title + close X */}
       <div className="relative mb-4">
-        <h2 className="text-base sm:text-lg font-medium text-white pr-8">Incident Report</h2>
+        <h2 className="text-base sm:text-lg font-medium text-[#1a2332] pr-8">Incident Report</h2>
         <button
           type="button"
           onClick={onCancel}
           aria-label="Close"
-          className="absolute top-0 right-0 -mt-1 -mr-1 p-1 text-gray-400 hover:text-white transition-colors"
+          className="absolute top-0 right-0 -mt-1 -mr-1 p-1 text-[#57606a] hover:text-[#1a2332] transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -128,12 +128,12 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
       </div>
 
       {/* Gradient divider (matches Post-Incident Review) */}
-      <div className="mb-5" style={{ height: '1px', background: 'linear-gradient(to right, rgba(240,246,252,0.1), transparent)' }} />
+      <div className="mb-5" style={{ height: '1px', background: 'linear-gradient(to right, rgba(0,0,0,0.08), transparent)' }} />
 
       {/* Form fields */}
       <div className="space-y-4">
         <div>
-          <label className="block text-xs text-gray-300 mb-1">Title{requiredMark('title')}</label>
+          <label className="block text-xs text-[#1a2332] mb-1">Title{requiredMark('title')}</label>
           <input
             name="title"
             value={formData.title}
@@ -144,7 +144,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
         </div>
 
         <div>
-          <label className="block text-xs text-gray-300 mb-1">Description{requiredMark('description')}</label>
+          <label className="block text-xs text-[#1a2332] mb-1">Description{requiredMark('description')}</label>
           <textarea
             name="description"
             value={formData.description}
@@ -156,7 +156,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
         </div>
 
         <div>
-          <label className="block text-xs text-gray-300 mb-1">Affected Systems</label>
+          <label className="block text-xs text-[#1a2332] mb-1">Affected Systems</label>
           <input
             name="affected_hosts"
             value={formData.affected_hosts}
@@ -167,7 +167,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
         </div>
 
         <div>
-          <label className="block text-xs text-gray-300 mb-1">Mitigation Steps{requiredMark('mitigation')}</label>
+          <label className="block text-xs text-[#1a2332] mb-1">Mitigation Steps{requiredMark('mitigation')}</label>
           <textarea
             name="mitigation"
             value={formData.mitigation}
@@ -179,7 +179,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
         </div>
 
         <div>
-          <label className="block text-xs text-gray-300 mb-1">MITRE ATT&CK</label>
+          <label className="block text-xs text-[#1a2332] mb-1">MITRE ATT&CK</label>
           <div className="relative" ref={mitreDropdownRef}>
             <button
               ref={mitreTriggerRef}
@@ -207,13 +207,13 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
             >
               <div className="flex flex-nowrap items-center gap-1.5 flex-1 overflow-hidden">
                 {mitreTacticsSelected.length === 0 ? (
-                  <span className="text-gray-600">Select tactics...</span>
+                  <span className="text-[#8b949e]">Select tactics...</span>
                 ) : (
                   <>
                     {mitreTacticsSelected.slice(0, VISIBLE_MITRE_CHIPS).map(tactic => (
                       <span
                         key={tactic}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-[#21262d] border border-gray-600 text-gray-200 flex-shrink-0 max-w-[140px]"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-white border border-[#d0d7de] text-[#1a2332] flex-shrink-0 max-w-[140px]"
                       >
                         <span className="truncate">{tactic}</span>
                         <span
@@ -221,7 +221,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
                             e.stopPropagation();
                             setMitreTacticsSelected(prev => prev.filter(t => t !== tactic));
                           }}
-                          className="text-gray-400 hover:text-white cursor-pointer flex-shrink-0"
+                          className="text-[#57606a] hover:text-[#1a2332] cursor-pointer flex-shrink-0"
                           aria-label={`Remove ${tactic}`}
                         >
                           ×
@@ -229,7 +229,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
                       </span>
                     ))}
                     {mitreTacticsSelected.length > VISIBLE_MITRE_CHIPS && (
-                      <span className="text-[11px] text-gray-400 flex-shrink-0">
+                      <span className="text-[11px] text-[#57606a] flex-shrink-0">
                         +{mitreTacticsSelected.length - VISIBLE_MITRE_CHIPS} more
                       </span>
                     )}
@@ -237,7 +237,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
                 )}
               </div>
               <svg
-                className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${mitreDropdownOpen ? 'rotate-180' : ''}`}
+                className={`w-4 h-4 text-[#57606a] flex-shrink-0 transition-transform ${mitreDropdownOpen ? 'rotate-180' : ''}`}
                 fill="none" stroke="currentColor" viewBox="0 0 24 24"
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -256,7 +256,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
                     width: `${mitreDropdownPos.width}px`,
                     zIndex: 70,
                   }}
-                  className="bg-[#0d1117] border border-gray-700 rounded py-1 max-h-64 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]"
+                  className="bg-white border border-[#e2e6ea] rounded py-1 max-h-64 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]"
                 >
                   {mitreTactics.map(tactic => {
                     const checked = mitreTacticsSelected.includes(tactic);
@@ -270,9 +270,9 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
                             checked ? prev.filter(t => t !== tactic) : [...prev, tactic]
                           );
                         }}
-                        className="w-full flex items-center gap-2 text-left px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 transition"
+                        className="w-full flex items-center gap-2 text-left px-3 py-2 text-xs text-[#1a2332] hover:bg-[#eef1f4] transition"
                       >
-                        <span className={`w-3.5 h-3.5 flex-shrink-0 rounded border ${checked ? 'bg-gray-300 border-gray-300' : 'border-gray-600'}`} />
+                        <span className={`w-3.5 h-3.5 flex-shrink-0 rounded border ${checked ? 'bg-[#1a2332] border-[#1a2332]' : 'border-[#d0d7de]'}`} />
                         {tactic}
                       </button>
                     );
@@ -290,14 +290,14 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
         <button
           onClick={onCancel}
           disabled={isSubmitting}
-          className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
+          className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-white hover:bg-[#eef1f4] text-[#1a2332] border-[#d0d7de] focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
         >
           Cancel
         </button>
         <button
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#f0f6fc] hover:bg-white text-[#0d1117] border-transparent focus:outline-none focus:ring-2 focus:ring-[#8b949e] disabled:opacity-50"
+          className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#1a2332] hover:bg-[#0f2942] text-white border-transparent focus:outline-none focus:ring-2 focus:ring-[#8b949e] disabled:opacity-50"
         >
           {isSubmitting ? 'Saving...' : isEditing ? 'Save' : 'Submit'}
         </button>

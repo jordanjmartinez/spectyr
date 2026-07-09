@@ -29,8 +29,8 @@ const PieTooltip = ({ active, payload }) => {
   const { name, value } = payload[0];
   if (name === 'Empty' || name === 'None') return null;
   return (
-    <div style={{ backgroundColor: '#161b22', border: '1px solid #30363d', borderRadius: '8px', padding: '6px 12px', fontSize: '13px', whiteSpace: 'nowrap' }}>
-      <span style={{ color: '#e5e7eb' }}>{name}: <span style={{ color: '#fff', fontWeight: 600 }}>{value}</span></span>
+    <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e6ea', borderRadius: '8px', padding: '6px 12px', fontSize: '13px', whiteSpace: 'nowrap' }}>
+      <span style={{ color: '#57606a' }}>{name}: <span style={{ color: '#1a2332', fontWeight: 600 }}>{value}</span></span>
     </div>
   );
 };
@@ -40,9 +40,9 @@ const MttrTooltip = ({ active, payload }) => {
   const p = payload[0].payload;
   if (p.synthetic) return null;
   return (
-    <div style={{ backgroundColor: '#161b22', border: '1px solid #30363d', borderRadius: '8px', padding: '6px 12px', fontSize: '13px', whiteSpace: 'nowrap' }}>
-      <div style={{ color: '#e5e7eb' }}>{p.incident_name || p.category || 'Scenario'}</div>
-      <div style={{ color: '#fff', fontWeight: 600 }}>{formatDuration(p.seconds)}</div>
+    <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e6ea', borderRadius: '8px', padding: '6px 12px', fontSize: '13px', whiteSpace: 'nowrap' }}>
+      <div style={{ color: '#57606a' }}>{p.incident_name || p.category || 'Scenario'}</div>
+      <div style={{ color: '#1a2332', fontWeight: 600 }}>{formatDuration(p.seconds)}</div>
     </div>
   );
 };
@@ -108,7 +108,7 @@ const PerformanceGrade = ({ report }) => {
         y={cy - half}
         width={size}
         height={size}
-        fill="#161b22"
+        fill="#ffffff"
         stroke={color}
         strokeWidth={2}
         transform={`rotate(45 ${cx} ${cy})`}
@@ -118,16 +118,16 @@ const PerformanceGrade = ({ report }) => {
 
   return (
     <div className="h-full flex flex-col">
-      <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Performance</h2>
-      <div className="rounded-2xl p-4 sm:p-6 flex-1" style={{ background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(240,246,252,0.1), transparent) border-box', border: '1px solid transparent', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+      <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">Performance</h2>
+      <div className="rounded-2xl p-4 sm:p-6 flex-1" style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-start gap-2">
             <button
               onClick={() => setResultsView('grade')}
               className={`px-2 sm:px-3 py-1.5 min-w-[5rem] sm:min-w-[6rem] text-xs sm:text-sm font-medium rounded-md border transition ${
                 resultsView === 'grade'
-                  ? 'bg-[#30363d] text-white border-[#8b949e]'
-                  : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
+                  ? 'bg-[#eef1f4] text-[#1a2332] border-[#8b949e]'
+                  : 'bg-white text-[#57606a] border-[#e2e6ea] hover:text-[#1a2332]'
               }`}
             >
               Grade
@@ -136,8 +136,8 @@ const PerformanceGrade = ({ report }) => {
               onClick={() => setResultsView('mttr')}
               className={`px-2 sm:px-3 py-1.5 min-w-[5rem] sm:min-w-[6rem] text-xs sm:text-sm font-medium rounded-md border transition ${
                 resultsView === 'mttr'
-                  ? 'bg-[#30363d] text-white border-[#8b949e]'
-                  : 'bg-[#161b22] text-gray-400 border-gray-700 hover:text-gray-200'
+                  ? 'bg-[#eef1f4] text-[#1a2332] border-[#8b949e]'
+                  : 'bg-white text-[#57606a] border-[#e2e6ea] hover:text-[#1a2332]'
               }`}
             >
               MTTR
@@ -145,7 +145,7 @@ const PerformanceGrade = ({ report }) => {
           </div>
           {resultsView !== 'mttr' ? (
           <div className="flex items-center justify-center">
-            <div className="relative w-52 h-52 sm:w-72 sm:h-72 aspect-square border-dashed border-2 border-gray-700 rounded-full p-2">
+            <div className="relative w-52 h-52 sm:w-72 sm:h-72 aspect-square border-dashed border-2 border-[#e2e6ea] rounded-full p-2">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -155,17 +155,17 @@ const PerformanceGrade = ({ report }) => {
                     startAngle={90}
                     endAngle={-270}
                     dataKey="value"
-                    stroke="#161b22" strokeWidth={2}
+                    stroke="#ffffff" strokeWidth={2}
                   >
                     {total === 0
-                      ? [<Cell key="empty" fill="#374151" />]
+                      ? [<Cell key="empty" fill="#e5e7eb" />]
                       : pieData.map((seg, i) => <Cell key={i} fill={seg.color} />)}
                   </Pie>
                   <Tooltip content={<PieTooltip />} wrapperStyle={{ zIndex: 20, outline: 'none', border: 'none' }} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-7xl sm:text-9xl font-bold text-white">{grade}</span>
+                <span className="text-7xl sm:text-9xl font-bold text-[#1a2332]">{grade}</span>
               </div>
             </div>
           </div>
@@ -173,7 +173,7 @@ const PerformanceGrade = ({ report }) => {
           <div className="w-full h-52 sm:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={mttrData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#30363d" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e6ea" />
                 <XAxis dataKey="index" stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: 14 }} tickFormatter={(v) => v === 0 ? '' : v} />
                 <YAxis stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: isSmUp ? 14 : 12 }} tickFormatter={(v) => formatDuration(v)} width={isSmUp ? 64 : 68} />
                 <Tooltip content={<MttrTooltip />} wrapperStyle={{ zIndex: 20, outline: 'none', border: 'none' }} />
@@ -185,7 +185,7 @@ const PerformanceGrade = ({ report }) => {
             </ResponsiveContainer>
           </div>
           )}
-          <p className="font-mono text-xs sm:text-sm text-gray-400 text-center">
+          <p className="font-mono text-xs sm:text-sm text-[#57606a] text-center">
             {resultsView !== 'mttr' && GRADE_MESSAGES[grade] ? (
               <>&gt;<span className="animate-blink">|</span> {GRADE_MESSAGES[grade]}</>
             ) : (

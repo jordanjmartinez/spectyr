@@ -57,20 +57,20 @@ const ActionHistory = ({ history: rawHistory }) => {
   if (!history || history.length === 0) {
     return (
       <div>
-        <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Post-Incident Review</h2>
+        <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">Post-Incident Review</h2>
         <div
           className="p-3 sm:p-6 rounded-xl"
           style={{
-            background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(240,246,252,0.1), transparent) border-box',
-            border: '1px solid transparent',
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+            background: '#ffffff',
+            border: '1px solid #e2e6ea',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
           }}
         >
           <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
-            <svg className="w-8 h-8 text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg className="w-8 h-8 text-[#8b949e] mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
             </svg>
-            <p className="text-sm text-gray-500">Your post-incident review will appear after your first triage.</p>
+            <p className="text-sm text-[#6e7781]">Your post-incident review will appear after your first triage.</p>
           </div>
         </div>
       </div>
@@ -79,29 +79,29 @@ const ActionHistory = ({ history: rawHistory }) => {
 
   return (
     <div>
-      <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Post-Incident Review</h2>
+      <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">Post-Incident Review</h2>
 
       <div
         className="p-3 sm:p-6 rounded-xl"
         style={{
-          background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(240,246,252,0.1), transparent) border-box',
-          border: '1px solid transparent',
-          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+          background: '#ffffff',
+          border: '1px solid #e2e6ea',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
         }}
       >
         <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper">
-          <table className="w-full min-w-[860px] log-text text-left text-gray-300 border-separate border-spacing-0">
+          <table className="w-full min-w-[860px] log-text text-left text-[#1a2332] border-separate border-spacing-0">
           <thead>
-            <tr className="text-xs sm:text-sm uppercase text-gray-400 tracking-wider">
-              <th className="w-10 px-2 sm:px-4 py-3 font-medium border-b border-gray-600"></th>
-              <th className="w-12 px-1 sm:px-2 py-3 font-medium border-b border-gray-600"></th>
-              <th className="w-full px-2 sm:px-4 py-3 font-medium border-b border-gray-600">Incident</th>
-              <th className="w-32 px-2 sm:px-4 py-3 font-medium text-center border-b border-gray-600">Classification</th>
-              <th className="w-40 px-2 sm:px-4 py-3 font-medium text-center whitespace-nowrap border-b border-gray-600">MITRE ATT&amp;CK</th>
-              <th className="px-2 sm:px-4 py-3 font-medium text-center border-b border-gray-600">Result</th>
+            <tr className="text-xs sm:text-sm uppercase text-[#57606a] tracking-wider">
+              <th className="w-10 px-2 sm:px-4 py-3 font-medium border-b border-[#d0d7de]"></th>
+              <th className="w-12 px-1 sm:px-2 py-3 font-medium border-b border-[#d0d7de]"></th>
+              <th className="w-full px-2 sm:px-4 py-3 font-medium border-b border-[#d0d7de]">Incident</th>
+              <th className="w-32 px-2 sm:px-4 py-3 font-medium text-center border-b border-[#d0d7de]">Classification</th>
+              <th className="w-40 px-2 sm:px-4 py-3 font-medium text-center whitespace-nowrap border-b border-[#d0d7de]">MITRE ATT&amp;CK</th>
+              <th className="px-2 sm:px-4 py-3 font-medium text-center border-b border-[#d0d7de]">Result</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-700">
+          <tbody className="divide-y divide-[#e2e6ea]">
             {history.map((item, index) => {
               const review = triageReviews[item.scenario_label];
               const isExpanded = expandedItems.has(index);
@@ -110,12 +110,12 @@ const ActionHistory = ({ history: rawHistory }) => {
               return (
                 <React.Fragment key={index}>
                   <tr
-                    className="hover:bg-white/5 transition-colors cursor-pointer border-b border-gray-700/50"
+                    className="hover:bg-[#f6f8fa] transition-colors cursor-pointer border-b border-[#e2e6ea]/50"
                     onClick={() => toggleExpanded(index)}
                   >
                     <td className="w-10 pl-0 pr-1 sm:pr-2 py-4">
                       <svg
-                        className={`w-5 h-5 text-gray-500 hover:text-white transition-transform duration-300 ease-in-out ${
+                        className={`w-5 h-5 text-[#6e7781] hover:text-[#1a2332] transition-transform duration-300 ease-in-out ${
                           isExpanded ? 'rotate-180' : 'rotate-0'
                         }`}
                         fill="none" stroke="currentColor" viewBox="0 0 24 24"
@@ -126,7 +126,7 @@ const ActionHistory = ({ history: rawHistory }) => {
                     <td className="w-12 px-1 sm:px-2 py-4 text-center">
                       <span className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full inline-flex items-center justify-center border-[3px] ${
                         item.correct ? 'border-[#6fa868]' : 'border-[#b26666]'
-                      } text-white`}>
+                      } text-[#1a2332]`}>
                         {item.correct ? (
                           <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -139,17 +139,17 @@ const ActionHistory = ({ history: rawHistory }) => {
                       </span>
                     </td>
                     <td className="px-2 sm:px-4 py-4">
-                      <p className="text-sm sm:text-base font-medium text-gray-200 whitespace-nowrap">
+                      <p className="text-sm sm:text-base font-medium text-[#1a2332] whitespace-nowrap">
                         {review?.what_is_it?.title || item.true_category || 'Unknown'}
                       </p>
                       {formatDuration(item.time_to_resolve_seconds) && (
-                        <p className="text-xs sm:text-sm text-gray-400 mt-0.5">
+                        <p className="text-xs sm:text-sm text-[#57606a] mt-0.5">
                           Resolved in {formatDuration(item.time_to_resolve_seconds)}
                         </p>
                       )}
                     </td>
                     <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
-                      <span className="text-gray-300">{item.true_category || '—'}</span>
+                      <span className="text-[#1a2332]">{item.true_category || '—'}</span>
                     </td>
                     <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
                       {review?.mitre?.id ? (
@@ -158,7 +158,7 @@ const ActionHistory = ({ history: rawHistory }) => {
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-2 bg-[#21262d] text-gray-300 text-xs sm:text-sm px-3 py-1.5 rounded-md border border-gray-700 hover:bg-[#30363d] transition-colors"
+                          className="inline-flex items-center gap-2 bg-white text-[#1a2332] text-xs sm:text-sm px-3 py-1.5 rounded-md border border-[#e2e6ea] hover:bg-[#eef1f4] transition-colors"
                           style={{ fontFamily: "'Inter', sans-serif" }}
                         >
                           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
@@ -167,11 +167,11 @@ const ActionHistory = ({ history: rawHistory }) => {
                           <span className="font-semibold">{review.mitre.id}</span>
                         </a>
                       ) : (
-                        <span className="text-gray-300">—</span>
+                        <span className="text-[#1a2332]">—</span>
                       )}
                     </td>
                     <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
-                      <span className="text-gray-300">{resultLabel}</span>
+                      <span className="text-[#1a2332]">{resultLabel}</span>
                     </td>
                   </tr>
                   <tr>
@@ -180,31 +180,31 @@ const ActionHistory = ({ history: rawHistory }) => {
                         isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
                       }`}>
                         <div className="overflow-hidden min-h-0">
-                          <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(240,246,252,0.1), transparent)' }} />
+                          <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(0,0,0,0.08), transparent)' }} />
                           <div className="px-6 py-4">
                             <div className="mb-4">
-                              <span className="text-sm sm:text-base text-white font-medium">Classification</span>
-                              <p className="text-gray-300 mt-1 text-sm sm:text-base">{item.true_category}</p>
+                              <span className="text-sm sm:text-base text-[#1a2332] font-medium">Classification</span>
+                              <p className="text-[#1a2332] mt-1 text-sm sm:text-base">{item.true_category}</p>
                             </div>
                             {review ? (
                               <>
                                 {review.mitre && (
                                   <div className="mb-4">
-                                    <span className="text-sm sm:text-base text-white font-medium">MITRE ATT&CK</span>
+                                    <span className="text-sm sm:text-base text-[#1a2332] font-medium">MITRE ATT&CK</span>
                                     <div className="mt-1">
                                       <a
                                         href={review.mitre.url}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         onClick={(e) => e.stopPropagation()}
-                                        className="inline-flex items-center gap-2 bg-[#21262d] text-gray-300 text-xs sm:text-sm px-3 py-1.5 rounded-md border border-gray-700 hover:bg-[#30363d] transition-colors"
+                                        className="inline-flex items-center gap-2 bg-white text-[#1a2332] text-xs sm:text-sm px-3 py-1.5 rounded-md border border-[#e2e6ea] hover:bg-[#eef1f4] transition-colors"
                                         style={{ fontFamily: "'Inter', sans-serif" }}
                                       >
                                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                                           <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" fill="none"/>
                                         </svg>
                                         <span className="font-semibold">{review.mitre.id}</span>
-                                        <span className="text-gray-500">|</span>
+                                        <span className="text-[#6e7781]">|</span>
                                         <span>{review.mitre.name}</span>
                                       </a>
                                     </div>
@@ -212,18 +212,18 @@ const ActionHistory = ({ history: rawHistory }) => {
                                 )}
                                 {review.what_is_it && (
                                   <div className="mb-4">
-                                    <span className="text-sm sm:text-base text-white font-medium">Description</span>
-                                    <p className="text-gray-300 mt-2 leading-relaxed text-sm sm:text-base break-words">{review.what_is_it.description}</p>
+                                    <span className="text-sm sm:text-base text-[#1a2332] font-medium">Description</span>
+                                    <p className="text-[#1a2332] mt-2 leading-relaxed text-sm sm:text-base break-words">{review.what_is_it.description}</p>
                                   </div>
                                 )}
                                 {!review.what_is_it && review.indicators && review.indicators.length > 0 && (
                                   <div className="mb-4">
-                                    <span className="text-sm sm:text-base text-white font-medium">Why This Was Suspicious</span>
+                                    <span className="text-sm sm:text-base text-[#1a2332] font-medium">Why This Was Suspicious</span>
                                     <div className="mt-2 space-y-1.5">
                                       {review.indicators.map((ind, i) => (
-                                        <p key={i} className="text-sm sm:text-base text-gray-300">
-                                          <span className="text-white font-medium">{ind.indicator}</span>
-                                          <span className="text-gray-500 mx-1">—</span>
+                                        <p key={i} className="text-sm sm:text-base text-[#1a2332]">
+                                          <span className="text-[#1a2332] font-medium">{ind.indicator}</span>
+                                          <span className="text-[#6e7781] mx-1">—</span>
                                           {ind.explanation}
                                         </p>
                                       ))}
@@ -232,7 +232,7 @@ const ActionHistory = ({ history: rawHistory }) => {
                                 )}
                                 {review.response_actions && review.response_actions.length > 0 && (
                                   <div>
-                                    <span className="text-sm sm:text-base text-white font-medium">Playbook</span>
+                                    <span className="text-sm sm:text-base text-[#1a2332] font-medium">Playbook</span>
                                     <div className="mt-2">
                                       {review.response_actions.map((action, i) => {
                                         const isFirst = i === 0;
@@ -241,14 +241,14 @@ const ActionHistory = ({ history: rawHistory }) => {
                                           <div key={i} className="flex gap-3">
                                             <div className="relative w-3 flex-shrink-0 self-stretch">
                                               {!isFirst && (
-                                                <div className="absolute left-1/2 -translate-x-1/2 w-px bg-gray-600" style={{ top: 0, bottom: '50%' }} />
+                                                <div className="absolute left-1/2 -translate-x-1/2 w-px bg-[#d0d7de]" style={{ top: 0, bottom: '50%' }} />
                                               )}
                                               {!isLast && (
-                                                <div className="absolute left-1/2 -translate-x-1/2 w-px bg-gray-600" style={{ top: '50%', bottom: 0 }} />
+                                                <div className="absolute left-1/2 -translate-x-1/2 w-px bg-[#d0d7de]" style={{ top: '50%', bottom: 0 }} />
                                               )}
-                                              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rotate-45 border border-gray-500 bg-[#161b22]" />
+                                              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rotate-45 border border-[#d0d7de] bg-white" />
                                             </div>
-                                            <p className="text-sm sm:text-base text-gray-300 py-1.5">{action}</p>
+                                            <p className="text-sm sm:text-base text-[#1a2332] py-1.5">{action}</p>
                                           </div>
                                         );
                                       })}
@@ -257,7 +257,7 @@ const ActionHistory = ({ history: rawHistory }) => {
                                 )}
                               </>
                             ) : (
-                              <p className="text-sm sm:text-base text-gray-300 leading-relaxed">Triage review not yet available for this scenario.</p>
+                              <p className="text-sm sm:text-base text-[#1a2332] leading-relaxed">Triage review not yet available for this scenario.</p>
                             )}
                           </div>
                         </div>

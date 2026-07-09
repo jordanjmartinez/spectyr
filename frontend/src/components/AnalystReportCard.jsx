@@ -27,39 +27,39 @@ const AnalystReportCard = ({ report }) => {
 
   return (
     <div className="h-full flex flex-col">
-      <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4">Report Card</h2>
+      <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">Report Card</h2>
 
-      <div className="p-4 sm:p-6 rounded-2xl flex-1" style={{ background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(240,246,252,0.1), transparent) border-box', border: '1px solid transparent', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+      <div className="p-4 sm:p-6 rounded-2xl flex-1" style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
       <table className="w-full h-full text-xs sm:text-base">
         <colgroup>
           <col />
           <col className="w-20" />
         </colgroup>
-        <tbody className="text-gray-300">
+        <tbody className="text-[#1a2332]">
           <tr>
             <td className="py-3">True Positives</td>
             <td className="py-3 text-center">
-              <span className="text-white font-semibold">{threatsCorrect}/{threatsTotal}</span>
+              <span className="text-[#1a2332] font-semibold">{threatsCorrect}/{threatsTotal}</span>
             </td>
           </tr>
-          <tr className="border-t border-gray-800">
+          <tr className="border-t border-[#e2e6ea]">
             <td className="py-3">False Positives</td>
             <td className="py-3 text-center">
-              <span className="text-white font-semibold">{fpCorrect}/{fpTotal}</span>
+              <span className="text-[#1a2332] font-semibold">{fpCorrect}/{fpTotal}</span>
             </td>
           </tr>
-          <tr className="border-t border-gray-800">
+          <tr className="border-t border-[#e2e6ea]">
             <td className="py-3">Mean Time to Resolve</td>
             <td className="py-3 text-center">
-              <span className="text-white font-semibold">
+              <span className="text-[#1a2332] font-semibold">
                 {formatDuration(report?.avg_time_to_resolve_seconds ?? 0)}
               </span>
             </td>
           </tr>
-          <tr className="border-t border-gray-700">
-            <td className="py-3 font-normal text-gray-300">Overall Grade</td>
+          <tr className="border-t border-[#e2e6ea]">
+            <td className="py-3 font-normal text-[#1a2332]">Overall Grade</td>
             <td className="py-3 text-center">
-              <span className="text-white font-bold text-xl">{grade}</span>
+              <span className="text-[#1a2332] font-bold text-xl">{grade}</span>
             </td>
           </tr>
         </tbody>

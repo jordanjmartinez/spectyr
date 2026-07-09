@@ -58,11 +58,11 @@ const CampaignProgress = ({ levelData, onReset, analystName, report }) => {
           className={`w-9 h-9 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-sm sm:text-lg font-bold leading-none transition-all border-4 ${
             isCompleted
               ? isCorrect
-                ? "border-[#6fa868] text-white"
-                : "border-[#b26666] text-white"
+                ? "border-[#6fa868] text-[#1a2332]"
+                : "border-[#b26666] text-[#1a2332]"
               : isCurrent
-              ? "border-[#d1d5db] text-white"
-              : "border-gray-600 text-gray-500"
+              ? "border-[#d1d5db] text-[#1a2332]"
+              : "border-[#d0d7de] text-[#6e7781]"
           }`}
         >
           {isCompleted ? (
@@ -89,7 +89,7 @@ const CampaignProgress = ({ levelData, onReset, analystName, report }) => {
         <React.Fragment key={level}>
           {renderCircle(level, showCurrent)}
           {j < levels.length - 1 && (
-            <div className="flex-1 mx-1 border-t-2 border-dashed border-gray-600" />
+            <div className="flex-1 mx-1 border-t-2 border-dashed border-[#d0d7de]" />
           )}
         </React.Fragment>
       ))}
@@ -99,7 +99,7 @@ const CampaignProgress = ({ levelData, onReset, analystName, report }) => {
   const renderVerticalConnector = (side, key) => (
     <div key={key} className={`flex ${side === 'right' ? 'justify-end' : 'justify-start'} px-4 sm:px-8 py-1`}>
       <div className="w-9 sm:w-12 flex justify-center">
-        <div className="border-l-2 border-dashed border-gray-600 h-6 sm:h-8" />
+        <div className="border-l-2 border-dashed border-[#d0d7de] h-6 sm:h-8" />
       </div>
     </div>
   );
@@ -127,10 +127,10 @@ const CampaignProgress = ({ levelData, onReset, analystName, report }) => {
     return (
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl sm:text-2xl font-semibold text-white">Simulation Complete</h2>
+          <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332]">Simulation Complete</h2>
           <button
             onClick={onReset}
-            className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600"
+            className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 bg-white hover:bg-[#eef1f4] text-[#1a2332] border-[#d0d7de]"
           >
             <span className="sm:hidden">Reset Sim</span><span className="hidden sm:inline">Reset Simulation</span>
           </button>
@@ -138,9 +138,9 @@ const CampaignProgress = ({ levelData, onReset, analystName, report }) => {
         <div
           className="px-6 pt-8 pb-6 rounded-xl"
           style={{
-            background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(240,246,252,0.1), transparent) border-box',
-            border: '1px solid transparent',
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+            background: '#ffffff',
+            border: '1px solid #e2e6ea',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
           }}
         >
         <div className={`flex flex-col items-center text-center transition-all duration-700 ease-out ${ghostVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
@@ -150,11 +150,11 @@ const CampaignProgress = ({ levelData, onReset, analystName, report }) => {
           >
             {banner.split('').map((ch, i) =>
               ch === '█'
-                ? <span key={i} className="text-white">{ch}</span>
+                ? <span key={i} className="text-[#1a2332]">{ch}</span>
                 : ch
             )}
           </pre>
-          <p className="font-mono text-xs sm:text-sm text-gray-400 mb-6">&gt;<span className="animate-blink">|</span> {message}</p>
+          <p className="font-mono text-xs sm:text-sm text-[#57606a] mb-6">&gt;<span className="animate-blink">|</span> {message}</p>
         </div>
         {/* Level stepper with results - snake/backwards-C layout */}
         <div className={`flex flex-col pt-5 pb-5 transition-all duration-700 delay-300 ease-out ${ghostVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
@@ -168,15 +168,15 @@ const CampaignProgress = ({ levelData, onReset, analystName, report }) => {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl sm:text-2xl font-semibold text-white">Simulation</h2>
+        <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332]">Simulation</h2>
       </div>
       {/* Level stepper - snake/backwards-C layout */}
       <div
         className="flex flex-col pt-5 pb-5 rounded-xl"
         style={{
-          background: 'linear-gradient(#161b22, #161b22) padding-box, linear-gradient(to bottom, rgba(240,246,252,0.1), transparent) border-box',
-          border: '1px solid transparent',
-          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+          background: '#ffffff',
+          border: '1px solid #e2e6ea',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
         }}
       >
         {renderStepper(true)}

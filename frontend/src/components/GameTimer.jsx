@@ -50,18 +50,23 @@ const GameTimer = ({ onTimeout, disabled }) => {
 
   return (
     <div
-      className={`self-start flex items-center gap-2 px-2 py-1 rounded-lg border ${
+      className={`flex items-center justify-center gap-2 px-2 lg:px-3 py-2 rounded-md border ${
         isCritical
-          ? 'bg-[#3a1f1f] border-[#7a3a3a] animate-pulse'
+          ? 'bg-[#4a1f1f] border-[#7a3a3a] animate-pulse'
           : isLow
-          ? 'bg-[#3a3522] border-[#7a6f3a]'
-          : 'bg-[#161b22] border-gray-700'
+          ? 'bg-[#4a3f22] border-[#7a6f3a]'
+          : 'bg-white/5 border-white/10'
       }`}
     >
-      <img src="/hacker_icon.jpeg" alt="" className="w-8 h-8 sm:w-11 sm:h-11" />
+      <svg
+        className={`w-4 h-4 shrink-0 ${isCritical ? 'text-[#e0a0a0]' : isLow ? 'text-[#e0c48a]' : 'text-gray-400'}`}
+        fill="none" stroke="currentColor" viewBox="0 0 24 24"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
       <span
-        className={`text-lg sm:text-xl tracking-widest ${
-          isCritical ? 'text-[#b26666]' : isLow ? 'text-[#c28e46]' : 'text-gray-200'
+        className={`text-base lg:text-lg tracking-widest ${
+          isCritical ? 'text-[#e0a0a0]' : isLow ? 'text-[#e0c48a]' : 'text-gray-200'
         }`}
         style={{ fontFamily: "'JetBrains Mono', sans-serif" }}
       >

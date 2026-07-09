@@ -263,33 +263,33 @@ const Dashboard = () => {
             className="absolute inset-0 bg-black/70"
             onClick={() => !isResetting && setShowResetModal(false)}
           />
-          <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl animate-modalIn">
+          <div className="relative bg-white border border-[#e2e6ea] rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl animate-modalIn">
             <button
               type="button"
               onClick={() => !isResetting && setShowResetModal(false)}
               aria-label="Close"
-              className="absolute top-3 right-3 p-1 text-gray-400 hover:text-white transition-colors"
+              className="absolute top-3 right-3 p-1 text-[#57606a] hover:text-[#1a2332] transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            <h3 className="text-lg font-semibold text-white mb-4">Reset Simulation</h3>
-            <p className="text-gray-400 mb-6">
+            <h3 className="text-lg font-semibold text-[#1a2332] mb-4">Reset Simulation</h3>
+            <p className="text-[#57606a] mb-6">
               This will clear all events, alerts, and reports. Your progress will be reset. This action cannot be undone.
             </p>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowResetModal(false)}
                 disabled={isResetting}
-                className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
+                className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-white hover:bg-[#eef1f4] text-[#57606a] border-[#d0d7de] focus:outline-none focus:ring-2 focus:ring-[#8b949e] disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleResetSimulator}
                 disabled={isResetting}
-                className="inline-flex items-center justify-center gap-2 px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#f0f6fc] hover:bg-white text-[#0d1117] border-transparent focus:outline-none focus:ring-2 focus:ring-[#8b949e] disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#1a2332] hover:bg-[#0f2942] text-white border-transparent focus:outline-none focus:ring-2 focus:ring-[#8b949e] disabled:opacity-50"
               >
                 {isResetting ? (
                   <>
@@ -315,26 +315,26 @@ const Dashboard = () => {
             className="absolute inset-0 bg-black/70"
             onClick={() => setShowSimulateModal(false)}
           />
-          <div className="relative bg-[#161b22] border border-gray-700 rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl animate-modalIn">
+          <div className="relative bg-white border border-[#e2e6ea] rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl animate-modalIn">
             <button
               type="button"
               onClick={() => setShowSimulateModal(false)}
               aria-label="Close"
-              className="absolute top-3 right-3 p-1 text-gray-400 hover:text-white transition-colors"
+              className="absolute top-3 right-3 p-1 text-[#57606a] hover:text-[#1a2332] transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            <h3 className="text-lg font-semibold text-white mb-4">Simulation Active</h3>
-            <div className="mb-5" style={{ height: '1px', background: 'linear-gradient(to right, rgba(240,246,252,0.1), transparent)' }} />
-            <p className="text-gray-400 mb-6">
-              You have <span className="text-white font-medium">{existingLogCount} events</span> from an active session. Use <span className="text-white font-medium">Reset Simulation</span> to start fresh.
+            <h3 className="text-lg font-semibold text-[#1a2332] mb-4">Simulation Active</h3>
+            <div className="mb-5" style={{ height: '1px', background: 'linear-gradient(to right, rgba(0,0,0,0.08), transparent)' }} />
+            <p className="text-[#57606a] mb-6">
+              You have <span className="text-[#1a2332] font-medium">{existingLogCount} events</span> from an active session. Use <span className="text-[#1a2332] font-medium">Reset Simulation</span> to start fresh.
             </p>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowSimulateModal(false)}
-                className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#21262d] hover:bg-[#30363d] text-gray-200 border-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-white hover:bg-[#eef1f4] text-[#57606a] border-[#d0d7de] focus:outline-none focus:ring-2 focus:ring-[#8b949e]"
               >
                 Cancel
               </button>
