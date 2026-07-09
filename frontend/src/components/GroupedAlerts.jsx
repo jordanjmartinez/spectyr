@@ -30,8 +30,8 @@ const RingCard = ({ title, segments, centerValue }) => {
     <div className="flex flex-col">
       <h3 className="text-base font-semibold text-[#1a2332] mb-3">{title}</h3>
       <div className="rounded-2xl p-4 sm:p-5 flex-1" style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
-        <div className="flex flex-col items-center gap-4 py-2">
-          <div className="relative w-32 h-32 sm:w-40 sm:h-40 shrink-0 aspect-square border-dashed border-2 border-[#b4bcc4] rounded-full p-1.5">
+        <div className="flex items-center justify-center gap-5 sm:gap-8">
+          <div className="relative w-28 h-28 sm:w-32 sm:h-32 shrink-0 aspect-square border-dashed border-2 border-[#b4bcc4] rounded-full p-1.5">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={data} innerRadius="70%" outerRadius="100%" startAngle={90} endAngle={-270} dataKey="value" stroke="#ffffff" strokeWidth={2}>
@@ -41,10 +41,10 @@ const RingCard = ({ title, segments, centerValue }) => {
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <span className="text-3xl sm:text-4xl font-bold text-[#1a2332]">{centerValue}</span>
+              <span className="text-2xl sm:text-3xl font-bold text-[#1a2332]">{centerValue}</span>
             </div>
           </div>
-          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs sm:text-sm">
+          <div className="flex flex-col gap-2 text-xs sm:text-sm">
             {segments.map(item => (
               <div key={item.name} className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 flex-shrink-0 rounded-md" style={{ backgroundColor: item.color }} />
@@ -666,7 +666,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                             </svg>
                           </td>
                           <td className="w-12 px-1 sm:px-2 py-4 text-center">
-                            <svg className="w-5 h-5 sm:w-6 sm:h-6 inline-block text-[#d1d5db]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-5 h-5 sm:w-6 sm:h-6 inline-block text-[#0f2942]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                           </td>
@@ -682,7 +682,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                     <button
                                       type="button"
                                       onClick={(e) => { e.stopPropagation(); scrollToNotableEvent(match); }}
-                                      className="text-[#0f2942] hover:text-[#16436b] hover:underline font-medium transition-colors"
+                                      className="text-[#16436b] hover:text-[#0f2942] hover:underline font-medium transition-colors"
                                     >{alertId}</button>
                                   )}
                                   {alertId && scenario.startTime && <span className="text-[#8b949e] mx-2">·</span>}
@@ -736,7 +736,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                           </svg>
                         </td>
                         <td className="w-12 px-1 sm:px-2 py-4 text-center">
-                          <svg className="w-5 h-5 sm:w-6 sm:h-6 inline-block text-[#6e7781]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-5 h-5 sm:w-6 sm:h-6 inline-block text-[#0f2942]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
                         </td>
@@ -748,7 +748,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                             if (!alertId && !scenario.startTime) return null;
                             return (
                               <p className="text-xs sm:text-sm text-[#57606a] mt-0.5">
-                                {alertId && <span className="text-[#0f2942] font-medium">{alertId}</span>}
+                                {alertId && <span className="text-[#16436b] font-medium">{alertId}</span>}
                                 {alertId && scenario.startTime && <span className="text-[#8b949e] mx-2">·</span>}
                                 {scenario.startTime && `Created ${getRelativeTime(scenario.startTime)}`}
                               </p>
@@ -942,7 +942,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                               {group.ticket_title || 'Unknown'}
                             </p>
                             <p className="text-xs sm:text-sm text-[#57606a] mt-0.5">
-                              {group.alert_id && <span className="text-[#0f2942] font-medium">{group.alert_id}</span>}
+                              {group.alert_id && <span className="text-[#16436b] font-medium">{group.alert_id}</span>}
                               {group.alert_id && <span className="text-[#8b949e] mx-2">·</span>}
                               <span>{group.log_count} {group.log_count === 1 ? 'Event' : 'Events'}</span>
                             </p>

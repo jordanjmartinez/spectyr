@@ -156,7 +156,7 @@ export const MttrCard = ({ report }) => {
 
   return (
     <div className="flex flex-col">
-      <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">MTTR</h2>
+      <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">Mean Time to Resolve</h2>
       <div className="rounded-2xl p-4 sm:p-6 flex-1" style={CARD_STYLE}>
         <div className="w-full h-52 sm:h-64">
           <ResponsiveContainer width="100%" height="100%">
