@@ -2408,6 +2408,16 @@ def get_analyst_report_card():
         total_correct = correct_threat_identified + fp_identified
         classification_accuracy = round((total_correct / total_classifications) * 100, 2) if total_classifications else 0
 
+        # Letter grade — single source of truth (10-point school scale);
+        # frontend components render this instead of re-deriving it
+        if total_classifications:
+            grade = ('A' if classification_accuracy >= 90 else
+                     'B' if classification_accuracy >= 80 else
+                     'C' if classification_accuracy >= 70 else
+                     'D' if classification_accuracy >= 60 else 'F')
+        else:
+            grade = '-'
+
         # Average time-to-resolve across all resolved scenarios, and split by TP vs FP
         all_times = []
         tp_times = []
@@ -2457,6 +2467,7 @@ def get_analyst_report_card():
             "wrong_category": wrong_category,
             "total_actions": total_classifications,
             "accuracy": classification_accuracy,
+            "grade": grade,
             "fp_identified": fp_identified,
             "fp_missed": fp_missed,
             "avg_time_to_resolve_seconds": avg_time_to_resolve_seconds,

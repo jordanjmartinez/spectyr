@@ -23,11 +23,7 @@ const AnalystReportCard = ({ report }) => {
   const fpMissed = report?.fp_missed || 0;
   const fpTotal = fpCorrect + fpMissed;
 
-  const grade = (() => {
-    if (!report?.total_actions) return '-';
-    const acc = report.accuracy || 0;
-    return acc >= 90 ? 'A' : acc >= 80 ? 'B' : acc >= 70 ? 'C' : acc >= 60 ? 'D' : 'F';
-  })();
+  const grade = report?.grade || '-';
 
   return (
     <div className="h-full flex flex-col">

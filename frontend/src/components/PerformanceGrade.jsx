@@ -71,11 +71,7 @@ const PerformanceGrade = ({ report }) => {
   const missed = hasData ? (report.wrong_category + report.fp_missed) : 0;
   const total = correct + missed;
 
-  const grade = (() => {
-    if (!report?.total_actions) return '-';
-    const acc = report.accuracy || 0;
-    return acc >= 90 ? 'A' : acc >= 80 ? 'B' : acc >= 70 ? 'C' : acc >= 60 ? 'D' : 'F';
-  })();
+  const grade = report?.grade || '-';
 
   const pieData = total === 0
     ? [{ name: 'Empty', value: 1 }]

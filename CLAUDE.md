@@ -218,6 +218,8 @@ cd frontend && npm install && npm start
 
 **Accuracy formula**: `(correct + fp_caught) / total_classifications * 100`
 
+**Letter grade**: computed server-side in `report_card` (`grade` field, 10-point scale: A≥90, B≥80, C≥70, D≥60, F<60; `-` before any classification). Frontend components render `report.grade` — do not re-derive it client-side.
+
 ## Development Notes
 
 ### Adding New Scenarios
