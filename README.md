@@ -10,9 +10,9 @@ A SIEM simulation platform for training cybersecurity analysts. Spectyr generate
 
 ## Features
 
-### Campaign
+### Rolling Alert Queue
 
-Five progressive levels. Each level randomly selects one scenario from a pool of attack categories — or a false positive designed to test whether you can tell the difference.
+Each run builds a randomized queue of 10 scenarios drawn from a catalog of 20 attack chains and false positives — with up to 3 incidents in flight at once, dripping into your queue the way a real shift does. One or two of them are false positives designed to test whether you can tell the difference.
 
 **Attack Categories:** Malware, Phishing, Command & Control, Lateral Movement, Brute Force, Data Exfiltration, Insider Threat, Defense Evasion
 
@@ -21,7 +21,7 @@ Five progressive levels. Each level randomly selects one scenario from a pool of
 ### Game Modes
 
 - **Training** — No timer, no penalties. Learn at your own pace and review feedback after each scenario.
-- **Hardcore** — 15-minute countdown. One wrong classification resets you to Level 1.
+- **Hardcore** — 15-minute countdown for the whole queue. One wrong classification — or the clock hitting zero — ends the run.
 
 ### Log Generation
 

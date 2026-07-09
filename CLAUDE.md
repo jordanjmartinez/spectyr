@@ -48,23 +48,27 @@ A full-stack Security Information and Event Management (SIEM) simulation platfor
 - Sessions stored in-memory (`sessions` dict with threading lock)
 - Session ID sent via `X-Session-ID` header and `spectyr_session` cookie
 - Frontend persists session ID in `localStorage` (survives iOS tab kills)
-- Sessions expire after 30 minutes of inactivity (daemon cleanup thread)
+- Sessions expire after 30 minutes of inactivity (daemon cleanup thread); orphaned session dirs from previous runs are swept at boot
 - Each session has its own log directory under `backend/logs/<session-id>/`
+- All session NDJSON file access goes through locked helpers (`read_ndjson`/`append_ndjson`) or explicit `session["io_lock"]` sections — the log-writer thread appends while request handlers rewrite the same files
+- **Single worker process only** — sessions and writer threads are in-process; `gunicorn.conf.py` pins `workers = 1` (do not override with `-w`)
 
 ### Game Modes
-- **Training Mode**: Unlimited time, continuous feedback, no penalties
-- **Hardcore Mode**: 15-minute global timer (900s per level), single-strike penalty (wrong classify = reset to Level 1)
+- **Training Mode**: Unlimited time, no penalties
+- **Hardcore Mode**: 15:00 session timer (`get_timer_duration(1)`) covering the whole queue; a wrong classification or timer expiry pauses the session and shows the FailureModal (retry restarts a fresh run — there is no reset-to-Level-1 despite older docs)
 
-### Campaign System
-- 5 progressive levels with increasing difficulty
-- Each level has 4 possible scenarios (3 attack categories + 1 false positive)
-- One scenario is randomly selected per level
-- Chain length is flexible per scenario (not tied to level number)
-- **IMPORTANT**: Each level must have UNIQUE scenario_labels — no duplicates across levels
+### Rolling Alert Queue (replaces the old 5-level campaign)
+- `build_alert_queue(n=10, fp_min=1, fp_max=2)` samples **10 unique scenarios** from the full catalog of 20 (15 attacks + 5 FPs), with 1-2 false positives per run, shuffled
+- Scenarios drip into the session 20-40s apart, max `CONCURRENT_QUEUE_CAP = 3` in flight (injected but unresolved) at once; the first drips immediately on start
+- "Level" in code and API responses now means **queue position 1-10**
+- Classifying (or report-resolving) a scenario marks its queue entry resolved; when all 10 resolve, the session completes and pauses
+- Chain length is flexible per scenario
+- **IMPORTANT**: `scenario_label` must be UNIQUE across the whole catalog
 
-### Level Structure
+### Scenario Catalog (`CAMPAIGN_LEVELS`)
+Despite the name, this is a flat catalog now — the level grouping only organizes the 20 definitions, it does not gate progression:
 
-| Level | Categories |
+| Group | Categories |
 |-------|------------|
 | 1 | Malware, Phishing, Defense Evasion, False Positive |
 | 2 | Lateral Movement, C2, Brute Force, False Positive |
@@ -73,12 +77,12 @@ A full-stack Security Information and Event Management (SIEM) simulation platfor
 | 5 | Insider Threat, Brute Force, C2, False Positive |
 
 ### False Positive Scenarios
-Each level has one FP scenario that simulates benign activity triggering alerts:
-- Level 1: `false_positive_pentest` — Security training generating test alerts
-- Level 2: `false_positive_robocopy` — Legitimate data migration
-- Level 3: `false_positive_veeam` — Backup software beaconing
-- Level 4: `false_positive_oauth` — Modern auth generating anomalies
-- Level 5: `false_positive_ssl_inspection` — Proxy SSL policy expansion
+Five FP scenarios simulate benign activity triggering alerts:
+- `false_positive_pentest` — Security training generating test alerts
+- `false_positive_robocopy` — Legitimate data migration
+- `false_positive_veeam` — Backup software beaconing
+- `false_positive_oauth` — Modern auth generating anomalies
+- `false_positive_ssl_inspection` — Proxy SSL policy expansion
 
 ### Triage Review System
 
@@ -111,21 +115,22 @@ TRIAGE_REVIEWS = {
 - `description`: General education about the attack vector (never say "this scenario")
 - `response_actions`: SOC playbook steps
 
-**Completed triage reviews (all 15 scenarios):**
-- Level 1: `malware_usb`, `phishing_1`, `defense_evasion`
-- Level 2: `lateral_movement_1`, `c2_http`, `brute_force_attack`
-- Level 3: `phishing_link`, `data_exfil_archive`, `insider_staging`
-- Level 4: `malware_ransomware`, `lateral_movement_2`, `defense_evasion_log_clearing`
-- Level 5: `insider_shadow_it`, `password_spray`, `c2_dns_tunnel`
+**Completed triage reviews (all 20 scenarios — the 5 FP reviews have no `mitre` block):**
+- Group 1: `malware_usb`, `phishing_1`, `defense_evasion`
+- Group 2: `lateral_movement_1`, `c2_http`, `brute_force_attack`
+- Group 3: `phishing_link`, `data_exfil_archive`, `insider_staging`
+- Group 4: `malware_ransomware`, `lateral_movement_2`, `defense_evasion_log_clearing`
+- Group 5: `insider_shadow_it`, `password_spray`, `c2_dns_tunnel`
+- FPs: `false_positive_pentest`, `false_positive_robocopy`, `false_positive_veeam`, `false_positive_oauth`, `false_positive_ssl_inspection`
 
 ### Attack Log Injection
 
 Attack logs are scattered among normal traffic (not batched):
-- Random start position (3-15 logs into level)
+- Normal traffic streams at ~1 event/sec while the session is running
 - 2-3 normal logs between each attack event
-- Progressive timestamps for attack chain
-- 2-4 trailing normal logs before pause
-- Same employee/workstation/IP used for entire chain
+- Attack chain timestamps: drip time + cumulative 3-8s offsets (a template may set `time_offset_seconds` to override; none currently do)
+- Same employee/workstation/IP threads the entire chain (`chain_subs`)
+- When a chain finishes writing, `finalize_chain` marks its logs `chain_complete`; only then does the scenario appear in the Alerts tab
 
 ### Dynamic Placeholders
 
@@ -154,16 +159,14 @@ Note: `simulated_attack_logs.ndjson` is at `backend/logs/` root (shared across s
 | `/api/current-level` | GET | Get current level, scenario history, level results |
 | `/api/start-simulator` | POST | Start with selected game mode + analyst name |
 | `/api/resume` | POST | Process analyst action (classify/resolve) |
-| `/api/current-scenario` | GET | Get active attack scenario |
 | `/api/grouped-alerts` | GET | Get grouped threat scenarios with stats |
 | `/api/reports` | GET/POST | Get/submit incident reports |
 | `/api/reports/<id>` | PUT/DELETE | Update/delete reports |
-| `/api/analytics` | GET | Get threat analytics (totals, severity, weekly) |
 | `/api/analytics/report_card` | GET | Get analyst performance metrics |
 | `/api/analytics/action_history` | GET | Get last 10 classify actions with feedback |
 | `/api/triage-review/<label>` | GET | Get educational content for scenario |
 | `/api/game-state` | GET | Get game mode, timer status, paused state |
-| `/api/game-timeout` | POST | Handle hardcore mode timeout (reset to Level 1) |
+| `/api/game-timeout` | POST | Hardcore timeout: pause session (FailureModal handles retry) |
 
 ## Running the Project
 
@@ -197,12 +200,13 @@ cd frontend && npm install && npm start
 
 ## Key Backend Variables (app.py)
 
-- `CAMPAIGN_LEVELS`: 5-level progression system (4 scenarios each: 3 attacks + 1 FP)
-- `TRIAGE_REVIEWS`: Educational content for each scenario (15 entries)
+- `CAMPAIGN_LEVELS`: scenario catalog — 5 groups of 4 (3 attacks + 1 FP); queue sampling ignores the grouping
+- `TRIAGE_REVIEWS`: Educational content for each scenario (20 entries: 15 attacks + 5 FPs)
 - `EMPLOYEES`: 45 realistic corporate employees across 8 departments
 - `SERVERS`: 6 infrastructure servers (DC, File, DNS, Print, Web, Proxy)
 - `NORMAL_TRAFFIC_TEMPLATES`: 100+ templates for legitimate system events
-- `TIMER_DURATIONS`: Per-level timer settings (all 900s currently)
+- `TIMER_DURATIONS`: timer settings (only `get_timer_duration(1)` = 900s is used — one session timer, not per-level)
+- `CONCURRENT_QUEUE_CAP`: max in-flight scenarios (3)
 
 ## Performance Grading
 
@@ -217,16 +221,17 @@ cd frontend && npm install && npm start
 ## Development Notes
 
 ### Adding New Scenarios
-1. Create research document in `campaign/Level X/`
-2. Add scenario to `CAMPAIGN_LEVELS` with unique `scenario_label`
-3. Add attack log(s) to `simulated_attack_logs.ndjson` with dynamic placeholders
-4. Add triage review to `TRIAGE_REVIEWS` dict
-5. Test the full flow
+1. Add scenario to `CAMPAIGN_LEVELS` with unique `scenario_label`
+2. Add attack log(s) to `simulated_attack_logs.ndjson` with dynamic placeholders
+3. Add triage review to `TRIAGE_REVIEWS` dict
+4. Test the full flow (the three definitions are linked only by the `scenario_label` string — nothing validates they agree)
 
 ### Scenario Label Convention
-Each scenario label should be unique across ALL levels. If a category repeats in multiple levels, use different attack variants:
-- Level 1 Malware: `malware_usb`
-- Level 4 Malware: `malware_ransomware`
+Each scenario label should be unique across the whole catalog. If a category repeats, use different attack variants:
+- `malware_usb` vs `malware_ransomware`
+
+### Deployment
+- Backend must run as a **single worker** (`gunicorn.conf.py` pins `workers = 1`, `threads = 8`); sessions and log-writer threads live in-process
 
 ## UI Architecture
 
