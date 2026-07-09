@@ -393,7 +393,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
                     </td>
                     <td className="px-2 sm:px-4 py-4">
                       <p className="text-sm sm:text-base font-medium text-[#1a2332] whitespace-nowrap">{report.title || 'Untitled Report'}</p>
-                      <p className="text-xs sm:text-sm text-[#57606a] mt-0.5"><span className="text-[#8b949e] font-medium">{report.alert_id || `INC-${getReportNumber(report.id)}`}</span> · {getRelativeTime(report.timestamp)}</p>
+                      <p className="text-xs sm:text-sm text-[#57606a] mt-0.5"><span className="log-mono text-[#8b949e] font-medium">{report.alert_id || `INC-${getReportNumber(report.id)}`}</span> · {getRelativeTime(report.timestamp)}</p>
                     </td>
                     <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
                       <SeverityPill level={report.severity} />

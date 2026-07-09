@@ -682,7 +682,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                     <button
                                       type="button"
                                       onClick={(e) => { e.stopPropagation(); scrollToNotableEvent(match); }}
-                                      className="text-[#16436b] hover:text-[#0f2942] hover:underline font-medium transition-colors"
+                                      className="log-mono text-[#16436b] hover:text-[#0f2942] hover:underline font-medium transition-colors"
                                     >{alertId}</button>
                                   )}
                                   {alertId && scenario.startTime && <span className="text-[#8b949e] mx-2">·</span>}
@@ -748,7 +748,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                             if (!alertId && !scenario.startTime) return null;
                             return (
                               <p className="text-xs sm:text-sm text-[#57606a] mt-0.5">
-                                {alertId && <span className="text-[#16436b] font-medium">{alertId}</span>}
+                                {alertId && <span className="log-mono text-[#16436b] font-medium">{alertId}</span>}
                                 {alertId && scenario.startTime && <span className="text-[#8b949e] mx-2">·</span>}
                                 {scenario.startTime && `Created ${getRelativeTime(scenario.startTime)}`}
                               </p>
@@ -942,7 +942,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                               {group.ticket_title || 'Unknown'}
                             </p>
                             <p className="text-xs sm:text-sm text-[#57606a] mt-0.5">
-                              {group.alert_id && <span className="text-[#16436b] font-medium">{group.alert_id}</span>}
+                              {group.alert_id && <span className="log-mono text-[#16436b] font-medium">{group.alert_id}</span>}
                               {group.alert_id && <span className="text-[#8b949e] mx-2">·</span>}
                               <span>{group.log_count} {group.log_count === 1 ? 'Event' : 'Events'}</span>
                             </p>

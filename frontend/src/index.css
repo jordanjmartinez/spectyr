@@ -76,6 +76,16 @@ code {
   }
 }
 
+/* Machine-data table cells (times, IPs, event codes) render in JetBrains Mono
+   with tabular numerals, so digit columns line up and glyphs disambiguate
+   (0/O, 1/l/I). Applied per-cell so prose columns (source, message) stay sans.
+   Set directly on the <td>, so it wins over the Inter inherited from .log-text. */
+.log-mono {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

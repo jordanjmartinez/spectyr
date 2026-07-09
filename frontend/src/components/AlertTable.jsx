@@ -34,6 +34,11 @@ const parseEventQuery = (term) => {
 const alertFieldValue = (alert, field) =>
   field === 'source_type' ? (alert.source_type || alert.detected_by || '') : (alert[field] ?? '');
 
+// Severity as a thin colored left row-edge. Low/unknown stays a neutral hairline
+// so the medium/high/critical rows (the attack-chain events) are the ones that pop.
+const SEV_EDGE = { critical: '#b26666', high: '#c28e46', medium: '#d4cc6e', low: '#e2e6ea' };
+const sevColor = (sev) => SEV_EDGE[String(sev || '').toLowerCase()] || '#e2e6ea';
+
 const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
   const [alerts, setAlerts] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -369,11 +374,11 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
             <thead>
               <tr className="text-xs sm:text-sm text-[#57606a] tracking-wider">
                 <th className="px-2 sm:px-4 py-3 font-medium w-10 border-b border-[#d0d7de]"></th>
-                <th className="px-2 sm:px-4 py-3 font-medium w-[100px] sm:w-[130px] whitespace-nowrap text-center border-b border-[#d0d7de]">Time</th>
-                <th className="px-2 sm:px-4 py-3 font-medium w-[160px] sm:w-[240px] whitespace-nowrap text-center border-b border-[#d0d7de]">Event Type</th>
-                <th className="px-2 sm:px-4 py-3 font-medium w-[110px] sm:w-[170px] whitespace-nowrap text-center border-b border-[#d0d7de]">Src Type</th>
-                <th className="px-2 sm:px-4 py-3 font-medium w-[120px] sm:w-[160px] whitespace-nowrap text-center border-b border-[#d0d7de]">Src IP</th>
-                <th className="px-2 sm:px-4 py-3 font-medium w-[120px] sm:w-[160px] whitespace-nowrap text-center border-b border-[#d0d7de]">Dst IP</th>
+                <th className="px-2 sm:px-4 py-3 font-medium w-[100px] sm:w-[130px] whitespace-nowrap border-b border-[#d0d7de]">Time</th>
+                <th className="px-2 sm:px-4 py-3 font-medium w-[160px] sm:w-[240px] whitespace-nowrap border-b border-[#d0d7de]">Event Type</th>
+                <th className="px-2 sm:px-4 py-3 font-medium w-[110px] sm:w-[170px] whitespace-nowrap border-b border-[#d0d7de]">Src Type</th>
+                <th className="px-2 sm:px-4 py-3 font-medium w-[120px] sm:w-[160px] whitespace-nowrap border-b border-[#d0d7de]">Src IP</th>
+                <th className="px-2 sm:px-4 py-3 font-medium w-[120px] sm:w-[160px] whitespace-nowrap border-b border-[#d0d7de]">Dst IP</th>
                 <th className="px-2 sm:px-4 py-3 font-medium w-[240px] sm:w-auto whitespace-nowrap border-b border-[#d0d7de]">Message</th>
               </tr>
             </thead>
@@ -392,7 +397,10 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
                       className="hover:bg-[#f6f8fa] transition-colors cursor-pointer border-b border-[#e2e6ea]/50"
                       onClick={() => toggleRow(alert.id)}
                     >
-                      <td className="px-2 sm:px-4 py-4">
+                      <td
+                        className="px-2 sm:px-4 py-4 border-l-[3px]"
+                        style={{ borderLeftColor: sevColor(alert.severity) }}
+                      >
                         <svg
                           className={`w-5 h-5 text-[#6e7781] hover:text-[#1a2332] transition-transform duration-300 ease-in-out ${
                             expandedRows[alert.id] ? 'rotate-180' : 'rotate-0'
@@ -404,23 +412,21 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                       </td>
-                      <td className="px-2 sm:px-4 py-4 whitespace-nowrap border-l-4 border-l-transparent text-center">
-                        <span className="text-[#1a2332]">
-                          {alert.timestamp ? new Date(alert.timestamp).toLocaleTimeString('en-GB', {
-                            hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
-                          }) : '—'}
-                        </span>
+                      <td className="log-mono px-2 sm:px-4 py-4 text-[#1a2332] whitespace-nowrap">
+                        {alert.timestamp ? new Date(alert.timestamp).toLocaleTimeString('en-GB', {
+                          hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
+                        }) : '—'}
                       </td>
-                      <td className="px-2 sm:px-4 py-4 font-medium text-[#1a2332] whitespace-nowrap text-center" title={alert.event_type || '—'}>
+                      <td className="log-mono px-2 sm:px-4 py-4 font-medium text-[#1a2332] whitespace-nowrap" title={alert.event_type || '—'}>
                         {alert.event_type || '—'}
                       </td>
-                      <td className="px-2 sm:px-4 py-4 text-[#1a2332] sm:whitespace-nowrap text-center">
+                      <td className="px-2 sm:px-4 py-4 text-[#1a2332] sm:whitespace-nowrap">
                         {alert.source_type || alert.detected_by || 'Unknown'}
                       </td>
-                      <td className="px-2 sm:px-4 py-4 text-[#1a2332] sm:whitespace-nowrap text-center">
+                      <td className="log-mono px-2 sm:px-4 py-4 text-[#1a2332] sm:whitespace-nowrap">
                         {alert.source_ip || '—'}
                       </td>
-                      <td className="px-2 sm:px-4 py-4 text-[#1a2332] sm:whitespace-nowrap text-center">
+                      <td className="log-mono px-2 sm:px-4 py-4 text-[#1a2332] sm:whitespace-nowrap">
                         {alert.destination_ip || '—'}
                       </td>
                       <td className="px-2 sm:px-4 py-4 text-[#1a2332] whitespace-nowrap" title={alert.message || '—'}>
