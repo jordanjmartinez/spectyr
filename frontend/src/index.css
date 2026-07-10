@@ -171,6 +171,43 @@ code {
   pointer-events: none;
 }
 
+/* Liquid-glass CTA (Start Sim) — a frosted translucent pill with a bright
+   gradient-border stroke, for use on dark surfaces (hero video, sim rail, docs
+   sidebar). More fill than .liquid-glass so it reads as a primary button. */
+.liquid-btn {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.25), 0 4px 20px rgba(0, 0, 0, 0.22);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+.liquid-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.35), 0 6px 26px rgba(0, 0, 0, 0.28);
+}
+.liquid-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.4px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0.15) 25%,
+    rgba(255, 255, 255, 0) 50%,
+    rgba(255, 255, 255, 0.15) 75%,
+    rgba(255, 255, 255, 0.55) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
 @keyframes blurFadeUp {
   from {
     opacity: 0;

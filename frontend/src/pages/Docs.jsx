@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const SECTIONS = [
-  { id: 'queue', label: 'The Queue' },
+  { id: 'queue', label: 'Queue' },
   { id: 'game-modes', label: 'Game Modes' },
   { id: 'scenarios', label: 'Scenarios' },
   { id: 'analytics', label: 'Analytics' },
@@ -64,9 +64,10 @@ const Docs = () => {
         </Link>
         <Link
           to="/sim"
-          className="rounded-full px-4 py-1.5 text-sm font-medium text-[#101218] bg-white hover:bg-gray-100 transition-colors"
+          className="liquid-btn inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium text-white"
         >
-          Launch Sim
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+          Start Sim
         </Link>
       </div>
 
@@ -95,9 +96,10 @@ const Docs = () => {
 
           <Link
             to="/sim"
-            className="mt-auto inline-flex items-center justify-center rounded-full px-5 py-2 text-sm font-medium text-[#101218] bg-white hover:bg-gray-100 transition-colors"
+            className="liquid-btn mt-auto inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium text-white"
           >
-            Launch Sim
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+            Start Sim
           </Link>
         </aside>
 
@@ -114,7 +116,7 @@ const Docs = () => {
               threat or flag a false positive, then file a short report and move on.
             </p>
 
-            <Section id="queue" title="The Queue">
+            <Section id="queue" title="Queue">
               <p>
                 Each run is a queue of ten scenarios, pulled from a catalog of twenty and shuffled,
                 with one or two false positives in the mix. No two runs are alike.
