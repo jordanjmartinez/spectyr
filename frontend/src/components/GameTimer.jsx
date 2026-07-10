@@ -61,7 +61,7 @@ const GameTimer = ({ onTimeout, disabled }) => {
       <img
         src="/hacker_icon.jpeg"
         alt="Hardcore"
-        className={`w-4 h-4 shrink-0 object-contain ${isCritical ? 'animate-pulse' : ''}`}
+        className={`w-7 h-7 shrink-0 object-contain ${isCritical ? 'animate-pulse' : ''}`}
       />
       <span
         className={`text-base lg:text-lg tracking-widest ${
