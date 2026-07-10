@@ -17,11 +17,13 @@ const Landing = () => {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <div className="relative h-dvh overflow-hidden bg-black text-white flex flex-col">
-      {/* Flat fill sampled from the video's dark corners, so its edges dissolve into the page */}
-      <div className="fixed inset-0 z-0 bg-[#04040a]" />
+    <div className="relative h-dvh overflow-hidden bg-[#101218] text-white flex flex-col">
+      {/* Flat fill matched to the video's own background tone (sampled #101218),
+          so the video edges dissolve into one continuous surface */}
+      <div className="fixed inset-0 z-0 bg-[#101218]" />
 
-      {/* Main video — centered at its natural aspect, never cropped or stretched */}
+      {/* Main video — centered at its natural aspect, never cropped or stretched.
+          Its side edges are feathered so the rectangle has no hard seam. */}
       <div className="fixed inset-0 z-[1] flex items-center justify-center">
         <video
           className="max-w-full max-h-full"
@@ -30,6 +32,10 @@ const Landing = () => {
           loop
           muted
           playsInline
+          style={{
+            WebkitMaskImage: 'linear-gradient(to right, transparent 0%, #000 8%, #000 92%, transparent 100%)',
+            maskImage: 'linear-gradient(to right, transparent 0%, #000 8%, #000 92%, transparent 100%)',
+          }}
         />
       </div>
 
