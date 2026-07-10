@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from "react";
 
-const CIRCLE_ROW_SIZE = 5;
-
 const WIN_ART = `██╗   ██╗ ██████╗ ██╗   ██╗    ██╗    ██╗██╗███╗   ██╗██╗
 ╚██╗ ██╔╝██╔═══██╗██║   ██║    ██║    ██║██║████╗  ██║██║
  ╚████╔╝ ██║   ██║██║   ██║    ██║ █╗ ██║██║██╔██╗ ██║██║
@@ -20,98 +18,61 @@ const LOSE_ART = `██╗   ██╗ ██████╗ ██╗   ██
 ╚██╗ ██╔╝██╔═══██╗██║   ██║    ██║     ██╔═══██╗██╔════╝██╔════╝██║
  ╚████╔╝ ██║   ██║██║   ██║    ██║     ██║   ██║███████╗█████╗  ██║
   ╚██╔╝  ██║   ██║██║   ██║    ██║     ██║   ██║╚════██║██╔══╝  ╚═╝
-   ██║   ╚██████╔╝╚██████╔╝    ███████╗╚██████╔╝███████║███████╗██╗
+   ██║   ╚██████╔╝╚██████╔╝    ███████╗╚██████╔╝███████║███████║██╗
    ╚═╝    ╚═════╝  ╚═════╝     ╚══════╝ ╚═════╝ ╚══════╝╚══════╝╚═╝`;
 
 const gradeOf = (report) => report?.grade || '-';
 
+const CARD_STYLE = { background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' };
+
+// Segmented outcome bar: one cell per queue scenario, colored by result.
+// Green = correct, red = missed, neutral = still pending.
+const OutcomeBar = ({ total, results }) => {
+  const resolved = results.length;
+  const correctCount = results.filter((r) => r === 'correct' || r === true).length;
+  const missedCount = resolved - correctCount;
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-sm font-medium text-[#1a2332]">{resolved} of {total} resolved</span>
+        <span className="text-sm whitespace-nowrap">
+          <span className="text-[#6fa868] font-medium">{correctCount} correct</span>
+          <span className="mx-2 text-[#d0d7de]">·</span>
+          <span className="text-[#b26666] font-medium">{missedCount} missed</span>
+        </span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        {Array.from({ length: total }, (_, i) => {
+          const r = results[i];
+          const done = r !== undefined;
+          const correct = r === 'correct' || r === true;
+          const bg = done ? (correct ? '#6fa868' : '#b26666') : '#e2e6ea';
+          const label = done ? `Scenario ${i + 1}: ${correct ? 'correct' : 'missed'}` : `Scenario ${i + 1}: pending`;
+          return (
+            <div
+              key={i}
+              title={label}
+              className="h-3 flex-1 rounded-full transition-colors duration-500"
+              style={{ backgroundColor: bg }}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const CampaignProgress = ({ levelData, onReset, analystName, report }) => {
-  const [ghostVisible, setGhostVisible] = useState(false);
+  const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setGhostVisible(true), 100);
+    const timer = setTimeout(() => setRevealed(true), 100);
     return () => clearTimeout(timer);
   }, []);
   if (!levelData) return null;
 
-  const { completed, total_levels, ticket_title, level_results = {} } = levelData;
-
-  const resultsInOrder = Object.values(level_results || {});
-
-  const rowCount = Math.ceil((total_levels || 0) / CIRCLE_ROW_SIZE);
-  const rows = Array.from({ length: rowCount }, (_, r) => {
-    const start = r * CIRCLE_ROW_SIZE;
-    const len = Math.min(CIRCLE_ROW_SIZE, total_levels - start);
-    const levels = Array.from({ length: len }, (_, j) => start + j + 1);
-    return r % 2 === 1 ? levels.slice().reverse() : levels;
-  });
-
-  const renderCircle = (level, showCurrent) => {
-    const result = resultsInOrder[level - 1];
-    const isCompleted = result !== undefined;
-    const isCorrect = result === "correct" || result === true;
-    const isCurrent = showCurrent && !isCompleted && !completed;
-
-    return (
-      <div className="flex flex-col items-center">
-        <div
-          className={`w-9 h-9 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-sm sm:text-lg font-bold leading-none transition-all border-4 ${
-            isCompleted
-              ? isCorrect
-                ? "border-[#6fa868] text-[#1a2332]"
-                : "border-[#b26666] text-[#1a2332]"
-              : isCurrent
-              ? "border-[#d1d5db] text-[#1a2332]"
-              : "border-[#d0d7de] text-[#6e7781]"
-          }`}
-        >
-          {isCompleted ? (
-            isCorrect ? (
-              <svg className="w-4 h-4 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            )
-          ) : (
-            <span>{level}</span>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const renderRow = (levels, rowIdx, showCurrent) => (
-    <div key={`row-${rowIdx}`} className="flex items-center justify-between px-4 sm:px-8">
-      {levels.map((level, j) => (
-        <React.Fragment key={level}>
-          {renderCircle(level, showCurrent)}
-          {j < levels.length - 1 && (
-            <div className="flex-1 mx-1 border-t-2 border-dashed border-[#d0d7de]" />
-          )}
-        </React.Fragment>
-      ))}
-    </div>
-  );
-
-  const renderVerticalConnector = (side, key) => (
-    <div key={key} className={`flex ${side === 'right' ? 'justify-end' : 'justify-start'} px-4 sm:px-8 py-1`}>
-      <div className="w-9 sm:w-12 flex justify-center">
-        <div className="border-l-2 border-dashed border-[#d0d7de] h-6 sm:h-8" />
-      </div>
-    </div>
-  );
-
-  const renderStepper = (showCurrent) =>
-    rows.flatMap((rowLevels, i) => {
-      const items = [renderRow(rowLevels, i, showCurrent)];
-      if (i < rows.length - 1) {
-        items.push(renderVerticalConnector(i % 2 === 0 ? 'right' : 'left', `conn-${i}`));
-      }
-      return items;
-    });
+  const { completed, total_levels = 0, level_results = {} } = levelData;
+  const results = Object.values(level_results || {});
 
   if (completed) {
     const grade = gradeOf(report);
@@ -127,7 +88,7 @@ const CampaignProgress = ({ levelData, onReset, analystName, report }) => {
     return (
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332]">Simulation Complete</h2>
+          <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332]">Metrics</h2>
           <button
             onClick={onReset}
             className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 bg-white hover:bg-[#eef1f4] text-[#1a2332] border-[#d0d7de]"
@@ -135,31 +96,23 @@ const CampaignProgress = ({ levelData, onReset, analystName, report }) => {
             <span className="sm:hidden">Reset Sim</span><span className="hidden sm:inline">Reset Simulation</span>
           </button>
         </div>
-        <div
-          className="px-6 pt-8 pb-6 rounded-xl"
-          style={{
-            background: '#ffffff',
-            border: '1px solid #e2e6ea',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-          }}
-        >
-        <div className={`flex flex-col items-center text-center transition-all duration-700 ease-out ${ghostVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          <pre
-            aria-label={bannerLabel}
-            className={`font-mono text-[7px] sm:text-[10px] leading-tight ${useFailed ? 'text-[#b45858]' : useWin ? 'text-[#58b458]' : 'text-[#8b949e]'} mb-3 select-none`}
-          >
-            {banner.split('').map((ch, i) =>
-              ch === '█'
-                ? <span key={i} className="text-[#1a2332]">{ch}</span>
-                : ch
-            )}
-          </pre>
-          <p className="font-mono text-xs sm:text-sm text-[#57606a] mb-6">&gt;<span className="animate-blink">|</span> {message}</p>
-        </div>
-        {/* Level stepper with results - snake/backwards-C layout */}
-        <div className={`flex flex-col pt-5 pb-5 transition-all duration-700 delay-300 ease-out ${ghostVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          {renderStepper(false)}
-        </div>
+        <div className="px-6 pt-8 pb-6 rounded-xl" style={CARD_STYLE}>
+          <div className={`flex flex-col items-center text-center transition-all duration-700 ease-out ${revealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+            <pre
+              aria-label={bannerLabel}
+              className={`font-mono text-[7px] sm:text-[10px] leading-tight ${useFailed ? 'text-[#b45858]' : useWin ? 'text-[#58b458]' : 'text-[#8b949e]'} mb-3 select-none`}
+            >
+              {banner.split('').map((ch, i) =>
+                ch === '█'
+                  ? <span key={i} className="text-[#1a2332]">{ch}</span>
+                  : ch
+              )}
+            </pre>
+            <p className="font-mono text-xs sm:text-sm text-[#57606a] mb-6">&gt;<span className="animate-blink">|</span> {message}</p>
+          </div>
+          <div className={`pt-2 transition-all duration-700 delay-300 ease-out ${revealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+            <OutcomeBar total={total_levels} results={results} />
+          </div>
         </div>
       </div>
     );
@@ -167,19 +120,9 @@ const CampaignProgress = ({ levelData, onReset, analystName, report }) => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332]">Simulation</h2>
-      </div>
-      {/* Level stepper - snake/backwards-C layout */}
-      <div
-        className="flex flex-col pt-5 pb-5 rounded-xl"
-        style={{
-          background: '#ffffff',
-          border: '1px solid #e2e6ea',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-        }}
-      >
-        {renderStepper(true)}
+      <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">Metrics</h2>
+      <div className="rounded-xl p-5 sm:p-6" style={CARD_STYLE}>
+        <OutcomeBar total={total_levels} results={results} />
       </div>
     </div>
   );
