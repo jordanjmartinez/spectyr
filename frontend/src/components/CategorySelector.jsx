@@ -11,7 +11,7 @@ const ATTACK_CATEGORIES = [
   { id: 'defense_evasion', label: 'Defense Evasion' },
 ];
 
-const CategorySelector = ({ onSelect, onCancel, scenarioInfo }) => {
+const CategorySelector = ({ onSelect, onCancel, scenarioInfo, isHardcore }) => {
   return (
     <div className="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center p-4">
       <div className="relative bg-white border border-[#e2e6ea] rounded-xl shadow-2xl max-w-2xl w-full animate-modalIn">
@@ -29,6 +29,15 @@ const CategorySelector = ({ onSelect, onCancel, scenarioInfo }) => {
           <h2 className="text-xl font-semibold text-[#1a2332]">Select Attack Category</h2>
         </div>
         <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(0,0,0,0.08), transparent)' }} />
+
+        {isHardcore && (
+          <div className="px-6 pt-4 flex items-center gap-3">
+            <span className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-[#0f2942] shrink-0">
+              <img src="/hacker_icon.jpeg" alt="" className="w-5 h-5 object-contain" />
+            </span>
+            <p className="text-sm font-medium text-[#b26666]">Hardcore — one wrong call ends the run.</p>
+          </div>
+        )}
 
         {/* Category Grid */}
         <div className="p-4 sm:p-6">

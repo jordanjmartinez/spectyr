@@ -58,12 +58,11 @@ const GameTimer = ({ onTimeout, disabled }) => {
           : 'bg-white/5 border-white/10'
       }`}
     >
-      <svg
-        className={`w-4 h-4 shrink-0 ${isCritical ? 'text-[#e0a0a0]' : isLow ? 'text-[#e0c48a]' : 'text-gray-400'}`}
-        fill="none" stroke="currentColor" viewBox="0 0 24 24"
-      >
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
+      <img
+        src="/hacker_icon.jpeg"
+        alt="Hardcore"
+        className={`w-4 h-4 shrink-0 object-contain ${isCritical ? 'animate-pulse' : ''}`}
+      />
       <span
         className={`text-base lg:text-lg tracking-widest ${
           isCritical ? 'text-[#e0a0a0]' : isLow ? 'text-[#e0c48a]' : 'text-gray-200'

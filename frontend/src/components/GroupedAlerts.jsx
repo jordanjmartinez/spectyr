@@ -1126,6 +1126,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
 
       {showClassificationSelector && classificationScenario && (
         <ClassificationSelector
+          isHardcore={gameMode === 'hardcore'}
           onSelect={(classificationId) => {
             const scenario = classificationScenario;
             setShowClassificationSelector(false);
@@ -1146,6 +1147,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
 
       {showCategorySelector && categoryScenario && (
         <CategorySelector
+          isHardcore={gameMode === 'hardcore'}
           scenarioInfo={categoryScenario}
           onSelect={handleCategorySelect}
           onCancel={() => {
