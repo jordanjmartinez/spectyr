@@ -183,7 +183,7 @@ const Dashboard = () => {
           title="Back to home"
           className="flex items-center gap-2.5 h-16 px-3 lg:px-5 border-b border-white/10 hover:bg-white/5 transition-colors"
         >
-          <img src="/spectyr_logo.png" alt="Spectyr" className="h-8 w-8 object-contain shrink-0" />
+          <img src="/spectyr_logo.png" alt="Spectyr" className="h-10 w-10 object-contain shrink-0" />
           <span className="hidden lg:inline text-xl font-semibold tracking-tight text-white" style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>Spectyr</span>
         </Link>
 
@@ -211,6 +211,19 @@ const Dashboard = () => {
           })}
         </nav>
 
+        <div className="px-2 lg:px-3 mb-1">
+          <Link
+            to="/docs"
+            title="Documentation"
+            className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-gray-500 hover:bg-white/5 hover:text-white transition-colors"
+          >
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.247m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.247" />
+            </svg>
+            <span className="hidden lg:inline">Docs</span>
+          </Link>
+        </div>
+
         <div className="mt-auto p-2 lg:p-3 border-t border-white/10 flex flex-col gap-2">
           <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />
           {simActive ? (
@@ -236,17 +249,6 @@ const Dashboard = () => {
               <span className="hidden lg:inline">Start</span>
             </button>
           )}
-
-          <Link
-            to="/docs"
-            title="Documentation"
-            className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-gray-500 hover:bg-white/5 hover:text-white transition-colors"
-          >
-            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.247m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.247" />
-            </svg>
-            <span className="hidden lg:inline">Docs</span>
-          </Link>
         </div>
       </aside>
 
