@@ -28,7 +28,7 @@ const RingCard = ({ title, segments, centerValue }) => {
     : [{ name: 'None', value: 1, color: '#e5e7eb' }];
   return (
     <div className="flex flex-col">
-      <h3 className="text-base font-semibold text-[#1a2332] mb-3">{title}</h3>
+      <h3 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-3">{title}</h3>
       <div className="rounded-2xl p-4 sm:p-5 flex-1" style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
         <div className="flex items-center justify-center gap-5 sm:gap-8">
           <div className="relative w-28 h-28 sm:w-32 sm:h-32 shrink-0 aspect-square border-dashed border-2 border-[#b4bcc4] rounded-full p-1.5">
@@ -66,7 +66,7 @@ const BarList = ({ title, segments }) => {
   const sorted = [...segments].sort((a, b) => (b.value || 0) - (a.value || 0));
   return (
     <div className="flex flex-col">
-      <h3 className="text-base font-semibold text-[#1a2332] mb-3">{title}</h3>
+      <h3 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-3">{title}</h3>
       <div className="rounded-2xl p-4 sm:p-5 flex-1" style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
         <div className="flex flex-col gap-2.5">
           {sorted.map(item => (
