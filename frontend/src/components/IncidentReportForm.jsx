@@ -272,7 +272,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
                         }}
                         className="w-full flex items-center gap-2 text-left px-3 py-2 text-xs text-[#1a2332] hover:bg-[#eef1f4] transition"
                       >
-                        <span className={`w-3.5 h-3.5 flex-shrink-0 rounded border ${checked ? 'bg-[#1a2332] border-[#1a2332]' : 'border-[#d0d7de]'}`} />
+                        <span className={`w-3.5 h-3.5 flex-shrink-0 rounded border ${checked ? 'bg-[#101218] border-[#101218]' : 'border-[#d0d7de]'}`} />
                         {tactic}
                       </button>
                     );
@@ -297,7 +297,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
         <button
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#1a2332] hover:bg-[#0f2942] text-white border-transparent focus:outline-none focus:ring-2 focus:ring-[#8b949e] disabled:opacity-50"
+          className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#101218] hover:bg-[#1e2330] text-white border-transparent focus:outline-none focus:ring-2 focus:ring-[#8b949e] disabled:opacity-50"
         >
           {isSubmitting ? 'Saving...' : isEditing ? 'Save' : 'Submit'}
         </button>

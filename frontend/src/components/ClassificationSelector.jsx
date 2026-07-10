@@ -25,7 +25,7 @@ const ClassificationSelector = ({ onSelect, onCancel, isHardcore }) => {
 
         {isHardcore && (
           <div className="px-6 pt-4 flex items-center gap-3">
-            <span className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-[#0f2942] shrink-0">
+            <span className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-[#101218] shrink-0">
               <img src="/hacker_icon.jpeg" alt="" className="w-5 h-5 object-contain" />
             </span>
             <p className="text-sm font-medium text-[#b26666]">Hardcore — one wrong call ends the run.</p>

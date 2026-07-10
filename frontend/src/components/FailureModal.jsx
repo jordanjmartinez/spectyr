@@ -67,7 +67,7 @@ const FailureModal = ({ onRetry, onQuit, failureType }) => {
           <button
             onClick={onRetry}
             onMouseEnter={() => setSelected(0)}
-            className={`px-6 py-2.5 rounded-md text-sm font-medium bg-white text-[#0f2942] hover:bg-gray-100 transition-colors focus:outline-none ${
+            className={`px-6 py-2.5 rounded-md text-sm font-medium bg-white text-[#101218] hover:bg-gray-100 transition-colors focus:outline-none ${
               selected === 0 ? 'ring-2 ring-white/70 ring-offset-2 ring-offset-[#0d1117]' : ''
             }`}
           >

@@ -177,7 +177,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen flex bg-[#f6f8fa] text-[#1a2332]">
       {/* Navy nav rail */}
-      <aside className="sticky top-0 self-start h-screen w-16 lg:w-56 shrink-0 bg-[#0f2942] text-gray-300 flex flex-col z-30">
+      <aside className="sticky top-0 self-start h-screen w-16 lg:w-56 shrink-0 bg-[#101218] text-gray-300 flex flex-col z-30">
         <Link
           to="/"
           title="Back to home"
@@ -241,7 +241,7 @@ const Dashboard = () => {
             <button
               onClick={handleSimulateEvents}
               title="Start Simulation"
-              className="flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold bg-white text-[#0f2942] hover:bg-gray-100 transition"
+              className="flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold bg-white text-[#101218] hover:bg-gray-100 transition"
             >
               <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z" />
@@ -307,7 +307,7 @@ const Dashboard = () => {
               <button
                 onClick={handleResetSimulator}
                 disabled={isResetting}
-                className="inline-flex items-center justify-center gap-2 px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#1a2332] hover:bg-[#0f2942] text-white border-transparent focus:outline-none focus:ring-2 focus:ring-[#8b949e] disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-[#101218] hover:bg-[#1e2330] text-white border-transparent focus:outline-none focus:ring-2 focus:ring-[#8b949e] disabled:opacity-50"
               >
                 {isResetting ? (
                   <>

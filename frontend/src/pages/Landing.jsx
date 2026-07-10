@@ -152,10 +152,10 @@ const Landing = () => {
             <div className="flex flex-wrap gap-3 sm:gap-4">
               <Link
                 to="/sim"
-                className="animate-blur-fade-up flex items-center gap-2 bg-white text-[#0f2942] rounded-full font-medium px-6 sm:px-8 py-2.5 sm:py-3 hover:bg-gray-100 transition-colors"
+                className="animate-blur-fade-up flex items-center gap-2 bg-white text-[#101218] rounded-full font-medium px-6 sm:px-8 py-2.5 sm:py-3 hover:bg-gray-100 transition-colors"
                 style={{ animationDelay: '500ms' }}
               >
-                <Play size={18} className="fill-[#0f2942]" />
+                <Play size={18} className="fill-[#101218]" />
                 Enter the Sim
               </Link>
             </div>

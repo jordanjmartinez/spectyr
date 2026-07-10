@@ -158,7 +158,7 @@ const ActionHistory = ({ history: rawHistory }) => {
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-2 bg-[#0f2942] text-white text-xs sm:text-sm px-3 py-1.5 rounded-md border border-transparent hover:bg-[#16436b] transition-colors"
+                          className="inline-flex items-center gap-2 bg-[#101218] text-white text-xs sm:text-sm px-3 py-1.5 rounded-md border border-transparent hover:bg-[#1e2330] transition-colors"
                           style={{ fontFamily: "'Inter', sans-serif" }}
                         >
                           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
@@ -197,7 +197,7 @@ const ActionHistory = ({ history: rawHistory }) => {
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         onClick={(e) => e.stopPropagation()}
-                                        className="inline-flex items-center gap-2 bg-[#0f2942] text-white text-xs sm:text-sm px-3 py-1.5 rounded-md border border-transparent hover:bg-[#16436b] transition-colors"
+                                        className="inline-flex items-center gap-2 bg-[#101218] text-white text-xs sm:text-sm px-3 py-1.5 rounded-md border border-transparent hover:bg-[#1e2330] transition-colors"
                                         style={{ fontFamily: "'Inter', sans-serif" }}
                                       >
                                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">

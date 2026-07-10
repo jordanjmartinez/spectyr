@@ -58,7 +58,7 @@ const Docs = () => {
   return (
     <div className="min-h-screen bg-[#f6f8fa] text-[#1a2332]">
       {/* Sticky navy chrome header, echoing the sim's nav rail */}
-      <header className="sticky top-0 z-50 bg-[#0f2942]/95 backdrop-blur-md border-b border-white/10">
+      <header className="sticky top-0 z-50 bg-[#101218]/95 backdrop-blur-md border-b border-white/10">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
           <Link to="/" className="flex items-center gap-2 shrink-0">
             <img src="/spectyr_logo.png" alt="" className="h-8 w-8 object-contain" />
@@ -79,7 +79,7 @@ const Docs = () => {
           </nav>
           <Link
             to="/sim"
-            className="bg-white hover:bg-gray-100 text-[#0f2942] text-sm font-medium rounded-full px-5 py-2 transition-colors whitespace-nowrap"
+            className="bg-white hover:bg-gray-100 text-[#101218] text-sm font-medium rounded-full px-5 py-2 transition-colors whitespace-nowrap"
           >
             Launch Sim
           </Link>
@@ -244,7 +244,7 @@ const Docs = () => {
           <p className="text-xl text-[#1a2332] mb-4">Ready to take the queue?</p>
           <Link
             to="/sim"
-            className="inline-block bg-[#0f2942] hover:bg-[#16436b] text-white font-medium rounded-full px-8 py-3 transition-colors"
+            className="inline-block bg-[#101218] hover:bg-[#1e2330] text-white font-medium rounded-full px-8 py-3 transition-colors"
           >
             Launch Sim
           </Link>

@@ -79,7 +79,7 @@ const TriageFeedback = ({ result, onClose }) => {
                       href={review.mitre.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 bg-[#0f2942] text-white text-xs sm:text-sm px-3 py-1.5 rounded-md border border-transparent hover:bg-[#16436b] transition-colors"
+                      className="inline-flex items-center gap-2 bg-[#101218] text-white text-xs sm:text-sm px-3 py-1.5 rounded-md border border-transparent hover:bg-[#1e2330] transition-colors"
                       style={{ fontFamily: "'Inter', sans-serif" }}
                     >
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
@@ -130,7 +130,7 @@ const TriageFeedback = ({ result, onClose }) => {
         <div className="px-6 pb-6 flex justify-end">
           <button
             onClick={onClose}
-            className="inline-flex items-center justify-center px-5 py-2 text-sm font-medium rounded-md bg-[#1a2332] hover:bg-[#0f2942] text-white border border-transparent transition focus:outline-none focus:ring-2 focus:ring-[#8b949e]"
+            className="inline-flex items-center justify-center px-5 py-2 text-sm font-medium rounded-md bg-[#101218] hover:bg-[#1e2330] text-white border border-transparent transition focus:outline-none focus:ring-2 focus:ring-[#8b949e]"
           >
             Continue
           </button>

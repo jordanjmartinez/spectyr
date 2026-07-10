@@ -304,7 +304,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
                         }}
                         className="flex items-center gap-2 text-left px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs hover:bg-[#eef1f4] transition text-[#57606a]"
                       >
-                        <span className={`w-2.5 h-2.5 rounded border ${alertsPerPage === size ? 'bg-[#1a2332] border-[#1a2332]' : 'border-[#d0d7de]'}`} />
+                        <span className={`w-2.5 h-2.5 rounded border ${alertsPerPage === size ? 'bg-[#101218] border-[#101218]' : 'border-[#d0d7de]'}`} />
                         {size} Per Page
                       </button>
                     ))}

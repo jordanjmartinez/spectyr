@@ -64,10 +64,10 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
               key={mode.id}
               onClick={() => pickMode(mode.id)}
               disabled={!isNameValid}
-              className={`group relative bg-[#0f2942] border-2 rounded-xl p-4 sm:p-5 text-center transition-all duration-200 ${
+              className={`group relative bg-[#101218] border-2 rounded-xl p-4 sm:p-5 text-center transition-all duration-200 ${
                 !isNameValid
                   ? 'border-transparent opacity-50 cursor-not-allowed'
-                  : 'border-white/10 hover:border-white/40 hover:bg-[#16436b] cursor-pointer'
+                  : 'border-white/10 hover:border-white/40 hover:bg-[#1e2330] cursor-pointer'
               }`}
             >
               <div className="flex flex-col items-center mb-3">
