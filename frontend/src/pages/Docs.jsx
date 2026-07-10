@@ -107,82 +107,85 @@ const Docs = () => {
         <main className="flex-1 min-w-0 px-6 sm:px-10 lg:px-20 py-14 lg:py-24">
           <div className="max-w-2xl">
             <h1 className="text-5xl sm:text-6xl font-light tracking-tight text-[#1a2332] mb-8">
-              How Spectyr works
+              How Spectyr Works
             </h1>
-            <p className="text-[#57606a] text-lg leading-relaxed">
-              Spectyr puts you in a Tier-1 SOC analyst's seat. Events stream into your queue the
-              way they do on a real SIEM, mostly routine noise from a simulated network. Somewhere
-              in it, an attack is unfolding on one machine. Investigate the alerts, classify the
-              threat or flag a false positive, then file a short report and move on.
-            </p>
+            <div className="space-y-4 text-[#57606a] text-lg leading-relaxed">
+              <p>
+                Spectyr puts you in the role of a Tier 1 SOC analyst. Events stream into a simulated
+                SIEM, mixing routine network activity with active threats.
+              </p>
+              <p>
+                Investigate alerts, follow related users, hosts, and IPs, classify each scenario,
+                and submit a short incident report.
+              </p>
+            </div>
 
             <Section id="queue" title="Queue">
               <p>
-                Each run is a queue of ten scenarios, pulled from a catalog of twenty and shuffled,
-                with one or two false positives in the mix. No two runs are alike.
+                Each run contains 10 scenarios selected from a catalog of 20, including one or two
+                false positives.
               </p>
               <p>
-                Scenarios arrive twenty to forty seconds apart, up to three open at once. Clear all
-                ten to finish.
+                Scenarios arrive every 20 to 40 seconds, with up to three open at once. Complete all
+                10 to finish the run.
               </p>
               <p>
-                An attack's events scatter through normal traffic, tied together by a shared user,
-                host, and IP. Pivot on those to pull the chain out of the noise.
+                Attack events are mixed into normal traffic. Use shared entities such as users,
+                hosts, and IP addresses to uncover the full chain.
               </p>
             </Section>
 
             <Section id="game-modes" title="Game Modes">
-              <p>
-                <span className="text-[#1a2332] font-medium">Training.</span> Unlimited time and
-                feedback after every call. The attack chain is grouped for you.
-              </p>
-              <p>
-                <span className="text-[#1a2332] font-medium">Hardcore.</span> One 15:00 timer for
-                the whole queue. A single wrong call, or time running out, ends the run.
-              </p>
-              <p>
-                <span className="text-[#1a2332] font-medium">Analyst.</span> Only the trigger alert
-                shows. Pivot through the events to rebuild the chain yourself.
-              </p>
+              <div>
+                <p className="text-[#1a2332] font-medium mb-1">Training</p>
+                <p>Unlimited time, grouped attack chains, and immediate feedback after every decision.</p>
+              </div>
+              <div>
+                <p className="text-[#1a2332] font-medium mb-1">Hardcore</p>
+                <p>A single 15-minute timer for the entire queue. One wrong classification or an expired timer ends the run.</p>
+              </div>
+              <div>
+                <p className="text-[#1a2332] font-medium mb-1">Analyst</p>
+                <p>Only the trigger alert is shown. Pivot through the event stream to reconstruct the attack yourself.</p>
+              </div>
             </Section>
 
             <Section id="scenarios" title="Scenarios">
-              <p>
-                Fifteen attack scenarios span eight categories, built from real telemetry across
-                Sysmon, Windows Security, Proxy, DNS, Firewall, and Azure AD.
-              </p>
+              <p>Spectyr includes 15 attack scenarios across eight categories:</p>
               <p className="text-[#1a2332]">
                 Malware, Phishing, Defense Evasion, Lateral Movement, Command and Control, Brute
                 Force, Data Exfiltration, and Insider Threat.
               </p>
               <p>
-                Every run also mixes in a false positive or two: benign activity that trips a real
-                rule. Dismiss one and it scores like catching an attack. Escalate it and it counts
-                against you.
+                The scenarios use simulated telemetry from Sysmon, Windows Security, Proxy, DNS,
+                Firewall, and Azure AD.
               </p>
               <p>
-                After each scenario you get a triage review: the MITRE ATT&amp;CK technique, a short
-                read on the attack, and the response a real team would run.
+                Each run also includes benign activity that triggered a real detection rule.
+                Correctly dismissing a false positive improves your score. Escalating one counts as
+                an incorrect decision.
+              </p>
+              <p>
+                After each scenario, you receive a triage review with the related MITRE ATT&amp;CK
+                technique, a short explanation, and recommended response steps.
               </p>
             </Section>
 
             <Section id="analytics" title="Analytics">
-              <p>
-                Every call lands in one of four buckets: correct, missed, false positive caught, or
-                false positive escalated. Accuracy is correct plus false positives caught, over
-                total calls.
-              </p>
-              <p>
-                The tab tracks your report card, results, queue progress, and recent decisions.
-                Finish a run for a final grade.
-              </p>
+              <p>Every decision is recorded as:</p>
+              <div className="space-y-1 text-[#1a2332]">
+                <p>Correct</p>
+                <p>Missed threat</p>
+                <p>False positive caught</p>
+                <p>False positive escalated</p>
+              </div>
+              <p>Your analytics show accuracy, queue progress, recent decisions, and final grade.</p>
             </Section>
 
             <Section id="reports" title="Reports">
               <p>
-                Triage is half the job. The other half is writing it up. File a report for each
-                scenario covering what happened, who it hit, and how you handled it. Edit, track
-                status, and export to PDF.
+                Submit a report for each scenario describing what happened, which systems or users
+                were affected, and what action was taken.
               </p>
             </Section>
           </div>
