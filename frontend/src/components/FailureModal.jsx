@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const FailureModal = ({ onRetry, onQuit }) => {
+const FailureModal = ({ onRetry, onQuit, failureType }) => {
   const [selected, setSelected] = useState(0);
 
   useEffect(() => {
@@ -23,120 +23,67 @@ const FailureModal = ({ onRetry, onQuit }) => {
     return () => window.removeEventListener('keydown', onKey);
   }, [selected, onRetry, onQuit]);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black/90" />
+  const detail = failureType === 'timeout'
+    ? 'The clock ran out before the threat was contained.'
+    : 'A critical alert was misclassified — the intrusion went undetected.';
 
-      {/* Scanline overlay */}
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0d1117]/95">
+      {/* Faint red gravity glow, no scanlines */}
       <div
-        className="absolute inset-0 pointer-events-none opacity-[0.03]"
-        style={{
-          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.1) 2px, rgba(255,255,255,0.1) 4px)',
-        }}
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: 'radial-gradient(circle at 50% 42%, rgba(178,102,102,0.14), transparent 60%)' }}
       />
 
+      <div className="relative text-center px-6 max-w-md mx-auto animate-modalIn">
+        <img
+          src="/hacker_icon.jpeg"
+          alt=""
+          className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 object-contain"
+        />
 
-      <div className="relative text-center px-6 max-w-lg mx-auto animate-modalIn">
-        {/* Glitch title */}
-        <div className="relative mb-6">
-          <h1
-            className="text-4xl sm:text-5xl font-normal tracking-widest text-gray-100 select-none"
-            style={{
-              fontFamily: "'Aldrich', sans-serif",
-              textShadow: '1px 0 rgba(0,255,255,0.3), -1px 0 rgba(255,0,255,0.3)',
-              animation: 'glitch 4s infinite',
-            }}
+        <h1
+          className="text-3xl sm:text-4xl font-semibold tracking-[0.15em] text-white select-none mb-3"
+          style={{ fontFamily: "'IBM Plex Sans', sans-serif", textShadow: '0 0 24px rgba(178,102,102,0.45)' }}
+        >
+          SYSTEM COMPROMISED
+        </h1>
+
+        <div className="inline-flex items-center gap-2 mb-5">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#b26666]" />
+          <span
+            className="text-xs tracking-[0.2em] text-[#b26666] uppercase"
+            style={{ fontFamily: "'JetBrains Mono', monospace" }}
           >
-            SYSTEM COMPROMISED
-          </h1>
-          {/* Subtle chromatic layers */}
-          <h1
-            className="absolute top-0 left-0 w-full text-4xl sm:text-5xl font-normal tracking-widest text-cyan-400 select-none opacity-0"
-            style={{
-              fontFamily: "'Aldrich', sans-serif",
-              clipPath: 'polygon(0 0, 100% 0, 100% 45%, 0 45%)',
-              animation: 'glitch-top 4s infinite',
-            }}
-            aria-hidden="true"
-          >
-            SYSTEM COMPROMISED
-          </h1>
-          <h1
-            className="absolute top-0 left-0 w-full text-4xl sm:text-5xl font-normal tracking-widest text-fuchsia-400 select-none opacity-0"
-            style={{
-              fontFamily: "'Aldrich', sans-serif",
-              clipPath: 'polygon(0 55%, 100% 55%, 100% 100%, 0 100%)',
-              animation: 'glitch-bottom 4s infinite',
-            }}
-            aria-hidden="true"
-          >
-            SYSTEM COMPROMISED
-          </h1>
+            Session Terminated
+          </span>
         </div>
 
-        {/* Hacker image */}
-        <img src="/hacker_icon.jpeg" alt="Hacker" className="w-28 h-28 sm:w-36 sm:h-36 mx-auto mb-6 opacity-90" />
-
-        {/* Terminal message */}
-        <p
-          className="text-gray-400 text-sm sm:text-base mb-8 tracking-wide"
-          style={{ fontFamily: "'JetBrains Mono', sans-serif" }}
-        >
-          The attacker is already inside.
+        <p className="text-gray-400 text-sm sm:text-base mb-8 leading-relaxed">
+          {detail}
         </p>
 
-        <div className="flex justify-center gap-6">
+        <div className="flex justify-center gap-3">
           <button
             onClick={onRetry}
             onMouseEnter={() => setSelected(0)}
-            className={`text-sm sm:text-base font-medium tracking-wide transition-colors ${
-              selected === 0 ? 'text-white' : 'text-gray-500 hover:text-gray-300'
+            className={`px-6 py-2.5 rounded-md text-sm font-medium bg-white text-[#0f2942] hover:bg-gray-100 transition-colors focus:outline-none ${
+              selected === 0 ? 'ring-2 ring-white/70 ring-offset-2 ring-offset-[#0d1117]' : ''
             }`}
-            style={{ fontFamily: "'JetBrains Mono', sans-serif" }}
           >
-            {selected === 0 && <>&gt;<span className="animate-blink">|</span> </>}
-            restart
+            Retry
           </button>
           <button
             onClick={onQuit}
             onMouseEnter={() => setSelected(1)}
-            className={`text-sm sm:text-base font-medium tracking-wide transition-colors ${
-              selected === 1 ? 'text-white' : 'text-gray-500 hover:text-gray-300'
+            className={`px-6 py-2.5 rounded-md text-sm font-medium border border-white/25 text-gray-300 hover:bg-white/10 hover:text-white transition-colors focus:outline-none ${
+              selected === 1 ? 'ring-2 ring-white/40 ring-offset-2 ring-offset-[#0d1117]' : ''
             }`}
-            style={{ fontFamily: "'JetBrains Mono', sans-serif" }}
           >
-            {selected === 1 && <>&gt;<span className="animate-blink">|</span> </>}
-            exit
+            Exit
           </button>
         </div>
       </div>
-
-      {/* Glitch keyframes */}
-      <style>{`
-        @keyframes glitch {
-          0%, 100% { transform: translate(0); }
-          2% { transform: translate(-1px, 0); }
-          4% { transform: translate(1px, 0); }
-          6% { transform: translate(0); }
-          50% { transform: translate(0); }
-          52% { transform: translate(-1px, 0); }
-          54% { transform: translate(0); }
-        }
-        @keyframes glitch-top {
-          0%, 100% { transform: translate(0); opacity: 0; }
-          2% { transform: translate(1px, 0); opacity: 0.25; }
-          4% { transform: translate(-1px, 0); opacity: 0.25; }
-          6% { transform: translate(0); opacity: 0; }
-        }
-        @keyframes glitch-bottom {
-          0%, 100% { transform: translate(0); opacity: 0; }
-          50% { transform: translate(0); opacity: 0; }
-          52% { transform: translate(-1px, 0); opacity: 0.25; }
-          54% { transform: translate(1px, 0); opacity: 0.25; }
-          56% { transform: translate(0); opacity: 0; }
-        }
-      `}</style>
     </div>
   );
 };
