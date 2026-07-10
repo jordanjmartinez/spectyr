@@ -5,19 +5,19 @@ const MODES = [
     id: 'training',
     label: 'Training',
     image: '/ghost_training.PNG',
-    points: ['No time pressure', 'Feedback after each call', 'Chain shown grouped'],
+    points: ['Learn the workflow', 'Unlimited time with instant feedback.'],
   },
   {
     id: 'hardcore',
     label: 'Hardcore',
-    image: '/ghost_hacker.PNG',
-    points: ['15:00 on the clock', 'One wrong call ends it', 'Chain shown grouped'],
+    image: '/ghost_hacker.png',
+    points: ['Beat the clock', 'Clear the queue without making a mistake.'],
   },
   {
     id: 'analyst',
     label: 'Analyst',
-    image: '/ghost_analytics.PNG',
-    points: ['Only the trigger fires', 'Pivot to find the chain', 'Investigate like the job'],
+    image: '/ghost_analytics.png',
+    points: ['Follow the evidence', 'Start with one alert and uncover the full chain.'],
   },
 ];
 
@@ -77,8 +77,8 @@ const DifficultySelector = ({ onSelect, onCancel }) => {
                 </div>
               </div>
               <ul className="space-y-1.5 text-xs sm:text-sm text-gray-300">
-                {mode.points.map((p) => (
-                  <li key={p}>{p}</li>
+                {mode.points.map((p, i) => (
+                  <li key={p} className={i === 0 ? 'font-medium text-gray-100' : ''}>{p}</li>
                 ))}
               </ul>
             </button>
