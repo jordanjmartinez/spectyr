@@ -94,8 +94,7 @@ export const GradeCard = ({ report }) => {
       ];
 
   return (
-    <div className="h-full">
-      <h3 className="text-base font-semibold text-[#1a2332] mb-3">Grade</h3>
+    <div className="h-full flex flex-col justify-center">
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-center">
           <div className="relative w-48 h-48 sm:w-64 sm:h-64 aspect-square border-dashed border-2 border-[#b4bcc4] rounded-full p-2">

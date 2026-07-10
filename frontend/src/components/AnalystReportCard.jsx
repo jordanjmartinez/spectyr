@@ -28,7 +28,6 @@ const AnalystReportCard = ({ report }) => {
 
   return (
     <div className="h-full">
-      <h3 className="text-base font-semibold text-[#1a2332] mb-3">Report Card</h3>
       <table className="w-full text-xs sm:text-base">
         <colgroup>
           <col />

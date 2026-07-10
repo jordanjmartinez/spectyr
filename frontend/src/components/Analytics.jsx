@@ -54,14 +54,18 @@ const Analytics = ({ onReset, analystName, setAnalyticsCount }) => {
       {/* Campaign Progress - Full Width */}
       <CampaignProgress levelData={levelData} report={report} onReset={onReset} analystName={analystName} />
 
-      {/* Report Card + Grade in one container with a separator; MTTR below */}
-      <div className="rounded-2xl" style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
-        <div className="grid grid-cols-1 md:grid-cols-2">
-          <div className="p-4 sm:p-6 border-b md:border-b-0 md:border-r border-[#e2e6ea]">
-            <AnalystReportCard report={report} />
-          </div>
-          <div className="p-4 sm:p-6">
-            <GradeCard report={report} />
+      {/* "Report Card" heading sits outside the container (like the other
+          section headings); the container keeps stats + grade, Grade heading removed */}
+      <div>
+        <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">Report Card</h2>
+        <div className="rounded-2xl" style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+          <div className="grid grid-cols-1 md:grid-cols-2">
+            <div className="p-4 sm:p-6 border-b md:border-b-0 md:border-r border-[#e2e6ea]">
+              <AnalystReportCard report={report} />
+            </div>
+            <div className="p-4 sm:p-6">
+              <GradeCard report={report} />
+            </div>
           </div>
         </div>
       </div>
