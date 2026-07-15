@@ -1,0 +1,205 @@
+# Schema v2 (Phase 2 Stage 0). Migrated from scenarios/c2_http.yaml by
+# scenarios/migrate_v1_to_v2.py; the attack steps are the v1 chain
+# byte-for-byte plus id/host/user tags (parity_check_v2.py proves it).
+# Edit this file, not the v1 copy, once the loader flag flips to yaml_v2.
+schema_version: 2
+label: "c2_http"
+category: "Command & Control"
+difficulty: 2
+threat_pattern: "HTTPS C2 Beaconing"
+
+narrative:
+  ticket_title: "Unusual HTTPS Traffic"
+  storyline: "An endpoint began generating repeated outbound HTTPS connections to an external domain not present on any internal allowlist. The connections appear to follow a regular interval."
+
+entities:
+  victim:
+    type: "employee"
+  c2_domain:
+    type: "domain"
+    value: "microsoftonline.co"
+  c2_ip:
+    type: "external_ip"
+    ip: "185.234.72.19"
+
+environment:
+  org:
+    name: "ACME Corp"
+    domain: "acme.local"
+  hosts:
+    - id: "ws_victim"
+      role: "workstation"
+      hostname: "{victim.hostname}"
+      ip: "{victim.ip}"
+      os: "Windows 10 Enterprise"
+      desc: "User workstation"
+    - id: "dns"
+      role: "dns"
+      hostname: "{infra.dns.hostname}"
+      ip: "{infra.dns.ip}"
+      os: "Windows Server 2019"
+      desc: "DNS Server"
+  accounts:
+    - id: "victim"
+      username: "{victim.username}"
+      domain: "ACME"
+      type: "user"
+      host: "ws_victim"
+
+attack:
+  - id: "s1"
+    host: "ws_victim"
+    user: "victim"
+    offset: 0
+    event_type: "ProcessCreate"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "high"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "Process created: rundll32.exe launched by explorer.exe"
+    key_value_pairs:
+      event_id: 1
+      channel: "Microsoft-Windows-Sysmon/Operational"
+      computer: "{victim.hostname}"
+      rule_name: ""
+      process_id: "5912"
+      image: "C:\\Windows\\System32\\rundll32.exe"
+      file_version: "10.0.19041.1"
+      description: "Windows host process (Rundll32)"
+      product: "Microsoft Windows Operating System"
+      company: "Microsoft Corporation"
+      original_file_name: "RUNDLL32.EXE"
+      command_line: "rundll32.exe"
+      current_directory: "C:\\Windows\\System32\\"
+      user: "{victim.user_domain}"
+      terminal_session_id: "1"
+      integrity_level: "Medium"
+      parent_process_id: "3456"
+      parent_image: "C:\\Windows\\explorer.exe"
+      parent_command_line: "C:\\Windows\\explorer.exe"
+      parent_user: "{victim.user_domain}"
+
+  - id: "s2"
+    host: "ws_victim"
+    offset: [5, 15]
+    event_type: "QUERY"
+    source_type: "DNS"
+    log_source: "DNS"
+    severity: "medium"
+    hostname: "{infra.dns.hostname}"
+    source_ip: "{victim.ip}"
+    destination_ip: "{infra.dns.ip}"
+    message: "DNS query received for {c2_domain.value}"
+    key_value_pairs:
+      src_ip: "{victim.ip}"
+      dst_ip: "{infra.dns.ip}"
+      src_port: "54819"
+      dest_port: "53"
+      transport: "udp"
+      query: "{c2_domain.value}"
+      query_type: "A"
+      message_type: "QUERY"
+      reply_code: "NOERROR"
+      dvc: "{infra.dns.hostname}"
+
+  - id: "s3"
+    host: "ws_victim"
+    offset: [2, 5]
+    trigger: true
+    event_type: "HTTP_CONNECT"
+    source_type: "Proxy"
+    log_source: "Proxy"
+    severity: "high"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    destination_ip: "{c2_ip.ip}"
+    user_account: "-"
+    message: "CONNECT tunnel established to {c2_domain.value} on port 443"
+    key_value_pairs:
+      src_ip: "{victim.ip}"
+      dst_ip: "{c2_ip.ip}"
+      src_user: "-"
+      dvc: "{victim.hostname}"
+      url: "{c2_domain.value}:443"
+      app: "web-browsing"
+      transport: "tcp"
+      dest_port: "443"
+      action: "allow"
+      http_method: "CONNECT"
+
+  - id: "s4"
+    host: "ws_victim"
+    offset: [30, 60]
+    event_type: "QUERY"
+    source_type: "DNS"
+    log_source: "DNS"
+    severity: "high"
+    hostname: "{infra.dns.hostname}"
+    source_ip: "{victim.ip}"
+    destination_ip: "{infra.dns.ip}"
+    message: "DNS query received for {c2_domain.value}"
+    key_value_pairs:
+      src_ip: "{victim.ip}"
+      dst_ip: "{infra.dns.ip}"
+      src_port: "54901"
+      dest_port: "53"
+      transport: "udp"
+      query: "{c2_domain.value}"
+      query_type: "A"
+      message_type: "QUERY"
+      reply_code: "NOERROR"
+      dvc: "{infra.dns.hostname}"
+
+  - id: "s5"
+    host: "ws_victim"
+    offset: [2, 5]
+    event_type: "HTTP_CONNECT"
+    source_type: "Proxy"
+    log_source: "Proxy"
+    severity: "high"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    destination_ip: "{c2_ip.ip}"
+    user_account: "-"
+    message: "CONNECT tunnel established to {c2_domain.value} on port 443"
+    key_value_pairs:
+      src_ip: "{victim.ip}"
+      dst_ip: "{c2_ip.ip}"
+      src_user: "-"
+      dvc: "{victim.hostname}"
+      url: "{c2_domain.value}:443"
+      app: "web-browsing"
+      transport: "tcp"
+      dest_port: "443"
+      action: "allow"
+      http_method: "CONNECT"
+
+noise: {}
+
+answer_key:
+  classification: "Command & Control"
+  scope:
+    hosts: ["ws_victim"]
+    accounts: ["victim"]
+  root_cause: "s1"
+  techniques: ["T1071.001"]
+  actions: []
+
+triage_review:
+  mitre:
+    id: "T1071.001"
+    name: "Application Layer Protocol: Web Protocols"
+    tactic: "Command and Control"
+    url: "https://attack.mitre.org/techniques/T1071/001/"
+  what_is_it:
+    title: "HTTPS C2 Beaconing"
+    description: "C2 beaconing is when malware on a compromised machine regularly phones home to an attacker-controlled server over HTTPS to receive commands. Because the traffic uses port 443 and looks like normal web browsing, it blends into everyday network activity. Key indicators include connections to lookalike domains, destination IPs that don't belong to the impersonated service, and regular timed intervals between connections."
+  response_actions:
+    - "Isolate the host immediately, the C2 channel is active"
+    - "Block the C2 domain and destination IP"
+    - "Search logs for other hosts connecting to the same domain or IP"
+    - "Identify which process on the workstation made the connection"
+    - "Trace how the malware was delivered"
+    - "Check for any post-compromise activity like credential theft or lateral movement"

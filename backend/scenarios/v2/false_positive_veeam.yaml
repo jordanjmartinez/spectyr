@@ -1,0 +1,212 @@
+# Schema v2 (Phase 2 Stage 0). Migrated from scenarios/false_positive_veeam.yaml by
+# scenarios/migrate_v1_to_v2.py; the attack steps are the v1 chain
+# byte-for-byte plus id/host/user tags (parity_check_v2.py proves it).
+# Edit this file, not the v1 copy, once the loader flag flips to yaml_v2.
+schema_version: 2
+label: "false_positive_veeam"
+category: "False Positive"
+difficulty: 2
+threat_pattern: "Authorized Backup Activity \u2014 Veeam Agent Scheduled Job"
+
+narrative:
+  ticket_title: "Unusual Off-Hours Network Activity"
+  storyline: "An endpoint began generating repeated outbound connections to an internal server at regular intervals outside of business hours. The process runs under SYSTEM and has transferred over 1.75 GB of data. The backup team recently deployed Veeam agents to all workstations as part of the endpoint protection initiative."
+
+entities:
+  victim:
+    type: "employee"
+  backup_server:
+    type: "internal_host"
+    hostname: "ACME-VEEAM01"
+    ip: "10.0.1.210"
+
+environment:
+  org:
+    name: "ACME Corp"
+    domain: "acme.local"
+  hosts:
+    - id: "ws_victim"
+      role: "workstation"
+      hostname: "{victim.hostname}"
+      ip: "{victim.ip}"
+      os: "Windows 10 Enterprise"
+      desc: "User workstation"
+    - id: "fw_perimeter"
+      role: "firewall"
+      hostname: "ACME-FW01"
+      ip: "10.0.1.254"
+      os: "PAN-OS"
+      desc: "Perimeter Firewall"
+    - id: "backup_server"
+      role: "server"
+      hostname: "{backup_server.hostname}"
+      ip: "{backup_server.ip}"
+      os: "Windows Server 2019"
+      desc: "Internal server"
+  accounts:
+    - id: "victim"
+      username: "{victim.username}"
+      domain: "ACME"
+      type: "user"
+      host: "ws_victim"
+
+attack:
+  - id: "s1"
+    host: "ws_victim"
+    offset: 0
+    event_type: "110"
+    source_type: "Veeam"
+    log_source: "Veeam"
+    severity: "medium"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "NT AUTHORITY\\SYSTEM"
+    message: "Backup job '{victim.hostname} Nightly Backup' has been started by schedule."
+    key_value_pairs:
+      host: "{victim.hostname}"
+      src_ip: "{victim.ip}"
+      event_log: "Veeam Agent"
+      event_id: "110"
+      event_level: "Information"
+      job_name: "{victim.hostname} Nightly Backup"
+      trigger: "Schedule"
+      scheduled_time: "22:00"
+      service: "VeeamEndpointBackupSvc"
+      user: "NT AUTHORITY\\SYSTEM"
+
+  - id: "s2"
+    host: "ws_victim"
+    offset: [1, 3]
+    event_type: "ProcessCreate"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "medium"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "NT AUTHORITY\\SYSTEM"
+    message: "Process created: Veeam.Agent.Manager.exe launched by Veeam.EndPoint.Service.exe"
+    key_value_pairs:
+      event_id: 1
+      channel: "Microsoft-Windows-Sysmon/Operational"
+      computer: "{victim.hostname}"
+      rule_name: ""
+      process_id: "3844"
+      image: "C:\\Program Files\\Veeam\\Endpoint Backup\\Veeam.Agent.Manager.exe"
+      file_version: "6.2.0.126"
+      description: "Veeam Agent Manager"
+      product: "Veeam Agent for Microsoft Windows"
+      company: "Veeam Software Group GmbH"
+      original_file_name: "Veeam.Agent.Manager.exe"
+      command_line: "\"C:\\Program Files\\Veeam\\Endpoint Backup\\Veeam.Agent.Manager.exe\""
+      current_directory: "C:\\Program Files\\Veeam\\Endpoint Backup\\"
+      user: "NT AUTHORITY\\SYSTEM"
+      terminal_session_id: "0"
+      integrity_level: "System"
+      parent_process_id: "1204"
+      parent_image: "C:\\Program Files\\Veeam\\Endpoint Backup\\Veeam.EndPoint.Service.exe"
+      parent_command_line: "\"C:\\Program Files\\Veeam\\Endpoint Backup\\Veeam.EndPoint.Service.exe\""
+      parent_user: "NT AUTHORITY\\SYSTEM"
+
+  - id: "s3"
+    host: "ws_victim"
+    offset: [2, 5]
+    trigger: true
+    event_type: "NetworkConnect"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "high"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    destination_ip: "{backup_server.ip}"
+    user_account: "NT AUTHORITY\\SYSTEM"
+    message: "Outbound connection to {backup_server.ip}:10006 from Veeam.EndPoint.Service.exe"
+    key_value_pairs:
+      event_id: 3
+      channel: "Microsoft-Windows-Sysmon/Operational"
+      computer: "{victim.hostname}"
+      rule_name: ""
+      process_id: "2916"
+      image: "C:\\Program Files\\Veeam\\Endpoint Backup\\Veeam.EndPoint.Service.exe"
+      user: "NT AUTHORITY\\SYSTEM"
+      protocol: "tcp"
+      initiated: true
+      source_is_ipv6: false
+      source_ip: "{victim.ip}"
+      source_hostname: "{victim.hostname}"
+      source_port_name: ""
+      destination_is_ipv6: false
+      destination_ip: "{backup_server.ip}"
+      destination_hostname: "{backup_server.hostname}"
+      destination_port: "10006"
+      destination_port_name: ""
+
+  - id: "s4"
+    host: "ws_victim"
+    offset: [0, 1]
+    event_type: "ALLOW"
+    source_type: "Firewall"
+    log_source: "Firewall"
+    severity: "medium"
+    hostname: "ACME-FW01"
+    source_ip: "{victim.ip}"
+    destination_ip: "{backup_server.ip}"
+    user_account: "NT AUTHORITY\\SYSTEM"
+    message: "Outbound connection permitted to {backup_server.ip} on port 10006"
+    key_value_pairs:
+      src_ip: "{victim.ip}"
+      dst_ip: "{backup_server.ip}"
+      src_port: "49301"
+      dest_port: "10006"
+      transport: "tcp"
+      action: "allow"
+      app: "veeam-backup"
+      dvc: "ACME-FW01"
+      rule: "veeam_backup_outbound"
+
+  - id: "s5"
+    host: "ws_victim"
+    offset: [45, 90]
+    event_type: "190"
+    source_type: "Veeam"
+    log_source: "Veeam"
+    severity: "low"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "NT AUTHORITY\\SYSTEM"
+    message: "Backup job '{victim.hostname} Nightly Backup' has been completed successfully. Backed up: 1.75 GB."
+    key_value_pairs:
+      host: "{victim.hostname}"
+      src_ip: "{victim.ip}"
+      event_log: "Veeam Agent"
+      event_id: "190"
+      event_level: "Information"
+      job_name: "{victim.hostname} Nightly Backup"
+      status: "Success"
+      bytes_backed_up: "1879048192"
+      bytes_backed_up_human: "1.75 GB"
+      repository: "{backup_server.hostname}"
+      repository_ip: "{backup_server.ip}"
+      duration_seconds: "4208"
+      scheduled_time: "22:00"
+
+noise: {}
+
+answer_key:
+  classification: "False Positive"
+  scope:
+    hosts: ["ws_victim"]
+    accounts: []
+  root_cause: null
+  techniques: []
+  actions: []
+
+triage_review:
+  what_is_it:
+    title: "Backup Agent Beaconing"
+    description: "Backup agents like Veeam communicate with their management server at regular intervals, transferring large volumes of data during backup windows. This periodic outbound traffic to a fixed destination closely mimics command-and-control beaconing patterns."
+  response_actions:
+    - "Verify the process is a known backup agent by checking its hash and path"
+    - "Confirm the destination is the authorized backup server"
+    - "Cross-reference with the backup schedule and retention policy"
+    - "Check with the backup team for recent agent deployments"
+    - "Add the backup process and destination to the monitoring whitelist"

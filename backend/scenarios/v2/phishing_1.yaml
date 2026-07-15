@@ -1,0 +1,169 @@
+# Schema v2 (Phase 2 Stage 0). Migrated from scenarios/phishing_1.yaml by
+# scenarios/migrate_v1_to_v2.py; the attack steps are the v1 chain
+# byte-for-byte plus id/host/user tags (parity_check_v2.py proves it).
+# Edit this file, not the v1 copy, once the loader flag flips to yaml_v2.
+schema_version: 2
+label: "phishing_1"
+category: "Phishing"
+difficulty: 1
+threat_pattern: "Typosquatting Credential Harvesting"
+
+narrative:
+  ticket_title: "M365 Account Login from Unusual Location"
+  storyline: "An employee received a Microsoft 365 password reset email and clicked the link. The page looked like a normal Microsoft sign-in. The proxy logged the connection but did not block it. Shortly after, account activity was detected from an unexpected location."
+
+entities:
+  victim:
+    type: "employee"
+  lookalike:
+    type: "domain"
+    value: "micr0soft.com"
+  lure_ip:
+    type: "external_ip"
+    ip: "185.234.72.19"
+  attacker:
+    type: "external_ip"
+    ip: "91.204.227.15"
+
+environment:
+  org:
+    name: "ACME Corp"
+    domain: "acme.local"
+  hosts:
+    - id: "ws_victim"
+      role: "workstation"
+      hostname: "{victim.hostname}"
+      ip: "{victim.ip}"
+      os: "Windows 10 Enterprise"
+      desc: "User workstation"
+  accounts:
+    - id: "victim"
+      username: "{victim.username}"
+      domain: "ACME"
+      type: "user"
+      host: "ws_victim"
+
+attack:
+  - id: "s1"
+    host: "ws_victim"
+    user: "victim"
+    offset: 0
+    event_type: "HTTP_GET"
+    source_type: "Proxy"
+    log_source: "Proxy"
+    severity: "medium"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    destination_ip: "{lure_ip.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "GET request to {lookalike.value}/signin returned 200 OK"
+    key_value_pairs:
+      src_ip: "{victim.ip}"
+      dst_ip: "{lure_ip.ip}"
+      src_user: "{victim.user_domain}"
+      dvc: "{victim.hostname}"
+      url: "{lookalike.value}/signin"
+      app: "web-browsing"
+      transport: "tcp"
+      dest_port: "443"
+      action: "allow"
+      http_method: "GET"
+
+  - id: "s2"
+    host: "ws_victim"
+    user: "victim"
+    offset: [3, 8]
+    event_type: "HTTP_POST"
+    source_type: "Proxy"
+    log_source: "Proxy"
+    severity: "high"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    destination_ip: "{lure_ip.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "POST request submitted to {lookalike.value}/signin with non-zero body"
+    key_value_pairs:
+      src_ip: "{victim.ip}"
+      dst_ip: "{lure_ip.ip}"
+      src_user: "{victim.user_domain}"
+      dvc: "{victim.hostname}"
+      url: "{lookalike.value}/signin"
+      app: "web-browsing"
+      transport: "tcp"
+      dest_port: "443"
+      action: "allow"
+      http_method: "POST"
+      bytes_sent: "852"
+
+  - id: "s3"
+    host: "ws_victim"
+    user: "victim"
+    offset: [20, 60]
+    event_type: "SigninLogs"
+    source_type: "Azure AD"
+    log_source: "Azure AD"
+    severity: "high"
+    hostname: "{victim.hostname}"
+    source_ip: "{attacker.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "Successful sign-in for {victim.username}@acme.com from {attacker.ip}"
+    key_value_pairs:
+      UserPrincipalName: "{victim.username}@acme.com"
+      IPAddress: "{attacker.ip}"
+      Location: "Shanghai, China"
+      DeviceDetail: "Unknown"
+      ResultType: "0"
+      AppDisplayName: "Microsoft 365"
+      AuthenticationRequirement: "singleFactorAuthentication"
+      RiskLevelDuringSignIn: "high"
+      OperationName: "Sign-in activity"
+
+  - id: "s4"
+    host: "ws_victim"
+    user: "victim"
+    offset: [5, 15]
+    trigger: true
+    event_type: "AADUserRiskEvents"
+    source_type: "Azure AD"
+    log_source: "Azure AD"
+    severity: "high"
+    hostname: "{victim.hostname}"
+    source_ip: "{attacker.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "Impossible travel risk flagged for {victim.username}@acme.com"
+    key_value_pairs:
+      UserPrincipalName: "{victim.username}@acme.com"
+      RiskEventType: "unlikelyTravel"
+      RiskLevel: "high"
+      RiskState: "atRisk"
+      RiskDetail: "none"
+      DetectionTimingType: "realtime"
+      Location: "Shanghai, China"
+      IPAddress: "{attacker.ip}"
+
+noise: {}
+
+answer_key:
+  classification: "Phishing"
+  scope:
+    hosts: ["ws_victim"]
+    accounts: ["victim"]
+  root_cause: "s1"
+  techniques: ["T1583.001"]
+  actions: []
+
+triage_review:
+  mitre:
+    id: "T1583.001"
+    name: "Acquire Infrastructure: Domains"
+    tactic: "Resource Development"
+    url: "https://attack.mitre.org/techniques/T1583/001/"
+  what_is_it:
+    title: "Typosquatting"
+    description: "Typosquatting is when attackers register domains that look almost identical to legitimate ones to trick users into visiting them, using techniques like character substitution, missing or extra characters, wrong TLDs, or visually identical characters from different alphabets."
+  response_actions:
+    - "Block the domain"
+    - "Identify any users who visited it or entered credentials"
+    - "Reset credentials for any affected users"
+    - "Search logs for other lookalike domains from the same source"
+    - "Report the domain to the registrar"

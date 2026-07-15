@@ -1,0 +1,217 @@
+# Schema v2 (Phase 2 Stage 0). Migrated from scenarios/defense_evasion_log_clearing.yaml by
+# scenarios/migrate_v1_to_v2.py; the attack steps are the v1 chain
+# byte-for-byte plus id/host/user tags (parity_check_v2.py proves it).
+# Edit this file, not the v1 copy, once the loader flag flips to yaml_v2.
+schema_version: 2
+label: "defense_evasion_log_clearing"
+category: "Defense Evasion"
+difficulty: 2
+threat_pattern: "Event Log Clearing"
+
+narrative:
+  ticket_title: "Event Logs Cleared on Workstation"
+  storyline: "An automated monitoring alert fired when a workstation's event logs were unexpectedly emptied. No maintenance was scheduled. Investigate what activity preceded the clearing."
+
+entities:
+  victim:
+    type: "employee"
+
+environment:
+  org:
+    name: "ACME Corp"
+    domain: "acme.local"
+  hosts:
+    - id: "ws_victim"
+      role: "workstation"
+      hostname: "{victim.hostname}"
+      ip: "{victim.ip}"
+      os: "Windows 10 Enterprise"
+      desc: "User workstation"
+  accounts:
+    - id: "victim"
+      username: "{victim.username}"
+      domain: "ACME"
+      type: "user"
+      host: "ws_victim"
+
+attack:
+  - id: "s1"
+    host: "ws_victim"
+    user: "victim"
+    offset: 0
+    event_type: "WmiEventFilter"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "high"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "WMI event filter activity detected"
+    key_value_pairs:
+      host: "{victim.hostname}"
+      src_ip: "{victim.ip}"
+      event_id: "19"
+      operation: "Created"
+      user: "{victim.user_domain}"
+      event_namespace: "root\\CimV2"
+      name: "WindowsUpdFilter"
+      query: "SELECT * FROM __InstanceModificationEvent WITHIN 60 WHERE TargetInstance ISA 'Win32_PerfFormattedData_PerfOS_System'"
+
+  - id: "s2"
+    host: "ws_victim"
+    user: "victim"
+    offset: [1, 3]
+    event_type: "WmiEventConsumer"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "high"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "WMI event consumer activity detected"
+    key_value_pairs:
+      host: "{victim.hostname}"
+      src_ip: "{victim.ip}"
+      event_id: "20"
+      operation: "Created"
+      user: "{victim.user_domain}"
+      name: "WindowsUpdConsumer"
+      type: "CommandLineEventConsumer"
+      destination: "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -EncodedCommand JABjAG8AbQBtAGEAbgBkAA=="
+
+  - id: "s3"
+    host: "ws_victim"
+    user: "victim"
+    offset: [1, 3]
+    event_type: "WmiEventConsumerToFilter"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "high"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "WMI event consumer to filter binding activity detected"
+    key_value_pairs:
+      host: "{victim.hostname}"
+      src_ip: "{victim.ip}"
+      event_id: "21"
+      operation: "Created"
+      user: "{victim.user_domain}"
+      consumer: "CommandLineEventConsumer.Name=\"WindowsUpdConsumer\""
+      filter: "__EventFilter.Name=\"WindowsUpdFilter\""
+
+  - id: "s4"
+    host: "ws_victim"
+    user: "victim"
+    offset: [3, 8]
+    event_type: "ProcessCreate"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "critical"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "Process created: wevtutil.exe"
+    key_value_pairs:
+      event_id: 1
+      channel: "Microsoft-Windows-Sysmon/Operational"
+      computer: "{victim.hostname}"
+      rule_name: ""
+      process_id: "22480"
+      image: "C:\\Windows\\System32\\wevtutil.exe"
+      file_version: "10.0.19041.1"
+      description: "Event Trace Management Tool"
+      product: "Microsoft Windows Operating System"
+      company: "Microsoft Corporation"
+      original_file_name: "wevtutil.exe"
+      command_line: "wevtutil.exe cl Security"
+      current_directory: "C:\\Windows\\System32\\"
+      user: "{victim.user_domain}"
+      terminal_session_id: "1"
+      integrity_level: "High"
+      parent_process_id: "21004"
+      parent_image: "C:\\Windows\\System32\\cmd.exe"
+      parent_command_line: "\"C:\\Windows\\System32\\cmd.exe\""
+      parent_user: "{victim.user_domain}"
+
+  - id: "s5"
+    host: "ws_victim"
+    user: "victim"
+    offset: [2, 5]
+    trigger: true
+    event_type: "1102"
+    source_type: "Windows Security"
+    log_source: "Windows Security"
+    severity: "critical"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    message: "The audit log was cleared."
+    key_value_pairs:
+      event_id: 1102
+      channel: "WinEventLog:Security"
+      computer: "{victim.hostname}"
+      security_id: "S-1-5-21-1547161642-1842894336-919524151-1105"
+      account_name: "{victim.username}"
+      domain_name: "ACME"
+      logon_id: "0x7A3B2C"
+
+  - id: "s6"
+    host: "ws_victim"
+    user: "victim"
+    offset: [2, 5]
+    event_type: "ProcessCreate"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "critical"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "Process created: wevtutil.exe"
+    key_value_pairs:
+      event_id: 1
+      channel: "Microsoft-Windows-Sysmon/Operational"
+      computer: "{victim.hostname}"
+      rule_name: ""
+      process_id: "22544"
+      image: "C:\\Windows\\System32\\wevtutil.exe"
+      file_version: "10.0.19041.1"
+      description: "Event Trace Management Tool"
+      product: "Microsoft Windows Operating System"
+      company: "Microsoft Corporation"
+      original_file_name: "wevtutil.exe"
+      command_line: "wevtutil.exe cl Microsoft-Windows-Sysmon/Operational"
+      current_directory: "C:\\Windows\\System32\\"
+      user: "{victim.user_domain}"
+      terminal_session_id: "1"
+      integrity_level: "High"
+      parent_process_id: "21004"
+      parent_image: "C:\\Windows\\System32\\cmd.exe"
+      parent_command_line: "\"C:\\Windows\\System32\\cmd.exe\""
+      parent_user: "{victim.user_domain}"
+
+noise: {}
+
+answer_key:
+  classification: "Defense Evasion"
+  scope:
+    hosts: ["ws_victim"]
+    accounts: ["victim"]
+  root_cause: "s1"
+  techniques: ["T1070.001"]
+  actions: []
+
+triage_review:
+  mitre:
+    id: "T1070.001"
+    name: "Indicator Removal: Clear Windows Event Logs"
+    tactic: "Defense Evasion"
+    url: "https://attack.mitre.org/techniques/T1070/001/"
+  what_is_it:
+    title: "Windows Event Log Clearing"
+    description: "Attackers clear Windows event logs to destroy forensic evidence of their activity using built-in tools like wevtutil.exe. Clearing the Security log generates Event ID 1102, meaning the act of destroying evidence ironically creates its own detection artifact."
+  response_actions:
+    - "Isolate the host immediately as an attacker is actively covering their tracks"
+    - "Recover cleared logs from centralized log collection such as your SIEM or syslog server"
+    - "Identify who cleared the logs using the subject account in the 1102 event"
+    - "Search other hosts for the same account performing similar activity"
+    - "Escalate to incident response as log clearing is a late-stage indicator"

@@ -1,0 +1,204 @@
+# Schema v2 (Phase 2 Stage 0). Migrated from scenarios/insider_shadow_it.yaml by
+# scenarios/migrate_v1_to_v2.py; the attack steps are the v1 chain
+# byte-for-byte plus id/host/user tags (parity_check_v2.py proves it).
+# Edit this file, not the v1 copy, once the loader flag flips to yaml_v2.
+schema_version: 2
+label: "insider_shadow_it"
+category: "Insider Threat"
+difficulty: 3
+threat_pattern: "Shadow IT Cloud Sync"
+
+narrative:
+  ticket_title: "Unauthorized App Data Transfer"
+  storyline: "A workstation launched an application not on the approved software list. Shortly after, multiple sensitive documents were moved into a folder associated with the application, and the proxy logged an upload to an external cloud storage provider. The employee has not submitted a software installation request."
+
+entities:
+  victim:
+    type: "employee"
+  cloud_domain:
+    type: "domain"
+    value: "d.dropbox.com"
+  cloud_ip:
+    type: "external_ip"
+    ip: "162.125.64.18"
+
+environment:
+  org:
+    name: "ACME Corp"
+    domain: "acme.local"
+  hosts:
+    - id: "ws_victim"
+      role: "workstation"
+      hostname: "{victim.hostname}"
+      ip: "{victim.ip}"
+      os: "Windows 10 Enterprise"
+      desc: "User workstation"
+    - id: "dns"
+      role: "dns"
+      hostname: "{infra.dns.hostname}"
+      ip: "{infra.dns.ip}"
+      os: "Windows Server 2019"
+      desc: "DNS Server"
+  accounts:
+    - id: "victim"
+      username: "{victim.username}"
+      domain: "ACME"
+      type: "user"
+      host: "ws_victim"
+
+attack:
+  - id: "s1"
+    host: "ws_victim"
+    user: "victim"
+    offset: 0
+    event_type: "ProcessCreate"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "low"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "Process created: Dropbox.exe"
+    key_value_pairs:
+      event_id: 1
+      channel: "Microsoft-Windows-Sysmon/Operational"
+      computer: "{victim.hostname}"
+      rule_name: ""
+      process_id: "14320"
+      image: "C:\\Users\\{victim.username}\\AppData\\Roaming\\Dropbox\\bin\\Dropbox.exe"
+      file_version: "198.4.7431"
+      description: "Dropbox"
+      product: "Dropbox"
+      company: "Dropbox, Inc."
+      original_file_name: "Dropbox.exe"
+      command_line: "\"C:\\Users\\{victim.username}\\AppData\\Roaming\\Dropbox\\bin\\Dropbox.exe\" /systemstartup"
+      current_directory: "C:\\Users\\{victim.username}\\AppData\\Roaming\\Dropbox\\bin\\"
+      user: "{victim.user_domain}"
+      terminal_session_id: "1"
+      integrity_level: "Medium"
+      parent_process_id: "3456"
+      parent_image: "C:\\Windows\\explorer.exe"
+      parent_command_line: "C:\\Windows\\explorer.exe"
+      parent_user: "{victim.user_domain}"
+
+  - id: "s2"
+    host: "ws_victim"
+    user: "victim"
+    offset: [10, 30]
+    event_type: "FileCreate"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "medium"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "File created: ACME_Client_NDA_2026.pdf"
+    key_value_pairs:
+      event_id: 11
+      channel: "Microsoft-Windows-Sysmon/Operational"
+      computer: "{victim.hostname}"
+      rule_name: ""
+      process_id: "4892"
+      image: "C:\\Windows\\explorer.exe"
+      target_filename: "C:\\Users\\{victim.username}\\AppData\\Roaming\\CloudSync\\Work Documents\\ACME_Client_NDA_2026.pdf"
+      user: "{victim.user_domain}"
+
+  - id: "s3"
+    host: "ws_victim"
+    user: "victim"
+    offset: [2, 5]
+    event_type: "FileCreate"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "medium"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "File created: ACME_Vendor_Contracts_2026.pdf"
+    key_value_pairs:
+      event_id: 11
+      channel: "Microsoft-Windows-Sysmon/Operational"
+      computer: "{victim.hostname}"
+      rule_name: ""
+      process_id: "4892"
+      image: "C:\\Windows\\explorer.exe"
+      target_filename: "C:\\Users\\{victim.username}\\AppData\\Roaming\\CloudSync\\Work Documents\\ACME_Vendor_Contracts_2026.pdf"
+      user: "{victim.user_domain}"
+
+  - id: "s4"
+    host: "ws_victim"
+    offset: [3, 8]
+    event_type: "QUERY"
+    source_type: "DNS"
+    log_source: "DNS"
+    severity: "medium"
+    hostname: "{infra.dns.hostname}"
+    source_ip: "{victim.ip}"
+    destination_ip: "{infra.dns.ip}"
+    message: "DNS query received for {cloud_domain.value}."
+    key_value_pairs:
+      src_ip: "{victim.ip}"
+      dst_ip: "{infra.dns.ip}"
+      src_port: "55201"
+      dest_port: "53"
+      transport: "udp"
+      query: "{cloud_domain.value}"
+      query_type: "A"
+      message_type: "QUERY"
+      reply_code: "NOERROR"
+      dvc: "{infra.dns.hostname}"
+
+  - id: "s5"
+    host: "ws_victim"
+    user: "victim"
+    offset: [5, 15]
+    trigger: true
+    event_type: "HTTP_POST"
+    source_type: "Proxy"
+    log_source: "Proxy"
+    severity: "high"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    destination_ip: "{cloud_ip.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "POST request to {cloud_domain.value}/upload returned 200 OK."
+    key_value_pairs:
+      src_ip: "{victim.ip}"
+      dst_ip: "{cloud_ip.ip}"
+      src_user: "{victim.user_domain}"
+      dvc: "{victim.hostname}"
+      url: "{cloud_domain.value}/upload"
+      app: "web-browsing"
+      transport: "tcp"
+      dest_port: "443"
+      action: "allow"
+      http_method: "POST"
+      content_type: "application/octet-stream"
+      bytes_sent: "2847561"
+
+noise: {}
+
+answer_key:
+  classification: "Insider Threat"
+  scope:
+    hosts: ["ws_victim"]
+    accounts: ["victim"]
+  root_cause: "s1"
+  techniques: ["T1567.002"]
+  actions: []
+
+triage_review:
+  mitre:
+    id: "T1567.002"
+    name: "Exfiltration Over Web Service: Exfiltration to Cloud Storage"
+    tactic: "Exfiltration"
+    url: "https://attack.mitre.org/techniques/T1567/002/"
+  what_is_it:
+    title: "Shadow IT"
+    description: "Shadow IT is when employees use unapproved software, cloud services, or personal devices for work without IT's knowledge. Common examples include syncing files to personal Dropbox or Google Drive, or using personal laptops and phones to access corporate data. Even without malicious intent, this puts company data in unmanaged locations with no security controls or audit trail."
+  response_actions:
+    - "Confirm the application or device is not on the approved list"
+    - "Assess the sensitivity of any data that was accessed or synced"
+    - "Remove the application and block the domain"
+    - "Work with the employee to recover corporate files from the personal account or device"
+    - "Document the policy violation and notify management"

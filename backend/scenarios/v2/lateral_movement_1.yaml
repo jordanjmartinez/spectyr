@@ -1,0 +1,246 @@
+# Schema v2 (Phase 2 Stage 0). Migrated from scenarios/lateral_movement_1.yaml by
+# scenarios/migrate_v1_to_v2.py; the attack steps are the v1 chain
+# byte-for-byte plus id/host/user tags (parity_check_v2.py proves it).
+# Edit this file, not the v1 copy, once the loader flag flips to yaml_v2.
+schema_version: 2
+label: "lateral_movement_1"
+category: "Lateral Movement"
+difficulty: 2
+threat_pattern: "Internal Reconnaissance (Port Scan)"
+
+narrative:
+  ticket_title: "Rapid Internal Connection Attempts"
+  storyline: "Unexpected network activity was detected originating from an internal workstation with no scheduled maintenance or administrative tasks. The firewall logged multiple connection attempts to an internal server in rapid succession."
+
+entities:
+  victim:
+    type: "employee"
+
+environment:
+  org:
+    name: "ACME Corp"
+    domain: "acme.local"
+  hosts:
+    - id: "ws_victim"
+      role: "workstation"
+      hostname: "{victim.hostname}"
+      ip: "{victim.ip}"
+      os: "Windows 10 Enterprise"
+      desc: "User workstation"
+    - id: "file"
+      role: "file"
+      hostname: "{infra.file.hostname}"
+      ip: "{infra.file.ip}"
+      os: "Windows Server 2019"
+      desc: "File Server"
+    - id: "fw_perimeter"
+      role: "firewall"
+      hostname: "ACME-FW01"
+      ip: "10.0.1.254"
+      os: "PAN-OS"
+      desc: "Perimeter Firewall"
+  accounts:
+    - id: "victim"
+      username: "{victim.username}"
+      domain: "ACME"
+      type: "user"
+      host: "ws_victim"
+
+attack:
+  - id: "s1"
+    host: "ws_victim"
+    user: "victim"
+    offset: 0
+    event_type: "ProcessCreate"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "low"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "Process created: nmap.exe launched by cmd.exe"
+    key_value_pairs:
+      event_id: 1
+      channel: "Microsoft-Windows-Sysmon/Operational"
+      computer: "{victim.hostname}"
+      rule_name: ""
+      process_id: "8844"
+      image: "C:\\Users\\{victim.username}\\Downloads\\nmap-7.95\\nmap.exe"
+      file_version: "7.95"
+      description: "Nmap - Network exploration tool"
+      product: "Nmap"
+      company: "Nmap Project"
+      original_file_name: "nmap.exe"
+      command_line: "nmap.exe -sS -p 22,80,443,445,3389 {infra.file.ip}"
+      current_directory: "C:\\Users\\{victim.username}\\Downloads\\nmap-7.95\\"
+      user: "{victim.user_domain}"
+      terminal_session_id: "1"
+      integrity_level: "High"
+      parent_process_id: "6240"
+      parent_image: "C:\\Windows\\System32\\cmd.exe"
+      parent_command_line: "\"C:\\Windows\\System32\\cmd.exe\""
+      parent_user: "{victim.user_domain}"
+
+  - id: "s2"
+    host: "ws_victim"
+    offset: [5, 12]
+    event_type: "DENY"
+    source_type: "Firewall"
+    log_source: "Firewall"
+    severity: "medium"
+    hostname: "ACME-FW01"
+    source_ip: "{victim.ip}"
+    destination_ip: "{infra.file.ip}"
+    message: "Connection denied from {victim.hostname} to {infra.file.hostname} on port 22 (tcp)."
+    key_value_pairs:
+      src_ip: "{victim.ip}"
+      dst_ip: "{infra.file.ip}"
+      src_port: "49152"
+      dest_port: "22"
+      transport: "tcp"
+      action: "deny"
+      app: "ssh"
+      dvc: "ACME-FW01"
+      rule: "default_internal"
+
+  - id: "s3"
+    host: "ws_victim"
+    offset: [1, 2]
+    event_type: "DENY"
+    source_type: "Firewall"
+    log_source: "Firewall"
+    severity: "medium"
+    hostname: "ACME-FW01"
+    source_ip: "{victim.ip}"
+    destination_ip: "{infra.file.ip}"
+    message: "Connection denied from {victim.hostname} to {infra.file.hostname} on port 445 (tcp)."
+    key_value_pairs:
+      src_ip: "{victim.ip}"
+      dst_ip: "{infra.file.ip}"
+      src_port: "49153"
+      dest_port: "445"
+      transport: "tcp"
+      action: "deny"
+      app: "microsoft-ds"
+      dvc: "ACME-FW01"
+      rule: "default_internal"
+
+  - id: "s4"
+    host: "ws_victim"
+    offset: [2, 5]
+    event_type: "ALLOW"
+    source_type: "Firewall"
+    log_source: "Firewall"
+    severity: "high"
+    hostname: "ACME-FW01"
+    source_ip: "{victim.ip}"
+    destination_ip: "{infra.file.ip}"
+    message: "RDP connection permitted from {victim.hostname} to {infra.file.hostname} on port 3389"
+    key_value_pairs:
+      src_ip: "{victim.ip}"
+      dst_ip: "{infra.file.ip}"
+      src_port: "49154"
+      dest_port: "3389"
+      transport: "tcp"
+      action: "allow"
+      app: "ms-rdp"
+      dvc: "ACME-FW01"
+      rule: "default_internal"
+
+  - id: "s5"
+    host: "file"
+    user: "victim"
+    offset: [2, 5]
+    trigger: true
+    event_type: "4624"
+    source_type: "Windows Security"
+    log_source: "Windows Security"
+    severity: "high"
+    hostname: "{infra.file.hostname}"
+    source_ip: "{victim.ip}"
+    destination_ip: "{infra.file.ip}"
+    message: "An account was successfully logged on."
+    key_value_pairs:
+      event_id: 4624
+      channel: "WinEventLog:Security"
+      computer: "{infra.file.hostname}"
+      subject_security_id: "NULL SID"
+      subject_account_name: "-"
+      subject_account_domain: "-"
+      subject_logon_id: "0x0"
+      logon_type: "10"
+      account_name: "{victim.username}"
+      account_domain: "ACME"
+      new_logon_logon_id: "0xA1B2C3"
+      logon_guid: "{00000000-0000-0000-0000-000000000000}"
+      process_id: "0x0"
+      process_name: "-"
+      workstation_name: "{victim.hostname}"
+      src_ip: "{victim.ip}"
+      src_port: "49154"
+      logon_process: "User32"
+      authentication_package: "Negotiate"
+      transited_services: "-"
+      package_name: "-"
+      key_length: "0"
+
+  - id: "s6"
+    host: "file"
+    user: "victim"
+    offset: [3, 8]
+    event_type: "ProcessCreate"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "high"
+    hostname: "{infra.file.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "Process created: net.exe executed on {infra.file.hostname}"
+    key_value_pairs:
+      event_id: 1
+      channel: "Microsoft-Windows-Sysmon/Operational"
+      computer: "{infra.file.hostname}"
+      rule_name: ""
+      process_id: "3312"
+      image: "C:\\Windows\\System32\\net.exe"
+      file_version: "10.0.19041.1"
+      description: "Net Command"
+      product: "Microsoft Windows Operating System"
+      company: "Microsoft Corporation"
+      original_file_name: "net.exe"
+      command_line: "net localgroup administrators"
+      current_directory: "C:\\Windows\\System32\\"
+      user: "{victim.user_domain}"
+      terminal_session_id: "2"
+      integrity_level: "High"
+      parent_process_id: "2104"
+      parent_image: "C:\\Windows\\System32\\cmd.exe"
+      parent_command_line: "\"C:\\Windows\\System32\\cmd.exe\""
+      parent_user: "{victim.user_domain}"
+
+noise: {}
+
+answer_key:
+  classification: "Lateral Movement"
+  scope:
+    hosts: ["ws_victim", "file"]
+    accounts: ["victim"]
+  root_cause: "s1"
+  techniques: ["T1046"]
+  actions: []
+
+triage_review:
+  mitre:
+    id: "T1046"
+    name: "Network Service Scanning"
+    tactic: "Discovery"
+    url: "https://attack.mitre.org/techniques/T1046/"
+  what_is_it:
+    title: "Network Service Scanning"
+    description: "Network service scanning is when someone probes target systems to discover open ports and running services, typically using tools like Nmap. When a scanning tool is found on a standard user's workstation, it indicates either unauthorized reconnaissance or a compromised machine."
+  response_actions:
+    - "Investigate whether the user intentionally ran the tool or if the workstation is compromised"
+    - "Remove the scanning tool"
+    - "Search firewall logs for scan activity from the same source"
+    - "Check for follow-up activity like exploitation attempts or lateral movement"
+    - "Review segmentation rules to confirm workstations cannot reach server management ports"

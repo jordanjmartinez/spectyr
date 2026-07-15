@@ -1,0 +1,238 @@
+# Schema v2 (Phase 2 Stage 0). Migrated from scenarios/brute_force_attack.yaml by
+# scenarios/migrate_v1_to_v2.py; the attack steps are the v1 chain
+# byte-for-byte plus id/host/user tags (parity_check_v2.py proves it).
+# Edit this file, not the v1 copy, once the loader flag flips to yaml_v2.
+schema_version: 2
+label: "brute_force_attack"
+category: "Brute Force"
+difficulty: 1
+threat_pattern: "Dictionary Attack (Password Guessing)"
+
+narrative:
+  ticket_title: "Unexpected Account Lockout"
+  storyline: "The Domain Controller began logging unusual authentication activity from an external source outside of business hours. The targeted account has since been locked out."
+
+entities:
+  victim:
+    type: "employee"
+  attacker:
+    type: "external_ip"
+    ip: "198.51.100.73"
+
+environment:
+  org:
+    name: "ACME Corp"
+    domain: "acme.local"
+  hosts:
+    - id: "dc"
+      role: "dc"
+      hostname: "{infra.dc.hostname}"
+      ip: "{infra.dc.ip}"
+      os: "Windows Server 2019"
+      desc: "Domain Controller"
+  accounts:
+    - id: "victim"
+      username: "{victim.username}"
+      domain: "ACME"
+      type: "user"
+
+attack:
+  - id: "s1"
+    host: "dc"
+    user: "victim"
+    offset: 0
+    event_type: "4625"
+    source_type: "Windows Security"
+    log_source: "Windows Security"
+    severity: "low"
+    hostname: "{infra.dc.hostname}"
+    source_ip: "{attacker.ip}"
+    destination_ip: "{infra.dc.ip}"
+    message: "An account failed to log on."
+    key_value_pairs:
+      event_id: 4625
+      channel: "WinEventLog:Security"
+      computer: "{infra.dc.hostname}"
+      subject_security_id: "NULL SID"
+      subject_account_name: "-"
+      subject_account_domain: "-"
+      subject_logon_id: "0x0"
+      logon_type: "3"
+      account_name: "{victim.username}"
+      account_domain: "ACME"
+      failure_reason: "Unknown user name or bad password"
+      status: "0xC000006D"
+      sub_status: "0xC000006A"
+      caller_process_id: "0x0"
+      caller_process_name: "-"
+      workstation_name: "-"
+      src_ip: "{attacker.ip}"
+      src_port: "49152"
+      logon_process: "NtLmSsp"
+      authentication_package: "NTLM"
+      transited_services: "-"
+      package_name: "-"
+      key_length: "0"
+
+  - id: "s2"
+    host: "dc"
+    user: "victim"
+    offset: [2, 5]
+    event_type: "4625"
+    source_type: "Windows Security"
+    log_source: "Windows Security"
+    severity: "low"
+    hostname: "{infra.dc.hostname}"
+    source_ip: "{attacker.ip}"
+    destination_ip: "{infra.dc.ip}"
+    message: "An account failed to log on."
+    key_value_pairs:
+      event_id: 4625
+      channel: "WinEventLog:Security"
+      computer: "{infra.dc.hostname}"
+      subject_security_id: "NULL SID"
+      subject_account_name: "-"
+      subject_account_domain: "-"
+      subject_logon_id: "0x0"
+      logon_type: "3"
+      account_name: "{victim.username}"
+      account_domain: "ACME"
+      failure_reason: "Unknown user name or bad password"
+      status: "0xC000006D"
+      sub_status: "0xC000006A"
+      caller_process_id: "0x0"
+      caller_process_name: "-"
+      workstation_name: "-"
+      src_ip: "{attacker.ip}"
+      src_port: "49153"
+      logon_process: "NtLmSsp"
+      authentication_package: "NTLM"
+      transited_services: "-"
+      package_name: "-"
+      key_length: "0"
+
+  - id: "s3"
+    host: "dc"
+    user: "victim"
+    offset: [2, 5]
+    event_type: "4625"
+    source_type: "Windows Security"
+    log_source: "Windows Security"
+    severity: "medium"
+    hostname: "{infra.dc.hostname}"
+    source_ip: "{attacker.ip}"
+    destination_ip: "{infra.dc.ip}"
+    message: "An account failed to log on."
+    key_value_pairs:
+      event_id: 4625
+      channel: "WinEventLog:Security"
+      computer: "{infra.dc.hostname}"
+      subject_security_id: "NULL SID"
+      subject_account_name: "-"
+      subject_account_domain: "-"
+      subject_logon_id: "0x0"
+      logon_type: "3"
+      account_name: "{victim.username}"
+      account_domain: "ACME"
+      failure_reason: "Unknown user name or bad password"
+      status: "0xC000006D"
+      sub_status: "0xC000006A"
+      caller_process_id: "0x0"
+      caller_process_name: "-"
+      workstation_name: "-"
+      src_ip: "{attacker.ip}"
+      src_port: "49305"
+      logon_process: "NtLmSsp"
+      authentication_package: "NTLM"
+      transited_services: "-"
+      package_name: "-"
+      key_length: "0"
+
+  - id: "s4"
+    host: "dc"
+    user: "victim"
+    offset: [2, 5]
+    event_type: "4625"
+    source_type: "Windows Security"
+    log_source: "Windows Security"
+    severity: "medium"
+    hostname: "{infra.dc.hostname}"
+    source_ip: "{attacker.ip}"
+    destination_ip: "{infra.dc.ip}"
+    message: "An account failed to log on."
+    key_value_pairs:
+      event_id: 4625
+      channel: "WinEventLog:Security"
+      computer: "{infra.dc.hostname}"
+      subject_security_id: "NULL SID"
+      subject_account_name: "-"
+      subject_account_domain: "-"
+      subject_logon_id: "0x0"
+      logon_type: "3"
+      account_name: "{victim.username}"
+      account_domain: "ACME"
+      failure_reason: "Unknown user name or bad password"
+      status: "0xC000006D"
+      sub_status: "0xC000006A"
+      caller_process_id: "0x0"
+      caller_process_name: "-"
+      workstation_name: "-"
+      src_ip: "{attacker.ip}"
+      src_port: "49306"
+      logon_process: "NtLmSsp"
+      authentication_package: "NTLM"
+      transited_services: "-"
+      package_name: "-"
+      key_length: "0"
+
+  - id: "s5"
+    host: "dc"
+    user: "victim"
+    offset: [3, 8]
+    trigger: true
+    event_type: "4740"
+    source_type: "Windows Security"
+    log_source: "Windows Security"
+    severity: "high"
+    hostname: "{infra.dc.hostname}"
+    source_ip: "{attacker.ip}"
+    destination_ip: "{infra.dc.ip}"
+    message: "A user account was locked out."
+    key_value_pairs:
+      event_id: 4740
+      channel: "WinEventLog:Security"
+      computer: "{infra.dc.hostname}"
+      subject_security_id: "SYSTEM"
+      subject_account_name: "{infra.dc.hostname}$"
+      subject_account_domain: "ACME"
+      subject_logon_id: "0x3E7"
+      locked_out_security_id: "NULL SID"
+      account_name: "{victim.username}"
+      caller_computer_name: "-"
+
+noise: {}
+
+answer_key:
+  classification: "Brute Force"
+  scope:
+    hosts: ["dc"]
+    accounts: ["victim"]
+  root_cause: "s1"
+  techniques: ["T1110.001"]
+  actions: []
+
+triage_review:
+  mitre:
+    id: "T1110.001"
+    name: "Brute Force: Password Guessing"
+    tactic: "Credential Access"
+    url: "https://attack.mitre.org/techniques/T1110/001/"
+  what_is_it:
+    title: "Dictionary Attack"
+    description: "A dictionary attack is a brute force method where attackers use automated tools to rapidly cycle through a wordlist of common passwords against a single account. This differs from password spraying, which tries one password across many accounts, and credential stuffing, which reuses stolen credentials from previous breaches."
+  response_actions:
+    - "Lock the targeted account and reset the password"
+    - "Block the attacking source IP at the firewall"
+    - "Determine if any successful authentication occurred from the attacker's IP"
+    - "If compromised, investigate for lateral movement to other systems"
+    - "Verify MFA is enabled on the account and enforce it if not"

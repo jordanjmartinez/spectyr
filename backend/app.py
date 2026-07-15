@@ -224,6 +224,16 @@ if SCENARIO_SOURCE == "yaml":
     import scenario_loader
     yaml_catalog, yaml_triage_reviews = scenario_loader.load_scenarios()
     print(f"[SCENARIOS] yaml source: {len(yaml_catalog)} scenarios loaded", flush=True)
+elif SCENARIO_SOURCE == "yaml_v2":
+    # Phase 2 Stage 0: schema v2 (environment + attack + noise + answer_key).
+    # The v2 catalog is chain-compatible with the v1 shape, so the renderer
+    # below (_raw_chain_yaml) is shared; parity_check_v2.py proves the emitted
+    # logs are byte-identical to the v1 source. scenario_loader still provides
+    # the resolve/substitute primitives at render time.
+    import scenario_loader
+    import scenario_loader_v2
+    yaml_catalog, yaml_triage_reviews = scenario_loader_v2.load_scenarios()
+    print(f"[SCENARIOS] yaml_v2 source: {len(yaml_catalog)} scenarios loaded", flush=True)
 
 # Pool of scenarios that SPECTYR can auto-detect (appear in NOTABLE EVENTS without manual flagging)
 # Map detected_by/event_source values to standardized source_type values
@@ -2177,7 +2187,7 @@ def build_attack_chain_logs(session, scenario_entry, employee=None):
     scenario_label = scenario_entry["scenario_label"]
     emp = employee or random.choice(EMPLOYEES)
 
-    producer = _raw_chain_yaml if SCENARIO_SOURCE == "yaml" else _raw_chain_ndjson
+    producer = _raw_chain_yaml if SCENARIO_SOURCE in ("yaml", "yaml_v2") else _raw_chain_ndjson
     raw = producer(scenario_label, emp)
     if raw is None:
         return None
@@ -2608,7 +2618,7 @@ def get_action_history():
 @app.route("/api/triage-review/<scenario_label>", methods=["GET"])
 def get_triage_review(scenario_label):
     """Get educational triage review content for a scenario."""
-    reviews = yaml_triage_reviews if SCENARIO_SOURCE == "yaml" else TRIAGE_REVIEWS
+    reviews = yaml_triage_reviews if SCENARIO_SOURCE in ("yaml", "yaml_v2") else TRIAGE_REVIEWS
     review = reviews.get(scenario_label)
     if not review:
         return jsonify({"error": f"No triage review found for {scenario_label}"}), 404

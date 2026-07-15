@@ -1,0 +1,209 @@
+# Schema v2 (Phase 2 Stage 0). Migrated from scenarios/data_exfil_archive.yaml by
+# scenarios/migrate_v1_to_v2.py; the attack steps are the v1 chain
+# byte-for-byte plus id/host/user tags (parity_check_v2.py proves it).
+# Edit this file, not the v1 copy, once the loader flag flips to yaml_v2.
+schema_version: 2
+label: "data_exfil_archive"
+category: "Data Exfiltration"
+difficulty: 2
+threat_pattern: "Archive and Exfiltration to Cloud Storage"
+
+narrative:
+  ticket_title: "After-Hours Outbound Transfer"
+  storyline: "A compression utility was executed on an endpoint outside of business hours. No software deployment or IT task was scheduled for this host. Shortly after, outbound connections were established to an external file hosting service."
+
+entities:
+  victim:
+    type: "employee"
+  exfil_domain:
+    type: "domain"
+    value: "mega.nz"
+  exfil_ip:
+    type: "external_ip"
+    ip: "31.13.84.2"
+
+environment:
+  org:
+    name: "ACME Corp"
+    domain: "acme.local"
+  hosts:
+    - id: "ws_victim"
+      role: "workstation"
+      hostname: "{victim.hostname}"
+      ip: "{victim.ip}"
+      os: "Windows 10 Enterprise"
+      desc: "User workstation"
+    - id: "dns"
+      role: "dns"
+      hostname: "{infra.dns.hostname}"
+      ip: "{infra.dns.ip}"
+      os: "Windows Server 2019"
+      desc: "DNS Server"
+    - id: "fw_perimeter"
+      role: "firewall"
+      hostname: "ACME-FW01"
+      ip: "10.0.1.254"
+      os: "PAN-OS"
+      desc: "Perimeter Firewall"
+  accounts:
+    - id: "victim"
+      username: "{victim.username}"
+      domain: "ACME"
+      type: "user"
+      host: "ws_victim"
+
+attack:
+  - id: "s1"
+    host: "ws_victim"
+    user: "victim"
+    offset: 0
+    event_type: "ProcessCreate"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "medium"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "Process created: 7z.exe"
+    key_value_pairs:
+      event_id: 1
+      channel: "Microsoft-Windows-Sysmon/Operational"
+      computer: "{victim.hostname}"
+      rule_name: ""
+      process_id: "15820"
+      image: "C:\\Program Files\\7-Zip\\7z.exe"
+      file_version: "24.09"
+      description: "7-Zip Console"
+      product: "7-Zip"
+      company: "Igor Pavlov"
+      original_file_name: "7z.exe"
+      command_line: "\"C:\\Program Files\\7-Zip\\7z.exe\" a -tzip -pF1nance2026 -mhe=on C:\\Users\\{victim.username}\\Desktop\\Project_Archive\\backup.zip C:\\Users\\{victim.username}\\Desktop\\Project_Archive\\*.xlsx"
+      current_directory: "C:\\Users\\{victim.username}\\Desktop\\Project_Archive\\"
+      user: "{victim.user_domain}"
+      terminal_session_id: "1"
+      integrity_level: "Medium"
+      parent_process_id: "12440"
+      parent_image: "C:\\Windows\\System32\\cmd.exe"
+      parent_command_line: "\"C:\\Windows\\System32\\cmd.exe\""
+      parent_user: "{victim.user_domain}"
+
+  - id: "s2"
+    host: "ws_victim"
+    user: "victim"
+    offset: [10, 30]
+    event_type: "FileCreate"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "medium"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "File created: backup.zip"
+    key_value_pairs:
+      event_id: 11
+      channel: "Microsoft-Windows-Sysmon/Operational"
+      computer: "{victim.hostname}"
+      rule_name: ""
+      process_id: "15820"
+      image: "C:\\Program Files\\7-Zip\\7z.exe"
+      target_filename: "C:\\Users\\{victim.username}\\Desktop\\Project_Archive\\backup.zip"
+      user: "{victim.user_domain}"
+
+  - id: "s3"
+    host: "ws_victim"
+    offset: [2, 5]
+    event_type: "QUERY"
+    source_type: "DNS"
+    log_source: "DNS"
+    severity: "medium"
+    hostname: "{infra.dns.hostname}"
+    source_ip: "{victim.ip}"
+    destination_ip: "{infra.dns.ip}"
+    message: "DNS query received for {exfil_domain.value}"
+    key_value_pairs:
+      src_ip: "{victim.ip}"
+      dst_ip: "{infra.dns.ip}"
+      src_port: "51201"
+      dest_port: "53"
+      transport: "udp"
+      query: "{exfil_domain.value}"
+      query_type: "A"
+      message_type: "QUERY"
+      reply_code: "NOERROR"
+      dvc: "{infra.dns.hostname}"
+
+  - id: "s4"
+    host: "ws_victim"
+    offset: [2, 5]
+    event_type: "ALLOW"
+    source_type: "Firewall"
+    log_source: "Firewall"
+    severity: "high"
+    hostname: "ACME-FW01"
+    source_ip: "{victim.ip}"
+    destination_ip: "{exfil_ip.ip}"
+    message: "Outbound connection permitted to {exfil_ip.ip} on port 443"
+    key_value_pairs:
+      src_ip: "{victim.ip}"
+      dst_ip: "{exfil_ip.ip}"
+      src_port: "51344"
+      dest_port: "443"
+      transport: "tcp"
+      action: "allow"
+      app: "ssl"
+      dvc: "ACME-FW01"
+      rule: "https_outbound"
+
+  - id: "s5"
+    host: "ws_victim"
+    user: "victim"
+    offset: [5, 15]
+    trigger: true
+    event_type: "HTTP_CONNECT"
+    source_type: "Proxy"
+    log_source: "Proxy"
+    severity: "high"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    destination_ip: "{exfil_ip.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "CONNECT tunnel established to {exfil_domain.value} on port 443"
+    key_value_pairs:
+      src_ip: "{victim.ip}"
+      dst_ip: "{exfil_ip.ip}"
+      src_user: "{victim.user_domain}"
+      dvc: "{victim.hostname}"
+      url: "{exfil_domain.value}:443"
+      app: "web-browsing"
+      transport: "tcp"
+      dest_port: "443"
+      action: "allow"
+      http_method: "CONNECT"
+
+noise: {}
+
+answer_key:
+  classification: "Data Exfiltration"
+  scope:
+    hosts: ["ws_victim"]
+    accounts: ["victim"]
+  root_cause: "s1"
+  techniques: ["T1560.001"]
+  actions: []
+
+triage_review:
+  mitre:
+    id: "T1560.001"
+    name: "Archive Collected Data: Archive via Utility"
+    tactic: "Collection"
+    url: "https://attack.mitre.org/techniques/T1560/001/"
+  what_is_it:
+    title: "Archived Data Exfiltration"
+    description: "Data exfiltration is when stolen files are transferred out of the network. Attackers often compress and password-protect data using tools like 7-Zip before uploading it to cloud storage services like Mega.nz. The password protection prevents DLP tools from inspecting the contents, and services with anonymous accounts make the destination harder to trace."
+  response_actions:
+    - "Isolate the workstation to prevent further exfiltration"
+    - "Block the cloud storage destination"
+    - "Preserve the staging folder and archive for forensic analysis"
+    - "Inventory what data was stolen"
+    - "Trace where the archived files originated from"
+    - "Engage HR and Legal if insider threat is suspected"

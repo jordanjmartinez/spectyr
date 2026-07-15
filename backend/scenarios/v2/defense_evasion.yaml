@@ -1,0 +1,235 @@
+# Schema v2 (Phase 2 Stage 0). Migrated from scenarios/defense_evasion.yaml by
+# scenarios/migrate_v1_to_v2.py; the attack steps are the v1 chain
+# byte-for-byte plus id/host/user tags (parity_check_v2.py proves it).
+# Edit this file, not the v1 copy, once the loader flag flips to yaml_v2.
+schema_version: 2
+label: "defense_evasion"
+category: "Defense Evasion"
+difficulty: 2
+threat_pattern: "Security Tool Disabling via LOLBin"
+
+narrative:
+  ticket_title: "Endpoint Protection Disabled"
+  storyline: "Unusual activity was detected on a workstation outside of business hours. No user was logged in at the time. Review the logs and determine the scope of what occurred."
+
+entities:
+  victim:
+    type: "employee"
+  c2:
+    type: "external_ip"
+    ip: "91.204.227.15"
+
+environment:
+  org:
+    name: "ACME Corp"
+    domain: "acme.local"
+  hosts:
+    - id: "ws_victim"
+      role: "workstation"
+      hostname: "{victim.hostname}"
+      ip: "{victim.ip}"
+      os: "Windows 10 Enterprise"
+      desc: "User workstation"
+  accounts:
+    - id: "victim"
+      username: "{victim.username}"
+      domain: "ACME"
+      type: "user"
+      host: "ws_victim"
+
+attack:
+  - id: "s1"
+    host: "ws_victim"
+    user: "victim"
+    offset: 0
+    event_type: "ProcessCreate"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "high"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "Process created: powershell.exe launched by cmd.exe"
+    key_value_pairs:
+      event_id: 1
+      channel: "Microsoft-Windows-Sysmon/Operational"
+      computer: "{victim.hostname}"
+      rule_name: ""
+      process_id: "4812"
+      image: "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+      file_version: "10.0.19041.1"
+      description: "Windows PowerShell"
+      product: "Microsoft Windows Operating System"
+      company: "Microsoft Corporation"
+      original_file_name: "PowerShell.EXE"
+      command_line: "powershell.exe -ExecutionPolicy Bypass -Command Set-MpPreference -DisableRealtimeMonitoring $true"
+      current_directory: "C:\\Windows\\System32\\"
+      user: "{victim.user_domain}"
+      terminal_session_id: "1"
+      integrity_level: "High"
+      parent_process_id: "6832"
+      parent_image: "C:\\Windows\\System32\\cmd.exe"
+      parent_command_line: "C:\\Windows\\System32\\cmd.exe"
+      parent_user: "{victim.user_domain}"
+
+  - id: "s2"
+    host: "ws_victim"
+    user: "victim"
+    offset: [2, 5]
+    trigger: true
+    event_type: "5007"
+    source_type: "Defender"
+    log_source: "Defender"
+    severity: "medium"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "Windows Defender real-time protection has been disabled"
+    key_value_pairs:
+      event_id: 5007
+      channel: "Microsoft-Windows-Windows Defender/Operational"
+      computer: "{victim.hostname}"
+      product_name: "Microsoft Defender Antivirus"
+      product_version: "4.18.23100.2009"
+      old_value: "HKLM\\SOFTWARE\\Microsoft\\Windows Defender\\Real-Time Protection\\DisableRealtimeMonitoring = 0x0"
+      new_value: "HKLM\\SOFTWARE\\Microsoft\\Windows Defender\\Real-Time Protection\\DisableRealtimeMonitoring = 0x1"
+
+  - id: "s3"
+    host: "ws_victim"
+    user: "victim"
+    offset: [3, 8]
+    event_type: "FileCreate"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "medium"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "File created: C:\\Users\\Public\\svchost32.exe by powershell.exe"
+    key_value_pairs:
+      event_id: 11
+      channel: "Microsoft-Windows-Sysmon/Operational"
+      computer: "{victim.hostname}"
+      rule_name: ""
+      process_id: "4812"
+      image: "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+      target_filename: "C:\\Users\\Public\\svchost32.exe"
+      user: "{victim.user_domain}"
+
+  - id: "s4"
+    host: "ws_victim"
+    user: "victim"
+    offset: [2, 6]
+    event_type: "ProcessCreate"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "high"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "Process created: svchost32.exe launched by powershell.exe"
+    key_value_pairs:
+      event_id: 1
+      channel: "Microsoft-Windows-Sysmon/Operational"
+      computer: "{victim.hostname}"
+      rule_name: ""
+      process_id: "6104"
+      image: "C:\\Users\\Public\\svchost32.exe"
+      file_version: ""
+      description: ""
+      product: ""
+      company: ""
+      original_file_name: ""
+      command_line: "\"C:\\Users\\Public\\svchost32.exe\""
+      current_directory: "C:\\Users\\Public\\"
+      user: "{victim.user_domain}"
+      terminal_session_id: "1"
+      integrity_level: "Medium"
+      parent_process_id: "4812"
+      parent_image: "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+      parent_command_line: "powershell.exe -ExecutionPolicy Bypass -Command Set-MpPreference -DisableRealtimeMonitoring $true"
+      parent_user: "{victim.user_domain}"
+
+  - id: "s5"
+    host: "ws_victim"
+    user: "victim"
+    offset: [1, 3]
+    event_type: "SetValue"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "high"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "Registry Run key modified by svchost32.exe"
+    key_value_pairs:
+      event_id: 13
+      channel: "Microsoft-Windows-Sysmon/Operational"
+      computer: "{victim.hostname}"
+      rule_name: ""
+      event_type: "SetValue"
+      process_id: "6104"
+      image: "C:\\Users\\Public\\svchost32.exe"
+      target_object: "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run\\WindowsServices"
+      details: "C:\\Users\\Public\\svchost32.exe"
+      user: "{victim.user_domain}"
+
+  - id: "s6"
+    host: "ws_victim"
+    user: "victim"
+    offset: [5, 15]
+    event_type: "NetworkConnect"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "high"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    destination_ip: "{c2.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "Outbound connection to {c2.ip}:443 from svchost32.exe"
+    key_value_pairs:
+      event_id: 3
+      channel: "Microsoft-Windows-Sysmon/Operational"
+      computer: "{victim.hostname}"
+      rule_name: ""
+      process_id: "6104"
+      image: "C:\\Users\\Public\\svchost32.exe"
+      user: "{victim.user_domain}"
+      protocol: "tcp"
+      initiated: true
+      source_is_ipv6: false
+      source_ip: "{victim.ip}"
+      source_hostname: "{victim.hostname}"
+      source_port_name: ""
+      destination_is_ipv6: false
+      destination_ip: "{c2.ip}"
+      destination_hostname: ""
+      destination_port: "443"
+      destination_port_name: "https"
+
+noise: {}
+
+answer_key:
+  classification: "Defense Evasion"
+  scope:
+    hosts: ["ws_victim"]
+    accounts: ["victim"]
+  root_cause: "s1"
+  techniques: ["T1562.001"]
+  actions: []
+
+triage_review:
+  mitre:
+    id: "T1562.001"
+    name: "Impair Defenses: Disable or Modify Tools"
+    tactic: "Defense Evasion"
+    url: "https://attack.mitre.org/techniques/T1562/001/"
+  what_is_it:
+    title: "Disabling Security Tools"
+    description: "Attackers disable or modify security tools like antivirus, EDR agents, or Windows Defender to avoid detection before carrying out their main objective, whether that is deploying malware, dumping credentials, or exfiltrating data."
+  response_actions:
+    - "Isolate the affected host"
+    - "Re-enable the security tools that were disabled"
+    - "Preserve evidence and collect logs"
+    - "Search for similar activity across other endpoints"
+    - "Identify how the attacker gained access in the first place"
