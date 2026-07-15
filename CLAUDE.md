@@ -65,8 +65,15 @@ A full-stack Security Information and Event Management (SIEM) simulation platfor
 - Chain length is flexible per scenario
 - **IMPORTANT**: `scenario_label` must be UNIQUE across the whole catalog
 
+### Scenario Storage (YAML, schema v2 — Phase 2 Stage 0)
+- Default source `SPECTYR_SCENARIO_SOURCE=yaml_v2`: `backend/scenarios/v2/*.yaml` validated against `scenarios/schema_v2.json` by `scenario_loader_v2.py` (dispatches per file on `schema_version`)
+- Schema v2 sections: `environment` (org/hosts/accounts), `attack` (the chain, each step tagged with a stable `id` + the `host`/`user` it occurs on), `noise` (per-host profile refs, empty until Stage 1), `answer_key` (classification, scope, root_cause, techniques, actions — actions reserved empty until Stage 3)
+- Revert paths, **do not modify or remove**: `yaml` = Phase 1 loader (`scenario_loader.py` + `backend/scenarios/*.yaml`), `ndjson` = legacy loader in app.py
+- Gates (run from `backend/`): `python test_scenario_loader_v2.py`, `python parity_check_v2.py`, `python test_scenario_loader.py`, `python parity_check.py`, `python fairness_check.py`
+- Migration + review artifact: `scenarios/migrate_v1_to_v2.py` regenerates `scenarios/v2/` and `scenarios/v2/MIGRATION_REPORT.md` (per-step tag tables, grandfathered literals, open flags)
+
 ### Scenario Catalog (`CAMPAIGN_LEVELS`)
-Despite the name, this is a flat catalog now — the level grouping only organizes the 20 definitions, it does not gate progression:
+Despite the name, this is a flat catalog now — the level grouping only organizes the 20 definitions, it does not gate progression. Queue metadata (ticket_title/storyline) still comes from this dict; chains and triage reviews come from the YAML source:
 
 | Group | Categories |
 |-------|------------|
@@ -222,11 +229,11 @@ cd frontend && npm install && npm start
 
 ## Development Notes
 
-### Adding New Scenarios
-1. Add scenario to `CAMPAIGN_LEVELS` with unique `scenario_label`
-2. Add attack log(s) to `simulated_attack_logs.ndjson` with dynamic placeholders
-3. Add triage review to `TRIAGE_REVIEWS` dict
-4. Test the full flow (the three definitions are linked only by the `scenario_label` string — nothing validates they agree)
+### Adding New Scenarios (schema v2)
+1. Author `backend/scenarios/v2/<label>.yaml` with `schema_version: 2` — narrative, entities, environment, attack (tagged chain), `noise: {}`, answer_key, triage_review; the loader validates schema + referential integrity at boot
+2. Add the scenario to `CAMPAIGN_LEVELS` with the same unique `scenario_label` (still drives queue sampling + ticket metadata)
+3. Run the gates: `python test_scenario_loader_v2.py` and `python fairness_check.py` from `backend/`
+4. The legacy NDJSON file and `TRIAGE_REVIEWS` dict serve only the revert paths — do not extend them for new scenarios
 
 ### Scenario Label Convention
 Each scenario label should be unique across the whole catalog. If a category repeats, use different attack variants:
