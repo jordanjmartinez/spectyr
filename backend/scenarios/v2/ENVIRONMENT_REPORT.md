@@ -22,9 +22,10 @@ resolves it (resolution noted inline, entry kept for the record).
   verified against learn.microsoft.com (microsoft-defender-antivirus-updates,
   doc dated 2026-05-14, fetched live 2026-07-16). The version segment is a
   stable-key pick per host from the doc's current releases (4.18.25050.5,
-  4.18.25040.2). Known simplification, doc-backed: the doc names the folder
-  as the bare platform version; the '-0' style suffix seen on some live
-  systems is not documented there and is omitted rather than guessed.
+  4.18.25040.2). The '-0' folder suffix, initially omitted as undocumented,
+  was verified from deployed-path evidence on Microsoft-hosted sources
+  (registry InstallLocation values and service image paths, reviewer,
+  2026-07-16) and is now appended: Platform\<version>-0\.
 
 - **phishing_link `.ex` flag was FALSE: no typo exists.** The authored
   SetValue details value is, and always was,

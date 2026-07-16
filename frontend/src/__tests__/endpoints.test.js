@@ -60,7 +60,7 @@ const DETAIL_FIXTURE = {
   ],
   services: [
     { name: 'WinDefend', display_name: 'Microsoft Defender Antivirus Service',
-      path: 'C:\\Program Files\\Windows Defender\\MsMpEng.exe',
+      path: '"C:\\ProgramData\\Microsoft\\Windows Defender\\Platform\\4.18.25050.5-0\\MsMpEng.exe"',
       start_type: 'Automatic', status: 'Running', account: 'LocalSystem' },
   ],
   users: [

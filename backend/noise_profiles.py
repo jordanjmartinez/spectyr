@@ -38,9 +38,9 @@ FLAGS = [
     "Platform\\<platform version>\\, verified against learn.microsoft.com "
     "(microsoft-defender-antivirus-updates, doc dated 2026-05-14, fetched "
     "2026-07-16); the version segment is a stable-key pick from the "
-    "documented DEFENDER_PLATFORM_VERSIONS. The doc does not document the "
-    "'-0' style folder suffix seen on some live systems, so it is omitted "
-    "rather than guessed.",
+    "documented DEFENDER_PLATFORM_VERSIONS. The '-0' folder suffix is "
+    "verified from deployed-path evidence (registry InstallLocation and "
+    "service image paths on Microsoft-hosted sources, reviewer 2026-07-16).",
     "Proxy role: RESOLVED at Stage 1 review. The logs win: proxy events "
     "follow Palo Alto CIM, so ACME-SVR06 is a PAN-OS VM-Series explicit "
     "proxy appliance. Like the firewall it is a log source, never a managed "
@@ -74,11 +74,14 @@ _SYS32 = "C:\\Windows\\System32\\"
 
 # Microsoft Defender platform: binaries run from the versioned platform
 # directory. Versions below are documented current releases (Microsoft Learn,
-# microsoft-defender-antivirus-updates, fetched 2026-07-16). The generator
-# substitutes __DEFENDERVER__ per host via the stable-key scheme.
+# microsoft-defender-antivirus-updates, fetched 2026-07-16). The "-0" folder
+# suffix is verified from deployed-path evidence on Microsoft-hosted sources
+# (registry InstallLocation values and service image paths, reviewer,
+# 2026-07-16). The generator substitutes __DEFENDERVER__ per host via the
+# stable-key scheme.
 DEFENDER_PLATFORM_VERSIONS = ("4.18.25050.5", "4.18.25040.2")
 _DEFENDER_DIR = ("C:\\ProgramData\\Microsoft\\Windows Defender\\Platform\\"
-                 "__DEFENDERVER__\\")
+                 "__DEFENDERVER__-0\\")
 
 WINDOWS_CORE_PROCESSES = [
     P("System", "", "", user=SYSTEM, cmdline="", signer=MS),

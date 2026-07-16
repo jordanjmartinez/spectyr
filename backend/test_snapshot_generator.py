@@ -242,7 +242,7 @@ def test_defender_platform_path_versioned():
     across processes and services of one host."""
     import re
     pat = re.compile(r"C:\\ProgramData\\Microsoft\\Windows Defender\\Platform\\"
-                     r"(4\.18\.\d{5}\.\d+)\\(MsMpEng|NisSrv)\.exe")
+                     r"(4\.18\.\d{5}\.\d+)-0\\(MsMpEng|NisSrv)\.exe")
     _, _, _, world = _world_for("lateral_movement_1")
     for hostname, snap in world["hosts"].items():
         versions = set()
