@@ -6,6 +6,7 @@ import GroupedAlerts from '../components/GroupedAlerts';
 import Analytics from '../components/Analytics';
 import Reports from '../components/Reports';
 import Endpoints from '../components/Endpoints';
+import Detections from '../components/Detections';
 import DifficultySelector from '../components/DifficultySelector';
 import GameTimer from '../components/GameTimer';
 import FailureModal from '../components/FailureModal';
@@ -30,6 +31,7 @@ const Dashboard = () => {
   const [pivotQuery, setPivotQuery] = useState(null);
   const [simActive, setSimActive] = useState(false);
   const [endpointCount, setEndpointCount] = useState(0);
+  const [detectionCount, setDetectionCount] = useState(0);
   const [pivotHost, setPivotHost] = useState(null);
 
   // Analyst-mode entity pivot: a chip click in the Alerts tab jumps to the
@@ -51,9 +53,10 @@ const Dashboard = () => {
       switch (e.key) {
         case '1': setView('grouped'); setIncidentBadge(0); break;
         case '2': setView('siem'); break;
-        case '3': setView('endpoints'); break;
-        case '4': setView('analytics'); break;
-        case '5': setView('reports'); break;
+        case '3': setView('detections'); break;
+        case '4': setView('endpoints'); break;
+        case '5': setView('analytics'); break;
+        case '6': setView('reports'); break;
         default: break;
       }
     };
@@ -178,6 +181,8 @@ const Dashboard = () => {
       icon: 'M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z' },
     { key: 'siem', label: 'SIEM', count: alertCount,
       icon: 'M4 6h16M4 10h16M4 14h16M4 18h16' },
+    { key: 'detections', label: 'Detections', count: detectionCount,
+      icon: 'M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z' },
     { key: 'endpoints', label: 'Endpoints', count: endpointCount,
       icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
     { key: 'analytics', label: 'Metrics', count: analyticsCount,
@@ -272,6 +277,10 @@ const Dashboard = () => {
 
         <div className={view === "siem" ? "block" : "hidden"}>
           <Siem setSiemCount={setAlertCount} resetTrigger={resetTrigger} pivotQuery={pivotQuery} onHostPivot={handleHostPivot} />
+        </div>
+
+        <div className={view === "detections" ? "block" : "hidden"}>
+          <Detections isVisible={view === "detections"} resetTrigger={resetTrigger} setDetectionCount={setDetectionCount} onHostPivot={handleHostPivot} />
         </div>
 
         <div className={view === "endpoints" ? "block" : "hidden"}>

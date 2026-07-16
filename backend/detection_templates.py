@@ -82,6 +82,19 @@ def _det_id(*parts):
     return "det-" + _digest(*parts).hex()[:12]
 
 
+def _stable_sha256(*parts):
+    """A fictional but stable SHA256 for a file, for the detail card. Spectyr
+    hashes are fictional by design (no VirusTotal lookup); deterministic per
+    (session, file)."""
+    return _digest(*parts).hex()
+
+
+def _evidence_sha256(session_seed, event):
+    """SHA256 for the triggering file, when the event names a process image."""
+    image = (event.get("key_value_pairs") or {}).get("image")
+    return _stable_sha256(session_seed, image) if image else None
+
+
 # --- scenario detections ------------------------------------------------------
 
 def build_scenario_detections(scenario_id, catalog_entry, rendered_logs,
@@ -119,6 +132,7 @@ def build_scenario_detections(scenario_id, catalog_entry, rendered_logs,
             "entity": {"host": first.get("hostname"), "account": account},
             "time": first.get("timestamp"),
             "triggering_events": trig_logs,
+            "sha256": _evidence_sha256(session_seed, first),  # fictional, evidence
             "disposition": det["disposition"],   # answer key, server-side
             "player_action": "open",
         }
@@ -179,6 +193,7 @@ def benign_detections_for_host(host, owner, session_seed, base_time_iso):
             "entity": {"host": hostname, "account": owner_user if owner else None},
             "time": base_time_iso,
             "triggering_events": [synth],
+            "sha256": _evidence_sha256(session_seed, synth),
             "disposition": "benign_expected",    # answer key, server-side
             "player_action": "open",
         })
@@ -214,6 +229,7 @@ def sanitize_detection(instance, include_events=False):
         "description": instance["description"],
         "entity": instance["entity"],
         "time": instance["time"],
+        "sha256": instance.get("sha256"),
         "player_action": instance["player_action"],
     }
     if include_events:
