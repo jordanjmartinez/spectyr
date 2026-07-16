@@ -132,6 +132,7 @@ def create_session():
         "scenario_history": [],
         "scenario_start_time": None,
         "last_active": datetime.now(timezone.utc),
+        "world": {"hosts": {}},  # Stage 1 endpoint snapshots (io_lock guards it)
     }
     with sessions_lock:
         sessions[session_id] = session
@@ -236,6 +237,12 @@ elif SCENARIO_SOURCE == "yaml_v2":
     import scenario_loader_v2
     yaml_catalog, yaml_triage_reviews = scenario_loader_v2.load_scenarios()
     print(f"[SCENARIOS] yaml_v2 source: {len(yaml_catalog)} scenarios loaded", flush=True)
+
+    # Stage 1: endpoint snapshots. Every authored PID in the catalog is
+    # reserved up front so benign baseline PIDs can never collide with any
+    # scenario that drips later.
+    import snapshot_generator
+    RESERVED_PIDS = snapshot_generator.collect_reserved_pids(yaml_catalog)
 
 # Pool of scenarios that SPECTYR can auto-detect (appear in NOTABLE EVENTS without manual flagging)
 # Map detected_by/event_source values to standardized source_type values
@@ -2226,6 +2233,21 @@ def build_attack_chain_logs(session, scenario_entry, employee=None):
             log["source_type"] = get_source_type(log.get("detected_by", "Unknown"))
         threat_logs.append(log)
 
+    # Stage 1: fold this scenario into the session's endpoint world. Guarded
+    # so bare session dicts (parity harness) skip it. resolve_entities with a
+    # forced choice is deterministic per employee, so the environment resolves
+    # exactly as the chain above did. World mutation happens under the lock.
+    if SCENARIO_SOURCE == "yaml_v2" and "world" in session:
+        entry = yaml_catalog.get(scenario_label)
+        if entry and entry.get("schema_version") == 2:
+            resolved = scenario_loader.resolve_entities(
+                entry, EMPLOYEES, SERVERS, rng=_ForcedChoice(emp))
+            concrete_env = scenario_loader.substitute_deep(entry["environment"], resolved)
+            with session["io_lock"]:
+                snapshot_generator.extend_world(
+                    session["world"], entry, concrete_env, threat_logs,
+                    session["id"], RESERVED_PIDS, SERVERS)
+
     return threat_logs
 
 
@@ -2340,6 +2362,40 @@ def get_fake_events():
             unique_logs.append(log)
     return jsonify(unique_logs)
 
+@app.route('/api/endpoints', methods=['GET'])
+def get_endpoints():
+    """Endpoint list: one row per host in the session world."""
+    s = g.session
+    with s["io_lock"]:
+        snaps = [copy.deepcopy(snapshot_generator.public_view(v))
+                 for v in s.get("world", {}).get("hosts", {}).values()]
+    rows = []
+    for snap in sorted(snaps, key=lambda x: x["hostname"]):
+        active = [c for c in snap["network"]["connections"]
+                  if c.get("state") == "ESTABLISHED"]
+        rows.append({
+            "hostname": snap["hostname"], "ip": snap["ip"],
+            "role": snap["role"], "os": snap["os"], "desc": snap["desc"],
+            "appliance": snap["appliance"], "owner": snap["owner"],
+            "process_count": len(snap["processes"]),
+            "connection_count": len(active),
+            "user_count": len(snap["users"]),
+        })
+    return jsonify({"endpoints": rows})
+
+
+@app.route('/api/endpoints/<hostname>', methods=['GET'])
+def get_endpoint_detail(hostname):
+    """Full snapshot for one host (all tabs)."""
+    s = g.session
+    with s["io_lock"]:
+        snap = s.get("world", {}).get("hosts", {}).get(hostname)
+        snap = copy.deepcopy(snapshot_generator.public_view(snap)) if snap else None
+    if snap is None:
+        return jsonify({"error": "Unknown endpoint"}), 404
+    return jsonify(snap)
+
+
 @app.route("/api/reset-simulator", methods=["POST"])
 def reset_simulator():
     s = g.session
@@ -2359,6 +2415,7 @@ def reset_simulator():
     s["scenario_history"] = []
 
     with s["io_lock"]:
+        s["world"] = {"hosts": {}}
         for filepath in [s["paths"]["generated_logs"], s["paths"]["analyst_actions"], s["paths"]["incident_reports"]]:
             with open(filepath, "w", encoding="utf-8") as f:
                 f.truncate(0)
@@ -3113,6 +3170,8 @@ def start_simulator():
     s["resolved_count"] = 0
     s["injected_count"] = 0
     s["scenario_history"] = []
+    with s["io_lock"]:
+        s["world"] = {"hosts": {}}  # fresh run, fresh endpoint world
     now = datetime.now(timezone.utc)
     s["timer_start"] = now
     s["next_drip_at"] = now  # First alert drips immediately
