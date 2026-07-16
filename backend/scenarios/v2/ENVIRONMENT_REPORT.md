@@ -17,13 +17,18 @@ resolves it (resolution noted inline, entry kept for the record).
   (VeeamBackupSvc) and its default 9392 port, plus the 10006 agent port the
   scenario chain itself establishes. Console, catalog/database engine, and
   mount services are omitted rather than guessed.
-- **phishing_link autorun value ends in `.ex`.** The authored SetValue
-  details string is `...\AppData\Roaming\InvoiceService.ex` (likely a
-  truncated `.exe`). Pre-existing chain content; surfacing it in the Autoruns
-  tab preserves it byte-for-byte. Needs an approved correction if it is a
-  typo, not a deliberate oddity.
 
 ### Closed at Stage 1 review (2026-07-16)
+
+- **phishing_link `.ex` flag was FALSE: no typo exists.** The authored
+  SetValue details value is, and always was,
+  `C:\Users\{victim.username}\AppData\Roaming\InvoiceService.exe`
+  (61 characters). The Stage 1 survey that raised the flag printed the value
+  through a `[:60]` display truncation, which dropped the final `e` and
+  manufactured the apparent `.ex`. Verified against both the frozen v1 file
+  and the v2 corpus. No correction made; nothing to correct. Lesson recorded:
+  never flag content from truncated display output; re-read the source line
+  before flagging.
 
 - **Proxy identity RESOLVED: the logs win.** Proxy events are Palo Alto
   through Splunk CIM, so ACME-SVR06 is a PAN-OS VM-Series explicit proxy
