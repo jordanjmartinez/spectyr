@@ -11,6 +11,7 @@ the inferred tags, environments, and answer keys before Stage 1.
 - **FLAG:** Server-side Sysmon steps (lateral_movement_1/2 net.exe on the file server) carry file_version 10.0.19041.1, a Windows 10 2004-era build, on a host labeled Windows Server 2019. Pre-existing v1 content; parity forbids changing it here. Flagged for the schema correction workflow.
 - **FLAG:** The proxy role (ACME-SVR06) is named like a Windows server while proxy/firewall log fields follow Palo Alto CIM. Which OS its Stage 1 endpoint page should show needs a call before Stage 1.
 - **FLAG:** root_cause is set to the FIRST chain step of every attack scenario (patient zero = earliest malicious event). Distinct from the trigger step, which is where the analyst ENTERS the scenario.
+- **FLAG:** Corpus-wide, Proxy steps carry the CLIENT hostname in dvc ({victim.hostname}); Splunk CIM defines dvc as the reporting device, which for proxy logs is the proxy itself. Pre-existing v1 convention across 14 steps; NOT changed (each change needs its own approved correction). Flagged for the schema correction workflow.
 
 ## Windows 10 label kept (workstation-hosted Win10 artifacts)
 
@@ -166,7 +167,7 @@ All other workstations carry Windows 11 Enterprise. lateral_movement_1's 10.0.19
 
 - classification: `False Positive` | root_cause: `None` | techniques: `[]`
 - scope.hosts: `['ws_victim']` | scope.accounts: `['victim']`
-- environment hosts: `ws_victim` (workstation), `fw_perimeter` (firewall)
+- environment hosts: `ws_victim` (workstation), `proxy` (proxy), `fw_perimeter` (firewall)
 - environment accounts: `victim`
 
 | step | event | source | hostname (v1 field) | host tag | user tag |
@@ -177,7 +178,9 @@ All other workstations carry Windows 11 Enterprise. lateral_movement_1's 10.0.19
 | s4 | NetworkConnect | Sysmon | `{victim.hostname}` | `ws_victim` | `victim` |
 | s5 | SSL_INSPECT | Proxy | `{victim.hostname}` | `ws_victim` | `victim` |
 
-**FLAG:** v1 literals ACME-PROXY-CA (inspection CA name) and dvc ACME-PROXY-01 are preserved for parity. ACME-PROXY-01 disagrees with the reference environment, where the proxy is ACME-SVR06; flagged for the schema correction workflow.
+**CORRECTION (Stage 0 review, follow-up 2 (approved 2026-07-16)):** step 5 kvp.dvc: `ACME-PROXY-01` -> `{infra.proxy.hostname}` (renders as `ACME-SVR06`). Splunk CIM: dvc is the device that reported the event; for a proxy SSL_INSPECT log that is the proxy itself. ACME-PROXY-01 does not exist in the reference environment, where the proxy is ACME-SVR06 (10.0.1.205). Emitted as {infra.proxy.hostname} per placeholder discipline; renders as ACME-SVR06.
+
+**FLAG:** ACME-PROXY-CA (inspection CA name) stays as authored: a CA common name is an org naming choice, not a device reference, so it does not conflict with the reference environment.
 
 ## false_positive_veeam
 

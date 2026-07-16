@@ -30,10 +30,19 @@ from datetime import datetime
 os.environ["SPECTYR_SCENARIO_SOURCE"] = "yaml"  # app boots on the v1 catalog
 
 import app  # noqa: E402
+import scenario_corrections  # noqa: E402
 import scenario_loader  # noqa: E402
 import scenario_loader_v2  # noqa: E402
 
 SEED = 20260715
+
+# Approved schema corrections: v2 intentionally diverges from v1 on exactly
+# these rendered fields. Any other diff fails; a MISSING expected divergence
+# also fails (it means the correction regressed).
+APPROVED = {}
+for _c in scenario_corrections.CORRECTIONS:
+    APPROVED.setdefault(_c["label"], {})[(_c["step"], _c["field"])] = (
+        _c["rendered_v1"], _c["rendered_v2"], _c["approved"])
 
 
 class _FrozenDatetime(datetime):
@@ -91,25 +100,59 @@ def main():
         app.datetime = real_datetime
         app.yaml_catalog = v1_catalog
 
+    approved_total = 0
     for label in sorted(v1_out):
-        a = json.dumps(v1_out[label], sort_keys=True)
-        b = json.dumps(v2_out[label], sort_keys=True)
-        if a == b:
-            print(f"[OK]   {label}: {len(v1_out[label])} logs byte-identical")
-        else:
+        if len(v1_out[label]) != len(v2_out[label]):
+            print(f"[FAIL] {label}: {len(v1_out[label])} v1 logs vs "
+                  f"{len(v2_out[label])} v2 logs")
             failures += 1
-            print(f"[DIFF] {label}")
-            for i, (la, lb) in enumerate(zip(v1_out[label], v2_out[label])):
-                for k in sorted(set(la) | set(lb)):
-                    if la.get(k) != lb.get(k):
-                        print(f"        step {i} {k}: v1={la.get(k)!r} v2={lb.get(k)!r}")
+            continue
+        diffs = []  # (step, field, v1_val, v2_val)
+        for i, (la, lb) in enumerate(zip(v1_out[label], v2_out[label])):
+            for k in sorted(set(la) | set(lb)):
+                if k == "key_value_pairs":
+                    ka, kb = la.get(k) or {}, lb.get(k) or {}
+                    for kk in sorted(set(ka) | set(kb)):
+                        if ka.get(kk) != kb.get(kk):
+                            diffs.append((i, f"kvp.{kk}", ka.get(kk), kb.get(kk)))
+                elif la.get(k) != lb.get(k):
+                    diffs.append((i, k, la.get(k), lb.get(k)))
+
+        approved = dict(APPROVED.get(label, {}))
+        unexpected, matched = [], []
+        for i, field, av, bv in diffs:
+            want = approved.pop((i, field), None)
+            if want and (av, bv) == want[:2]:
+                matched.append((i, field, av, bv, want[2]))
+            else:
+                unexpected.append((i, field, av, bv))
+
+        if unexpected:
+            failures += 1
+            print(f"[DIFF] {label}: {len(unexpected)} unapproved difference(s)")
+            for i, field, av, bv in unexpected:
+                print(f"        step {i} {field}: v1={av!r} v2={bv!r}")
+        elif approved:
+            failures += 1
+            print(f"[FAIL] {label}: expected approved divergence(s) missing "
+                  f"(correction regressed?): {sorted(approved)}")
+        elif matched:
+            approved_total += len(matched)
+            print(f"[OK]   {label}: {len(v1_out[label])} logs, "
+                  f"{len(matched)} approved divergence(s):")
+            for i, field, av, bv, prov in matched:
+                print(f"        step {i} {field}: {av!r} -> {bv!r} [{prov}]")
+        else:
+            print(f"[OK]   {label}: {len(v1_out[label])} logs byte-identical")
 
     print("=" * 60)
     if failures:
         print(f"PARITY FAILURES: {failures}")
         return 1
-    print(f"PARITY CLEAN: {len(v1_out)}/20 scenarios byte-identical "
-          f"(chain content, timestamps, ids, alert ids)")
+    note = (f" ({approved_total} approved divergence(s), listed above)"
+            if approved_total else "")
+    print(f"PARITY CLEAN: {len(v1_out)}/20 scenarios{note}; everything else "
+          f"byte-identical (chain content, timestamps, ids, alert ids)")
     return 0
 
 

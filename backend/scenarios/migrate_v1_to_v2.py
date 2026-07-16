@@ -35,6 +35,7 @@ Run from backend/:  python scenarios/migrate_v1_to_v2.py
 Writes scenarios/v2/<label>.yaml and scenarios/v2/MIGRATION_REPORT.md.
 Idempotent; overwrites previous output.
 """
+import copy
 import json
 import os
 import re
@@ -47,6 +48,7 @@ BACKEND = os.path.dirname(HERE)
 V2_DIR = os.path.join(HERE, "v2")
 sys.path.insert(0, BACKEND)
 
+import scenario_corrections  # noqa: E402
 import scenario_loader as v1  # noqa: E402
 import scenario_loader_v2 as v2  # noqa: E402
 
@@ -134,10 +136,9 @@ OVERRIDES = {
     },
     "false_positive_ssl_inspection": {
         "flags": [
-            "v1 literals ACME-PROXY-CA (inspection CA name) and dvc "
-            "ACME-PROXY-01 are preserved for parity. ACME-PROXY-01 disagrees "
-            "with the reference environment, where the proxy is ACME-SVR06; "
-            "flagged for the schema correction workflow.",
+            "ACME-PROXY-CA (inspection CA name) stays as authored: a CA "
+            "common name is an org naming choice, not a device reference, "
+            "so it does not conflict with the reference environment.",
         ],
     },
 }
@@ -159,6 +160,11 @@ GLOBAL_FLAGS = [
     "root_cause is set to the FIRST chain step of every attack scenario "
     "(patient zero = earliest malicious event). Distinct from the trigger "
     "step, which is where the analyst ENTERS the scenario.",
+    "Corpus-wide, Proxy steps carry the CLIENT hostname in dvc "
+    "({victim.hostname}); Splunk CIM defines dvc as the reporting device, "
+    "which for proxy logs is the proxy itself. Pre-existing v1 convention "
+    "across 14 steps; NOT changed (each change needs its own approved "
+    "correction). Flagged for the schema correction workflow.",
 ]
 
 
@@ -411,9 +417,27 @@ def migrate(fname, report):
     label = doc["label"]
     lines = text.split("\n")
 
-    tags = infer_step_tags(doc, label)
-    hosts, accounts = build_environment(doc, tags, label)
-    answer_key = build_answer_key(doc, tags, label)
+    # Approved schema corrections applied structurally first, so inference
+    # (tags, environment, answer key) sees the corrected chain. The exact-line
+    # rewrite below keeps the emitted text byte-faithful everywhere else.
+    corrections = scenario_corrections.for_label(label)
+    corrected_chain = copy.deepcopy(doc["chain"])
+    for corr in corrections:
+        step = corrected_chain[corr["step"]]
+        if corr["field"].startswith("kvp."):
+            key = corr["field"][4:]
+            assert step["key_value_pairs"].get(key) == corr["v1"], (
+                f"{label}: correction precondition failed at step "
+                f"{corr['step']} {corr['field']}")
+            step["key_value_pairs"][key] = corr["v2"]
+        else:
+            assert step.get(corr["field"]) == corr["v1"]
+            step[corr["field"]] = corr["v2"]
+    corrected_doc = {**doc, "chain": corrected_chain}
+
+    tags = infer_step_tags(corrected_doc, label)
+    hosts, accounts = build_environment(corrected_doc, tags, label)
+    answer_key = build_answer_key(corrected_doc, tags, label)
 
     label_i, chain_i, triage_i = split_sections(lines)
     head = lines[label_i:chain_i]          # label: ... through entities block
@@ -423,6 +447,18 @@ def migrate(fname, report):
         head.pop()
     while body and body[-1] == "":
         body.pop()
+
+    # Approved schema corrections: exact-line rewrites mirroring the
+    # structural application above; parity_check_v2.py holds the rendered
+    # side of the contract.
+    for corr in corrections:
+        matches = [i for i, ln in enumerate(body) if ln == corr["old_line"]]
+        if len(matches) != 1:
+            raise SystemExit(
+                f"[FLAG] {label}: correction line matched {len(matches)} times, "
+                f"expected exactly 1: {corr['old_line']!r}"
+            )
+        body[matches[0]] = corr["new_line"]
 
     L = []
     L.append("# Schema v2 (Phase 2 Stage 0). Migrated from scenarios/%s by" % fname)
@@ -447,9 +483,11 @@ def migrate(fname, report):
         new_text += "\n"
 
     # --- verify before writing ---
+    # The parsed attack minus tags must equal the v1 chain with exactly the
+    # approved corrections applied; anything else differing is a migration bug.
     new_doc = yaml.safe_load(new_text)
     stripped = [v2.strip_step(s) for s in new_doc["attack"]]
-    assert stripped == doc["chain"], f"{label}: attack != v1 chain after strip"
+    assert stripped == corrected_chain, f"{label}: attack != corrected v1 chain after strip"
     for key in ("label", "category", "difficulty", "threat_pattern",
                 "narrative", "entities", "triage_review"):
         assert new_doc[key] == doc[key], f"{label}: section {key} diverged"
@@ -483,6 +521,11 @@ def migrate(fname, report):
             f"{step.get('source_type', '')} | `{step.get('hostname', '')}` | "
             f"`{host}` | `{user or '-'}` |"
         )
+    for corr in corrections:
+        report.append("")
+        report.append(f"**CORRECTION ({corr['approved']}):** step {corr['step'] + 1} "
+                      f"{corr['field']}: `{corr['v1']}` -> `{corr['v2']}` "
+                      f"(renders as `{corr['rendered_v2']}`). {corr['reason']}")
     for flag in OVERRIDES.get(label, {}).get("flags", []):
         report.append("")
         report.append(f"**FLAG:** {flag}")

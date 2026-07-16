@@ -19,6 +19,7 @@ import os
 import re
 import tempfile
 
+import scenario_corrections
 import scenario_loader as v1
 import scenario_loader_v2 as v2
 
@@ -57,17 +58,53 @@ def test_corpus_loads_20():
     assert all(e["schema_version"] == 2 for e in catalog.values())
 
 
+def _corrected_v1_chain(label, chain):
+    """The v1 chain with the approved corrections applied — the exact content
+    the v2 corpus is required to carry."""
+    chain = copy.deepcopy(chain)
+    for corr in scenario_corrections.for_label(label):
+        step = chain[corr["step"]]
+        if corr["field"].startswith("kvp."):
+            key = corr["field"][4:]
+            assert step["key_value_pairs"].get(key) == corr["v1"], (
+                f"{label}: v1 no longer carries the correction precondition")
+            step["key_value_pairs"][key] = corr["v2"]
+        else:
+            assert step.get(corr["field"]) == corr["v1"]
+            step[corr["field"]] = corr["v2"]
+    return chain
+
+
 def test_corpus_matches_v1_content():
-    """Loader-level parity: v2 chains (tags stripped) and metadata must equal
-    the v1 loader's output exactly; parity_check_v2.py proves the render layer."""
+    """Loader-level parity: v2 chains (tags stripped) must equal the v1
+    loader's output with exactly the approved corrections applied, and
+    metadata must match verbatim; parity_check_v2.py proves the render layer."""
     cat1, rev1 = v1.load_scenarios()
     cat2, rev2 = _load_corpus()
     assert set(cat1) == set(cat2)
     assert rev1 == rev2
     for label in cat1:
         for key in ("label", "category", "difficulty", "ticket_title",
-                    "storyline", "threat_pattern", "entities", "chain"):
+                    "storyline", "threat_pattern", "entities"):
             assert cat1[label][key] == cat2[label][key], f"{label}.{key} diverged"
+        expected = _corrected_v1_chain(label, cat1[label]["chain"])
+        assert expected == cat2[label]["chain"], f"{label}.chain diverged"
+
+
+def test_corrections_present_in_v2():
+    """Each approved correction must actually be in the v2 corpus — a
+    regression here means a regeneration silently dropped it."""
+    catalog, _ = _load_corpus()
+    assert scenario_corrections.CORRECTIONS, "corrections record unexpectedly empty"
+    for corr in scenario_corrections.CORRECTIONS:
+        step = catalog[corr["label"]]["chain"][corr["step"]]
+        if corr["field"].startswith("kvp."):
+            actual = step["key_value_pairs"].get(corr["field"][4:])
+        else:
+            actual = step.get(corr["field"])
+        assert actual == corr["v2"], (
+            f"{corr['label']} step {corr['step']} {corr['field']}: "
+            f"expected {corr['v2']!r}, found {actual!r}")
 
 
 def test_attack_meta_alignment():
@@ -242,11 +279,11 @@ GRANDFATHERED = {
     "achen": "password_spray.yaml",
     "jkim": "password_spray.yaml",
     "lgreen": "password_spray.yaml",
-    # v1 literals in the SSL inspection FP: the proxy's CA name and its
-    # device name (which disagrees with the reference environment's
-    # ACME-SVR06 proxy — flagged in the migration report)
+    # The proxy's inspection CA name: an org naming choice, not a device
+    # reference. The device literal ACME-PROXY-01 that used to sit beside it
+    # was corrected to {infra.proxy.hostname} (scenario_corrections.py) and
+    # must never reappear.
     "ACME-PROXY-CA": "false_positive_ssl_inspection.yaml",
-    "ACME-PROXY-01": "false_positive_ssl_inspection.yaml",
 }
 
 
