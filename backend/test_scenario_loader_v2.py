@@ -326,6 +326,35 @@ CANONICAL_TECHNIQUE_NAMES = {
 }
 
 
+# Strings from a discarded draft ruling that are NOT real MITRE ATT&CK
+# identifiers. They must never enter any answer key, name map, or fixture.
+# See docs/classification-rubrics.md (log-clearing correction guard).
+FORBIDDEN_TECHNIQUE_STRINGS = ("T1685.005", "Defense Impairment")
+
+
+def test_no_nonexistent_technique_strings():
+    """Correction guard: reject the discarded draft's fake technique/tactic.
+    T1070.001 (Indicator Removal: Clear Windows Event Logs) is the correct
+    technique for log-clearing, verified live 2026-07-16."""
+    catalog, reviews = _load_corpus()
+    blob = json.dumps([catalog, reviews]) + json.dumps(CANONICAL_TECHNIQUE_NAMES)
+    for bad in FORBIDDEN_TECHNIQUE_STRINGS:
+        assert bad not in blob, f"nonexistent MITRE string {bad!r} leaked into the corpus/map"
+    # the log-clearing scenario carries the correct technique
+    lc = catalog["defense_evasion_log_clearing"]
+    assert lc["answer_key"]["techniques"] == ["T1070.001"], lc["answer_key"]["techniques"]
+    assert reviews["defense_evasion_log_clearing"]["mitre"]["id"] == "T1070.001"
+
+
+def test_log_clearing_has_1102_step():
+    """The classification_event binding target: the 1102 step must exist."""
+    catalog, _ = _load_corpus()
+    lc = catalog["defense_evasion_log_clearing"]
+    ids_1102 = [m["id"] for m, step in zip(lc["attack_meta"], lc["chain"])
+                if str((step.get("key_value_pairs") or {}).get("event_id")) == "1102"]
+    assert ids_1102 == ["s5"], f"expected the 1102 step at s5, got {ids_1102}"
+
+
 def test_technique_names_match_canonical_map():
     """Every stored MITRE display name matches the canonical map, so a future
     ATT&CK rename fails loudly instead of drifting silently."""
