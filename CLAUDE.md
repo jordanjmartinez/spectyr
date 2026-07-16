@@ -72,6 +72,14 @@ A full-stack Security Information and Event Management (SIEM) simulation platfor
 - Gates (run from `backend/`): `python test_scenario_loader_v2.py`, `python parity_check_v2.py`, `python test_scenario_loader.py`, `python parity_check.py`, `python fairness_check.py`
 - Migration + review artifact: `scenarios/migrate_v1_to_v2.py` regenerates `scenarios/v2/` and `scenarios/v2/MIGRATION_REPORT.md` (per-step tag tables, grandfathered literals, open flags). MIGRATION_REPORT.md is frozen as the Stage 0 artifact; Stage 1+ flags live in `scenarios/v2/ENVIRONMENT_REPORT.md`
 
+### Detections Feed (Phase 2 Stage 2)
+- Schema v2 `detections` per scenario: rule_name, rule_type (sigma_behavioral | yara), severity, triggers (step ids), optional mitre, description, and a server-side answer-key `disposition` (true_positive | false_positive | benign_expected). Authored in `migrate_v1_to_v2.DETECTIONS`; all rule text is original (no SigmaHQ content, so DRL attribution does not attach)
+- `detection_templates.py`: ambient benign_expected detections per managed host (updaters, backup agents, admin tooling), stable-key generated; plus `build_scenario_detections`, `benign_detections_for_host`, and `sanitize_detection`
+- **Leak discipline**: `disposition`/scenario linkage are server-side only. Every API payload goes through `sanitize_detection` (drops disposition, runs triggering events through the SIEM field whitelist). `test_detections.py` proves no forbidden field leaks
+- Session state: `session["detections"]` (instances with dispositions + player_action) and `benign_hosts`, guarded by `io_lock`, reset with the session, materialized at drip. PAN-OS devices get no detections
+- Scoring v1 (`compute_detection_score`): deterministic over (player_action, disposition); correct = promote TP / dismiss FP / dismiss benign; own commit. The dashboard radar still reads completed scenarios only — detections never feed it
+- Frontend: `Detections.jsx` (feed + Threats toggle, triage) + `DetectionDetail.jsx` (Section 8 card: triggering-event + parent-process lineage, MITRE chips, SHA256 with copy, no VirusTotal link)
+
 ### Endpoint World (Phase 2 Stage 1)
 - One world state per session (`session["world"]`, guarded by `io_lock`; frozen `started_at` timestamp): per-host EDR snapshots derived purely from environment + substituted event pool + `noise_profiles.py` role baselines by `snapshot_generator.py`
 - Built/extended at drip time in `build_attack_chain_logs`; attack lineage keeps authored PIDs/PPIDs (all authored PIDs reserved corpus-wide); every generated value is stable-key derived (sha256 over session/host/identity/field), never draw-order
@@ -182,6 +190,11 @@ Note: `simulated_attack_logs.ndjson` is at `backend/logs/` root (shared across s
 | `/api/endpoints` | GET | Endpoint list (session world summary rows + org) |
 | `/api/endpoints/<hostname>` | GET | Full endpoint snapshot (all tabs), 404 unknown |
 | `/api/analytics/attack_coverage` | GET | Dashboard radar: ATT&CK tactic coverage from completed scenarios only |
+| `/api/detections` | GET | Detections feed (sanitized) + open/promoted/dismissed counts |
+| `/api/detections/<id>` | GET | Detection detail (sanitized, whitelisted triggering events) |
+| `/api/detections/<id>/disposition` | POST | Triage: promote / dismiss / open |
+| `/api/threats` | GET | Promoted detections (Threats view) |
+| `/api/analytics/detection_score` | GET | Disposition scoring v1 (deterministic, server-side) |
 | `/api/game-state` | GET | Get game mode, timer status, paused state |
 | `/api/game-timeout` | POST | Hardcore timeout: pause session (FailureModal handles retry) |
 
@@ -255,9 +268,9 @@ Each scenario label should be unique across the whole catalog. If a category rep
 ## UI Architecture
 
 ### Dashboard Tabs (Dashboard.jsx)
-- 5 tabs: Alerts, SIEM, Endpoints, Metrics, Reports (SIEM was "Events" pre Stage 1.5)
-- Counts always shown (Splunk-style): `Alerts 3`, `SIEM 12`
-- Keyboard shortcuts: 1-5 to switch tabs
+- 6 tabs: Alerts, SIEM, Detections, Endpoints, Metrics, Reports (SIEM was "Events" pre Stage 1.5; Detections added Stage 2)
+- Counts always shown (Splunk-style): `Alerts 3`, `SIEM 12`, `Detections 5` (open count)
+- Keyboard shortcuts: 1-6 to switch tabs
 - Chart-bearing views (Alerts/GroupedAlerts, Metrics/Analytics) gate their Recharts on an `isVisible` prop so hidden charts don't mount at 0 size and flood console width(0) warnings
 
 ### SIEM Tab (Siem.jsx + SiemCards / SiemTable, Stage 1.5)
