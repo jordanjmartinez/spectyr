@@ -149,21 +149,20 @@ OVERRIDES = {
     },
 }
 
-# ATT&CK ID audit (Stage 0 review, follow-up 5). Verified 2026-07-16 against
-# attack.mitre.org (Enterprise): 13 of 15 IDs confirmed live; T1562.001 and
-# T1070.001 pages did not load from the build network and were verified
-# against offline knowledge (ATT&CK v16) instead — flagged below, not guessed.
+# ATT&CK ID audit (Stage 0 review follow-up 5; closed at Stage 1 review).
+# Verified 2026-07-16 against attack.mitre.org (Enterprise): 13 of 15 IDs
+# confirmed live by fetch, T1562.001 and T1070.001 confirmed live by the
+# reviewer the same day. All 15 current.
 ATTACK_AUDIT = {
     "result": "All 15 answer_key technique IDs are current; none deprecated, "
-              "revoked, or merged. Zero replacements made.",
+              "revoked, or merged. Zero ID replacements. All 15 verified "
+              "live against attack.mitre.org on 2026-07-16.",
     "flags": [
-        "T1562.001 (Impair Defenses: Disable or Modify Tools) and T1070.001 "
-        "(Indicator Removal: Clear Windows Event Logs): live page fetch "
-        "failed; verified against offline ATT&CK v16 knowledge only.",
-        "Name drift, ID unchanged: T1046 is now 'Network Service Discovery'; "
-        "the triage_review copy says 'Network Service Scanning'. Triage copy "
-        "is held byte-equal to v1 by the parity gates, so the rename needs "
-        "its own approved correction pass; not changed here.",
+        "T1046 display-name drift resolved at Stage 1 review: renamed to "
+        "'Network Service Discovery' in the v2 triage copy via approved "
+        "triage corrections (scenario_corrections.py); the frozen v1 corpus "
+        "keeps the old name. CANONICAL_TECHNIQUE_NAMES in "
+        "test_scenario_loader_v2.py guards future drift.",
     ],
 }
 
@@ -449,8 +448,18 @@ def migrate(fname, report):
     corrections = scenario_corrections.for_label(label)
     corrected_chain = copy.deepcopy(doc["chain"])
     corrected_entities = copy.deepcopy(doc["entities"])
+    corrected_triage = copy.deepcopy(doc["triage_review"])
     for corr in corrections:
-        if corr["kind"] == "entity":
+        if corr["kind"] == "triage":
+            node = corrected_triage
+            *parents, leaf = corr["field"].split(".")
+            for part in parents:
+                node = node[part]
+            assert node.get(leaf) == corr["v1"], (
+                f"{label}: correction precondition failed on triage_review."
+                f"{corr['field']}")
+            node[leaf] = corr["v2"]
+        elif corr["kind"] == "entity":
             spec = corrected_entities[corr["entity"]]
             assert spec.get(corr["field"]) == corr["v1"], (
                 f"{label}: correction precondition failed on entity "
@@ -485,9 +494,9 @@ def migrate(fname, report):
     # Approved schema corrections: exact-line rewrites mirroring the
     # structural application above; parity_check_v2.py holds the rendered
     # side of the contract. Entity corrections live in the head section,
-    # step corrections in the chain body.
+    # triage corrections in the tail, step corrections in the chain body.
     for corr in corrections:
-        section = head if corr["kind"] == "entity" else body
+        section = {"entity": head, "triage": tail}.get(corr["kind"], body)
         matches = [i for i, ln in enumerate(section) if ln == corr["old_line"]]
         if len(matches) != 1:
             raise SystemExit(
@@ -525,8 +534,8 @@ def migrate(fname, report):
     stripped = [v2.strip_step(s) for s in new_doc["attack"]]
     assert stripped == corrected_chain, f"{label}: attack != corrected v1 chain after strip"
     assert new_doc["entities"] == corrected_entities, f"{label}: entities diverged"
-    for key in ("label", "category", "difficulty", "threat_pattern",
-                "narrative", "triage_review"):
+    assert new_doc["triage_review"] == corrected_triage, f"{label}: triage diverged"
+    for key in ("label", "category", "difficulty", "threat_pattern", "narrative"):
         assert new_doc[key] == doc[key], f"{label}: section {key} diverged"
     v2.validate_scenario_v2(new_doc, v2._load_schema_v2(), v1._load_schema(),
                             f"v2/{fname}")
@@ -559,8 +568,12 @@ def migrate(fname, report):
             f"`{host}` | `{user or '-'}` |"
         )
     for corr in corrections:
-        where = (f"entity {corr['entity']}.{corr['field']}" if corr["kind"] == "entity"
-                 else f"step {corr['step'] + 1} {corr['field']}")
+        if corr["kind"] == "entity":
+            where = f"entity {corr['entity']}.{corr['field']}"
+        elif corr["kind"] == "triage":
+            where = f"triage_review.{corr['field']}"
+        else:
+            where = f"step {corr['step'] + 1} {corr['field']}"
         report.append("")
         report.append(f"**CORRECTION ({corr['approved']}):** {where}: "
                       f"`{corr['v1']}` -> `{corr['v2']}` "

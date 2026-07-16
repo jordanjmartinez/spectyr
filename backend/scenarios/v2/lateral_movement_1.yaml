@@ -232,11 +232,11 @@ answer_key:
 triage_review:
   mitre:
     id: "T1046"
-    name: "Network Service Scanning"
+    name: "Network Service Discovery"
     tactic: "Discovery"
     url: "https://attack.mitre.org/techniques/T1046/"
   what_is_it:
-    title: "Network Service Scanning"
+    title: "Network Service Discovery"
     description: "Network service scanning is when someone probes target systems to discover open ports and running services, typically using tools like Nmap. When a scanning tool is found on a standard user's workstation, it indicates either unauthorized reconnaissance or a compromised machine."
   response_actions:
     - "Investigate whether the user intentionally ran the tool or if the workstation is compromised"

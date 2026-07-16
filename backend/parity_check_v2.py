@@ -48,9 +48,31 @@ for _c in scenario_corrections.CORRECTIONS:
     if _c["kind"] == "entity":
         APPROVED_SUBST.setdefault(_c["label"], []).append(
             (_c["rendered_v1"], _c["rendered_v2"], _c["approved"]))
-    else:
+    elif _c["kind"] == "step":
         APPROVED_STEP.setdefault(_c["label"], {})[(_c["step"], _c["field"])] = (
             _c["rendered_v1"], _c["rendered_v2"], _c["approved"])
+    # triage corrections never touch rendered logs; handled in the
+    # reviews comparison below
+
+
+def _expected_reviews(v1_reviews):
+    """v1 triage reviews with the approved triage corrections applied — the
+    exact content the v2 corpus must carry."""
+    import copy
+    expected = copy.deepcopy(v1_reviews)
+    for c in scenario_corrections.CORRECTIONS:
+        if c["kind"] != "triage":
+            continue
+        node = expected[c["label"]]
+        *parents, leaf = c["field"].split(".")
+        for part in parents:
+            node = node[part]
+        if node.get(leaf) != c["v1"]:
+            raise SystemExit(
+                f"[FAIL] triage correction precondition: {c['label']} "
+                f"{c['field']} is {node.get(leaf)!r}, expected {c['v1']!r}")
+        node[leaf] = c["v2"]
+    return expected
 
 
 class _FrozenDatetime(datetime):
@@ -92,9 +114,10 @@ def main():
     if set(v1_catalog) != set(v2_catalog):
         print(f"[FAIL] label sets differ: {set(v1_catalog) ^ set(v2_catalog)}")
         failures += 1
-    if v1_reviews != v2_reviews:
-        diff = [k for k in v1_reviews if v1_reviews[k] != v2_reviews.get(k)]
-        print(f"[FAIL] triage reviews differ for: {diff}")
+    expected_reviews = _expected_reviews(v1_reviews)
+    if expected_reviews != v2_reviews:
+        diff = [k for k in expected_reviews if expected_reviews[k] != v2_reviews.get(k)]
+        print(f"[FAIL] triage reviews differ (after approved corrections) for: {diff}")
         failures += 1
 
     real_uuid4 = uuid_module.uuid4

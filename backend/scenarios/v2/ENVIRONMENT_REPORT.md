@@ -29,6 +29,17 @@ resolves it (resolution noted inline, entry kept for the record).
   tab preserves it byte-for-byte. Needs an approved correction if it is a
   typo, not a deliberate oddity.
 
+### Closed at Stage 1 review (2026-07-16)
+
+- **ATT&CK verification complete.** All 15 answer_key technique IDs verified
+  live against attack.mitre.org on 2026-07-16 (13 by fetch during the audit;
+  T1562.001 and T1070.001 by the reviewer). No deprecated, revoked, or merged
+  IDs. Display names updated where ATT&CK renamed: T1046 is now Network
+  Service Discovery (approved triage corrections in scenario_corrections.py;
+  the frozen v1 corpus keeps the old name). T1070.001 already carried the
+  current "Indicator Removal: Clear Windows Event Logs" title. The canonical
+  name map test in test_scenario_loader_v2.py fails loudly on future drift.
+
 ### Recorded decisions (not open)
 
 - **Firewall is a log source, not a managed endpoint.** ACME-FW01 never

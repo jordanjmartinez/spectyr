@@ -13,12 +13,16 @@ single source of truth consumed by:
 
 Record fields:
     label         scenario the correction applies to
-    kind          "step" (one authored chain field) or "entity" (an entity
+    kind          "step" (one authored chain field), "entity" (an entity
                   declaration value; the chain YAML is untouched because the
-                  placeholders re-resolve, only rendered values move)
+                  placeholders re-resolve, only rendered values move), or
+                  "triage" (a triage_review field; educational copy, no
+                  chain or render impact)
     step / field  step kind: 0-based chain index; "kvp.<key>" for
                   key_value_pairs entries, else the step field
     entity/field  entity kind: entity name and declaration field
+    field         triage kind: dotted path inside triage_review
+                  (e.g. "mitre.name")
     v1 / v2       authored values (v2 may be a placeholder)
     rendered_v1 / rendered_v2
                   post-substitution values the parity diff will observe; for
@@ -69,6 +73,40 @@ CORRECTIONS = [
             "{backup_server.ip} placeholders re-resolve to the canonical IP."
         ),
         "approved": "Stage 0 review, follow-up 3 (approved 2026-07-16)",
+    },
+    {
+        "label": "lateral_movement_1",
+        "kind": "triage",
+        "field": "mitre.name",
+        "v1": "Network Service Scanning",
+        "v2": "Network Service Discovery",
+        "rendered_v1": "Network Service Scanning",
+        "rendered_v2": "Network Service Discovery",
+        "old_line": '    name: "Network Service Scanning"',
+        "new_line": '    name: "Network Service Discovery"',
+        "reason": (
+            "ATT&CK renamed T1046 to Network Service Discovery (ID "
+            "unchanged). Verified live against attack.mitre.org 2026-07-16. "
+            "Display name only; the frozen v1 corpus keeps the old name."
+        ),
+        "approved": "Stage 1 review, follow-up 1 (approved 2026-07-16)",
+    },
+    {
+        "label": "lateral_movement_1",
+        "kind": "triage",
+        "field": "what_is_it.title",
+        "v1": "Network Service Scanning",
+        "v2": "Network Service Discovery",
+        "rendered_v1": "Network Service Scanning",
+        "rendered_v2": "Network Service Discovery",
+        "old_line": '    title: "Network Service Scanning"',
+        "new_line": '    title: "Network Service Discovery"',
+        "reason": (
+            "Educational title carries the technique display name; follows "
+            "the T1046 rename. Description prose is unchanged: it describes "
+            "the scanning activity, not the technique name."
+        ),
+        "approved": "Stage 1 review, follow-up 1 (approved 2026-07-16)",
     },
 ]
 

@@ -27,10 +27,9 @@ All other workstations carry Windows 11 Enterprise. lateral_movement_1's 10.0.19
 
 ## ATT&CK ID audit (follow-up 5)
 
-All 15 answer_key technique IDs are current; none deprecated, revoked, or merged. Zero replacements made.
+All 15 answer_key technique IDs are current; none deprecated, revoked, or merged. Zero ID replacements. All 15 verified live against attack.mitre.org on 2026-07-16.
 
-- **FLAG:** T1562.001 (Impair Defenses: Disable or Modify Tools) and T1070.001 (Indicator Removal: Clear Windows Event Logs): live page fetch failed; verified against offline ATT&CK v16 knowledge only.
-- **FLAG:** Name drift, ID unchanged: T1046 is now 'Network Service Discovery'; the triage_review copy says 'Network Service Scanning'. Triage copy is held byte-equal to v1 by the parity gates, so the rename needs its own approved correction pass; not changed here.
+- **FLAG:** T1046 display-name drift resolved at Stage 1 review: renamed to 'Network Service Discovery' in the v2 triage copy via approved triage corrections (scenario_corrections.py); the frozen v1 corpus keeps the old name. CANONICAL_TECHNIQUE_NAMES in test_scenario_loader_v2.py guards future drift.
 
 ## brute_force_attack
 
@@ -253,6 +252,10 @@ All 15 answer_key technique IDs are current; none deprecated, revoked, or merged
 | s4 | ALLOW | Firewall | `ACME-FW01` | `ws_victim` | `-` |
 | s5 *(trigger)* | 4624 | Windows Security | `{infra.file.hostname}` | `file` | `victim` |
 | s6 | ProcessCreate | Sysmon | `{infra.file.hostname}` | `file` | `victim` |
+
+**CORRECTION (Stage 1 review, follow-up 1 (approved 2026-07-16)):** triage_review.mitre.name: `Network Service Scanning` -> `Network Service Discovery` (renders as `Network Service Discovery`). ATT&CK renamed T1046 to Network Service Discovery (ID unchanged). Verified live against attack.mitre.org 2026-07-16. Display name only; the frozen v1 corpus keeps the old name.
+
+**CORRECTION (Stage 1 review, follow-up 1 (approved 2026-07-16)):** triage_review.what_is_it.title: `Network Service Scanning` -> `Network Service Discovery` (renders as `Network Service Discovery`). Educational title carries the technique display name; follows the T1046 rename. Description prose is unchanged: it describes the scanning activity, not the technique name.
 
 ## lateral_movement_2
 

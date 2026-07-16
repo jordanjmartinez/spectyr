@@ -90,6 +90,22 @@ def _corrected_v1_entities(label, entities):
     return entities
 
 
+def _corrected_v1_triage(label, review):
+    """The v1 triage review with the approved triage corrections applied."""
+    review = copy.deepcopy(review)
+    for corr in scenario_corrections.for_label(label):
+        if corr["kind"] != "triage":
+            continue
+        node = review
+        *parents, leaf = corr["field"].split(".")
+        for part in parents:
+            node = node[part]
+        assert node.get(leaf) == corr["v1"], (
+            f"{label}: v1 no longer carries the triage correction precondition")
+        node[leaf] = corr["v2"]
+    return review
+
+
 def test_corpus_matches_v1_content():
     """Loader-level parity: v2 chains (tags stripped) must equal the v1
     loader's output with exactly the approved corrections applied, and
@@ -97,7 +113,9 @@ def test_corpus_matches_v1_content():
     cat1, rev1 = v1.load_scenarios()
     cat2, rev2 = _load_corpus()
     assert set(cat1) == set(cat2)
-    assert rev1 == rev2
+    for label in rev1:
+        assert _corrected_v1_triage(label, rev1[label]) == rev2[label], \
+            f"{label}: triage review diverged beyond approved corrections"
     for label in cat1:
         for key in ("label", "category", "difficulty", "ticket_title",
                     "storyline", "threat_pattern"):
@@ -113,8 +131,15 @@ def test_corrections_present_in_v2():
     regression here means a regeneration silently dropped it."""
     catalog, _ = _load_corpus()
     assert scenario_corrections.CORRECTIONS, "corrections record unexpectedly empty"
+    _, reviews = _load_corpus()
     for corr in scenario_corrections.CORRECTIONS:
-        if corr["kind"] == "entity":
+        if corr["kind"] == "triage":
+            node = reviews[corr["label"]]
+            *parents, leaf = corr["field"].split(".")
+            for part in parents:
+                node = node[part]
+            actual = node.get(leaf)
+        elif corr["kind"] == "entity":
             actual = catalog[corr["label"]]["entities"][corr["entity"]].get(corr["field"])
         else:
             step = catalog[corr["label"]]["chain"][corr["step"]]
@@ -275,6 +300,48 @@ def test_host_status_scenario_declared():
     v2.validate_scenario_v2(doc, _SCHEMA_V2, _SCHEMA_V1, "fixture.yaml")  # valid
     doc["environment"]["hosts"][0]["status"] = "sleeping"
     _expect_error(doc, "schema v2 violation")
+
+
+# Canonical ATT&CK display names, verified against attack.mitre.org
+# 2026-07-16 (13 live-fetched during the follow-up 5 audit; T1562.001 and
+# T1070.001 verified live by the reviewer the same day). If MITRE renames a
+# technique again, this map is updated together with a triage correction,
+# and this test fails loudly until both happen.
+CANONICAL_TECHNIQUE_NAMES = {
+    "T1091": "Replication Through Removable Media",
+    "T1583.001": "Acquire Infrastructure: Domains",
+    "T1562.001": "Impair Defenses: Disable or Modify Tools",
+    "T1046": "Network Service Discovery",
+    "T1071.001": "Application Layer Protocol: Web Protocols",
+    "T1110.001": "Brute Force: Password Guessing",
+    "T1566.002": "Phishing: Spearphishing Link",
+    "T1560.001": "Archive Collected Data: Archive via Utility",
+    "T1074.001": "Data Staged: Local Data Staging",
+    "T1486": "Data Encrypted for Impact",
+    "T1003.001": "OS Credential Dumping: LSASS Memory",
+    "T1070.001": "Indicator Removal: Clear Windows Event Logs",
+    "T1567.002": "Exfiltration Over Web Service: Exfiltration to Cloud Storage",
+    "T1110.003": "Brute Force: Password Spraying",
+    "T1071.004": "Application Layer Protocol: DNS",
+}
+
+
+def test_technique_names_match_canonical_map():
+    """Every stored MITRE display name matches the canonical map, so a future
+    ATT&CK rename fails loudly instead of drifting silently."""
+    _, reviews = _load_corpus()
+    seen = set()
+    for label, review in reviews.items():
+        mitre = review.get("mitre")
+        if not mitre:
+            continue
+        tid = mitre["id"]
+        assert tid in CANONICAL_TECHNIQUE_NAMES, f"{label}: {tid} missing from map"
+        assert mitre["name"] == CANONICAL_TECHNIQUE_NAMES[tid], (
+            f"{label}: {tid} name {mitre['name']!r} != canonical "
+            f"{CANONICAL_TECHNIQUE_NAMES[tid]!r}")
+        seen.add(tid)
+    assert seen == set(CANONICAL_TECHNIQUE_NAMES), "map and corpus out of sync"
 
 
 # --- dispatch ------------------------------------------------------------------
