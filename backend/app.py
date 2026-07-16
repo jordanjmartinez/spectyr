@@ -135,6 +135,11 @@ def create_session():
         # Stage 1 endpoint snapshots (io_lock guards it). started_at is the
         # frozen session timestamp every generated world time derives from.
         "world": {"hosts": {}, "started_at": None},
+        # Stage 2 detections feed (io_lock guards it). Instances carry
+        # server-side dispositions; benign_hosts tracks which hosts already
+        # got their ambient benign detections.
+        "detections": [],
+        "benign_hosts": set(),
     }
     with sessions_lock:
         sessions[session_id] = session
@@ -245,6 +250,10 @@ elif SCENARIO_SOURCE == "yaml_v2":
     # scenario that drips later.
     import snapshot_generator
     RESERVED_PIDS = snapshot_generator.collect_reserved_pids(yaml_catalog)
+
+    # Stage 2: detections feed. Server-side dispositions; the API serializes
+    # through detection_templates.sanitize_detection so answer keys never leak.
+    import detection_templates
 
 # Pool of scenarios that SPECTYR can auto-detect (appear in NOTABLE EVENTS without manual flagging)
 # Map detected_by/event_source values to standardized source_type values
@@ -2252,6 +2261,24 @@ def build_attack_chain_logs(session, scenario_entry, employee=None):
                 snapshot_generator.extend_world(
                     session["world"], entry, concrete_env, threat_logs,
                     session["id"], RESERVED_PIDS, SERVERS)
+                # Stage 2: this scenario's authored detections, plus ambient
+                # benign detections for any host now seen for the first time.
+                if "detections" in session:
+                    session["detections"].extend(
+                        detection_templates.build_scenario_detections(
+                            scenario_id, entry, threat_logs, session["id"]))
+                    started = session["world"].get("started_at")
+                    accounts = concrete_env.get("accounts", [])
+                    for host in concrete_env["hosts"]:
+                        if host["role"] in snapshot_generator.NON_ENDPOINT_ROLES:
+                            continue
+                        if host["hostname"] in session["benign_hosts"]:
+                            continue
+                        session["benign_hosts"].add(host["hostname"])
+                        owner = next((a for a in accounts if a.get("host") == host["id"]), None)
+                        session["detections"].extend(
+                            detection_templates.benign_detections_for_host(
+                                host, owner, session["id"], started))
 
     return threat_logs
 
@@ -2405,6 +2432,63 @@ def get_endpoint_detail(hostname):
     return jsonify(snap)
 
 
+@app.route('/api/detections', methods=['GET'])
+def get_detections():
+    """Detections feed. Every detection serialized through
+    sanitize_detection: server-side dispositions never reach the client."""
+    s = g.session
+    with s["io_lock"]:
+        dets = [detection_templates.sanitize_detection(d)
+                for d in s.get("detections", [])]
+    # newest first, stable secondary sort on id
+    dets.sort(key=lambda d: (str(d.get("time") or ""), d["id"]), reverse=True)
+    counts = {"open": 0, "promoted": 0, "dismissed": 0}
+    for d in dets:
+        counts[d["player_action"]] = counts.get(d["player_action"], 0) + 1
+    return jsonify({"detections": dets, "counts": counts})
+
+
+@app.route('/api/detections/<det_id>', methods=['GET'])
+def get_detection_detail(det_id):
+    """Full detail for one detection (Section 8 card data), sanitized."""
+    s = g.session
+    with s["io_lock"]:
+        inst = next((d for d in s.get("detections", []) if d["id"] == det_id), None)
+        view = detection_templates.sanitize_detection(inst, include_events=True) if inst else None
+    if view is None:
+        return jsonify({"error": "Unknown detection"}), 404
+    return jsonify(view)
+
+
+@app.route('/api/detections/<det_id>/disposition', methods=['POST'])
+def set_detection_disposition(det_id):
+    """Player triage action: promote / dismiss / open. Session state only;
+    the answer-key disposition is never exposed or changed."""
+    s = g.session
+    action = (request.json or {}).get("action")
+    if action not in ("promote", "dismiss", "open"):
+        return jsonify({"error": "action must be promote, dismiss, or open"}), 400
+    player_action = {"promote": "promoted", "dismiss": "dismissed", "open": "open"}[action]
+    with s["io_lock"]:
+        inst = next((d for d in s.get("detections", []) if d["id"] == det_id), None)
+        if inst is None:
+            return jsonify({"error": "Unknown detection"}), 404
+        inst["player_action"] = player_action
+        view = detection_templates.sanitize_detection(inst)
+    return jsonify(view)
+
+
+@app.route('/api/threats', methods=['GET'])
+def get_threats():
+    """Promoted detections: the Threats view (Stage 3+ response lives here)."""
+    s = g.session
+    with s["io_lock"]:
+        threats = [detection_templates.sanitize_detection(d, include_events=True)
+                   for d in s.get("detections", []) if d["player_action"] == "promoted"]
+    threats.sort(key=lambda d: (str(d.get("time") or ""), d["id"]), reverse=True)
+    return jsonify({"threats": threats})
+
+
 @app.route("/api/reset-simulator", methods=["POST"])
 def reset_simulator():
     s = g.session
@@ -2425,6 +2509,8 @@ def reset_simulator():
 
     with s["io_lock"]:
         s["world"] = {"hosts": {}, "started_at": None}
+        s["detections"] = []
+        s["benign_hosts"] = set()
         for filepath in [s["paths"]["generated_logs"], s["paths"]["analyst_actions"], s["paths"]["incident_reports"]]:
             with open(filepath, "w", encoding="utf-8") as f:
                 f.truncate(0)
@@ -3237,6 +3323,8 @@ def start_simulator():
         # fresh run, fresh endpoint world; freeze the session timestamp all
         # generated world times derive from (nothing reads the live clock)
         s["world"] = {"hosts": {}, "started_at": now.replace(microsecond=0).isoformat()}
+        s["detections"] = []
+        s["benign_hosts"] = set()
     s["timer_start"] = now
     s["next_drip_at"] = now  # First alert drips immediately
     s["scenario_start_time"] = time.time() * 1000
