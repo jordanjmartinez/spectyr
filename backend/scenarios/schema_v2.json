@@ -195,7 +195,11 @@
         "hostname": { "type": "string", "minLength": 1 },
         "ip": { "type": "string", "minLength": 1 },
         "os": { "type": "string", "minLength": 1 },
-        "desc": { "type": "string" }
+        "desc": { "type": "string" },
+        "status": {
+          "$comment": "Scenario-declared, never generated. Defaults to online when omitted. Offline carries gameplay meaning later (an offline host cannot be isolated).",
+          "enum": ["online", "offline"]
+        }
       }
     },
     "account": {

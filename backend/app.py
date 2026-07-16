@@ -132,7 +132,9 @@ def create_session():
         "scenario_history": [],
         "scenario_start_time": None,
         "last_active": datetime.now(timezone.utc),
-        "world": {"hosts": {}},  # Stage 1 endpoint snapshots (io_lock guards it)
+        # Stage 1 endpoint snapshots (io_lock guards it). started_at is the
+        # frozen session timestamp every generated world time derives from.
+        "world": {"hosts": {}, "started_at": None},
     }
     with sessions_lock:
         sessions[session_id] = session
@@ -2364,24 +2366,28 @@ def get_fake_events():
 
 @app.route('/api/endpoints', methods=['GET'])
 def get_endpoints():
-    """Endpoint list: one row per host in the session world."""
+    """Endpoint list: one row per managed host in the session world. The
+    data is a fixed session snapshot; nothing here generates or refreshes."""
     s = g.session
     with s["io_lock"]:
+        world = s.get("world", {})
+        org = copy.deepcopy(world.get("org", {}))
         snaps = [copy.deepcopy(snapshot_generator.public_view(v))
-                 for v in s.get("world", {}).get("hosts", {}).values()]
+                 for v in world.get("hosts", {}).values()]
     rows = []
     for snap in sorted(snaps, key=lambda x: x["hostname"]):
-        active = [c for c in snap["network"]["connections"]
-                  if c.get("state") == "ESTABLISHED"]
         rows.append({
             "hostname": snap["hostname"], "ip": snap["ip"],
+            "external_ip": snap["system"]["external_ip"],
             "role": snap["role"], "os": snap["os"], "desc": snap["desc"],
-            "appliance": snap["appliance"], "owner": snap["owner"],
-            "process_count": len(snap["processes"]),
-            "connection_count": len(active),
-            "user_count": len(snap["users"]),
+            "platform": snap["system"]["platform"],
+            "status": snap["status"], "isolation": snap["isolation"],
+            "tags": [],
+            "first_seen": snap["system"]["first_seen"],
+            "last_seen": snap["system"]["last_heartbeat"],
+            "owner": snap["owner"],
         })
-    return jsonify({"endpoints": rows})
+    return jsonify({"org": org, "endpoints": rows})
 
 
 @app.route('/api/endpoints/<hostname>', methods=['GET'])
@@ -2415,7 +2421,7 @@ def reset_simulator():
     s["scenario_history"] = []
 
     with s["io_lock"]:
-        s["world"] = {"hosts": {}}
+        s["world"] = {"hosts": {}, "started_at": None}
         for filepath in [s["paths"]["generated_logs"], s["paths"]["analyst_actions"], s["paths"]["incident_reports"]]:
             with open(filepath, "w", encoding="utf-8") as f:
                 f.truncate(0)
@@ -3170,9 +3176,11 @@ def start_simulator():
     s["resolved_count"] = 0
     s["injected_count"] = 0
     s["scenario_history"] = []
-    with s["io_lock"]:
-        s["world"] = {"hosts": {}}  # fresh run, fresh endpoint world
     now = datetime.now(timezone.utc)
+    with s["io_lock"]:
+        # fresh run, fresh endpoint world; freeze the session timestamp all
+        # generated world times derive from (nothing reads the live clock)
+        s["world"] = {"hosts": {}, "started_at": now.replace(microsecond=0).isoformat()}
     s["timer_start"] = now
     s["next_drip_at"] = now  # First alert drips immediately
     s["scenario_start_time"] = time.time() * 1000

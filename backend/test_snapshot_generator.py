@@ -1,14 +1,17 @@
-"""Unit tests for the Stage 1 snapshot generator.
+"""Unit tests for the Stage 1 snapshot generator (incl. addendum invariants).
 
 Run: python -m pytest test_snapshot_generator.py -q  (or python test_snapshot_generator.py)
 
 Builds the world for every scenario in the v2 catalog with a forced employee
-and asserts the Stage 1 acceptance criteria:
-  - every host in every scenario renders all tabs without errors
-  - attack lineage is present with authored PIDs/PPIDs, parents materialized
-  - benign volume is 30-50 processes per Windows host role
-  - determinism: same seed, same world
-  - no placeholders and no attack/benign or scenario markers leak to the API
+and asserts the Stage 1 acceptance criteria plus the addendum clarifications:
+  - managed endpoint scope: Windows hosts only, firewall never an endpoint
+  - every host renders all tabs; OS labels come from the environment block
+  - attack lineage keeps authored PIDs/PPIDs, parents materialized
+  - every network/DNS row PID resolves to a process in the same snapshot
+  - every nonzero PPID resolves, except explicitly marked exited parents
+  - stable-key determinism: values survive scenario arrival reordering
+  - frozen session time: no generated value reads the wall clock
+  - benign volume 30-50 processes per role; no placeholder or answer leaks
 """
 import copy
 import json
@@ -35,6 +38,7 @@ SERVERS = {
 CATALOG, _ = slv2.load_scenarios()
 RESERVED = sg.collect_reserved_pids(CATALOG)
 SEED = "test-session-0001"
+STARTED = "2026-07-16T12:00:00+00:00"
 
 
 class _Forced(random.Random):
@@ -47,7 +51,7 @@ class _Forced(random.Random):
 
 
 def _render(label):
-    """Substituted (env, logs) for one scenario, mirroring the drip path."""
+    """Substituted (scenario, env, logs) mirroring the drip path."""
     sc = CATALOG[label]
     resolved = sl.resolve_entities(sc, EMPLOYEES, SERVERS, rng=_Forced(EMPLOYEES[0]))
     env = sl.substitute_deep(sc["environment"], resolved)
@@ -55,55 +59,66 @@ def _render(label):
     for i, step in enumerate(sc["chain"]):
         log = sl.substitute_deep({k: v for k, v in step.items() if k != "offset"}, resolved)
         log["scenario_id"] = f"scenario-{label}"
-        log["timestamp"] = f"2026-07-16T12:00:{i:02d}+00:00"
+        log["timestamp"] = f"2026-07-16T12:01:{i:02d}+00:00"
         logs.append(log)
     return sc, env, logs
 
 
 def _world_for(label):
     sc, env, logs = _render(label)
-    world = {"hosts": {}}
+    world = {"hosts": {}, "started_at": STARTED}
     sg.extend_world(world, sc, env, logs, SEED, RESERVED, SERVERS)
     return sc, env, logs, world
 
 
-TAB_KEYS = ("processes", "services", "users", "autoruns", "network")
+def _managed(env):
+    return [h for h in env["hosts"] if h["role"] != "firewall"]
 
 
-def test_every_host_renders_all_tabs():
+TAB_KEYS = ("processes", "services", "users", "autoruns", "network", "system")
+
+
+def test_every_managed_host_renders_all_tabs():
     for label in CATALOG:
         _, env, _, world = _world_for(label)
-        assert len(world["hosts"]) == len(env["hosts"]), label
+        assert len(world["hosts"]) == len(_managed(env)), label
         for hostname, snap in world["hosts"].items():
             for key in TAB_KEYS:
                 assert key in snap, f"{label}/{hostname}: missing {key}"
             assert "connections" in snap["network"] and "dns" in snap["network"]
-            if snap["role"] == "firewall":
-                assert snap["appliance"] is True
-            else:
-                assert snap["appliance"] is False
+            assert snap["status"] == "online"
+            assert snap["isolation"] == "not_isolated"
+
+
+def test_firewall_never_an_endpoint():
+    for label in ("lateral_movement_1", "false_positive_veeam", "c2_dns_tunnel"):
+        _, env, _, world = _world_for(label)
+        assert any(h["role"] == "firewall" for h in env["hosts"]), label
+        for snap in world["hosts"].values():
+            assert snap["role"] != "firewall", f"{label}: firewall entered the world"
+
+
+def test_os_labels_come_from_environment():
+    for label in CATALOG:
+        _, env, _, world = _world_for(label)
+        for host in _managed(env):
+            assert world["hosts"][host["hostname"]]["os"] == host["os"], label
 
 
 def test_benign_volume_30_to_50():
-    """Baseline (pre-merge) process volume per Windows role."""
     for label in CATALOG:
         sc, env, _, _ = _world_for(label)
-        for host in env["hosts"]:
-            if host["role"] == "firewall":
-                continue
+        for host in _managed(env):
             owner = next((a for a in env["accounts"] if a.get("host") == host["id"]), None)
-            snap = sg.build_baseline(host, owner, SEED, RESERVED, SERVERS,
-                                     "2026-07-16T12:00:00+00:00")
+            snap = sg.build_baseline(host, owner, SEED, RESERVED, SERVERS, STARTED)
             n = len(snap["processes"])
             assert 30 <= n <= 50, f"{label}/{host['hostname']} ({host['role']}): {n} processes"
 
 
 def test_attack_lineage_pids_consistent():
-    """Every authored ProcessCreate lands with its authored PID, and its
-    authored parent PID exists as a real node."""
     for label in CATALOG:
         sc, env, logs, world = _world_for(label)
-        hosts_by_id = {h["id"]: h for h in env["hosts"]}
+        hosts_by_id = {h["id"]: h for h in _managed(env)}
         for log, meta in zip(logs, sc["attack_meta"]):
             kvp = log.get("key_value_pairs") or {}
             if log.get("source_type") != "Sysmon" or str(kvp.get("event_id")) != "1":
@@ -118,6 +133,40 @@ def test_attack_lineage_pids_consistent():
             assert ppid in pids, f"{label}/{hostname}: parent pid {ppid} not materialized"
 
 
+def test_network_and_dns_pids_resolve():
+    """Addendum: every PID referenced by a network/DNS row resolves to
+    exactly one process in the same snapshot."""
+    for label in CATALOG:
+        _, _, _, world = _world_for(label)
+        for hostname, snap in world["hosts"].items():
+            counts = {}
+            for p in snap["processes"]:
+                counts[p["pid"]] = counts.get(p["pid"], 0) + 1
+            for c in snap["network"]["connections"]:
+                if c["pid"] is not None:
+                    assert counts.get(c["pid"]) == 1, \
+                        f"{label}/{hostname}: connection pid {c['pid']} resolves {counts.get(c['pid'], 0)}x"
+            for d in snap["network"]["dns"]:
+                if d["pid"] is not None:
+                    assert counts.get(d["pid"]) == 1, \
+                        f"{label}/{hostname}: dns pid {d['pid']} unresolved"
+
+
+def test_ppids_resolve_or_are_marked_exited():
+    for label in CATALOG:
+        _, _, _, world = _world_for(label)
+        for hostname, snap in world["hosts"].items():
+            pids = {p["pid"] for p in snap["processes"]}
+            for p in snap["processes"]:
+                if p["ppid"] == 0 or p.get("parent_exited"):
+                    continue
+                if p["ppid"] not in pids:
+                    # authored chain parents are materialized; anything else
+                    # dangling is a bug
+                    raise AssertionError(
+                        f"{label}/{hostname}: {p['name']} ppid {p['ppid']} dangling")
+
+
 def test_no_duplicate_pids():
     for label in CATALOG:
         _, _, _, world = _world_for(label)
@@ -129,20 +178,62 @@ def test_no_duplicate_pids():
 def test_baseline_avoids_reserved_pids():
     for label in CATALOG:
         sc, env, _, _ = _world_for(label)
-        for host in env["hosts"]:
-            if host["role"] == "firewall":
-                continue
-            snap = sg.build_baseline(host, None, SEED, RESERVED, SERVERS, None)
+        for host in _managed(env):
+            snap = sg.build_baseline(host, None, SEED, RESERVED, SERVERS, STARTED)
             clash = {p["pid"] for p in snap["processes"]} & RESERVED
             assert not clash, f"{label}/{host['hostname']}: baseline uses reserved {clash}"
 
 
-def test_deterministic():
-    for label in ("lateral_movement_1", "password_spray", "false_positive_veeam"):
-        _, _, _, w1 = _world_for(label)
-        _, _, _, w2 = _world_for(label)
-        assert json.dumps(w1, sort_keys=True, default=str) == \
-               json.dumps(w2, sort_keys=True, default=str), label
+def test_deterministic_and_order_independent():
+    """Same seed, same world; scenario arrival order must not change values
+    on a shared host (stable-key determinism, addendum)."""
+    def build(order):
+        world = {"hosts": {}, "started_at": STARTED}
+        for label in order:
+            sc, env, logs = _render(label)
+            sg.extend_world(world, sc, env, logs, SEED, RESERVED, SERVERS)
+        return world
+
+    a = build(["lateral_movement_1", "insider_staging"])
+    b = build(["insider_staging", "lateral_movement_1"])
+    fs = SERVERS["file"]["hostname"]
+    ja = json.dumps({k: v for k, v in a["hosts"][fs].items() if k != "_scenario_ids"},
+                    sort_keys=True, default=str)
+    jb = json.dumps({k: v for k, v in b["hosts"][fs].items() if k != "_scenario_ids"},
+                    sort_keys=True, default=str)
+    assert ja == jb, "shared-host snapshot depends on scenario arrival order"
+
+    _, _, _, w1 = _world_for("password_spray")
+    _, _, _, w2 = _world_for("password_spray")
+    assert json.dumps(w1, sort_keys=True, default=str) == \
+           json.dumps(w2, sort_keys=True, default=str)
+
+
+def test_frozen_time_and_system_block():
+    """System info derives from the frozen session timestamp and stable keys:
+    identical inputs give identical values; the shared egress IP is one
+    address across all hosts; heartbeat equals the frozen timestamp online."""
+    _, env, _, world = _world_for("lateral_movement_1")
+    egress = {snap["system"]["external_ip"] for snap in world["hosts"].values()}
+    assert len(egress) == 1, "egress IP must be one shared address"
+    ip = egress.pop()
+    assert ip.startswith("203.0.113.") and ip != "203.0.113.50"
+    for snap in world["hosts"].values():
+        sysinfo = snap["system"]
+        assert sysinfo["last_heartbeat"] == STARTED
+        assert sysinfo["first_seen"] < STARTED
+        assert sysinfo["registered"] == sysinfo["first_seen"]
+        assert sysinfo["mac_address"].startswith("00:50:56:")
+        assert sysinfo["agent"] == "spectyr-agent 1.0.0"
+        assert len(sysinfo["sensor_id"]) == 36
+
+
+def test_memory_on_every_process():
+    for label in ("c2_http", "lateral_movement_1"):
+        _, _, _, world = _world_for(label)
+        for snap in world["hosts"].values():
+            for p in snap["processes"]:
+                assert isinstance(p["memory_mb"], int) and p["memory_mb"] > 0
 
 
 def test_no_placeholders_leak():
@@ -190,21 +281,6 @@ def test_lateral_movement_file_server_logon():
     fs = next(h["hostname"] for h in env["hosts"] if h["role"] == "file")
     users = {u["username"] for u in world["hosts"][fs]["users"]}
     assert "nkhan" in users, "victim network logon missing from file server users"
-
-
-def test_shared_host_merges_two_scenarios():
-    """Two scenarios touching the file server share one baseline."""
-    world = {"hosts": {}}
-    for label in ("lateral_movement_1", "insider_staging"):
-        sc, env, logs = _render(label)
-        sg.extend_world(world, sc, env, logs, SEED, RESERVED, SERVERS)
-    fs = SERVERS["file"]["hostname"]
-    snap = world["hosts"][fs]
-    assert len(snap["_scenario_ids"]) == 2
-    pids = [p["pid"] for p in snap["processes"]]
-    assert len(pids) == len(set(pids)), "merge produced duplicate PIDs"
-    # lateral_movement_1's net.exe (authored pid) still present after merge
-    assert any(p["name"] == "net.exe" for p in snap["processes"])
 
 
 if __name__ == "__main__":

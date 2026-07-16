@@ -71,7 +71,9 @@ _SYS32 = "C:\\Windows\\System32\\"
 WINDOWS_CORE_PROCESSES = [
     P("System", "", "", user=SYSTEM, cmdline="", signer=MS),
     P("Registry", "", "System", user=SYSTEM, cmdline="", signer=MS),
-    P("smss.exe", _SYS32 + "smss.exe", "System"),
+    # Session Manager reports its NT device path, as real EDRs show it.
+    P("smss.exe", "\\Device\\HarddiskVolume2\\Windows\\System32\\smss.exe",
+      "System", cmdline="\\SystemRoot\\System32\\smss.exe"),
     P("csrss.exe", _SYS32 + "csrss.exe", "smss.exe", dup=2),
     P("wininit.exe", _SYS32 + "wininit.exe", "smss.exe"),
     P("winlogon.exe", _SYS32 + "winlogon.exe", "smss.exe"),
@@ -301,40 +303,55 @@ ROLE_SERVICES = {
 WORKSTATION_AUTORUNS = [
     {"location": "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run",
      "name": "SecurityHealth",
-     "command": _SYS32 + "SecurityHealthSystray.exe"},
+     "command": _SYS32 + "SecurityHealthSystray.exe",
+     "_signer": "Microsoft Windows"},
     {"location": "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run",
      "name": "OneDrive",
-     "command": "\"C:\\Users\\__OWNERNAME__\\AppData\\Local\\Microsoft\\OneDrive\\OneDrive.exe\" /background"},
+     "command": "\"C:\\Users\\__OWNERNAME__\\AppData\\Local\\Microsoft\\OneDrive\\OneDrive.exe\" /background",
+     "_signer": "Microsoft Corporation"},
 ]
 
 # --- local users -------------------------------------------------------------------
 CLIENT_LOCAL_USERS = [
     {"username": "Administrator", "domain": "__HOSTNAME__", "type": "Local",
-     "enabled": False, "description": "Built-in account for administering the computer/domain"},
+     "enabled": False, "groups": ["Administrators"],
+     "description": "Built-in account for administering the computer/domain"},
     {"username": "DefaultAccount", "domain": "__HOSTNAME__", "type": "Local",
-     "enabled": False, "description": "A user account managed by the system"},
+     "enabled": False, "groups": ["System Managed Accounts Group"],
+     "description": "A user account managed by the system"},
     {"username": "Guest", "domain": "__HOSTNAME__", "type": "Local",
-     "enabled": False, "description": "Built-in account for guest access to the computer/domain"},
+     "enabled": False, "groups": ["Guests"],
+     "description": "Built-in account for guest access to the computer/domain"},
     {"username": "WDAGUtilityAccount", "domain": "__HOSTNAME__", "type": "Local",
-     "enabled": False, "description": "A user account managed and used by the system for Windows Defender Application Guard scenarios"},
+     "enabled": False, "groups": [],
+     "description": "A user account managed and used by the system for Windows Defender Application Guard scenarios"},
 ]
 
 SERVER_LOCAL_USERS = [
     {"username": "Administrator", "domain": "__HOSTNAME__", "type": "Local",
-     "enabled": True, "description": "Built-in account for administering the computer/domain"},
+     "enabled": True, "groups": ["Administrators"],
+     "description": "Built-in account for administering the computer/domain"},
     {"username": "DefaultAccount", "domain": "__HOSTNAME__", "type": "Local",
-     "enabled": False, "description": "A user account managed by the system"},
+     "enabled": False, "groups": ["System Managed Accounts Group"],
+     "description": "A user account managed by the system"},
     {"username": "Guest", "domain": "__HOSTNAME__", "type": "Local",
-     "enabled": False, "description": "Built-in account for guest access to the computer/domain"},
+     "enabled": False, "groups": ["Guests"],
+     "description": "Built-in account for guest access to the computer/domain"},
 ]
 
+# Domain controllers have no local SAM: built-in domain accounts instead.
 DC_USERS = [
     {"username": "Administrator", "domain": "ACME", "type": "Domain",
-     "enabled": True, "description": "Built-in account for administering the computer/domain"},
+     "enabled": True,
+     "groups": ["Administrators", "Domain Admins", "Domain Users", "Enterprise Admins"],
+     "description": "Built-in account for administering the computer/domain"},
     {"username": "Guest", "domain": "ACME", "type": "Domain",
-     "enabled": False, "description": "Built-in account for guest access to the computer/domain"},
+     "enabled": False, "groups": ["Guests", "Domain Guests"],
+     "description": "Built-in account for guest access to the computer/domain"},
     {"username": "krbtgt", "domain": "ACME", "type": "Domain",
-     "enabled": False, "description": "Key Distribution Center Service Account"},
+     "enabled": False,
+     "groups": ["Domain Users", "Denied RODC Password Replication Group"],
+     "description": "Key Distribution Center Service Account"},
 ]
 
 # --- network noise ------------------------------------------------------------------
@@ -352,11 +369,17 @@ BENIGN_EXTERNAL = [
     ("v10.events.data.microsoft.com", "13.89.179.10", 443),
 ]
 
-# Benign DNS query noise beyond the connection targets above.
+# Benign DNS query noise beyond the connection targets above:
+# (domain, record type, resolved address). "__DC__" resolves to the domain
+# controller at build time; SRV answers are names, shown as "-".
 BENIGN_DNS_EXTRA = [
-    ("sharepoint.com", "A"), ("office365.com", "A"), ("zoom.us", "A"),
-    ("stackoverflow.com", "A"), ("cloudflare.com", "A"),
-    ("_ldap._tcp.acme.local", "SRV"), ("acme.local", "A"),
+    ("sharepoint.com", "A", "13.107.136.10"),
+    ("office365.com", "A", "52.96.88.14"),
+    ("zoom.us", "A", "170.114.52.2"),
+    ("stackoverflow.com", "A", "104.18.32.7"),
+    ("cloudflare.com", "A", "104.16.132.229"),
+    ("_ldap._tcp.acme.local", "SRV", "-"),
+    ("acme.local", "A", "__DC__"),
 ]
 
 # Listening ports per role (proto, port, process name). Textbook defaults;

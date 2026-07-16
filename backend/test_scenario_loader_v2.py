@@ -267,6 +267,16 @@ def test_rejects_account_with_unknown_host():
     _expect_error(doc, "unknown host 'ghost'")
 
 
+def test_host_status_scenario_declared():
+    """Stage 1 addendum note A: host status is authored (online/offline,
+    default online), never generated. Invalid values fail loudly."""
+    doc = _one_valid_doc()
+    doc["environment"]["hosts"][0]["status"] = "offline"
+    v2.validate_scenario_v2(doc, _SCHEMA_V2, _SCHEMA_V1, "fixture.yaml")  # valid
+    doc["environment"]["hosts"][0]["status"] = "sleeping"
+    _expect_error(doc, "schema v2 violation")
+
+
 # --- dispatch ------------------------------------------------------------------
 
 def test_dispatch_loads_v1_shaped_file():
