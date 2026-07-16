@@ -216,6 +216,21 @@ def test_rejects_fp_with_root_cause():
     _expect_error(doc, "must have root_cause: null")
 
 
+def test_schema_alone_rejects_fp_with_root_cause():
+    """The FP root_cause invariant is a schema-level conditional, not only a
+    loader check: raw jsonschema validation must reject the fixture too."""
+    import jsonschema
+    doc = _one_valid_doc("false_positive_veeam")
+    doc["answer_key"]["root_cause"] = "s1"
+    try:
+        jsonschema.validate(doc, _SCHEMA_V2)
+    except jsonschema.ValidationError as e:
+        assert list(e.absolute_path)[:2] == ["answer_key", "root_cause"], (
+            f"violation not anchored at answer_key/root_cause: {list(e.absolute_path)}")
+    else:
+        raise AssertionError("schema accepted a False Positive with non-null root_cause")
+
+
 def test_rejects_attack_without_technique():
     doc = _one_valid_doc()
     doc["answer_key"]["techniques"] = []

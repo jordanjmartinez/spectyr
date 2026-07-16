@@ -94,6 +94,18 @@ def validate_scenario_v2(doc, schema_v2, v1_schema, filename):
     Every error is a ScenarioError naming the file and the violation, so a
     malformed file fails the boot loudly and actionably.
     """
+    # Checked ahead of the schema so the author sees the reason, not just the
+    # schema conditional's "None was expected". The schema's answer_key
+    # allOf/if-then enforces the same invariant for schema-only consumers.
+    ak = doc.get("answer_key")
+    if (isinstance(ak, dict)
+            and ak.get("classification") == "False Positive"
+            and ak.get("root_cause") is not None):
+        raise ScenarioError(
+            f"{filename}: a False Positive scenario must have root_cause: null "
+            f"(got {ak.get('root_cause')!r})"
+        )
+
     try:
         jsonschema.validate(doc, schema_v2)
     except jsonschema.ValidationError as e:

@@ -78,6 +78,18 @@
       "type": "object",
       "required": ["classification", "scope", "root_cause", "techniques", "actions"],
       "additionalProperties": false,
+      "allOf": [
+        {
+          "$comment": "A False Positive has no patient zero: root_cause MUST be null. Enforced at the schema level, not only in loader code.",
+          "if": {
+            "properties": { "classification": { "const": "False Positive" } },
+            "required": ["classification"]
+          },
+          "then": {
+            "properties": { "root_cause": { "const": null } }
+          }
+        }
+      ],
       "properties": {
         "classification": {
           "enum": [
