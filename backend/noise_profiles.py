@@ -33,10 +33,14 @@ MS_CORP = "Microsoft Corporation"
 # Review flags: every deliberate simplification or unresolved identity in this
 # library. The Stage 1 acceptance bar is zero UNFLAGGED guesses, not zero flags.
 FLAGS = [
-    "Defender binaries (MsMpEng.exe, NisSrv.exe) are listed at their "
-    "C:\\Program Files\\Windows Defender\\ install path. Running instances "
-    "normally load from the versioned C:\\ProgramData\\...\\Platform\\<ver> "
-    "directory; the version-stamped path is omitted rather than invented.",
+    "Defender platform paths RESOLVED at Stage 1 review: MsMpEng.exe and "
+    "NisSrv.exe run from C:\\ProgramData\\Microsoft\\Windows Defender\\"
+    "Platform\\<platform version>\\, verified against learn.microsoft.com "
+    "(microsoft-defender-antivirus-updates, doc dated 2026-05-14, fetched "
+    "2026-07-16); the version segment is a stable-key pick from the "
+    "documented DEFENDER_PLATFORM_VERSIONS. The doc does not document the "
+    "'-0' style folder suffix seen on some live systems, so it is omitted "
+    "rather than guessed.",
     "Proxy role: RESOLVED at Stage 1 review. The logs win: proxy events "
     "follow Palo Alto CIM, so ACME-SVR06 is a PAN-OS VM-Series explicit "
     "proxy appliance. Like the firewall it is a log source, never a managed "
@@ -67,6 +71,14 @@ def SVC(name, display, path, start, status="Running", account="LocalSystem"):
 
 # --- Windows core process tree (client and server) ---------------------------
 _SYS32 = "C:\\Windows\\System32\\"
+
+# Microsoft Defender platform: binaries run from the versioned platform
+# directory. Versions below are documented current releases (Microsoft Learn,
+# microsoft-defender-antivirus-updates, fetched 2026-07-16). The generator
+# substitutes __DEFENDERVER__ per host via the stable-key scheme.
+DEFENDER_PLATFORM_VERSIONS = ("4.18.25050.5", "4.18.25040.2")
+_DEFENDER_DIR = ("C:\\ProgramData\\Microsoft\\Windows Defender\\Platform\\"
+                 "__DEFENDERVER__\\")
 
 WINDOWS_CORE_PROCESSES = [
     P("System", "", "", user=SYSTEM, cmdline="", signer=MS),
@@ -109,9 +121,9 @@ WINDOWS_CORE_PROCESSES = [
       cmdline=_SYS32 + "taskhostw.exe {222A245B-E637-4AE9-A93F-A59CA119A75E}"),
     P("SearchIndexer.exe", _SYS32 + "SearchIndexer.exe", "services.exe",
       cmdline=_SYS32 + "SearchIndexer.exe /Embedding"),
-    P("MsMpEng.exe", "C:\\Program Files\\Windows Defender\\MsMpEng.exe",
+    P("MsMpEng.exe", _DEFENDER_DIR + "MsMpEng.exe",
       "services.exe", signer=MS_CORP),
-    P("NisSrv.exe", "C:\\Program Files\\Windows Defender\\NisSrv.exe",
+    P("NisSrv.exe", _DEFENDER_DIR + "NisSrv.exe",
       "services.exe", user=LOCAL_SERVICE, signer=MS_CORP),
     P("SecurityHealthService.exe", _SYS32 + "SecurityHealthService.exe",
       "services.exe"),
@@ -225,9 +237,9 @@ WINDOWS_CORE_SERVICES = [
     SVC("W32Time", "Windows Time", _SVCHOST + " -k LocalService",
         "Manual", account="NT AUTHORITY\\LocalService"),
     SVC("WinDefend", "Microsoft Defender Antivirus Service",
-        "C:\\Program Files\\Windows Defender\\MsMpEng.exe", "Automatic"),
+        "\"" + _DEFENDER_DIR + "MsMpEng.exe\"", "Automatic"),
     SVC("WdNisSvc", "Microsoft Defender Antivirus Network Inspection Service",
-        "C:\\Program Files\\Windows Defender\\NisSrv.exe", "Manual",
+        "\"" + _DEFENDER_DIR + "NisSrv.exe\"", "Manual",
         account="NT AUTHORITY\\LocalService"),
     SVC("SecurityHealthService", "Windows Security Service",
         _SYS32 + "SecurityHealthService.exe", "Manual"),

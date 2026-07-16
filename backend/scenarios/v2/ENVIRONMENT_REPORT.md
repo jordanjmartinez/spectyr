@@ -9,16 +9,22 @@ resolves it (resolution noted inline, entry kept for the record).
 
 ### Open flags
 
-- **Defender binary paths simplified.** MsMpEng.exe / NisSrv.exe are listed
-  at C:\Program Files\Windows Defender\. Running instances normally load from
-  the versioned C:\ProgramData\Microsoft\Windows Defender\Platform\<version>
-  directory; the version-stamped path is omitted rather than invented.
 - **Backup role minimally modeled.** Only the Veeam Backup Service
   (VeeamBackupSvc) and its default 9392 port, plus the 10006 agent port the
   scenario chain itself establishes. Console, catalog/database engine, and
   mount services are omitted rather than guessed.
 
 ### Closed at Stage 1 review (2026-07-16)
+
+- **Defender platform paths now real.** MsMpEng.exe / NisSrv.exe (processes
+  and the WinDefend / WdNisSvc service paths) run from
+  C:\ProgramData\Microsoft\Windows Defender\Platform\<platform version>\,
+  verified against learn.microsoft.com (microsoft-defender-antivirus-updates,
+  doc dated 2026-05-14, fetched live 2026-07-16). The version segment is a
+  stable-key pick per host from the doc's current releases (4.18.25050.5,
+  4.18.25040.2). Known simplification, doc-backed: the doc names the folder
+  as the bare platform version; the '-0' style suffix seen on some live
+  systems is not documented there and is omitted rather than guessed.
 
 - **phishing_link `.ex` flag was FALSE: no typo exists.** The authored
   SetValue details value is, and always was,

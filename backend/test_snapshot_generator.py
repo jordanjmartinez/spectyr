@@ -236,6 +236,30 @@ def test_frozen_time_and_system_block():
         assert len(sysinfo["sensor_id"]) == 36
 
 
+def test_defender_platform_path_versioned():
+    """Defender binaries run from the doc-verified versioned platform dir;
+    the version is a stable-key pick from the documented set and identical
+    across processes and services of one host."""
+    import re
+    pat = re.compile(r"C:\\ProgramData\\Microsoft\\Windows Defender\\Platform\\"
+                     r"(4\.18\.\d{5}\.\d+)\\(MsMpEng|NisSrv)\.exe")
+    _, _, _, world = _world_for("lateral_movement_1")
+    for hostname, snap in world["hosts"].items():
+        versions = set()
+        for p in snap["processes"]:
+            if p["name"] in ("MsMpEng.exe", "NisSrv.exe"):
+                m = pat.fullmatch(p["path"])
+                assert m, f"{hostname}: unversioned Defender path {p['path']!r}"
+                versions.add(m.group(1))
+        for svc in snap["services"]:
+            if svc["name"] in ("WinDefend", "WdNisSvc"):
+                assert "\\Platform\\" in svc["path"], f"{hostname}: {svc['path']!r}"
+                m = pat.search(svc["path"])
+                versions.add(m.group(1))
+        assert len(versions) == 1, f"{hostname}: mixed platform versions {versions}"
+        assert versions.pop() in ("4.18.25050.5", "4.18.25040.2")
+
+
 def test_memory_on_every_process():
     for label in ("c2_http", "lateral_movement_1"):
         _, _, _, world = _world_for(label)

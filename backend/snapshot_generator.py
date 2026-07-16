@@ -171,10 +171,17 @@ def build_baseline(host, owner, session_seed, reserved_pids, servers,
     owner_user = f"{owner['domain']}\\{owner['username']}" if owner else None
     owner_name = owner["username"] if owner else None
 
+    # Defender platform version: stable-key pick from the documented set
+    # (session_seed + hostname + field_name), never draw order.
+    defender_ver = noise_profiles.DEFENDER_PLATFORM_VERSIONS[
+        _stable_int(0, len(noise_profiles.DEFENDER_PLATFORM_VERSIONS) - 1,
+                    session_seed, hostname, "defender_platform")]
+
     def sub(text):
         if not isinstance(text, str):
             return text
         out = text.replace("__HOSTNAME__", hostname)
+        out = out.replace("__DEFENDERVER__", defender_ver)
         if owner_name:
             out = out.replace("__OWNERNAME__", owner_name)
         if owner_user:
