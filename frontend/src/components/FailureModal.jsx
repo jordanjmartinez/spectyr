@@ -25,7 +25,7 @@ const FailureModal = ({ onRetry, onQuit, failureType }) => {
 
   const detail = failureType === 'timeout'
     ? 'The clock ran out before the threat was contained.'
-    : 'A critical alert was misclassified — the intrusion went undetected.';
+    : 'A critical alert was misclassified. The intrusion went undetected.';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0d1117]/95">

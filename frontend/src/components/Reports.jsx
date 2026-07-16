@@ -161,7 +161,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
             report.severity === 'Critical' ? '#b91c1c' :
             report.severity === 'High' ? '#ea580c' :
             report.severity === 'Medium' ? '#ca8a04' : '#047857'
-          };">${report.severity || '—'}</p>
+          };">${report.severity || '-'}</p>
         </div>
         <div>
           <p style="margin: 0 0 4px 0; font-size: 11px; text-transform: uppercase; color: #666; letter-spacing: 0.5px;">Status</p>
@@ -173,27 +173,27 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
         </div>
         <div>
           <p style="margin: 0 0 4px 0; font-size: 11px; text-transform: uppercase; color: #666; letter-spacing: 0.5px;">MITRE ATT&CK</p>
-          <p style="margin: 0; font-size: 14px;">${report.mitre_tactic || '—'}</p>
+          <p style="margin: 0; font-size: 14px;">${report.mitre_tactic || '-'}</p>
         </div>
         <div>
           <p style="margin: 0 0 4px 0; font-size: 11px; text-transform: uppercase; color: #666; letter-spacing: 0.5px;">Kill Chain Phase</p>
-          <p style="margin: 0; font-size: 14px;">${report.kill_chain || '—'}</p>
+          <p style="margin: 0; font-size: 14px;">${report.kill_chain || '-'}</p>
         </div>
       </div>
 
       <div style="margin-bottom: 20px;">
         <p style="margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase; color: #666; letter-spacing: 0.5px; font-weight: 500;">Description</p>
-        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #333;">${report.description || '—'}</p>
+        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #333;">${report.description || '-'}</p>
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 20px;">
         <div>
           <p style="margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase; color: #666; letter-spacing: 0.5px; font-weight: 500;">Affected Systems</p>
-          <p style="margin: 0; font-size: 13px; font-family: monospace; color: #333;">${report.affected_hosts || '—'}</p>
+          <p style="margin: 0; font-size: 13px; font-family: monospace; color: #333;">${report.affected_hosts || '-'}</p>
         </div>
         <div>
           <p style="margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase; color: #666; letter-spacing: 0.5px; font-weight: 500;">Mitigation Steps</p>
-          <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #333;">${report.mitigation || '—'}</p>
+          <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #333;">${report.mitigation || '-'}</p>
         </div>
       </div>
 
@@ -433,23 +433,23 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
                           <div className="px-6 py-4">
                             <div className="mb-4">
                               <span className="text-sm sm:text-base text-[#1a2332] font-medium">Title</span>
-                              <p className="text-[#1a2332] mt-1 text-sm sm:text-base break-words">{report.title || '—'}</p>
+                              <p className="text-[#1a2332] mt-1 text-sm sm:text-base break-words">{report.title || '-'}</p>
                             </div>
                             <div className="mb-4">
                               <span className="text-sm sm:text-base text-[#1a2332] font-medium">Description</span>
-                              <p className="text-[#1a2332] mt-2 leading-relaxed text-sm sm:text-base break-words">{report.description || '—'}</p>
+                              <p className="text-[#1a2332] mt-2 leading-relaxed text-sm sm:text-base break-words">{report.description || '-'}</p>
                             </div>
                             <div className="mb-4">
                               <span className="text-sm sm:text-base text-[#1a2332] font-medium">Affected Systems</span>
-                              <p className="text-[#1a2332] mt-2 text-sm sm:text-base break-words">{report.affected_hosts || '—'}</p>
+                              <p className="text-[#1a2332] mt-2 text-sm sm:text-base break-words">{report.affected_hosts || '-'}</p>
                             </div>
                             <div className="mb-4">
                               <span className="text-sm sm:text-base text-[#1a2332] font-medium">Mitigation Steps</span>
-                              <p className="text-[#1a2332] mt-2 leading-relaxed text-sm sm:text-base break-words">{report.mitigation || '—'}</p>
+                              <p className="text-[#1a2332] mt-2 leading-relaxed text-sm sm:text-base break-words">{report.mitigation || '-'}</p>
                             </div>
                             <div>
                               <span className="text-sm sm:text-base text-[#1a2332] font-medium">MITRE ATT&CK</span>
-                              <p className="text-[#1a2332] mt-1 text-sm sm:text-base">{report.mitre_tactic || '—'}</p>
+                              <p className="text-[#1a2332] mt-1 text-sm sm:text-base">{report.mitre_tactic || '-'}</p>
                             </div>
                           </div>
                         </div>

@@ -70,7 +70,14 @@ A full-stack Security Information and Event Management (SIEM) simulation platfor
 - Schema v2 sections: `environment` (org/hosts/accounts), `attack` (the chain, each step tagged with a stable `id` + the `host`/`user` it occurs on), `noise` (per-host profile refs, empty until Stage 1), `answer_key` (classification, scope, root_cause, techniques, actions — actions reserved empty until Stage 3)
 - Revert paths, **do not modify or remove**: `yaml` = Phase 1 loader (`scenario_loader.py` + `backend/scenarios/*.yaml`), `ndjson` = legacy loader in app.py
 - Gates (run from `backend/`): `python test_scenario_loader_v2.py`, `python parity_check_v2.py`, `python test_scenario_loader.py`, `python parity_check.py`, `python fairness_check.py`
-- Migration + review artifact: `scenarios/migrate_v1_to_v2.py` regenerates `scenarios/v2/` and `scenarios/v2/MIGRATION_REPORT.md` (per-step tag tables, grandfathered literals, open flags)
+- Migration + review artifact: `scenarios/migrate_v1_to_v2.py` regenerates `scenarios/v2/` and `scenarios/v2/MIGRATION_REPORT.md` (per-step tag tables, grandfathered literals, open flags). MIGRATION_REPORT.md is frozen as the Stage 0 artifact; Stage 1+ flags live in `scenarios/v2/ENVIRONMENT_REPORT.md`
+
+### Endpoint World (Phase 2 Stage 1)
+- One world state per session (`session["world"]`, guarded by `io_lock`; frozen `started_at` timestamp): per-host EDR snapshots derived purely from environment + substituted event pool + `noise_profiles.py` role baselines by `snapshot_generator.py`
+- Built/extended at drip time in `build_attack_chain_logs`; attack lineage keeps authored PIDs/PPIDs (all authored PIDs reserved corpus-wide); every generated value is stable-key derived (sha256 over session/host/identity/field), never draw-order
+- Managed endpoints are Windows hosts only; the PAN-OS firewall is a log source, never an endpoint. Host `status` (online/offline) is scenario-declared in schema v2, default online
+- Frontend: `Endpoints.jsx` (list) + `EndpointDetail.jsx` (two-pane, tabs Overview/Processes/Network/Services/Users/Autoruns); no polling, snapshot fetched on tab open/reset/pivot; hostname values in event detail views pivot to the endpoint page
+- Gates: `python test_snapshot_generator.py` (backend), `CI=true npx react-scripts test --watchAll=false` (frontend render + em-dash copy scan)
 
 ### Scenario Catalog (`CAMPAIGN_LEVELS`)
 Despite the name, this is a flat catalog now — the level grouping only organizes the 20 definitions, it does not gate progression. Queue metadata (ticket_title/storyline) still comes from this dict; chains and triage reviews come from the YAML source:
@@ -172,6 +179,8 @@ Note: `simulated_attack_logs.ndjson` is at `backend/logs/` root (shared across s
 | `/api/analytics/report_card` | GET | Get analyst performance metrics |
 | `/api/analytics/action_history` | GET | Get last 10 classify actions with feedback |
 | `/api/triage-review/<label>` | GET | Get educational content for scenario |
+| `/api/endpoints` | GET | Endpoint list (session world summary rows + org) |
+| `/api/endpoints/<hostname>` | GET | Full endpoint snapshot (all tabs), 404 unknown |
 | `/api/game-state` | GET | Get game mode, timer status, paused state |
 | `/api/game-timeout` | POST | Hardcore timeout: pause session (FailureModal handles retry) |
 
@@ -245,10 +254,9 @@ Each scenario label should be unique across the whole catalog. If a category rep
 ## UI Architecture
 
 ### Dashboard Tabs (Dashboard.jsx)
-- 4 tabs: Alerts, Events, Analytics, Reports
-- CSS Grid layout: Mobile `grid-cols-4`, Desktop `grid-cols-[8rem_8rem_8.5rem_8rem]`
+- 5 tabs: Alerts, Events, Endpoints, Metrics, Reports
 - Counts always shown (Splunk-style): `Alerts 3`, `Events 12`
-- Keyboard shortcuts: 1-4 to switch tabs
+- Keyboard shortcuts: 1-5 to switch tabs
 - GameTimer positioned above the main card, right-aligned
 - Auto-detects incident completion (running->paused transition) and increments badge
 

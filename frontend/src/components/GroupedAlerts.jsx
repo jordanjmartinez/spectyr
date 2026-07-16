@@ -84,7 +84,7 @@ const BarList = ({ title, segments }) => {
   );
 };
 
-const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, setGroupedAlertCount, onPivot }) => {
+const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, setGroupedAlertCount, onPivot, onHostPivot }) => {
   const [groups, setGroups] = useState([]);
   const [expanded, setExpanded] = useState(null);
   const [expandedLogs, setExpandedLogs] = useState({});
@@ -353,7 +353,18 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
             <div key={k}>
               <span className="text-[#6e7781]">{k.padEnd(maxKeyLen)}</span>
               <span className="text-[#6e7781]"> = </span>
-              <span className="text-[#1a2332]">{v}</span>
+              {k === 'host' && onHostPivot ? (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onHostPivot(v); }}
+                  className="text-[#16436b] hover:underline"
+                  title={`Open ${v} in Endpoints`}
+                >
+                  {v}
+                </button>
+              ) : (
+                <span className="text-[#1a2332]">{v}</span>
+              )}
             </div>
           ))}
         {kvpFields.map(([k, v]) => (
@@ -387,7 +398,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
     const vals = new Set();
     (group.logs || []).forEach(log => {
       [log.source_ip, log.destination_ip, log.hostname].forEach(v => {
-        if (v && v !== '—') vals.add(v);
+        if (v) vals.add(v);
       });
       const acct = log.key_value_pairs?.account_name;
       if (acct && acct !== '-') vals.add(acct);
@@ -991,7 +1002,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                     <div className="mb-4 rounded-lg border border-[#e2e6ea] bg-white px-4 py-3">
                                       <p className="text-xs sm:text-sm text-[#1a2332]">
                                         <span className="text-[#c28e46] font-medium">Detection fired on the event{group.log_count === 1 ? '' : 's'} below.</span>{' '}
-                                        {group.hidden_count} related event{group.hidden_count === 1 ? '' : 's'} from this host are in the stream — pivot to reconstruct the chain before you classify.
+                                        {group.hidden_count} related event{group.hidden_count === 1 ? '' : 's'} from this host are in the stream. Pivot to reconstruct the chain before you classify.
                                       </p>
                                       <div className="mt-2.5 flex flex-wrap items-center gap-2">
                                         <span className="text-xs tracking-wider text-[#6e7781]">Pivot on</span>
@@ -1058,7 +1069,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                                 </svg>
                                               </td>
                                               <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-[#57606a] text-center">
-                                                {log.alert_id || '—'}
+                                                {log.alert_id || '-'}
                                               </td>
                                               <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
                                                 <span className="text-[#1a2332]">
@@ -1077,13 +1088,13 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                                 {log.source_type || 'Unknown'}
                                               </td>
                                               <td className="px-2 sm:px-4 py-4 text-[#1a2332] sm:whitespace-nowrap text-center">
-                                                {log.source_ip || '—'}
+                                                {log.source_ip || '-'}
                                               </td>
                                               <td className="px-2 sm:px-4 py-4 text-[#1a2332] sm:whitespace-nowrap text-center">
-                                                {log.destination_ip || '—'}
+                                                {log.destination_ip || '-'}
                                               </td>
-                                              <td className="px-2 sm:px-4 py-4 text-[#1a2332] whitespace-nowrap" title={log.message || '—'}>
-                                                {log.message || '—'}
+                                              <td className="px-2 sm:px-4 py-4 text-[#1a2332] whitespace-nowrap" title={log.message || '-'}>
+                                                {log.message || '-'}
                                               </td>
                                             </tr>
                                             <tr>

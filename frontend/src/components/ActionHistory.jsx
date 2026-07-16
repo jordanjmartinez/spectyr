@@ -149,7 +149,7 @@ const ActionHistory = ({ history: rawHistory }) => {
                       )}
                     </td>
                     <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
-                      <span className="text-[#1a2332]">{item.true_category || '—'}</span>
+                      <span className="text-[#1a2332]">{item.true_category || '-'}</span>
                     </td>
                     <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
                       {review?.mitre?.id ? (
@@ -167,7 +167,7 @@ const ActionHistory = ({ history: rawHistory }) => {
                           <span className="font-semibold">{review.mitre.id}</span>
                         </a>
                       ) : (
-                        <span className="text-[#1a2332]">—</span>
+                        <span className="text-[#1a2332]">-</span>
                       )}
                     </td>
                     <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
@@ -223,7 +223,7 @@ const ActionHistory = ({ history: rawHistory }) => {
                                       {review.indicators.map((ind, i) => (
                                         <p key={i} className="text-sm sm:text-base text-[#1a2332]">
                                           <span className="text-[#1a2332] font-medium">{ind.indicator}</span>
-                                          <span className="text-[#6e7781] mx-1">—</span>
+                                          <span className="text-[#6e7781] mx-1">&middot;</span>
                                           {ind.explanation}
                                         </p>
                                       ))}

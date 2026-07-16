@@ -39,7 +39,7 @@ const alertFieldValue = (alert, field) =>
 const SEV_EDGE = { critical: '#b26666', high: '#c28e46', medium: '#d4cc6e', low: '#e2e6ea' };
 const sevColor = (sev) => SEV_EDGE[String(sev || '').toLowerCase()] || '#e2e6ea';
 
-const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
+const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery, onHostPivot }) => {
   const [alerts, setAlerts] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [alertsPerPage, setAlertsPerPage] = useState(20);
@@ -170,7 +170,18 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
             <div key={k}>
               <span className="text-[#6e7781]">{k.padEnd(maxKeyLen)}</span>
               <span className="text-[#6e7781]"> = </span>
-              <span className="text-[#1a2332]">{v}</span>
+              {k === 'host' && onHostPivot ? (
+                <button
+                  type="button"
+                  onClick={() => onHostPivot(v)}
+                  className="text-[#16436b] hover:underline"
+                  title={`Open ${v} in Endpoints`}
+                >
+                  {v}
+                </button>
+              ) : (
+                <span className="text-[#1a2332]">{v}</span>
+              )}
             </div>
           ))}
         {kvpFields.map(([k, v]) => (
@@ -248,7 +259,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
           <div className="relative">
             <input
               type="text"
-              placeholder="Search events — e.g. source_ip=10.0.1.24 event_type=4625"
+              placeholder="Search events, e.g. source_ip=10.0.1.24 event_type=4625"
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -384,7 +395,7 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
             </thead>
             <tbody className="divide-y divide-[#e2e6ea]">
               {currentAlerts.map((alert) => {
-                const hasValue = (v) => v && v !== '—' && v !== 'N/A' && v !== '';
+                const hasValue = (v) => v && v !== 'N/A' && v !== '';
                 const isRegistryEvent = hasValue(alert.target_object) || hasValue(alert.registry_details);
                 const isProcessAccessEvent = hasValue(alert.source_image) || hasValue(alert.target_image);
                 const isNetworkConnectionEvent = hasValue(alert.destination_hostname) || alert.destination_port;
@@ -415,22 +426,22 @@ const AlertTable = ({ setAlertCount, resetTrigger, pivotQuery }) => {
                       <td className="log-mono px-2 sm:px-4 py-4 text-[#1a2332] whitespace-nowrap">
                         {alert.timestamp ? new Date(alert.timestamp).toLocaleTimeString('en-GB', {
                           hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
-                        }) : '—'}
+                        }) : '-'}
                       </td>
-                      <td className="log-mono px-2 sm:px-4 py-4 font-medium text-[#1a2332] whitespace-nowrap" title={alert.event_type || '—'}>
-                        {alert.event_type || '—'}
+                      <td className="log-mono px-2 sm:px-4 py-4 font-medium text-[#1a2332] whitespace-nowrap" title={alert.event_type || '-'}>
+                        {alert.event_type || '-'}
                       </td>
                       <td className="px-2 sm:px-4 py-4 text-[#1a2332] sm:whitespace-nowrap">
                         {alert.source_type || alert.detected_by || 'Unknown'}
                       </td>
                       <td className="log-mono px-2 sm:px-4 py-4 text-[#1a2332] sm:whitespace-nowrap">
-                        {alert.source_ip || '—'}
+                        {alert.source_ip || '-'}
                       </td>
                       <td className="log-mono px-2 sm:px-4 py-4 text-[#1a2332] sm:whitespace-nowrap">
-                        {alert.destination_ip || '—'}
+                        {alert.destination_ip || '-'}
                       </td>
-                      <td className="px-2 sm:px-4 py-4 text-[#1a2332] whitespace-nowrap" title={alert.message || '—'}>
-                        {alert.message || '—'}
+                      <td className="px-2 sm:px-4 py-4 text-[#1a2332] whitespace-nowrap" title={alert.message || '-'}>
+                        {alert.message || '-'}
                       </td>
                     </tr>
 
