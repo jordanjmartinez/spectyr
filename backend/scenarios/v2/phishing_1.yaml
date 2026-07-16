@@ -149,6 +149,18 @@ attack:
 
 noise: {}
 
+detections:
+  - id: "det_impossible_travel"
+    rule_name: "Entra Impossible-Travel Risk Detection"
+    rule_type: "sigma_behavioral"
+    severity: "high"
+    triggers: ["s4"]
+    mitre:
+      id: "T1583.001"
+      tactic: "Resource Development"
+    description: "Entra ID flagged risky sign-in activity from an unexpected location after a credential-harvest page interaction."
+    disposition: "true_positive"
+
 answer_key:
   classification: "Phishing"
   scope:

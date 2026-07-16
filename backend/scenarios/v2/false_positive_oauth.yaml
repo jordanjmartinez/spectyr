@@ -157,6 +157,15 @@ attack:
 
 noise: {}
 
+detections:
+  - id: "det_fp_oauth"
+    rule_name: "Impossible-Travel Sign-In (OAuth Refresh Token)"
+    rule_type: "sigma_behavioral"
+    severity: "medium"
+    triggers: ["s4"]
+    description: "An impossible-travel risk event driven by modern-auth OAuth refresh tokens after an endpoint migration, a common benign trigger."
+    disposition: "false_positive"
+
 answer_key:
   classification: "False Positive"
   scope:

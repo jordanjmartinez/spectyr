@@ -184,6 +184,18 @@ attack:
 
 noise: {}
 
+detections:
+  - id: "det_beacon"
+    rule_name: "Periodic HTTPS Beacon to Uncategorized Domain"
+    rule_type: "sigma_behavioral"
+    severity: "high"
+    triggers: ["s3"]
+    mitre:
+      id: "T1071.001"
+      tactic: "Command and Control"
+    description: "Regular-interval outbound HTTPS connections to a domain absent from any allowlist, consistent with C2 beaconing."
+    disposition: "true_positive"
+
 answer_key:
   classification: "Command & Control"
   scope:

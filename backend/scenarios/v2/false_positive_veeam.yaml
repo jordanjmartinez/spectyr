@@ -191,6 +191,15 @@ attack:
 
 noise: {}
 
+detections:
+  - id: "det_fp_veeam"
+    rule_name: "Periodic Off-Hours Outbound Beacon (Backup Agent)"
+    rule_type: "sigma_behavioral"
+    severity: "medium"
+    triggers: ["s3"]
+    description: "Regular off-hours outbound connections from a backup agent running under SYSTEM to the backup server, expected behavior."
+    disposition: "false_positive"
+
 answer_key:
   classification: "False Positive"
   scope:

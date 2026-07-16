@@ -191,6 +191,18 @@ attack:
 
 noise: {}
 
+detections:
+  - id: "det_log_cleared"
+    rule_name: "Windows Security Event Log Cleared (1102)"
+    rule_type: "sigma_behavioral"
+    severity: "high"
+    triggers: ["s5"]
+    mitre:
+      id: "T1070.001"
+      tactic: "Defense Evasion"
+    description: "The Windows Security event log was cleared (1102). Clearing destroys forensic evidence and, absent a change record, indicates an attacker removing traces."
+    disposition: "true_positive"
+
 answer_key:
   classification: "Defense Evasion"
   scope:

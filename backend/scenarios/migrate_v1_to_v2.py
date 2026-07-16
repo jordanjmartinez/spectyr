@@ -78,6 +78,149 @@ FW_IP = "10.0.1.254"
 ORG_NAME = "ACME Corp"
 ORG_DOMAIN = "acme.local"
 
+# Stage 2 detections, authored per scenario (keyed by label). Each fires on a
+# trigger step id and carries a server-side disposition. Rule names and
+# descriptions are ORIGINAL (no SigmaHQ rule text copied), so the Detection
+# Rule License attribution requirement does not attach; "sigma_behavioral"
+# denotes the behavioral-rule format, not adapted SigmaHQ content. YARA-typed
+# detections simulate a signature hit (yara_rule_name is a fictional Spectyr
+# signature). Attack scenarios carry a true_positive on the trigger; the five
+# FP scenarios carry a false_positive. Ambient benign_expected detections are
+# generated at runtime from detection_templates.py, not authored here.
+def _det(id, rule_name, rule_type, severity, triggers, disposition,
+         description, mitre=None, yara_rule_name=None):
+    d = {"id": id, "rule_name": rule_name, "rule_type": rule_type,
+         "severity": severity, "triggers": triggers,
+         "disposition": disposition, "description": description}
+    if mitre:
+        d["mitre"] = {"id": mitre[0], "tactic": mitre[1]}
+    if yara_rule_name:
+        d["yara_rule_name"] = yara_rule_name
+    return d
+
+
+DETECTIONS = {
+    "brute_force_attack": [_det(
+        "det_lockout", "Account Lockout After Repeated External Failures",
+        "sigma_behavioral", "high", ["s5"], "true_positive",
+        "A domain account locked out (4740) after a burst of failed logons "
+        "from a single external source, consistent with online password "
+        "guessing.", mitre=("T1110.001", "Credential Access"))],
+    "c2_dns_tunnel": [_det(
+        "det_dns_tunnel", "Anomalous DNS TXT Query Volume to Rare Domain",
+        "sigma_behavioral", "high", ["s3"], "true_positive",
+        "Repeated TXT lookups to non-standard subdomains of a rarely seen "
+        "parent domain, a common DNS tunneling and C2 pattern.",
+        mitre=("T1071.004", "Command and Control"))],
+    "c2_http": [_det(
+        "det_beacon", "Periodic HTTPS Beacon to Uncategorized Domain",
+        "sigma_behavioral", "high", ["s3"], "true_positive",
+        "Regular-interval outbound HTTPS connections to a domain absent from "
+        "any allowlist, consistent with C2 beaconing.",
+        mitre=("T1071.001", "Command and Control"))],
+    "data_exfil_archive": [_det(
+        "det_exfil_upload", "Outbound Transfer to Consumer File-Sharing Host",
+        "sigma_behavioral", "high", ["s5"], "true_positive",
+        "A large outbound transfer to a consumer file-sharing service shortly "
+        "after local archive creation, consistent with staged exfiltration.",
+        mitre=("T1560.001", "Collection"))],
+    "defense_evasion": [_det(
+        "det_av_disabled", "Endpoint Protection Real-Time Scanning Disabled",
+        "sigma_behavioral", "high", ["s2"], "true_positive",
+        "Defender real-time protection was turned off (5007) outside a "
+        "maintenance window, a common precursor to payload execution.",
+        mitre=("T1562.001", "Defense Evasion"))],
+    "defense_evasion_log_clearing": [_det(
+        # classification_event ruling (2026-07-16): bound to the 1102 step s5.
+        "det_log_cleared", "Windows Security Event Log Cleared (1102)",
+        "sigma_behavioral", "high", ["s5"], "true_positive",
+        "The Windows Security event log was cleared (1102). Clearing destroys "
+        "forensic evidence and, absent a change record, indicates an attacker "
+        "removing traces.", mitre=("T1070.001", "Defense Evasion"))],
+    "insider_shadow_it": [_det(
+        "det_shadow_upload", "Upload to Unsanctioned Cloud Storage",
+        "sigma_behavioral", "medium", ["s5"], "true_positive",
+        "Sensitive files uploaded to an unsanctioned cloud provider by an "
+        "unapproved application, consistent with insider data movement.",
+        mitre=("T1567.002", "Exfiltration"))],
+    "insider_staging": [_det(
+        "det_staging", "Sensitive Share Access Then Local Staging",
+        "sigma_behavioral", "medium", ["s5"], "true_positive",
+        "A user accessed a sensitive file share outside their role and staged "
+        "a copy locally before an outbound connection.",
+        mitre=("T1074.001", "Collection"))],
+    "lateral_movement_1": [_det(
+        "det_lateral_logon", "Anomalous Internal Logon Following Port Scan",
+        "sigma_behavioral", "high", ["s5"], "true_positive",
+        "An interactive logon to an internal server from a workstation that "
+        "had just port-scanned it, consistent with lateral movement.",
+        mitre=("T1046", "Discovery"))],
+    "lateral_movement_2": [_det(
+        "det_lsass", "LSASS Process Memory Access",
+        "sigma_behavioral", "critical", ["s2"], "true_positive",
+        "A non-system process opened a handle to lsass.exe memory, the "
+        "signature action of credential dumping.",
+        mitre=("T1003.001", "Credential Access"))],
+    "malware_ransomware": [_det(
+        "det_ransom_note", "Ransom Note File Signature Match",
+        "yara", "high", ["s3"], "true_positive",
+        "A file matching a generic ransom-note signature was written to disk "
+        "amid mass file renames with an unfamiliar extension.",
+        mitre=("T1486", "Impact"),
+        yara_rule_name="Spectyr_Ransom_Note_Generic")],
+    "malware_usb": [_det(
+        "det_usb_exec", "Executable Launched from Removable Media",
+        "yara", "high", ["s2"], "true_positive",
+        "A binary matching a suspicious-loader signature executed directly "
+        "from a removable drive path.",
+        mitre=("T1091", "Initial Access"),
+        yara_rule_name="Spectyr_USB_Loader_Generic")],
+    "password_spray": [_det(
+        "det_spray", "Password Spray Pattern Across Many Accounts",
+        "sigma_behavioral", "high", ["s6"], "true_positive",
+        "One source attempted single logons against many distinct accounts in "
+        "a short window, then authenticated successfully, the password-spray "
+        "signature.", mitre=("T1110.003", "Credential Access"))],
+    "phishing_1": [_det(
+        "det_impossible_travel", "Entra Impossible-Travel Risk Detection",
+        "sigma_behavioral", "high", ["s4"], "true_positive",
+        "Entra ID flagged risky sign-in activity from an unexpected location "
+        "after a credential-harvest page interaction.",
+        mitre=("T1583.001", "Resource Development"))],
+    "phishing_link": [_det(
+        "det_link_payload", "Payload Process Spawned After Email Link Click",
+        "sigma_behavioral", "high", ["s3"], "true_positive",
+        "A process launched from a user profile path shortly after the user "
+        "followed a link to a lookalike domain.",
+        mitre=("T1566.002", "Initial Access"))],
+    "false_positive_oauth": [_det(
+        "det_fp_oauth", "Impossible-Travel Sign-In (OAuth Refresh Token)",
+        "sigma_behavioral", "medium", ["s4"], "false_positive",
+        "An impossible-travel risk event driven by modern-auth OAuth refresh "
+        "tokens after an endpoint migration, a common benign trigger.")],
+    "false_positive_pentest": [_det(
+        "det_fp_pentest", "Credential-Harvest POST to Lookalike Domain",
+        "sigma_behavioral", "medium", ["s3"], "false_positive",
+        "A credential-submission POST to a lookalike domain generated by an "
+        "authorized security-awareness phishing simulation.")],
+    "false_positive_robocopy": [_det(
+        "det_fp_robocopy", "Bulk File Copy by Service Account",
+        "sigma_behavioral", "medium", ["s1"], "false_positive",
+        "A scheduled service account copied a large volume of files to a cloud "
+        "endpoint as part of a planned migration project.")],
+    "false_positive_ssl_inspection": [_det(
+        "det_fp_ssl", "Repeated TLS Handshake Failures Resembling Beacon",
+        "sigma_behavioral", "medium", ["s2"], "false_positive",
+        "Regular-interval TLS handshake failures caused by an expanded "
+        "corporate proxy SSL-inspection policy, not C2.")],
+    "false_positive_veeam": [_det(
+        "det_fp_veeam", "Periodic Off-Hours Outbound Beacon (Backup Agent)",
+        "sigma_behavioral", "medium", ["s3"], "false_positive",
+        "Regular off-hours outbound connections from a backup agent running "
+        "under SYSTEM to the backup server, expected behavior.")],
+}
+
+
 # OS labels are simulation metadata (nothing renders them until Stage 1).
 # Stage 0 review outcome: workstations default to Windows 11 Enterprise,
 # EXCEPT scenarios whose chain embeds Win10-specific artifacts on the
@@ -400,6 +543,25 @@ def emit_answer_key(ak):
     return L
 
 
+def emit_detections(dets):
+    L = ["detections:"]
+    for d in dets:
+        L.append(f"  - id: {emit(d['id'])}")
+        L.append(f"    rule_name: {emit(d['rule_name'])}")
+        L.append(f"    rule_type: {emit(d['rule_type'])}")
+        L.append(f"    severity: {emit(d['severity'])}")
+        L.append(f"    triggers: {emit(d['triggers'])}")
+        if "mitre" in d:
+            L.append("    mitre:")
+            L.append(f"      id: {emit(d['mitre']['id'])}")
+            L.append(f"      tactic: {emit(d['mitre']['tactic'])}")
+        if "yara_rule_name" in d:
+            L.append(f"    yara_rule_name: {emit(d['yara_rule_name'])}")
+        L.append(f"    description: {emit(d['description'])}")
+        L.append(f"    disposition: {emit(d['disposition'])}")
+    return L
+
+
 def split_sections(lines):
     """Indices of the v1 file's top-level anchors. The v1 corpus is
     converter-emitted, so the layout is fixed: comments, label:..., chain:,
@@ -535,6 +697,8 @@ def migrate(fname, report):
     L.append("")
     L.append("noise: {}")
     L.append("")
+    L.extend(emit_detections(DETECTIONS[label]))
+    L.append("")
     L.extend(emit_answer_key(answer_key))
     L.append("")
     L.extend(tail)
@@ -550,6 +714,7 @@ def migrate(fname, report):
     assert stripped == corrected_chain, f"{label}: attack != corrected v1 chain after strip"
     assert new_doc["entities"] == corrected_entities, f"{label}: entities diverged"
     assert new_doc["triage_review"] == corrected_triage, f"{label}: triage diverged"
+    assert new_doc["detections"] == DETECTIONS[label], f"{label}: detections diverged"
     for key in ("label", "category", "difficulty", "threat_pattern", "narrative"):
         assert new_doc[key] == doc[key], f"{label}: section {key} diverged"
     v2.validate_scenario_v2(new_doc, v2._load_schema_v2(), v1._load_schema(),

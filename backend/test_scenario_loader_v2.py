@@ -268,6 +268,73 @@ def test_rejects_nonempty_actions_reserved_for_stage_3():
     _expect_error(doc, "schema v2 violation")
 
 
+def test_detections_load_and_reference_real_steps():
+    catalog, _ = _load_corpus()
+    for label, sc in catalog.items():
+        dets = sc["detections"]
+        assert dets, f"{label}: no detections"
+        step_ids = {m["id"] for m in sc["attack_meta"]}
+        det_ids = [d["id"] for d in dets]
+        assert len(det_ids) == len(set(det_ids)), f"{label}: dup detection ids"
+        is_fp = sc["category"] == "False Positive"
+        tp = 0
+        for d in dets:
+            assert set(d["triggers"]) <= step_ids, f"{label}/{d['id']}: bad triggers"
+            assert d["severity"] in ("critical", "high", "medium")
+            assert d["rule_type"] in ("sigma_behavioral", "yara")
+            if d["rule_type"] == "yara":
+                assert d.get("yara_rule_name"), f"{label}/{d['id']}: yara needs name"
+            if d["disposition"] == "true_positive":
+                tp += 1
+                assert not is_fp, f"{label}: FP scenario has a TP detection"
+        if not is_fp:
+            assert tp >= 1, f"{label}: attack scenario needs a TP detection"
+
+
+def test_log_clearing_tp_detection_binds_to_1102_step():
+    """Part 2 ruling: the log-clearing TP detection fires on s5 (the 1102
+    step) and carries T1070.001 / Defense Evasion."""
+    catalog, _ = _load_corpus()
+    dets = catalog["defense_evasion_log_clearing"]["detections"]
+    tp = [d for d in dets if d["disposition"] == "true_positive"]
+    assert len(tp) == 1
+    assert tp[0]["triggers"] == ["s5"]
+    assert tp[0]["mitre"] == {"id": "T1070.001", "tactic": "Defense Evasion"}
+
+
+def test_rejects_fp_scenario_with_true_positive_detection():
+    doc = _one_valid_doc("false_positive_veeam")
+    doc["detections"][0]["disposition"] = "true_positive"
+    _expect_error(doc, "cannot carry a true_positive detection")
+
+
+def test_rejects_attack_without_true_positive_detection():
+    doc = _one_valid_doc()  # lateral_movement_1, an attack
+    doc["detections"][0]["disposition"] = "benign_expected"
+    _expect_error(doc, "needs at least one true_positive detection")
+
+
+def test_rejects_detection_trigger_on_unknown_step():
+    doc = _one_valid_doc()
+    doc["detections"][0]["triggers"] = ["s99"]
+    _expect_error(doc, "unknown step")
+
+
+def test_rejects_yara_without_rule_name():
+    doc = _one_valid_doc()
+    doc["detections"][0]["rule_type"] = "yara"
+    doc["detections"][0].pop("yara_rule_name", None)
+    _expect_error(doc, "needs a yara_rule_name")
+
+
+def test_rejects_duplicate_detection_ids():
+    doc = _one_valid_doc("malware_usb")
+    # duplicate the single detection so two share an id
+    dup = dict(doc["detections"][0])
+    doc["detections"].append(dup)
+    _expect_error(doc, "duplicate detection id")
+
+
 def test_rejects_noise_profile_on_unknown_host():
     doc = _one_valid_doc()
     doc["noise"] = {"host_profiles": {"ghost": "workstation_baseline"}}

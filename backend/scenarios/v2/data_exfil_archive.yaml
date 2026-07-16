@@ -188,6 +188,18 @@ attack:
 
 noise: {}
 
+detections:
+  - id: "det_exfil_upload"
+    rule_name: "Outbound Transfer to Consumer File-Sharing Host"
+    rule_type: "sigma_behavioral"
+    severity: "high"
+    triggers: ["s5"]
+    mitre:
+      id: "T1560.001"
+      tactic: "Collection"
+    description: "A large outbound transfer to a consumer file-sharing service shortly after local archive creation, consistent with staged exfiltration."
+    disposition: "true_positive"
+
 answer_key:
   classification: "Data Exfiltration"
   scope:

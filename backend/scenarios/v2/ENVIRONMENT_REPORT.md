@@ -5,6 +5,33 @@ simulated environment from Stage 1 onward. MIGRATION_REPORT.md is frozen as
 the Stage 0 artifact; new flags land here. Each entry stays until a review
 resolves it (resolution noted inline, entry kept for the record).
 
+## Stage 2 (Detections Feed)
+
+### Recorded decisions
+
+- **Sigma Detection Rule License check: no attribution required.** All
+  detection rule names and descriptions in `scenarios/migrate_v1_to_v2.py`
+  (`DETECTIONS`) and in `detection_templates.py` are ORIGINAL text authored
+  for Spectyr. No SigmaHQ rule content (titles, detection logic, or
+  descriptions) was copied or adapted, so the Sigma Detection Rule License
+  (DRL 1.1) attribution requirement does not attach. `rule_type:
+  sigma_behavioral` denotes the behavioral-detection FORMAT, not adapted
+  SigmaHQ rules. If a future rule adapts SigmaHQ text, DRL attribution must be
+  added and this entry updated.
+- **Detection dispositions are server-side answer keys.** `disposition`
+  (true_positive / false_positive / benign_expected) lives only in the
+  scenario/template data and the session world; the API serializes detections
+  through a whitelist (`sanitize_detection`) so disposition and scoring never
+  reach the client. Enforced by a leak-guard test.
+
+### Open flags (Stage 2)
+
+- **Benign detection templates minimally modeled.** `detection_templates.py`
+  covers common benign_expected triggers (software updaters, backup agents,
+  admin tooling). The set is intentionally small and marked as a stub in that
+  file's FLAGS; expand only from real product behavior, same bar as
+  noise_profiles.
+
 ## Stage 1 (Endpoint Context Pages)
 
 ### Open flags

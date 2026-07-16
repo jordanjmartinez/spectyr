@@ -212,6 +212,18 @@ attack:
 
 noise: {}
 
+detections:
+  - id: "det_lockout"
+    rule_name: "Account Lockout After Repeated External Failures"
+    rule_type: "sigma_behavioral"
+    severity: "high"
+    triggers: ["s5"]
+    mitre:
+      id: "T1110.001"
+      tactic: "Credential Access"
+    description: "A domain account locked out (4740) after a burst of failed logons from a single external source, consistent with online password guessing."
+    disposition: "true_positive"
+
 answer_key:
   classification: "Brute Force"
   scope:

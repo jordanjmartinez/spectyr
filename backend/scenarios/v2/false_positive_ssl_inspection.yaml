@@ -202,6 +202,15 @@ attack:
 
 noise: {}
 
+detections:
+  - id: "det_fp_ssl"
+    rule_name: "Repeated TLS Handshake Failures Resembling Beacon"
+    rule_type: "sigma_behavioral"
+    severity: "medium"
+    triggers: ["s2"]
+    description: "Regular-interval TLS handshake failures caused by an expanded corporate proxy SSL-inspection policy, not C2."
+    disposition: "false_positive"
+
 answer_key:
   classification: "False Positive"
   scope:

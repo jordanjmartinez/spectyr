@@ -200,6 +200,18 @@ attack:
 
 noise: {}
 
+detections:
+  - id: "det_staging"
+    rule_name: "Sensitive Share Access Then Local Staging"
+    rule_type: "sigma_behavioral"
+    severity: "medium"
+    triggers: ["s5"]
+    mitre:
+      id: "T1074.001"
+      tactic: "Collection"
+    description: "A user accessed a sensitive file share outside their role and staged a copy locally before an outbound connection."
+    disposition: "true_positive"
+
 answer_key:
   classification: "Insider Threat"
   scope:

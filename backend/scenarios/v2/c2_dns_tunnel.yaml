@@ -178,6 +178,18 @@ attack:
 
 noise: {}
 
+detections:
+  - id: "det_dns_tunnel"
+    rule_name: "Anomalous DNS TXT Query Volume to Rare Domain"
+    rule_type: "sigma_behavioral"
+    severity: "high"
+    triggers: ["s3"]
+    mitre:
+      id: "T1071.004"
+      tactic: "Command and Control"
+    description: "Repeated TXT lookups to non-standard subdomains of a rarely seen parent domain, a common DNS tunneling and C2 pattern."
+    disposition: "true_positive"
+
 answer_key:
   classification: "Command & Control"
   scope:

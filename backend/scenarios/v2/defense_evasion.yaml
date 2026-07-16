@@ -209,6 +209,18 @@ attack:
 
 noise: {}
 
+detections:
+  - id: "det_av_disabled"
+    rule_name: "Endpoint Protection Real-Time Scanning Disabled"
+    rule_type: "sigma_behavioral"
+    severity: "high"
+    triggers: ["s2"]
+    mitre:
+      id: "T1562.001"
+      tactic: "Defense Evasion"
+    description: "Defender real-time protection was turned off (5007) outside a maintenance window, a common precursor to payload execution."
+    disposition: "true_positive"
+
 answer_key:
   classification: "Defense Evasion"
   scope:

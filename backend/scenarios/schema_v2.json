@@ -3,7 +3,7 @@
   "title": "Spectyr scenario file (schema v2)",
   "$comment": "Phase 2 Stage 0: a scenario is an environment with an attack inside it, not a bare chain. The v1 schema (schema.json) stays frozen as the revert path; the attack steps here are the v1 chain steps plus per-step id/host/user tags. Loader: scenario_loader_v2.py.",
   "type": "object",
-  "required": ["schema_version", "label", "category", "difficulty", "threat_pattern", "narrative", "entities", "environment", "attack", "noise", "answer_key", "triage_review"],
+  "required": ["schema_version", "label", "category", "difficulty", "threat_pattern", "narrative", "entities", "environment", "attack", "noise", "detections", "answer_key", "triage_review"],
   "additionalProperties": false,
   "properties": {
     "schema_version": { "const": 2 },
@@ -73,6 +73,12 @@
           "additionalProperties": { "type": "string", "minLength": 1 }
         }
       }
+    },
+    "detections": {
+      "$comment": "Stage 2: the raw detections this scenario surfaces in the feed. Each fires on triggering step id(s) and carries a server-side answer-key disposition that must never reach the client.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/detection" }
     },
     "answer_key": {
       "type": "object",
@@ -170,6 +176,41 @@
   },
   "$defs": {
     "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+    "detection": {
+      "type": "object",
+      "required": ["id", "rule_name", "rule_type", "severity", "triggers", "description", "disposition"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "rule_name": { "type": "string", "minLength": 1 },
+        "rule_type": {
+          "$comment": "sigma_behavioral = Sigma-style behavioral rule; yara = simulated YARA signature hit. Rule names/descriptions are original (no SigmaHQ rule text copied), so DRL attribution does not attach.",
+          "enum": ["sigma_behavioral", "yara"]
+        },
+        "severity": { "enum": ["critical", "high", "medium"] },
+        "triggers": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/id" }
+        },
+        "mitre": {
+          "type": "object",
+          "required": ["id", "tactic"],
+          "additionalProperties": false,
+          "properties": {
+            "id": { "type": "string", "pattern": "^T[0-9]{4}(\\.[0-9]{3})?$" },
+            "tactic": { "type": "string", "minLength": 1 }
+          }
+        },
+        "yara_rule_name": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "disposition": {
+          "$comment": "ANSWER KEY, server-side only. Never serialized to the client.",
+          "enum": ["true_positive", "false_positive", "benign_expected"]
+        }
+      }
+    },
     "entity": {
       "type": "object",
       "required": ["type"],

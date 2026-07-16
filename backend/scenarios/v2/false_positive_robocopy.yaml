@@ -210,6 +210,15 @@ attack:
 
 noise: {}
 
+detections:
+  - id: "det_fp_robocopy"
+    rule_name: "Bulk File Copy by Service Account"
+    rule_type: "sigma_behavioral"
+    severity: "medium"
+    triggers: ["s1"]
+    description: "A scheduled service account copied a large volume of files to a cloud endpoint as part of a planned migration project."
+    disposition: "false_positive"
+
 answer_key:
   classification: "False Positive"
   scope:

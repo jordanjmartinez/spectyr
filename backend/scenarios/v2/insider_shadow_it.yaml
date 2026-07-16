@@ -184,6 +184,18 @@ attack:
 
 noise: {}
 
+detections:
+  - id: "det_shadow_upload"
+    rule_name: "Upload to Unsanctioned Cloud Storage"
+    rule_type: "sigma_behavioral"
+    severity: "medium"
+    triggers: ["s5"]
+    mitre:
+      id: "T1567.002"
+      tactic: "Exfiltration"
+    description: "Sensitive files uploaded to an unsanctioned cloud provider by an unapproved application, consistent with insider data movement."
+    disposition: "true_positive"
+
 answer_key:
   classification: "Insider Threat"
   scope:

@@ -159,6 +159,37 @@ def validate_scenario_v2(doc, schema_v2, v1_schema, filename):
                 f"{filename}: answer_key.scope.accounts references unknown account {aid!r}"
             )
 
+    # Detections (Stage 2): ids unique, triggers reference real steps, and
+    # the disposition must be consistent with the scenario kind.
+    det_ids = [d["id"] for d in doc["detections"]]
+    dup = _dupes(det_ids)
+    if dup:
+        raise ScenarioError(f"{filename}: duplicate detection id(s): {sorted(set(dup))}")
+    step_id_set = set(step_ids)
+    is_fp_scenario = ak["classification"] == "False Positive"
+    has_true_positive = False
+    for det in doc["detections"]:
+        bad = [t for t in det["triggers"] if t not in step_id_set]
+        if bad:
+            raise ScenarioError(
+                f"{filename}: detection {det['id']!r} triggers on unknown step(s) {bad}"
+            )
+        if det["rule_type"] == "yara" and "yara_rule_name" not in det:
+            raise ScenarioError(
+                f"{filename}: yara detection {det['id']!r} needs a yara_rule_name"
+            )
+        if det["disposition"] == "true_positive":
+            has_true_positive = True
+            if is_fp_scenario:
+                raise ScenarioError(
+                    f"{filename}: a False Positive scenario cannot carry a "
+                    f"true_positive detection ({det['id']!r})"
+                )
+    if not is_fp_scenario and not has_true_positive:
+        raise ScenarioError(
+            f"{filename}: an attack scenario needs at least one true_positive detection"
+        )
+
     root_cause = ak["root_cause"]
     if root_cause is not None and root_cause not in step_ids:
         raise ScenarioError(
@@ -229,6 +260,7 @@ def _catalog_entry_v2(doc):
         "schema_version": 2,
         "environment": doc["environment"],
         "noise": doc["noise"],
+        "detections": doc["detections"],
         "answer_key": doc["answer_key"],
         "attack_meta": attack_meta,
     }
