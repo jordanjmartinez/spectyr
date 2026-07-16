@@ -41,9 +41,9 @@ const TABS = [
 ];
 
 const Th = ({ children, onClick, active, dir }) => (
-  <th className="px-3 py-2.5 font-medium whitespace-nowrap border-b border-[#d0d7de] text-xs uppercase tracking-wider text-[#6e7781]">
+  <th className="px-3 py-2.5 font-medium whitespace-nowrap text-xs uppercase tracking-wider">
     {onClick ? (
-      <button type="button" onClick={onClick} className="inline-flex items-center gap-1 hover:text-[#1a2332] uppercase tracking-wider">
+      <button type="button" onClick={onClick} className="inline-flex items-center gap-1 uppercase tracking-wider">
         {children}{active && <span aria-hidden="true">{dir === 'asc' ? '▴' : '▾'}</span>}
       </button>
     ) : children}
@@ -238,7 +238,7 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead><tr>
+                <thead className="dark-thead"><tr>
                   <Th onClick={procSortBtn('pid')} active={procSort.key === 'pid'} dir={procSort.dir}>PID</Th>
                   <Th onClick={procSortBtn('ppid')} active={procSort.key === 'ppid'} dir={procSort.dir}>PPID</Th>
                   <Th onClick={procSortBtn('path')} active={procSort.key === 'path'} dir={procSort.dir}>File Path</Th>
@@ -270,7 +270,7 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
               <div className="p-4"><SectionLabel>Connections</SectionLabel></div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                  <thead><tr>
+                  <thead className="dark-thead"><tr>
                     <Th>Proto</Th><Th>Local Address</Th><Th>Remote Address</Th><Th>State</Th><Th>Process</Th>
                   </tr></thead>
                   <tbody>
@@ -292,7 +292,7 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
               <div className="p-4"><SectionLabel>Recent DNS</SectionLabel></div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                  <thead><tr><Th>Domain</Th><Th>Resolved IPs</Th><Th>Process</Th></tr></thead>
+                  <thead className="dark-thead"><tr><Th>Domain</Th><Th>Resolved IPs</Th><Th>Process</Th></tr></thead>
                   <tbody>
                     {snap.network.dns.length === 0 && <EmptyRow span={3} />}
                     {snap.network.dns.map((d, i) => (
@@ -313,7 +313,7 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
           <Card>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead><tr>
+                <thead className="dark-thead"><tr>
                   <Th>Name</Th><Th>Display Name</Th><Th>Status</Th><Th>Startup Type</Th><Th>Path</Th><Th>Log On As</Th>
                 </tr></thead>
                 <tbody>
@@ -344,7 +344,7 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
           <Card>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead><tr><Th>Username</Th><Th>Type</Th><Th>Groups</Th><Th>Last Logon</Th></tr></thead>
+                <thead className="dark-thead"><tr><Th>Username</Th><Th>Type</Th><Th>Groups</Th><Th>Last Logon</Th></tr></thead>
                 <tbody>
                   {snap.users.length === 0 && <EmptyRow span={4} />}
                   {snap.users.map(u => (
@@ -370,7 +370,7 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
           <Card>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead><tr><Th>Entry</Th><Th>Location</Th><Th>Image Path</Th><Th>Signer</Th></tr></thead>
+                <thead className="dark-thead"><tr><Th>Entry</Th><Th>Location</Th><Th>Image Path</Th><Th>Signer</Th></tr></thead>
                 <tbody>
                   {snap.autoruns.length === 0 && <EmptyRow span={4} />}
                   {snap.autoruns.map((a, i) => (

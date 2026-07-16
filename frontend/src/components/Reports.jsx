@@ -365,8 +365,8 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
       >
         <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper">
           <table className="w-full min-w-[600px] log-text text-left text-[#1a2332] border-separate border-spacing-0">
-            <thead>
-              <tr className="text-xs sm:text-sm text-[#57606a] tracking-wider">
+            <thead className="dark-thead">
+              <tr className="text-xs sm:text-sm tracking-wider">
                 <th className="w-10 px-2 sm:px-4 py-3 font-medium border-b border-[#d0d7de]"></th>
                 <th className="px-2 sm:px-4 py-3 font-medium whitespace-nowrap border-b border-[#d0d7de]">Title</th>
                 <th className="w-[110px] sm:w-[140px] px-2 sm:px-4 py-3 font-medium whitespace-nowrap text-center border-b border-[#d0d7de]">Severity</th>

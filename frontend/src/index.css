@@ -225,3 +225,22 @@ code {
   opacity: 0;
 }
 
+
+/* Dark table header: the app-wide standard for every data table (SIEM,
+   endpoint tabs, alerts, reports, and future detections/threats lists).
+   Navbar palette family, light body rows. Codified in
+   docs/ui-design-notes.md; apply by adding .dark-thead to the <thead>. */
+.dark-thead th {
+  background: #101218;
+  color: #d1d5db;
+  border-bottom: none;
+}
+.dark-thead th:first-child {
+  border-top-left-radius: 0.5rem;
+}
+.dark-thead th:last-child {
+  border-top-right-radius: 0.5rem;
+}
+.dark-thead button:hover {
+  color: #ffffff;
+}

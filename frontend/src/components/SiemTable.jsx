@@ -210,18 +210,18 @@ const SiemTable = ({ alerts, resetTrigger, onHostPivot }) => {
         ) : (
           <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper" style={{ minHeight: `${(alertsPerPage * 49) + 48}px` }}>
             <table className="w-full min-w-[900px] sm:min-w-[1000px] log-text text-left text-[#1a2332] border-separate border-spacing-0">
-              <thead>
-                <tr className="text-xs sm:text-sm text-[#57606a] tracking-wider">
-                  <th className="px-2 sm:px-4 py-3 font-medium w-10 border-b border-[#d0d7de]"></th>
+              <thead className="dark-thead">
+                <tr className="text-xs sm:text-sm tracking-wider">
+                  <th className="px-2 sm:px-4 py-3 font-medium w-10"></th>
                   {SORTABLE.map(col => (
-                    <th key={col.key} className="px-2 sm:px-4 py-3 font-medium whitespace-nowrap border-b border-[#d0d7de]">
-                      <button type="button" onClick={() => toggleSort(col.key)} className="inline-flex items-center gap-1 hover:text-[#1a2332]">
+                    <th key={col.key} className="px-2 sm:px-4 py-3 font-medium whitespace-nowrap">
+                      <button type="button" onClick={() => toggleSort(col.key)} className="inline-flex items-center gap-1">
                         {col.label}
                         {sort?.key === col.key && <span aria-hidden="true">{sort.dir === 'asc' ? '▴' : '▾'}</span>}
                       </button>
                     </th>
                   ))}
-                  <th className="px-2 sm:px-4 py-3 font-medium w-[240px] sm:w-auto whitespace-nowrap border-b border-[#d0d7de]">Message</th>
+                  <th className="px-2 sm:px-4 py-3 font-medium w-[240px] sm:w-auto whitespace-nowrap">Message</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#e2e6ea]">

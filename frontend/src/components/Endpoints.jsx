@@ -149,12 +149,12 @@ const Endpoints = ({ isVisible, resetTrigger, setEndpointCount, pivotHost }) => 
 
       <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="text-xs uppercase tracking-wider text-[#6e7781]">
+          <thead className="dark-thead">
+            <tr className="text-xs uppercase tracking-wider">
               {COLUMNS.map(col => (
-                <th key={col.key} className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap border-b border-[#d0d7de]">
+                <th key={col.key} className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">
                   {col.sortable === false ? col.label : (
-                    <button type="button" onClick={() => toggleSort(col.key)} className="inline-flex items-center gap-1 hover:text-[#1a2332]">
+                    <button type="button" onClick={() => toggleSort(col.key)} className="inline-flex items-center gap-1">
                       {col.label}
                       {sort.key === col.key && <span aria-hidden="true">{sort.dir === 'asc' ? '▴' : '▾'}</span>}
                     </button>
