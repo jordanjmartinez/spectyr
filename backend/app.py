@@ -2497,6 +2497,59 @@ def get_current_level():
 
 
 
+# The 12 ATT&CK Enterprise tactics on the dashboard coverage radar, in kill
+# chain order. Reconnaissance and Resource Development sit outside the radar:
+# a completed scenario tagged with either counts toward completion stats but
+# lands on no axis (phishing_1 carries Resource Development today).
+ENTERPRISE_TACTICS = [
+    "Initial Access", "Execution", "Persistence", "Privilege Escalation",
+    "Defense Evasion", "Credential Access", "Discovery", "Lateral Movement",
+    "Collection", "Command and Control", "Exfiltration", "Impact",
+]
+
+
+def compute_attack_coverage(alert_queue, reviews):
+    """ATT&CK tactic coverage from COMPLETED scenarios only.
+
+    Feeds the dashboard radar. Reads nothing but resolved queue entries and
+    the static triage reviews: an in-progress scenario (injected, its events
+    already in the pool, not yet resolved) contributes NOTHING, so the radar
+    can never draw the active scenario's kill chain shape and leak the
+    answer. Pure function of (queue state, reviews); no clock, no rng.
+    """
+    counts = {t: 0 for t in ENTERPRISE_TACTICS}
+    completed = 0
+    off_radar = 0
+    for entry in alert_queue:
+        if not entry.get("resolved_at"):
+            continue
+        completed += 1
+        review = reviews.get(entry.get("scenario_label")) or {}
+        tactic = (review.get("mitre") or {}).get("tactic")
+        if tactic in counts:
+            counts[tactic] += 1
+        elif tactic:
+            off_radar += 1
+    covered = sum(1 for v in counts.values() if v)
+    most = max(counts, key=lambda t: counts[t]) if covered else None
+    return {
+        "tactics": [{"tactic": t, "count": counts[t]} for t in ENTERPRISE_TACTICS],
+        "completed": completed,
+        "covered": covered,
+        "total_tactics": len(ENTERPRISE_TACTICS),
+        "most_practiced": most,
+        "off_radar": off_radar,
+    }
+
+
+@app.route('/api/analytics/attack_coverage', methods=['GET'])
+def get_attack_coverage():
+    """Dashboard radar data: tactics practiced across completed scenarios."""
+    s = g.session
+    reviews = yaml_triage_reviews if SCENARIO_SOURCE in ("yaml", "yaml_v2") else TRIAGE_REVIEWS
+    return jsonify(compute_attack_coverage(s.get("alert_queue", []), reviews))
+
+
 @app.route("/api/analytics/report_card", methods=["GET"])
 def get_analyst_report_card():
     s = g.session

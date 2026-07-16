@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 import { apiFetch } from '../api';
 
 import CategorySelector from '../components/CategorySelector';
@@ -84,6 +84,77 @@ const BarList = ({ title, segments }) => {
   );
 };
 
+// Short axis labels for the 12-tactic radar; full names come from the API
+// and show in the tooltip.
+const TACTIC_SHORT = {
+  'Initial Access': 'Init Access', 'Execution': 'Execution',
+  'Persistence': 'Persistence', 'Privilege Escalation': 'Priv Esc',
+  'Defense Evasion': 'Def Evasion', 'Credential Access': 'Cred Access',
+  'Discovery': 'Discovery', 'Lateral Movement': 'Lateral Mvmt',
+  'Collection': 'Collection', 'Command and Control': 'C2',
+  'Exfiltration': 'Exfiltration', 'Impact': 'Impact',
+};
+
+// ATT&CK coverage radar over completed scenarios. The API feeds it from the
+// player's completed history only, so it never sketches the active
+// scenario's kill chain. Fixed-size RadarChart (no ResponsiveContainer): the
+// dashboard polls every few seconds and the surrounding DOM grows as events
+// stream, which makes a ResizeObserver-based container thrash; a fixed size
+// renders once, always draws (including the all-zero empty state), and never
+// re-measures.
+const RADAR_W = 340;
+const RADAR_H = 264;
+
+const AttackRadar = React.memo(({ coverage }) => {
+  const tactics = coverage?.tactics || [];
+  const data = tactics.map(t => ({
+    tactic: TACTIC_SHORT[t.tactic] || t.tactic,
+    full: t.tactic,
+    count: t.count,
+  }));
+  // Non-degenerate radius even with no completions, so the empty web still
+  // draws its 12 labeled axes (structure, not placeholder data).
+  const maxCount = Math.max(2, ...data.map(d => d.count));
+  const completed = coverage?.completed ?? 0;
+  return (
+    <div className="flex flex-col md:col-span-2">
+      <h3 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-3">ATT&amp;CK Coverage</h3>
+      <div className="rounded-2xl p-4 sm:p-5 flex-1" style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="shrink-0 overflow-x-auto max-w-full">
+            {data.length > 0 && (
+              <RadarChart width={RADAR_W} height={RADAR_H} data={data} outerRadius="70%">
+                <PolarGrid stroke="#e2e6ea" />
+                <PolarAngleAxis dataKey="tactic" tick={{ fill: '#57606a', fontSize: 11 }} />
+                <PolarRadiusAxis domain={[0, maxCount]} tick={false} axisLine={false} />
+                <Radar dataKey="count" stroke="#16436b" fill="#16436b" fillOpacity={0.35} isAnimationActive={false} />
+                <Tooltip content={<PieTooltip />} wrapperStyle={{ zIndex: 20, outline: 'none', border: 'none' }}
+                         formatter={(value) => value} labelFormatter={(l, p) => p?.[0]?.payload?.full || l} />
+              </RadarChart>
+            )}
+          </div>
+          <div className="flex flex-col gap-2 text-sm">
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-[#1a2332] tabular-nums">{completed}</span>
+              <span className="text-[#57606a]">completed scenario{completed === 1 ? '' : 's'}</span>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-[#1a2332] tabular-nums">{coverage?.covered ?? 0}/{coverage?.total_tactics ?? 12}</span>
+              <span className="text-[#57606a]">tactics covered</span>
+            </div>
+            <div className="text-[#57606a]">
+              Most practiced: <span className="text-[#1a2332] font-medium">{coverage?.most_practiced || '-'}</span>
+            </div>
+            {completed === 0 && (
+              <p className="text-xs text-[#8b949e] max-w-[240px]">Coverage builds as you complete scenarios.</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, setGroupedAlertCount, onPivot, onHostPivot }) => {
   const [groups, setGroups] = useState([]);
   const [expanded, setExpanded] = useState(null);
@@ -141,7 +212,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
   const [scenarioHistory, setScenarioHistory] = useState([]);
   const prevLevelRef = useRef(null);
   const [, setTick] = useState(0);
-  const [classificationData, setClassificationData] = useState({ categoryBreakdown: {} });
+  const [coverage, setCoverage] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterActive, setFilterActive] = useState(true);
   const [filterCompleted, setFilterCompleted] = useState(false);
@@ -199,18 +270,15 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
       .catch(err => console.error("Failed to fetch game state", err));
   };
 
-  const fetchClassificationData = () => {
-    apiFetch('/api/analytics/action_history')
+  const fetchAttackCoverage = () => {
+    apiFetch('/api/analytics/attack_coverage')
       .then(res => res.json())
-      .then(data => {
-        const actions = Array.isArray(data) ? data : [];
-        const catBreakdown = {};
-        actions.forEach(a => {
-          const cat = a.true_category || 'Unknown';
-          catBreakdown[cat] = (catBreakdown[cat] || 0) + 1;
-        });
-        setClassificationData({ categoryBreakdown: catBreakdown });
-      })
+      .then(next => setCoverage(prev => (
+        // Only swap in a new object when the data actually changed, so the
+        // radar does not re-render on every 3s poll (React.memo compares by
+        // reference).
+        JSON.stringify(prev) === JSON.stringify(next) ? prev : next
+      )))
       .catch(() => {});
   };
 
@@ -221,7 +289,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
     setExpanded(null);
     setGameStarted(false);
     setFeedback(null);
-    setClassificationData({ categoryBreakdown: {} });
+    setCoverage(null);
     setScenarioHistory([]);
     setScenarioExpanded(new Set());
     setScenarioStartTime(null);
@@ -230,13 +298,13 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
     fetchGroupedAlerts();
     fetchCurrentLevel();
     fetchGameState();
-    fetchClassificationData();
+    fetchAttackCoverage();
 
     const interval = setInterval(() => {
       fetchGroupedAlerts();
       fetchCurrentLevel();
       fetchGameState();
-      fetchClassificationData();
+      fetchAttackCoverage();
     }, 3000);
 
     return () => clearInterval(interval);
@@ -817,31 +885,12 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
         )}
       </div>
 
-        {/* Alerts dashboard: queue donut + distribution bar lists, no toggles */}
-        {(() => {
-          const SOURCE_TYPES = [
-            { name: 'DNS', color: '#5dc8ec' },
-            { name: 'Firewall', color: '#2a96b8' },
-            { name: 'Win Security', key: 'Windows Security', color: '#4d7099' },
-            { name: 'Sysmon', color: '#3a5fb8' },
-            { name: 'Azure', key: 'Azure AD', color: '#1d3370' },
-            { name: 'Proxy', color: '#6b54b8' },
-            { name: 'Defender', color: '#7ba7cc' },
-            { name: 'Veeam', color: '#2a6b7a' },
-          ];
-          const ALL_CATEGORIES = [
-            { name: 'Malware', key: 'Malware', color: '#5da88a' },
-            { name: 'Phishing', key: 'Phishing', color: '#4f98a0' },
-            { name: 'Lateral Movement', key: 'Lateral Movement', color: '#4682b4' },
-            { name: 'Data Exfiltration', key: 'Data Exfiltration', color: '#5a7caa' },
-            { name: 'Command & Control', key: 'Command & Control', color: '#4e4d8c' },
-            { name: 'Insider Threat', key: 'Insider Threat', color: '#8e6b87' },
-            { name: 'Brute Force', key: 'Brute Force', color: '#b08989' },
-            { name: 'Defense Evasion', key: 'Defense Evasion', color: '#b26666' },
-          ];
-          const srcb = alertStats.source_breakdown || {};
-          const sourceSegments = SOURCE_TYPES.map(s => ({ name: s.name, color: s.color, value: srcb[s.key || s.name] || 0 }));
-
+        {/* Alerts dashboard: queue donut, severity bars, ATT&CK coverage
+            radar (completed history only, so it never sketches the active
+            scenario's kill chain). Charts render only while the tab is
+            visible: hidden Recharts containers have zero size and flood the
+            console with warnings. */}
+        {isVisible && (() => {
           const sevb = alertStats.severity_breakdown || { low: 0, medium: 0, high: 0, critical: 0 };
           const sevSegments = [
             { name: 'Low', value: sevb.low, color: '#6fa868' },
@@ -849,9 +898,6 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
             { name: 'High', value: sevb.high, color: '#c28e46' },
             { name: 'Critical', value: sevb.critical, color: '#b26666' },
           ];
-
-          const cb = classificationData.categoryBreakdown || {};
-          const catSegments = ALL_CATEGORIES.map(c => ({ name: c.name, color: c.color, value: cb[c.key] || 0 }));
 
           const activeCount = (currentLevel?.active_scenarios || []).length;
           const resolvedCount = currentLevel?.resolved_count ?? 0;
@@ -864,8 +910,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
             <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
               <RingCard title="Queue" centerValue={activeCount} segments={queueSegments} />
               <BarList title="Severity" segments={sevSegments} />
-              <BarList title="Source" segments={sourceSegments} />
-              <BarList title="Category" segments={catSegments} />
+              <AttackRadar coverage={coverage} />
             </div>
           );
         })()}

@@ -5,7 +5,7 @@ import { GradeCard, MttrCard } from './PerformanceGrade';
 import CampaignProgress from './CampaignProgress';
 import ActionHistory from './ActionHistory';
 
-const Analytics = ({ onReset, analystName, setAnalyticsCount }) => {
+const Analytics = ({ onReset, analystName, setAnalyticsCount, isVisible = true }) => {
   const [report, setReport] = useState(null);
   const [levelData, setLevelData] = useState(null);
   const [actionHistory, setActionHistory] = useState([]);
@@ -64,12 +64,15 @@ const Analytics = ({ onReset, analystName, setAnalyticsCount }) => {
               <AnalystReportCard report={report} />
             </div>
             <div className="p-4 sm:p-6">
-              <GradeCard report={report} />
+              {/* Recharts holders render only while the tab is visible: a
+                  hidden (display:none) chart measures 0 and floods the
+                  console, starving layout for the charts that are visible. */}
+              {isVisible && <GradeCard report={report} />}
             </div>
           </div>
         </div>
       </div>
-      <MttrCard report={report} />
+      {isVisible && <MttrCard report={report} />}
 
       {/* Action History / Mistake Review */}
       <ActionHistory history={actionHistory} />
