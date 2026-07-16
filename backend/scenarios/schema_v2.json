@@ -178,7 +178,7 @@
       "properties": {
         "id": { "$ref": "#/$defs/id" },
         "role": {
-          "enum": ["workstation", "dc", "file", "dns", "print", "web", "proxy", "firewall", "server"]
+          "enum": ["workstation", "dc", "file", "dns", "print", "web", "proxy", "backup", "firewall", "server"]
         },
         "hostname": { "type": "string", "minLength": 1 },
         "ip": { "type": "string", "minLength": 1 },

@@ -942,6 +942,7 @@ SERVERS = {
     "print": {"hostname": "ACME-SVR04", "ip": "10.0.1.203", "desc": "Print Server"},
     "web": {"hostname": "ACME-SVR05", "ip": "10.0.1.204", "desc": "Web Server"},
     "proxy": {"hostname": "ACME-SVR06", "ip": "10.0.1.205", "desc": "Proxy Server"},
+    "backup": {"hostname": "ACME-VEEAM01", "ip": "10.0.1.206", "desc": "Backup Server"},
 }
 
 # Network firewalls

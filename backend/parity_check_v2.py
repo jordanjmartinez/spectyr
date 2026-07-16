@@ -37,12 +37,20 @@ import scenario_loader_v2  # noqa: E402
 SEED = 20260715
 
 # Approved schema corrections: v2 intentionally diverges from v1 on exactly
-# these rendered fields. Any other diff fails; a MISSING expected divergence
+# these rendered values. Any other diff fails; a MISSING expected divergence
 # also fails (it means the correction regressed).
-APPROVED = {}
+#   step kind   -> exact (step, field, v1, v2) match
+#   entity kind -> substitution rule: a diff is approved iff the v2 value is
+#                  the v1 value with rendered_v1 replaced by rendered_v2
+APPROVED_STEP = {}
+APPROVED_SUBST = {}
 for _c in scenario_corrections.CORRECTIONS:
-    APPROVED.setdefault(_c["label"], {})[(_c["step"], _c["field"])] = (
-        _c["rendered_v1"], _c["rendered_v2"], _c["approved"])
+    if _c["kind"] == "entity":
+        APPROVED_SUBST.setdefault(_c["label"], []).append(
+            (_c["rendered_v1"], _c["rendered_v2"], _c["approved"]))
+    else:
+        APPROVED_STEP.setdefault(_c["label"], {})[(_c["step"], _c["field"])] = (
+            _c["rendered_v1"], _c["rendered_v2"], _c["approved"])
 
 
 class _FrozenDatetime(datetime):
@@ -118,24 +126,35 @@ def main():
                 elif la.get(k) != lb.get(k):
                     diffs.append((i, k, la.get(k), lb.get(k)))
 
-        approved = dict(APPROVED.get(label, {}))
+        approved = dict(APPROVED_STEP.get(label, {}))
+        subst_rules = APPROVED_SUBST.get(label, [])
+        subst_used = [0] * len(subst_rules)
         unexpected, matched = [], []
         for i, field, av, bv in diffs:
             want = approved.pop((i, field), None)
             if want and (av, bv) == want[:2]:
                 matched.append((i, field, av, bv, want[2]))
+                continue
+            for ri, (r1, r2, prov) in enumerate(subst_rules):
+                if (isinstance(av, str) and isinstance(bv, str)
+                        and r1 in av and av.replace(r1, r2) == bv):
+                    subst_used[ri] += 1
+                    matched.append((i, field, av, bv, prov))
+                    break
             else:
                 unexpected.append((i, field, av, bv))
+        unused_rules = [subst_rules[ri][:2] for ri, n in enumerate(subst_used) if n == 0]
 
         if unexpected:
             failures += 1
             print(f"[DIFF] {label}: {len(unexpected)} unapproved difference(s)")
             for i, field, av, bv in unexpected:
                 print(f"        step {i} {field}: v1={av!r} v2={bv!r}")
-        elif approved:
+        elif approved or unused_rules:
             failures += 1
             print(f"[FAIL] {label}: expected approved divergence(s) missing "
-                  f"(correction regressed?): {sorted(approved)}")
+                  f"(correction regressed?): "
+                  f"{sorted(approved) + unused_rules}")
         elif matched:
             approved_total += len(matched)
             print(f"[OK]   {label}: {len(v1_out[label])} logs, "

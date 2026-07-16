@@ -210,7 +210,7 @@ cd frontend && npm install && npm start
 - `CAMPAIGN_LEVELS`: scenario catalog — 5 groups of 4 (3 attacks + 1 FP); queue sampling ignores the grouping
 - `TRIAGE_REVIEWS`: Educational content for each scenario (20 entries: 15 attacks + 5 FPs)
 - `EMPLOYEES`: 45 realistic corporate employees across 8 departments
-- `SERVERS`: 6 infrastructure servers (DC, File, DNS, Print, Web, Proxy)
+- `SERVERS`: 7 infrastructure servers (DC, File, DNS, Print, Web, Proxy at ACME-SVR01-06 / 10.0.1.200-205; Backup at ACME-VEEAM01 / 10.0.1.206)
 - `NORMAL_TRAFFIC_TEMPLATES`: 100+ templates for legitimate system events
 - `TIMER_DURATIONS`: timer settings (only `get_timer_duration(1)` = 900s is used — one session timer, not per-level)
 - `CONCURRENT_QUEUE_CAP`: max in-flight scenarios (3)

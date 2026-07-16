@@ -59,10 +59,12 @@ def test_corpus_loads_20():
 
 
 def _corrected_v1_chain(label, chain):
-    """The v1 chain with the approved corrections applied — the exact content
-    the v2 corpus is required to carry."""
+    """The v1 chain with the approved step corrections applied — the exact
+    content the v2 corpus is required to carry."""
     chain = copy.deepcopy(chain)
     for corr in scenario_corrections.for_label(label):
+        if corr["kind"] != "step":
+            continue
         step = chain[corr["step"]]
         if corr["field"].startswith("kvp."):
             key = corr["field"][4:]
@@ -75,6 +77,19 @@ def _corrected_v1_chain(label, chain):
     return chain
 
 
+def _corrected_v1_entities(label, entities):
+    """The v1 entities with the approved entity corrections applied."""
+    entities = copy.deepcopy(entities)
+    for corr in scenario_corrections.for_label(label):
+        if corr["kind"] != "entity":
+            continue
+        spec = entities[corr["entity"]]
+        assert spec.get(corr["field"]) == corr["v1"], (
+            f"{label}: v1 no longer carries the correction precondition")
+        spec[corr["field"]] = corr["v2"]
+    return entities
+
+
 def test_corpus_matches_v1_content():
     """Loader-level parity: v2 chains (tags stripped) must equal the v1
     loader's output with exactly the approved corrections applied, and
@@ -85,8 +100,10 @@ def test_corpus_matches_v1_content():
     assert rev1 == rev2
     for label in cat1:
         for key in ("label", "category", "difficulty", "ticket_title",
-                    "storyline", "threat_pattern", "entities"):
+                    "storyline", "threat_pattern"):
             assert cat1[label][key] == cat2[label][key], f"{label}.{key} diverged"
+        expected_entities = _corrected_v1_entities(label, cat1[label]["entities"])
+        assert expected_entities == cat2[label]["entities"], f"{label}.entities diverged"
         expected = _corrected_v1_chain(label, cat1[label]["chain"])
         assert expected == cat2[label]["chain"], f"{label}.chain diverged"
 
@@ -97,13 +114,16 @@ def test_corrections_present_in_v2():
     catalog, _ = _load_corpus()
     assert scenario_corrections.CORRECTIONS, "corrections record unexpectedly empty"
     for corr in scenario_corrections.CORRECTIONS:
-        step = catalog[corr["label"]]["chain"][corr["step"]]
-        if corr["field"].startswith("kvp."):
-            actual = step["key_value_pairs"].get(corr["field"][4:])
+        if corr["kind"] == "entity":
+            actual = catalog[corr["label"]]["entities"][corr["entity"]].get(corr["field"])
         else:
-            actual = step.get(corr["field"])
+            step = catalog[corr["label"]]["chain"][corr["step"]]
+            if corr["field"].startswith("kvp."):
+                actual = step["key_value_pairs"].get(corr["field"][4:])
+            else:
+                actual = step.get(corr["field"])
         assert actual == corr["v2"], (
-            f"{corr['label']} step {corr['step']} {corr['field']}: "
+            f"{corr['label']} {corr['field']}: "
             f"expected {corr['v2']!r}, found {actual!r}")
 
 
@@ -271,8 +291,8 @@ def test_dispatch_rejects_unsupported_version():
 GRANDFATHERED = {
     "ACME-FW01": None,               # reference environment: hardcoded firewall
     "10.0.1.254": None,              # firewall IP (environment metadata)
-    "ACME-VEEAM01": "false_positive_veeam.yaml",   # v1 internal_host entity
-    "10.0.1.210": "false_positive_veeam.yaml",     # v1 internal_host entity
+    "ACME-VEEAM01": None,            # reference environment: canonical backup role
+    "10.0.1.206": None,              # backup server IP (canonical)
     "dpark": "password_spray.yaml",                # v1 literal sprayed accounts
     "mjohnson": "password_spray.yaml",
     "bwilliams": "password_spray.yaml",

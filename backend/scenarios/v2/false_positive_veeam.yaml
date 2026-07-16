@@ -18,7 +18,7 @@ entities:
   backup_server:
     type: "internal_host"
     hostname: "ACME-VEEAM01"
-    ip: "10.0.1.210"
+    ip: "10.0.1.206"
 
 environment:
   org:
@@ -38,11 +38,11 @@ environment:
       os: "PAN-OS"
       desc: "Perimeter Firewall"
     - id: "backup_server"
-      role: "server"
+      role: "backup"
       hostname: "{backup_server.hostname}"
       ip: "{backup_server.ip}"
       os: "Windows Server 2019"
-      desc: "Internal server"
+      desc: "Backup Server"
   accounts:
     - id: "victim"
       username: "{victim.username}"

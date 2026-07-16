@@ -56,13 +56,17 @@ import scenario_loader_v2 as v2  # noqa: E402
 # Emitted hostnames/ips stay in {infra.*} placeholder form; the literals here
 # are only used in the migration report for reviewer context.
 SERVER_TABLE = {
-    "dc":    ("ACME-SVR01", "10.0.1.200", "Domain Controller"),
-    "file":  ("ACME-SVR02", "10.0.1.201", "File Server"),
-    "dns":   ("ACME-SVR03", "10.0.1.202", "DNS Server"),
-    "print": ("ACME-SVR04", "10.0.1.203", "Print Server"),
-    "web":   ("ACME-SVR05", "10.0.1.204", "Web Server"),
-    "proxy": ("ACME-SVR06", "10.0.1.205", "Proxy Server"),
+    "dc":     ("ACME-SVR01", "10.0.1.200", "Domain Controller"),
+    "file":   ("ACME-SVR02", "10.0.1.201", "File Server"),
+    "dns":    ("ACME-SVR03", "10.0.1.202", "DNS Server"),
+    "print":  ("ACME-SVR04", "10.0.1.203", "Print Server"),
+    "web":    ("ACME-SVR05", "10.0.1.204", "Web Server"),
+    "proxy":  ("ACME-SVR06", "10.0.1.205", "Proxy Server"),
+    "backup": ("ACME-VEEAM01", "10.0.1.206", "Backup Server"),
 }
+
+# internal_host entities that map onto a reference-environment role.
+INTERNAL_HOST_ROLES = {"backup_server": ("backup", "Backup Server")}
 FW_HOSTNAME = "ACME-FW01"  # hardcoded per the reference environment
 FW_IP = "10.0.1.254"
 
@@ -122,9 +126,11 @@ OVERRIDES = {
     },
     "false_positive_veeam": {
         "flags": [
-            "backup_server (ACME-VEEAM01, 10.0.1.210) enters the environment "
-            "from its v1 internal_host entity declaration; the environment "
-            "entry references it through {backup_server.*} placeholders.",
+            "backup_server (ACME-VEEAM01, 10.0.1.206) is the canonical "
+            "backup role of the reference environment; the environment entry "
+            "references it through {backup_server.*} placeholders. Optional "
+            "cleanup, deferred: retire the entity in favor of "
+            "{infra.backup.*} references.",
         ],
     },
     "false_positive_robocopy": {
@@ -283,10 +289,11 @@ def build_environment(doc, tags, label):
             "os": FW_OS, "desc": "Perimeter Firewall",
         })
     for name in internals:
+        role, desc = INTERNAL_HOST_ROLES.get(name, ("server", "Internal server"))
         hosts.append({
-            "id": name, "role": "server",
+            "id": name, "role": role,
             "hostname": f"{{{name}.hostname}}", "ip": f"{{{name}.ip}}",
-            "os": SRV_OS, "desc": "Internal server",
+            "os": SRV_OS, "desc": desc,
         })
 
     host_ids = {h["id"] for h in hosts}
@@ -418,22 +425,31 @@ def migrate(fname, report):
     lines = text.split("\n")
 
     # Approved schema corrections applied structurally first, so inference
-    # (tags, environment, answer key) sees the corrected chain. The exact-line
-    # rewrite below keeps the emitted text byte-faithful everywhere else.
+    # (tags, environment, answer key) sees the corrected content. The
+    # exact-line rewrites below keep the emitted text byte-faithful
+    # everywhere else.
     corrections = scenario_corrections.for_label(label)
     corrected_chain = copy.deepcopy(doc["chain"])
+    corrected_entities = copy.deepcopy(doc["entities"])
     for corr in corrections:
-        step = corrected_chain[corr["step"]]
-        if corr["field"].startswith("kvp."):
+        if corr["kind"] == "entity":
+            spec = corrected_entities[corr["entity"]]
+            assert spec.get(corr["field"]) == corr["v1"], (
+                f"{label}: correction precondition failed on entity "
+                f"{corr['entity']}.{corr['field']}")
+            spec[corr["field"]] = corr["v2"]
+        elif corr["field"].startswith("kvp."):
+            step = corrected_chain[corr["step"]]
             key = corr["field"][4:]
             assert step["key_value_pairs"].get(key) == corr["v1"], (
                 f"{label}: correction precondition failed at step "
                 f"{corr['step']} {corr['field']}")
             step["key_value_pairs"][key] = corr["v2"]
         else:
+            step = corrected_chain[corr["step"]]
             assert step.get(corr["field"]) == corr["v1"]
             step[corr["field"]] = corr["v2"]
-    corrected_doc = {**doc, "chain": corrected_chain}
+    corrected_doc = {**doc, "chain": corrected_chain, "entities": corrected_entities}
 
     tags = infer_step_tags(corrected_doc, label)
     hosts, accounts = build_environment(corrected_doc, tags, label)
@@ -450,15 +466,17 @@ def migrate(fname, report):
 
     # Approved schema corrections: exact-line rewrites mirroring the
     # structural application above; parity_check_v2.py holds the rendered
-    # side of the contract.
+    # side of the contract. Entity corrections live in the head section,
+    # step corrections in the chain body.
     for corr in corrections:
-        matches = [i for i, ln in enumerate(body) if ln == corr["old_line"]]
+        section = head if corr["kind"] == "entity" else body
+        matches = [i for i, ln in enumerate(section) if ln == corr["old_line"]]
         if len(matches) != 1:
             raise SystemExit(
                 f"[FLAG] {label}: correction line matched {len(matches)} times, "
                 f"expected exactly 1: {corr['old_line']!r}"
             )
-        body[matches[0]] = corr["new_line"]
+        section[matches[0]] = corr["new_line"]
 
     L = []
     L.append("# Schema v2 (Phase 2 Stage 0). Migrated from scenarios/%s by" % fname)
@@ -488,8 +506,9 @@ def migrate(fname, report):
     new_doc = yaml.safe_load(new_text)
     stripped = [v2.strip_step(s) for s in new_doc["attack"]]
     assert stripped == corrected_chain, f"{label}: attack != corrected v1 chain after strip"
+    assert new_doc["entities"] == corrected_entities, f"{label}: entities diverged"
     for key in ("label", "category", "difficulty", "threat_pattern",
-                "narrative", "entities", "triage_review"):
+                "narrative", "triage_review"):
         assert new_doc[key] == doc[key], f"{label}: section {key} diverged"
     v2.validate_scenario_v2(new_doc, v2._load_schema_v2(), v1._load_schema(),
                             f"v2/{fname}")
@@ -522,9 +541,11 @@ def migrate(fname, report):
             f"`{host}` | `{user or '-'}` |"
         )
     for corr in corrections:
+        where = (f"entity {corr['entity']}.{corr['field']}" if corr["kind"] == "entity"
+                 else f"step {corr['step'] + 1} {corr['field']}")
         report.append("")
-        report.append(f"**CORRECTION ({corr['approved']}):** step {corr['step'] + 1} "
-                      f"{corr['field']}: `{corr['v1']}` -> `{corr['v2']}` "
+        report.append(f"**CORRECTION ({corr['approved']}):** {where}: "
+                      f"`{corr['v1']}` -> `{corr['v2']}` "
                       f"(renders as `{corr['rendered_v2']}`). {corr['reason']}")
     for flag in OVERRIDES.get(label, {}).get("flags", []):
         report.append("")

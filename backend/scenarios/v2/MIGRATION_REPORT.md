@@ -186,7 +186,7 @@ All other workstations carry Windows 11 Enterprise. lateral_movement_1's 10.0.19
 
 - classification: `False Positive` | root_cause: `None` | techniques: `[]`
 - scope.hosts: `['ws_victim']` | scope.accounts: `[]`
-- environment hosts: `ws_victim` (workstation), `fw_perimeter` (firewall), `backup_server` (server)
+- environment hosts: `ws_victim` (workstation), `fw_perimeter` (firewall), `backup_server` (backup)
 - environment accounts: `victim`
 
 | step | event | source | hostname (v1 field) | host tag | user tag |
@@ -197,7 +197,9 @@ All other workstations carry Windows 11 Enterprise. lateral_movement_1's 10.0.19
 | s4 | ALLOW | Firewall | `ACME-FW01` | `ws_victim` | `-` |
 | s5 | 190 | Veeam | `{victim.hostname}` | `ws_victim` | `-` |
 
-**FLAG:** backup_server (ACME-VEEAM01, 10.0.1.210) enters the environment from its v1 internal_host entity declaration; the environment entry references it through {backup_server.*} placeholders.
+**CORRECTION (Stage 0 review, follow-up 3 (approved 2026-07-16)):** entity backup_server.ip: `10.0.1.210` -> `10.0.1.206` (renders as `10.0.1.206`). The reference environment gained a canonical backup role: ACME-VEEAM01 at 10.0.1.206 (SERVERS['backup']). The entity's 10.0.1.210 predates the mapping. The chain YAML is unchanged; {backup_server.ip} placeholders re-resolve to the canonical IP.
+
+**FLAG:** backup_server (ACME-VEEAM01, 10.0.1.206) is the canonical backup role of the reference environment; the environment entry references it through {backup_server.*} placeholders. Optional cleanup, deferred: retire the entity in favor of {infra.backup.*} references.
 
 ## insider_shadow_it
 
