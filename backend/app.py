@@ -2628,6 +2628,70 @@ def compute_attack_coverage(alert_queue, reviews):
     }
 
 
+def _letter_grade(accuracy, graded):
+    """Shared 10-point school scale; '-' before anything is graded. Same
+    thresholds as the classification report_card (single source of truth)."""
+    if graded == 0:
+        return '-'
+    return ('A' if accuracy >= 90 else 'B' if accuracy >= 80 else
+            'C' if accuracy >= 70 else 'D' if accuracy >= 60 else 'F')
+
+
+# Disposition scoring: correct = promote a true positive, dismiss a false
+# positive, dismiss a benign_expected. Wrong = the inverse. Open detections
+# are pending, excluded from the grade.
+_DISPOSITION_CORRECT = {
+    "true_positive": "promoted",
+    "false_positive": "dismissed",
+    "benign_expected": "dismissed",
+}
+
+
+def compute_detection_score(detections):
+    """Deterministic disposition grade over (player_action, answer-key
+    disposition). Pure function of the session's detection list; no clock,
+    no rng. Server-side only: reads the disposition answer key that never
+    leaves the server."""
+    buckets = {
+        "tp_promoted": 0, "tp_dismissed": 0,
+        "fp_dismissed": 0, "fp_promoted": 0,
+        "benign_dismissed": 0, "benign_promoted": 0,
+        "open": 0,
+    }
+    for d in detections:
+        disp = d.get("disposition")
+        act = d.get("player_action", "open")
+        if act == "open" or disp not in _DISPOSITION_CORRECT:
+            buckets["open"] += 1
+            continue
+        prefix = {"true_positive": "tp", "false_positive": "fp",
+                  "benign_expected": "benign"}[disp]
+        buckets[f"{prefix}_{'promoted' if act == 'promoted' else 'dismissed'}"] += 1
+    correct = buckets["tp_promoted"] + buckets["fp_dismissed"] + buckets["benign_dismissed"]
+    wrong = buckets["tp_dismissed"] + buckets["fp_promoted"] + buckets["benign_promoted"]
+    graded = correct + wrong
+    accuracy = round(correct / graded * 100, 1) if graded else 0.0
+    return {
+        **buckets,
+        "correct": correct,
+        "wrong": wrong,
+        "graded": graded,
+        "total": len(detections),
+        "accuracy": accuracy,
+        "grade": _letter_grade(accuracy, graded),
+    }
+
+
+@app.route('/api/analytics/detection_score', methods=['GET'])
+def get_detection_score():
+    """Disposition scoring v1: deterministic grade over the player's promote/
+    dismiss decisions against the server-side dispositions."""
+    s = g.session
+    with s["io_lock"]:
+        result = compute_detection_score(list(s.get("detections", [])))
+    return jsonify(result)
+
+
 @app.route('/api/analytics/attack_coverage', methods=['GET'])
 def get_attack_coverage():
     """Dashboard radar data: tactics practiced across completed scenarios."""
