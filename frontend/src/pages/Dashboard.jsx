@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { apiFetch } from '../api';
-import AlertTable from '../components/AlertTable';
+import Siem from '../components/Siem';
 import GroupedAlerts from '../components/GroupedAlerts';
 import Analytics from '../components/Analytics';
 import Reports from '../components/Reports';
@@ -15,7 +15,7 @@ const Dashboard = () => {
   const [groupedAlertCount, setGroupedAlertCount] = useState(0);
   const [reportCount, setReportCount] = useState(0);
   const [analyticsCount, setAnalyticsCount] = useState(0);
-  const [view, setView] = useState("table");
+  const [view, setView] = useState("siem");
   const [resetTrigger, setResetTrigger] = useState(0);
   const [showResetModal, setShowResetModal] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -33,10 +33,10 @@ const Dashboard = () => {
   const [pivotHost, setPivotHost] = useState(null);
 
   // Analyst-mode entity pivot: a chip click in the Alerts tab jumps to the
-  // Events stream pre-filtered to that entity value.
+  // SIEM stream pre-filtered to that entity value.
   const handlePivot = (query) => {
     setPivotQuery({ value: query, ts: Date.now() });
-    setView('table');
+    setView('siem');
   };
 
   // Host pivot: a hostname link in an event view opens that endpoint page.
@@ -50,7 +50,7 @@ const Dashboard = () => {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
       switch (e.key) {
         case '1': setView('grouped'); setIncidentBadge(0); break;
-        case '2': setView('table'); break;
+        case '2': setView('siem'); break;
         case '3': setView('endpoints'); break;
         case '4': setView('analytics'); break;
         case '5': setView('reports'); break;
@@ -176,7 +176,7 @@ const Dashboard = () => {
   const tabs = [
     { key: 'grouped', label: 'Alerts', count: groupedAlertCount,
       icon: 'M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z' },
-    { key: 'table', label: 'Events', count: alertCount,
+    { key: 'siem', label: 'SIEM', count: alertCount,
       icon: 'M4 6h16M4 10h16M4 14h16M4 18h16' },
     { key: 'endpoints', label: 'Endpoints', count: endpointCount,
       icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
@@ -267,14 +267,11 @@ const Dashboard = () => {
       {/* Light content */}
       <main className="flex-1 min-w-0 p-4 sm:p-6 overflow-x-hidden">
         <div className={view === "grouped" ? "block" : "hidden"}>
-          <GroupedAlerts resetTrigger={resetTrigger} onHardcoreFailure={handleHardcoreFailure} onReset={() => { handleResetSimulator(); setView("table"); }} isVisible={view === "grouped"} setGroupedAlertCount={setGroupedAlertCount} onPivot={handlePivot} onHostPivot={handleHostPivot} />
+          <GroupedAlerts resetTrigger={resetTrigger} onHardcoreFailure={handleHardcoreFailure} onReset={() => { handleResetSimulator(); setView("siem"); }} isVisible={view === "grouped"} setGroupedAlertCount={setGroupedAlertCount} onPivot={handlePivot} onHostPivot={handleHostPivot} />
         </div>
 
-        <div className={view === "table" ? "block" : "hidden"}>
-          <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] whitespace-nowrap mb-3">
-            Events <span className={`font-normal ml-1 ${alertCount > 0 ? "text-gray-400" : "invisible"}`}>{alertCount || "0"}</span>
-          </h2>
-          <AlertTable setAlertCount={setAlertCount} resetTrigger={resetTrigger} pivotQuery={pivotQuery} onHostPivot={handleHostPivot} />
+        <div className={view === "siem" ? "block" : "hidden"}>
+          <Siem setSiemCount={setAlertCount} resetTrigger={resetTrigger} pivotQuery={pivotQuery} onHostPivot={handleHostPivot} />
         </div>
 
         <div className={view === "endpoints" ? "block" : "hidden"}>

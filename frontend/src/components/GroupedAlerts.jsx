@@ -1012,7 +1012,7 @@ const GroupedAlerts = ({ resetTrigger, onHardcoreFailure, onReset, isVisible, se
                                             type="button"
                                             onClick={(e) => { e.stopPropagation(); onPivot?.(v); }}
                                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-mono border border-[#e2e6ea] bg-white text-[#8b949e] hover:bg-white hover:text-[#f0f6fc] transition-colors"
-                                            title={`Filter Events by ${v}`}
+                                            title={`Filter SIEM by ${v}`}
                                           >
                                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
