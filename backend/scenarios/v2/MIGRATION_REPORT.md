@@ -65,7 +65,7 @@ All 15 answer_key technique IDs are current; none deprecated, revoked, or merged
 
 - classification: `Command & Control` | root_cause: `s1` | techniques: `['T1071.001']`
 - scope.hosts: `['ws_victim']` | scope.accounts: `['victim']`
-- environment hosts: `ws_victim` (workstation), `dns` (dns)
+- environment hosts: `ws_victim` (workstation), `dns` (dns), `proxy` (proxy)
 - environment accounts: `victim`
 
 | step | event | source | hostname (v1 field) | host tag | user tag |
@@ -76,11 +76,15 @@ All 15 answer_key technique IDs are current; none deprecated, revoked, or merged
 | s4 | QUERY | DNS | `{infra.dns.hostname}` | `ws_victim` | `-` |
 | s5 | HTTP_CONNECT | Proxy | `{victim.hostname}` | `ws_victim` | `-` |
 
+**CORRECTION (Stage 1 review, follow-up 3 (approved 2026-07-16, all 15)):** step 3 kvp.dvc: `{victim.hostname}` -> `{infra.proxy.hostname}` (renders as `ACME-SVR06`). CIM dvc placement batch; see the block comment above and scenarios/CIM_NOTES.md.
+
+**CORRECTION (Stage 1 review, follow-up 3 (approved 2026-07-16, all 15)):** step 5 kvp.dvc: `{victim.hostname}` -> `{infra.proxy.hostname}` (renders as `ACME-SVR06`). CIM dvc placement batch; see the block comment above and scenarios/CIM_NOTES.md.
+
 ## data_exfil_archive
 
 - classification: `Data Exfiltration` | root_cause: `s1` | techniques: `['T1560.001']`
 - scope.hosts: `['ws_victim']` | scope.accounts: `['victim']`
-- environment hosts: `ws_victim` (workstation), `dns` (dns), `fw_perimeter` (firewall)
+- environment hosts: `ws_victim` (workstation), `dns` (dns), `proxy` (proxy), `fw_perimeter` (firewall)
 - environment accounts: `victim`
 
 | step | event | source | hostname (v1 field) | host tag | user tag |
@@ -90,6 +94,8 @@ All 15 answer_key technique IDs are current; none deprecated, revoked, or merged
 | s3 | QUERY | DNS | `{infra.dns.hostname}` | `ws_victim` | `-` |
 | s4 | ALLOW | Firewall | `ACME-FW01` | `ws_victim` | `-` |
 | s5 *(trigger)* | HTTP_CONNECT | Proxy | `{victim.hostname}` | `ws_victim` | `victim` |
+
+**CORRECTION (Stage 1 review, follow-up 3 (approved 2026-07-16, all 15)):** step 5 kvp.dvc: `{victim.hostname}` -> `{infra.proxy.hostname}` (renders as `ACME-SVR06`). CIM dvc placement batch; see the block comment above and scenarios/CIM_NOTES.md.
 
 ## defense_evasion
 
@@ -127,7 +133,7 @@ All 15 answer_key technique IDs are current; none deprecated, revoked, or merged
 
 - classification: `False Positive` | root_cause: `None` | techniques: `[]`
 - scope.hosts: `['ws_victim']` | scope.accounts: `['victim']`
-- environment hosts: `ws_victim` (workstation)
+- environment hosts: `ws_victim` (workstation), `proxy` (proxy)
 - environment accounts: `victim`
 
 | step | event | source | hostname (v1 field) | host tag | user tag |
@@ -137,11 +143,13 @@ All 15 answer_key technique IDs are current; none deprecated, revoked, or merged
 | s3 | SigninLogs | Azure AD | `{victim.hostname}` | `ws_victim` | `victim` |
 | s4 *(trigger)* | AADUserRiskEvents | Azure AD | `{victim.hostname}` | `ws_victim` | `victim` |
 
+**CORRECTION (Stage 1 review, follow-up 3 (approved 2026-07-16, all 15)):** step 2 kvp.dvc: `{victim.hostname}` -> `{infra.proxy.hostname}` (renders as `ACME-SVR06`). CIM dvc placement batch; see the block comment above and scenarios/CIM_NOTES.md.
+
 ## false_positive_pentest
 
 - classification: `False Positive` | root_cause: `None` | techniques: `[]`
 - scope.hosts: `['ws_victim']` | scope.accounts: `['victim']`
-- environment hosts: `ws_victim` (workstation), `dns` (dns), `fw_perimeter` (firewall)
+- environment hosts: `ws_victim` (workstation), `dns` (dns), `proxy` (proxy), `fw_perimeter` (firewall)
 - environment accounts: `victim`
 
 | step | event | source | hostname (v1 field) | host tag | user tag |
@@ -152,11 +160,17 @@ All 15 answer_key technique IDs are current; none deprecated, revoked, or merged
 | s4 | ALLOW | Firewall | `ACME-FW01` | `ws_victim` | `victim` |
 | s5 | HTTP_POST | Proxy | `{victim.hostname}` | `ws_victim` | `victim` |
 
+**CORRECTION (Stage 1 review, follow-up 3 (approved 2026-07-16, all 15)):** step 1 kvp.dvc: `{victim.hostname}` -> `{infra.proxy.hostname}` (renders as `ACME-SVR06`). CIM dvc placement batch; see the block comment above and scenarios/CIM_NOTES.md.
+
+**CORRECTION (Stage 1 review, follow-up 3 (approved 2026-07-16, all 15)):** step 3 kvp.dvc: `{victim.hostname}` -> `{infra.proxy.hostname}` (renders as `ACME-SVR06`). CIM dvc placement batch; see the block comment above and scenarios/CIM_NOTES.md.
+
+**CORRECTION (Stage 1 review, follow-up 3 (approved 2026-07-16, all 15)):** step 5 kvp.dvc: `{victim.hostname}` -> `{infra.proxy.hostname}` (renders as `ACME-SVR06`). CIM dvc placement batch; see the block comment above and scenarios/CIM_NOTES.md.
+
 ## false_positive_robocopy
 
 - classification: `False Positive` | root_cause: `None` | techniques: `[]`
 - scope.hosts: `['ws_victim', 'file']` | scope.accounts: `['victim']`
-- environment hosts: `ws_victim` (workstation), `file` (file), `dns` (dns), `fw_perimeter` (firewall)
+- environment hosts: `ws_victim` (workstation), `file` (file), `dns` (dns), `proxy` (proxy), `fw_perimeter` (firewall)
 - environment accounts: `victim`
 
 | step | event | source | hostname (v1 field) | host tag | user tag |
@@ -166,6 +180,8 @@ All 15 answer_key technique IDs are current; none deprecated, revoked, or merged
 | s3 | QUERY | DNS | `{infra.dns.hostname}` | `ws_victim` | `victim` |
 | s4 | ALLOW | Firewall | `ACME-FW01` | `ws_victim` | `victim` |
 | s5 | FileSyncUploadedFull | Proxy | `{victim.hostname}` | `ws_victim` | `victim` |
+
+**CORRECTION (Stage 1 review, follow-up 3 (approved 2026-07-16, all 15)):** step 5 kvp.dvc: `{victim.hostname}` -> `{infra.proxy.hostname}` (renders as `ACME-SVR06`). CIM dvc placement batch; see the block comment above and scenarios/CIM_NOTES.md.
 
 **FLAG:** Step 2's hostname field carries {infra.file.ip} (an IP in a hostname slot) in the v1 source. Preserved byte-for-byte for parity; flagged for the schema correction workflow.
 
@@ -185,6 +201,10 @@ All 15 answer_key technique IDs are current; none deprecated, revoked, or merged
 | s5 | SSL_INSPECT | Proxy | `{victim.hostname}` | `ws_victim` | `victim` |
 
 **CORRECTION (Stage 0 review, follow-up 2 (approved 2026-07-16)):** step 5 kvp.dvc: `ACME-PROXY-01` -> `{infra.proxy.hostname}` (renders as `ACME-SVR06`). Splunk CIM: dvc is the device that reported the event; for a proxy SSL_INSPECT log that is the proxy itself. ACME-PROXY-01 does not exist in the reference environment, where the proxy is ACME-SVR06 (10.0.1.205). Emitted as {infra.proxy.hostname} per placeholder discipline; renders as ACME-SVR06.
+
+**CORRECTION (Stage 1 review, follow-up 3 (approved 2026-07-16, all 15)):** step 1 kvp.dvc: `{victim.hostname}` -> `{infra.proxy.hostname}` (renders as `ACME-SVR06`). CIM dvc placement batch; see the block comment above and scenarios/CIM_NOTES.md.
+
+**CORRECTION (Stage 1 review, follow-up 3 (approved 2026-07-16, all 15)):** step 2 kvp.dvc: `{victim.hostname}` -> `{infra.proxy.hostname}` (renders as `ACME-SVR06`). CIM dvc placement batch; see the block comment above and scenarios/CIM_NOTES.md.
 
 **FLAG:** ACME-PROXY-CA (inspection CA name) stays as authored: a CA common name is an org naming choice, not a device reference, so it does not conflict with the reference environment.
 
@@ -211,7 +231,7 @@ All 15 answer_key technique IDs are current; none deprecated, revoked, or merged
 
 - classification: `Insider Threat` | root_cause: `s1` | techniques: `['T1567.002']`
 - scope.hosts: `['ws_victim']` | scope.accounts: `['victim']`
-- environment hosts: `ws_victim` (workstation), `dns` (dns)
+- environment hosts: `ws_victim` (workstation), `dns` (dns), `proxy` (proxy)
 - environment accounts: `victim`
 
 | step | event | source | hostname (v1 field) | host tag | user tag |
@@ -222,11 +242,13 @@ All 15 answer_key technique IDs are current; none deprecated, revoked, or merged
 | s4 | QUERY | DNS | `{infra.dns.hostname}` | `ws_victim` | `-` |
 | s5 *(trigger)* | HTTP_POST | Proxy | `{victim.hostname}` | `ws_victim` | `victim` |
 
+**CORRECTION (Stage 1 review, follow-up 3 (approved 2026-07-16, all 15)):** step 5 kvp.dvc: `{victim.hostname}` -> `{infra.proxy.hostname}` (renders as `ACME-SVR06`). CIM dvc placement batch; see the block comment above and scenarios/CIM_NOTES.md.
+
 ## insider_staging
 
 - classification: `Insider Threat` | root_cause: `s1` | techniques: `['T1074.001']`
 - scope.hosts: `['file', 'ws_victim']` | scope.accounts: `['victim']`
-- environment hosts: `ws_victim` (workstation), `file` (file)
+- environment hosts: `ws_victim` (workstation), `file` (file), `proxy` (proxy)
 - environment accounts: `victim`
 
 | step | event | source | hostname (v1 field) | host tag | user tag |
@@ -236,6 +258,8 @@ All 15 answer_key technique IDs are current; none deprecated, revoked, or merged
 | s3 | FileCreate | Sysmon | `{victim.hostname}` | `ws_victim` | `victim` |
 | s4 | NetworkConnect | Sysmon | `{victim.hostname}` | `ws_victim` | `victim` |
 | s5 *(trigger)* | HTTP_CONNECT | Proxy | `{victim.hostname}` | `ws_victim` | `victim` |
+
+**CORRECTION (Stage 1 review, follow-up 3 (approved 2026-07-16, all 15)):** step 5 kvp.dvc: `{victim.hostname}` -> `{infra.proxy.hostname}` (renders as `ACME-SVR06`). CIM dvc placement batch; see the block comment above and scenarios/CIM_NOTES.md.
 
 ## lateral_movement_1
 
@@ -326,7 +350,7 @@ All 15 answer_key technique IDs are current; none deprecated, revoked, or merged
 
 - classification: `Phishing` | root_cause: `s1` | techniques: `['T1583.001']`
 - scope.hosts: `['ws_victim']` | scope.accounts: `['victim']`
-- environment hosts: `ws_victim` (workstation)
+- environment hosts: `ws_victim` (workstation), `proxy` (proxy)
 - environment accounts: `victim`
 
 | step | event | source | hostname (v1 field) | host tag | user tag |
@@ -336,11 +360,15 @@ All 15 answer_key technique IDs are current; none deprecated, revoked, or merged
 | s3 | SigninLogs | Azure AD | `{victim.hostname}` | `ws_victim` | `victim` |
 | s4 *(trigger)* | AADUserRiskEvents | Azure AD | `{victim.hostname}` | `ws_victim` | `victim` |
 
+**CORRECTION (Stage 1 review, follow-up 3 (approved 2026-07-16, all 15)):** step 1 kvp.dvc: `{victim.hostname}` -> `{infra.proxy.hostname}` (renders as `ACME-SVR06`). CIM dvc placement batch; see the block comment above and scenarios/CIM_NOTES.md.
+
+**CORRECTION (Stage 1 review, follow-up 3 (approved 2026-07-16, all 15)):** step 2 kvp.dvc: `{victim.hostname}` -> `{infra.proxy.hostname}` (renders as `ACME-SVR06`). CIM dvc placement batch; see the block comment above and scenarios/CIM_NOTES.md.
+
 ## phishing_link
 
 - classification: `Phishing` | root_cause: `s1` | techniques: `['T1566.002']`
 - scope.hosts: `['ws_victim']` | scope.accounts: `['victim']`
-- environment hosts: `ws_victim` (workstation), `dns` (dns)
+- environment hosts: `ws_victim` (workstation), `dns` (dns), `proxy` (proxy)
 - environment accounts: `victim`
 
 | step | event | source | hostname (v1 field) | host tag | user tag |
@@ -350,4 +378,6 @@ All 15 answer_key technique IDs are current; none deprecated, revoked, or merged
 | s3 *(trigger)* | ProcessCreate | Sysmon | `{victim.hostname}` | `ws_victim` | `victim` |
 | s4 | ProcessCreate | Sysmon | `{victim.hostname}` | `ws_victim` | `victim` |
 | s5 | SetValue | Sysmon | `{victim.hostname}` | `ws_victim` | `victim` |
+
+**CORRECTION (Stage 1 review, follow-up 3 (approved 2026-07-16, all 15)):** step 2 kvp.dvc: `{victim.hostname}` -> `{infra.proxy.hostname}` (renders as `ACME-SVR06`). CIM dvc placement batch; see the block comment above and scenarios/CIM_NOTES.md.
 

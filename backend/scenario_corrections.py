@@ -110,6 +110,38 @@ CORRECTIONS = [
     },
 ]
 
+# Stage 1 review follow-up 3: Splunk CIM defines dvc as the device that
+# generated the event; for proxy logs that is the proxy itself (see
+# scenarios/CIM_NOTES.md). The client belongs in the source fields, and
+# every one of these steps already carries src_ip / src_user, so only dvc
+# moves; no other field is restructured. Authored as
+# {infra.proxy.hostname} per placeholder discipline; renders as ACME-SVR06.
+# rendered_v1 is the victim workstation under the parity fixture
+# (nkhan -> ACME-WS12); at runtime it is whichever workstation resolves.
+# Recount at implementation: 15 steps, not the 14 the Stage 0 flag said.
+_PROXY_DVC_BATCH = [
+    ("c2_http", 2), ("c2_http", 4), ("data_exfil_archive", 4),
+    ("false_positive_oauth", 1), ("false_positive_pentest", 0),
+    ("false_positive_pentest", 2), ("false_positive_pentest", 4),
+    ("false_positive_robocopy", 4), ("false_positive_ssl_inspection", 0),
+    ("false_positive_ssl_inspection", 1), ("insider_shadow_it", 4),
+    ("insider_staging", 4), ("phishing_1", 0), ("phishing_1", 1),
+    ("phishing_link", 1),
+]
+CORRECTIONS += [
+    {
+        "label": label, "kind": "step", "step": step, "field": "kvp.dvc",
+        "v1": "{victim.hostname}", "v2": "{infra.proxy.hostname}",
+        "rendered_v1": "ACME-WS12", "rendered_v2": "ACME-SVR06",
+        "old_line": '      dvc: "{victim.hostname}"',
+        "new_line": '      dvc: "{infra.proxy.hostname}"',
+        "reason": "CIM dvc placement batch; see the block comment above "
+                  "and scenarios/CIM_NOTES.md.",
+        "approved": "Stage 1 review, follow-up 3 (approved 2026-07-16, all 15)",
+    }
+    for label, step in _PROXY_DVC_BATCH
+]
+
 
 def for_label(label):
     return [c for c in CORRECTIONS if c["label"] == label]

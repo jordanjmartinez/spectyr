@@ -500,13 +500,23 @@ def migrate(fname, report):
     # structural application above; parity_check_v2.py holds the rendered
     # side of the contract. Entity corrections live in the head section,
     # triage corrections in the tail, step corrections in the chain body.
+    # Step corrections match within their own step's line range, so the same
+    # line text may be corrected in several steps of one file independently.
+    step_starts = [i for i, ln in enumerate(body) if ln.startswith("  - offset:")]
     for corr in corrections:
-        section = {"entity": head, "triage": tail}.get(corr["kind"], body)
-        matches = [i for i, ln in enumerate(section) if ln == corr["old_line"]]
+        if corr["kind"] == "step":
+            k = corr["step"]
+            lo = step_starts[k]
+            hi = step_starts[k + 1] if k + 1 < len(step_starts) else len(body)
+            matches = [i for i in range(lo, hi) if body[i] == corr["old_line"]]
+            section = body
+        else:
+            section = head if corr["kind"] == "entity" else tail
+            matches = [i for i, ln in enumerate(section) if ln == corr["old_line"]]
         if len(matches) != 1:
             raise SystemExit(
-                f"[FLAG] {label}: correction line matched {len(matches)} times, "
-                f"expected exactly 1: {corr['old_line']!r}"
+                f"[FLAG] {label}: correction line matched {len(matches)} times "
+                f"in its scope, expected exactly 1: {corr['old_line']!r}"
             )
         section[matches[0]] = corr["new_line"]
 
