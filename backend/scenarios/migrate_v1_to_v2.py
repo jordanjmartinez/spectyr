@@ -149,6 +149,24 @@ OVERRIDES = {
     },
 }
 
+# ATT&CK ID audit (Stage 0 review, follow-up 5). Verified 2026-07-16 against
+# attack.mitre.org (Enterprise): 13 of 15 IDs confirmed live; T1562.001 and
+# T1070.001 pages did not load from the build network and were verified
+# against offline knowledge (ATT&CK v16) instead — flagged below, not guessed.
+ATTACK_AUDIT = {
+    "result": "All 15 answer_key technique IDs are current; none deprecated, "
+              "revoked, or merged. Zero replacements made.",
+    "flags": [
+        "T1562.001 (Impair Defenses: Disable or Modify Tools) and T1070.001 "
+        "(Indicator Removal: Clear Windows Event Logs): live page fetch "
+        "failed; verified against offline ATT&CK v16 knowledge only.",
+        "Name drift, ID unchanged: T1046 is now 'Network Service Discovery'; "
+        "the triage_review copy says 'Network Service Scanning'. Triage copy "
+        "is held byte-equal to v1 by the parity gates, so the rename needs "
+        "its own approved correction pass; not changed here.",
+    ],
+}
+
 GLOBAL_FLAGS = [
     "OS labels (Stage 0 review outcome): workstations Windows 11 Enterprise "
     "by default; the scenarios listed under 'Windows 10 label kept' below "
@@ -577,6 +595,12 @@ def main():
                   "lateral_movement_1's 10.0.19041.1 artifact sits on the file "
                   "server (s6), not the workstation, so its workstation is "
                   "Windows 11; the server-side artifact remains flagged below.")
+    report.append("")
+    report.append("## ATT&CK ID audit (follow-up 5)")
+    report.append("")
+    report.append(ATTACK_AUDIT["result"])
+    report.append("")
+    report.extend(f"- **FLAG:** {f}" for f in ATTACK_AUDIT["flags"])
     report.append("")
 
     for fname in files:

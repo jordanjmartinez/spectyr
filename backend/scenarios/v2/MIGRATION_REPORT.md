@@ -25,6 +25,13 @@ the inferred tags, environments, and answer keys before Stage 1.
 
 All other workstations carry Windows 11 Enterprise. lateral_movement_1's 10.0.19041.1 artifact sits on the file server (s6), not the workstation, so its workstation is Windows 11; the server-side artifact remains flagged below.
 
+## ATT&CK ID audit (follow-up 5)
+
+All 15 answer_key technique IDs are current; none deprecated, revoked, or merged. Zero replacements made.
+
+- **FLAG:** T1562.001 (Impair Defenses: Disable or Modify Tools) and T1070.001 (Indicator Removal: Clear Windows Event Logs): live page fetch failed; verified against offline ATT&CK v16 knowledge only.
+- **FLAG:** Name drift, ID unchanged: T1046 is now 'Network Service Discovery'; the triage_review copy says 'Network Service Scanning'. Triage copy is held byte-equal to v1 by the parity gates, so the rename needs its own approved correction pass; not changed here.
+
 ## brute_force_attack
 
 - classification: `Brute Force` | root_cause: `s1` | techniques: `['T1110.001']`
