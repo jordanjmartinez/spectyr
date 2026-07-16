@@ -37,10 +37,10 @@ FLAGS = [
     "C:\\Program Files\\Windows Defender\\ install path. Running instances "
     "normally load from the versioned C:\\ProgramData\\...\\Platform\\<ver> "
     "directory; the version-stamped path is omitted rather than invented.",
-    "Proxy role: no proxy daemon process/service is modeled. Whether "
-    "ACME-SVR06 is a Windows host running proxy software or a PAN appliance "
-    "is still an open Stage 0 flag; until decided the profile is a base "
-    "Windows Server baseline and the listening port set omits proxy ports.",
+    "Proxy role: RESOLVED at Stage 1 review. The logs win: proxy events "
+    "follow Palo Alto CIM, so ACME-SVR06 is a PAN-OS VM-Series explicit "
+    "proxy appliance. Like the firewall it is a log source, never a managed "
+    "endpoint, and carries no Windows noise profile.",
     "Backup role: only the Veeam Backup Service and its default 9392 port "
     "are modeled. Console, catalog/database engine, and mount services are "
     "omitted rather than guessed; the 10006 agent port comes from the "
@@ -296,7 +296,7 @@ ROLE_SERVICES = {
             "\"C:\\Program Files\\Veeam\\Backup and Replication\\Backup\\Veeam.Backup.Service.exe\"",
             "Automatic"),
     ],
-    "proxy": [],  # FLAGGED: proxy software identity unresolved
+    # no "proxy" entry: PAN-OS appliance, never a managed endpoint
 }
 
 # --- autoruns --------------------------------------------------------------------
@@ -407,8 +407,6 @@ ROLE_LISTENING = {
                ("tcp", 3389, "svchost.exe"), ("tcp", 5985, "System"),
                ("tcp", 9392, "Veeam.Backup.Service.exe"),
                ("tcp", 10006, "Veeam.Backup.Service.exe")],
-    "proxy": [("tcp", 135, "svchost.exe"), ("tcp", 445, "System"),
-              ("tcp", 3389, "svchost.exe"), ("tcp", 5985, "System")],
     "server": [("tcp", 135, "svchost.exe"), ("tcp", 445, "System"),
                ("tcp", 3389, "svchost.exe"), ("tcp", 5985, "System")],
 }
@@ -424,7 +422,6 @@ def processes_for_role(role):
         "web": WEB_PROCESSES,
         "print": PRINT_PROCESSES,
         "backup": BACKUP_PROCESSES,
-        "proxy": [],   # FLAGGED
         "server": [],
     }.get(role, [])
     procs.extend(dict(p) for p in extra if p.get("dup", 1) > 0)

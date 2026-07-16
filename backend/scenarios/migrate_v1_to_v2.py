@@ -61,9 +61,14 @@ SERVER_TABLE = {
     "dns":    ("ACME-SVR03", "10.0.1.202", "DNS Server"),
     "print":  ("ACME-SVR04", "10.0.1.203", "Print Server"),
     "web":    ("ACME-SVR05", "10.0.1.204", "Web Server"),
-    "proxy":  ("ACME-SVR06", "10.0.1.205", "Proxy Server"),
+    "proxy":  ("ACME-SVR06", "10.0.1.205", "Proxy (PAN-OS VM-Series)"),
     "backup": ("ACME-VEEAM01", "10.0.1.206", "Backup Server"),
 }
+
+# Stage 1 review ruling: proxy events follow Palo Alto CIM, so the proxy is
+# a PAN-OS appliance, not a Windows server. Like the firewall, it is a log
+# source, never a managed endpoint.
+ROLE_OS = {"proxy": "PAN-OS"}
 
 # internal_host entities that map onto a reference-environment role.
 INTERNAL_HOST_ROLES = {"backup_server": ("backup", "Backup Server")}
@@ -297,7 +302,7 @@ def build_environment(doc, tags, label):
                 "id": key, "role": key,
                 "hostname": f"{{infra.{key}.hostname}}",
                 "ip": f"{{infra.{key}.ip}}",
-                "os": SRV_OS, "desc": desc,
+                "os": ROLE_OS.get(key, SRV_OS), "desc": desc,
             })
     if FW_HOSTNAME in chain_text:
         hosts.append({

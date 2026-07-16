@@ -9,12 +9,6 @@ resolves it (resolution noted inline, entry kept for the record).
 
 ### Open flags
 
-- **Proxy software identity (carried from Stage 0).** ACME-SVR06 is named
-  like a Windows server while proxy/firewall log fields follow Palo Alto CIM.
-  Until decided, the proxy endpoint page shows a base Windows Server baseline:
-  no proxy daemon process, no proxy service, no proxy listening ports are
-  modeled. Whoever resolves this decides between PAN appliance (drop the
-  endpoint) or Windows proxy software (name the real product).
 - **Defender binary paths simplified.** MsMpEng.exe / NisSrv.exe are listed
   at C:\Program Files\Windows Defender\. Running instances normally load from
   the versioned C:\ProgramData\Microsoft\Windows Defender\Platform\<version>
@@ -31,6 +25,12 @@ resolves it (resolution noted inline, entry kept for the record).
 
 ### Closed at Stage 1 review (2026-07-16)
 
+- **Proxy identity RESOLVED: the logs win.** Proxy events are Palo Alto
+  through Splunk CIM, so ACME-SVR06 is a PAN-OS VM-Series explicit proxy
+  appliance (hostname and 10.0.1.205 unchanged; environment OS label
+  PAN-OS). Same treatment as ACME-FW01: present in the environment and in
+  network events, never in the Endpoints list, no Windows telemetry. Its
+  Windows noise profile entries were deleted.
 - **ATT&CK verification complete.** All 15 answer_key technique IDs verified
   live against attack.mitre.org on 2026-07-16 (13 by fetch during the audit;
   T1562.001 and T1070.001 by the reviewer). No deprecated, revoked, or merged

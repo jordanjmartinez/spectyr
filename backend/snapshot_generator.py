@@ -10,9 +10,10 @@ Builds one world state per session: a dict of per-host EDR-style snapshots
 
 Rules the rest of the pivot depends on:
 
-- Managed endpoint scope. Only Windows hosts get snapshots. The PAN-OS
-  firewall is a log source, not a managed endpoint: it stays in the
-  environment and in network events but never enters the world.
+- Managed endpoint scope. Only Windows hosts get snapshots. PAN-OS devices
+  (the firewall, and the proxy per the Stage 1 review ruling) are log
+  sources, not managed endpoints: they stay in the environment and in
+  network events but never enter the world.
 - Pure derivation. Every tab is a view over (baseline + event pool). There
   are no per-tab generators and nothing regenerates on read.
 - Stable-key determinism. Every generated value (PIDs, MAC, sensor id,
@@ -50,6 +51,9 @@ RUN_KEY_RE = re.compile(r"\\CurrentVersion\\Run\\", re.IGNORECASE)
 
 AGENT_NAME = "spectyr-agent"
 AGENT_VERSION = "1.0.0"
+
+# PAN-OS log sources: in the environment, in events, never endpoints.
+NON_ENDPOINT_ROLES = {"firewall", "proxy"}
 
 # Boot strata: PID ranges per process tier so lineage reads naturally
 # (parents low, children higher) while every PID is still stable-key derived.
@@ -570,14 +574,14 @@ def extend_world(world, scenario, concrete_env, rendered_logs, session_seed,
                  reserved_pids, servers):
     """Fold one dripped scenario into the session world (caller holds the
     session lock). Baselines build once per host and persist; attack
-    artifacts merge on top. Firewalls are log sources, never endpoints.
-    Returns the hostnames touched."""
+    artifacts merge on top. PAN-OS devices (firewall, proxy) are log
+    sources, never endpoints. Returns the hostnames touched."""
     session_started_at = world.get("started_at") or (
         rendered_logs[0].get("timestamp") if rendered_logs else None)
     world.setdefault("org", concrete_env.get("org", {}))
 
     hosts_by_id = {h["id"]: h for h in concrete_env["hosts"]
-                   if h["role"] != "firewall"}
+                   if h["role"] not in NON_ENDPOINT_ROLES}
     accounts = concrete_env.get("accounts", [])
 
     touched = []

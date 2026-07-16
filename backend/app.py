@@ -950,7 +950,10 @@ SERVERS = {
     "dns": {"hostname": "ACME-SVR03", "ip": "10.0.1.202", "desc": "DNS Server"},
     "print": {"hostname": "ACME-SVR04", "ip": "10.0.1.203", "desc": "Print Server"},
     "web": {"hostname": "ACME-SVR05", "ip": "10.0.1.204", "desc": "Web Server"},
-    "proxy": {"hostname": "ACME-SVR06", "ip": "10.0.1.205", "desc": "Proxy Server"},
+    # Stage 1 review ruling: the logs win. Proxy events follow Palo Alto CIM,
+    # so ACME-SVR06 is a PAN-OS VM-Series explicit proxy appliance: part of
+    # the environment and its events, never a managed endpoint.
+    "proxy": {"hostname": "ACME-SVR06", "ip": "10.0.1.205", "desc": "Proxy (PAN-OS VM-Series)"},
     "backup": {"hostname": "ACME-VEEAM01", "ip": "10.0.1.206", "desc": "Backup Server"},
 }
 

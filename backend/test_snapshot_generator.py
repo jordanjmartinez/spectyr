@@ -72,7 +72,7 @@ def _world_for(label):
 
 
 def _managed(env):
-    return [h for h in env["hosts"] if h["role"] != "firewall"]
+    return [h for h in env["hosts"] if h["role"] not in sg.NON_ENDPOINT_ROLES]
 
 
 TAB_KEYS = ("processes", "services", "users", "autoruns", "network", "system")
@@ -90,12 +90,20 @@ def test_every_managed_host_renders_all_tabs():
             assert snap["isolation"] == "not_isolated"
 
 
-def test_firewall_never_an_endpoint():
+def test_pan_os_devices_never_endpoints():
+    """Firewall and proxy are log sources: present in the environment,
+    never in the world."""
     for label in ("lateral_movement_1", "false_positive_veeam", "c2_dns_tunnel"):
         _, env, _, world = _world_for(label)
         assert any(h["role"] == "firewall" for h in env["hosts"]), label
         for snap in world["hosts"].values():
-            assert snap["role"] != "firewall", f"{label}: firewall entered the world"
+            assert snap["role"] not in sg.NON_ENDPOINT_ROLES, \
+                f"{label}: {snap['role']} entered the world"
+    # ssl_inspection's environment includes the PAN-OS proxy
+    _, env, _, world = _world_for("false_positive_ssl_inspection")
+    proxy = next(h for h in env["hosts"] if h["role"] == "proxy")
+    assert proxy["os"] == "PAN-OS", "proxy OS must be PAN-OS in the environment"
+    assert proxy["hostname"] not in world["hosts"], "proxy entered the world"
 
 
 def test_os_labels_come_from_environment():
