@@ -181,6 +181,7 @@ Note: `simulated_attack_logs.ndjson` is at `backend/logs/` root (shared across s
 | `/api/triage-review/<label>` | GET | Get educational content for scenario |
 | `/api/endpoints` | GET | Endpoint list (session world summary rows + org) |
 | `/api/endpoints/<hostname>` | GET | Full endpoint snapshot (all tabs), 404 unknown |
+| `/api/analytics/attack_coverage` | GET | Dashboard radar: ATT&CK tactic coverage from completed scenarios only |
 | `/api/game-state` | GET | Get game mode, timer status, paused state |
 | `/api/game-timeout` | POST | Hardcore timeout: pause session (FailureModal handles retry) |
 
@@ -254,9 +255,22 @@ Each scenario label should be unique across the whole catalog. If a category rep
 ## UI Architecture
 
 ### Dashboard Tabs (Dashboard.jsx)
-- 5 tabs: Alerts, Events, Endpoints, Metrics, Reports
-- Counts always shown (Splunk-style): `Alerts 3`, `Events 12`
+- 5 tabs: Alerts, SIEM, Endpoints, Metrics, Reports (SIEM was "Events" pre Stage 1.5)
+- Counts always shown (Splunk-style): `Alerts 3`, `SIEM 12`
 - Keyboard shortcuts: 1-5 to switch tabs
+- Chart-bearing views (Alerts/GroupedAlerts, Metrics/Analytics) gate their Recharts on an `isVisible` prop so hidden charts don't mount at 0 size and flood console width(0) warnings
+
+### SIEM Tab (Siem.jsx + SiemCards / SiemTable, Stage 1.5)
+- Renamed from Events; card view (default, `SiemCards`) + table view (`SiemTable`) toggle, both over the cached session pool (`siemUtils.js` shared logic)
+- Dropdown filters (Source/Platform/Event Type, values derived from the pool), free-text search, time presets anchored to the pool's latest timestamp (frozen scenario clock, never wall time)
+- Raw-log JSON view renders `sanitizeEvent` output only (whitelist); simulation-internal fields never leak
+- No query language (that is Stage 4 — see docs/stage4-query-grammar-notes.md)
+
+### Dashboard Charts (GroupedAlerts.jsx, Stage 1.5)
+- Queue donut + Severity bars + ATT&CK Coverage radar (Source/Category bars removed)
+- Radar fed ONLY by `/api/analytics/attack_coverage` (completed scenarios' answer-key tactics); never reflects the in-progress scenario (answer-leak guard, `compute_attack_coverage` + `test_attack_coverage.py`)
+- Radar is a fixed-size RadarChart (no ResponsiveContainer) to avoid poll-driven ResizeObserver thrash
+- Dark table headers app-wide via the `.dark-thead` class (`index.css`); see docs/ui-design-notes.md
 - GameTimer positioned above the main card, right-aligned
 - Auto-detects incident completion (running->paused transition) and increments badge
 
