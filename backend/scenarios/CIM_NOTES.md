@@ -1,11 +1,22 @@
 # Splunk CIM Field Placement Notes
 
+**Status: Ruling recorded; official field-table citation pending.** The
+project owner will paste the official dvc and src/src_ip/src_user field
+description rows from the Splunk CIM Web data model documentation (with
+version and URL) below. Until that lands, the ruling alone is NOT a
+verification basis for any future correction: new CIM corrections wait for
+the official field table.
+
 Working notes for authoring and correcting proxy/firewall/DNS events, which
 follow Palo Alto formats normalized through Splunk CIM. Created at Stage 1
 review (follow-up 3): no in-repo CIM notes existed before this file; the
 placements below record the review ruling and the CIM Web/Network data model
-semantics it applied. Extend this file whenever a new CIM field question is
-settled; corrections cite it as the verification basis.
+semantics it applied.
+
+## Official field-table citation (PENDING)
+
+Awaiting the official Splunk CIM Web data model rows for `dvc`, `src`,
+`src_ip`, `src_user` with CIM version and URL.
 
 ## Device vs source vs destination
 
