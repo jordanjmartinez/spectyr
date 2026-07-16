@@ -28,7 +28,7 @@ environment:
       role: "workstation"
       hostname: "{victim.hostname}"
       ip: "{victim.ip}"
-      os: "Windows 10 Enterprise"
+      os: "Windows 11 Enterprise"
       desc: "User workstation"
     - id: "dns"
       role: "dns"

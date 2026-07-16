@@ -7,10 +7,22 @@ the inferred tags, environments, and answer keys before Stage 1.
 
 ## Global assumptions and flags
 
-- **FLAG:** OS labels in environment.hosts are migration ASSUMPTIONS (workstations Windows 10 Enterprise per the 10.0.19041.* binaries authored in chains; servers Windows Server 2019; firewall PAN-OS). Nothing renders them until Stage 1 endpoint pages; review before Stage 1 ships.
+- **FLAG:** OS labels (Stage 0 review outcome): workstations Windows 11 Enterprise by default; the scenarios listed under 'Windows 10 label kept' below keep Windows 10 Enterprise because their chains embed Win10-specific workstation artifacts. Servers Windows Server 2019, firewall PAN-OS. Full version string formatting (edition/release/build) is deferred to Stage 1.
 - **FLAG:** Server-side Sysmon steps (lateral_movement_1/2 net.exe on the file server) carry file_version 10.0.19041.1, a Windows 10 2004-era build, on a host labeled Windows Server 2019. Pre-existing v1 content; parity forbids changing it here. Flagged for the schema correction workflow.
 - **FLAG:** The proxy role (ACME-SVR06) is named like a Windows server while proxy/firewall log fields follow Palo Alto CIM. Which OS its Stage 1 endpoint page should show needs a call before Stage 1.
 - **FLAG:** root_cause is set to the FIRST chain step of every attack scenario (patient zero = earliest malicious event). Distinct from the trigger step, which is where the analyst ENTERS the scenario.
+
+## Windows 10 label kept (workstation-hosted Win10 artifacts)
+
+- `c2_http`: s1 rundll32.exe file_version 10.0.19041.1
+- `defense_evasion`: s1 system binary file_version 10.0.19041.1
+- `defense_evasion_log_clearing`: s4/s6 system binary file_version 10.0.19041.1
+- `false_positive_oauth`: s1/s3 DeviceDetail 'Windows 10 - Compliant - Entra Joined'
+- `false_positive_robocopy`: s1 robocopy.exe file_version 10.0.19041.1
+- `malware_ransomware`: s2 system binary file_version 10.0.19041.1
+- `phishing_link`: s4 system binary file_version 10.0.19041.1
+
+All other workstations carry Windows 11 Enterprise. lateral_movement_1's 10.0.19041.1 artifact sits on the file server (s6), not the workstation, so its workstation is Windows 11; the server-side artifact remains flagged below.
 
 ## brute_force_attack
 

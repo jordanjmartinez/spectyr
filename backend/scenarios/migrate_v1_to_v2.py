@@ -68,10 +68,25 @@ ORG_NAME = "ACME Corp"
 ORG_DOMAIN = "acme.local"
 
 # OS labels are simulation metadata (nothing renders them until Stage 1).
-# ASSUMPTIONS — flagged in the report for review, not silently trusted:
-WS_OS = "Windows 10 Enterprise"   # chains carry 10.0.19041.* binary versions
+# Stage 0 review outcome: workstations default to Windows 11 Enterprise,
+# EXCEPT scenarios whose chain embeds Win10-specific artifacts on the
+# workstation (10.0.19041.* system binary versions, explicit "Windows 10"
+# device strings) — those keep the Win10 label so the environment never
+# contradicts the rendered evidence. Servers stay WS2019, firewall PAN-OS.
+WS_OS = "Windows 11 Enterprise"
 SRV_OS = "Windows Server 2019"
 FW_OS = "PAN-OS"                  # firewall/proxy logs follow Palo Alto CIM
+
+# label -> the workstation-hosted Win10 evidence that pins the label.
+WIN10_WS_LABELS = {
+    "c2_http": "s1 rundll32.exe file_version 10.0.19041.1",
+    "defense_evasion": "s1 system binary file_version 10.0.19041.1",
+    "defense_evasion_log_clearing": "s4/s6 system binary file_version 10.0.19041.1",
+    "false_positive_oauth": "s1/s3 DeviceDetail 'Windows 10 - Compliant - Entra Joined'",
+    "false_positive_robocopy": "s1 robocopy.exe file_version 10.0.19041.1",
+    "malware_ransomware": "s2 system binary file_version 10.0.19041.1",
+    "phishing_link": "s4 system binary file_version 10.0.19041.1",
+}
 
 # Sources that are host-local telemetry: an event from one of these on host X
 # means the activity occurred on X.
@@ -128,10 +143,12 @@ OVERRIDES = {
 }
 
 GLOBAL_FLAGS = [
-    "OS labels in environment.hosts are migration ASSUMPTIONS (workstations "
-    "Windows 10 Enterprise per the 10.0.19041.* binaries authored in chains; "
-    "servers Windows Server 2019; firewall PAN-OS). Nothing renders them until "
-    "Stage 1 endpoint pages; review before Stage 1 ships.",
+    "OS labels (Stage 0 review outcome): workstations Windows 11 Enterprise "
+    "by default; the scenarios listed under 'Windows 10 label kept' below "
+    "keep Windows 10 Enterprise because their chains embed Win10-specific "
+    "workstation artifacts. Servers Windows Server 2019, firewall PAN-OS. "
+    "Full version string formatting (edition/release/build) is deferred to "
+    "Stage 1.",
     "Server-side Sysmon steps (lateral_movement_1/2 net.exe on the file "
     "server) carry file_version 10.0.19041.1, a Windows 10 2004-era build, on "
     "a host labeled Windows Server 2019. Pre-existing v1 content; parity "
@@ -239,10 +256,11 @@ def build_environment(doc, tags, label):
         if name not in employees:
             continue
         if (f"{{{name}.hostname}}" in chain_text or f"{{{name}.ip}}" in chain_text):
+            ws_os = "Windows 10 Enterprise" if label in WIN10_WS_LABELS else WS_OS
             hosts.append({
                 "id": f"ws_{name}", "role": "workstation",
                 "hostname": f"{{{name}.hostname}}", "ip": f"{{{name}.ip}}",
-                "os": WS_OS, "desc": "User workstation",
+                "os": ws_os, "desc": "User workstation",
             })
     for key, (_hn, _ip, desc) in SERVER_TABLE.items():
         if f"{{infra.{key}." in chain_text:
@@ -486,6 +504,15 @@ def main():
         "",
     ]
     report.extend(f"- **FLAG:** {f}" for f in GLOBAL_FLAGS)
+    report.append("")
+    report.append("## Windows 10 label kept (workstation-hosted Win10 artifacts)")
+    report.append("")
+    report.extend(f"- `{label}`: {why}" for label, why in sorted(WIN10_WS_LABELS.items()))
+    report.append("")
+    report.append("All other workstations carry Windows 11 Enterprise. "
+                  "lateral_movement_1's 10.0.19041.1 artifact sits on the file "
+                  "server (s6), not the workstation, so its workstation is "
+                  "Windows 11; the server-side artifact remains flagged below.")
     report.append("")
 
     for fname in files:
