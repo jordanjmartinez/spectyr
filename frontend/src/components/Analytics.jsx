@@ -4,6 +4,7 @@ import AnalystReportCard from '../components/AnalystReportCard';
 import { GradeCard, MttrCard } from './PerformanceGrade';
 import CampaignProgress from './CampaignProgress';
 import ActionHistory from './ActionHistory';
+import ScoreSections from './ScoreSections';
 
 const Analytics = ({ onReset, analystName, setAnalyticsCount, isVisible = true }) => {
   const [report, setReport] = useState(null);
@@ -73,6 +74,10 @@ const Analytics = ({ onReset, analystName, setAnalyticsCount, isVisible = true }
         </div>
       </div>
       {isVisible && <MttrCard report={report} />}
+
+      {/* Option A (3b checkpoint ruling): Detections and Response as
+          independent scored sections; classification keeps the headline. */}
+      <ScoreSections isVisible={isVisible} />
 
       {/* Action History / Mistake Review */}
       <ActionHistory history={actionHistory} />
