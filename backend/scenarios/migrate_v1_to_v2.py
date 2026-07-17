@@ -419,11 +419,25 @@ DETECTIONS = {
              "phishing-infrastructure staging. It is the training vendor's "
              "simulated lure domain; SPF passes and the campaign is "
              "scheduled.")],
-    "false_positive_robocopy": [_det(
-        "det_fp_robocopy", "Bulk File Copy by Service Account",
-        "sigma_behavioral", "medium", ["s1"], "false_positive",
-        "A scheduled service account copied a large volume of files to a cloud "
-        "endpoint as part of a planned migration project.")],
+    # Density batch 3 (B3.4): 3 FP, all TP-looking, spanning medium/high. The
+    # high-severity detection is itself an FP (the cloud sync), so within this
+    # all-FP scenario the scariest-looking signal is not a tell. No supplemental
+    # events: every benign chain step carries a threat-shaped story.
+    "false_positive_robocopy": [
+        _det("det_fp_robocopy", "Bulk File Copy by Service Account",
+             "sigma_behavioral", "medium", ["s1"], "false_positive",
+             "A scheduled service account copied a large volume of files to a "
+             "cloud endpoint as part of a planned migration project."),
+        _det("det_fp_cloud_sync", "Large Upload to Cloud Storage",
+             "sigma_behavioral", "high", ["s5"], "false_positive",
+             "A large file volume was uploaded to an external cloud endpoint, "
+             "the mass-exfiltration shape. It is the sanctioned-tenant "
+             "SharePoint/OneDrive sync completing the authorized migration."),
+        _det("det_fp_mass_fileaccess", "Mass File Access on File Share",
+             "sigma_behavioral", "medium", ["s2"], "false_positive",
+             "A single account read a large number of files on a share in a "
+             "short window, the collection/staging shape. It is the source "
+             "files being read for the authorized migration copy.")],
     "false_positive_ssl_inspection": [_det(
         "det_fp_ssl", "Repeated TLS Handshake Failures Resembling Beacon",
         "sigma_behavioral", "medium", ["s2"], "false_positive",

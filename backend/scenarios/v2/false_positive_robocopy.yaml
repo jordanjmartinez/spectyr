@@ -222,6 +222,20 @@ detections:
     triggers: ["s1"]
     description: "A scheduled service account copied a large volume of files to a cloud endpoint as part of a planned migration project."
     disposition: "false_positive"
+  - id: "det_fp_cloud_sync"
+    rule_name: "Large Upload to Cloud Storage"
+    rule_type: "sigma_behavioral"
+    severity: "high"
+    triggers: ["s5"]
+    description: "A large file volume was uploaded to an external cloud endpoint, the mass-exfiltration shape. It is the sanctioned-tenant SharePoint/OneDrive sync completing the authorized migration."
+    disposition: "false_positive"
+  - id: "det_fp_mass_fileaccess"
+    rule_name: "Mass File Access on File Share"
+    rule_type: "sigma_behavioral"
+    severity: "medium"
+    triggers: ["s2"]
+    description: "A single account read a large number of files on a share in a short window, the collection/staging shape. It is the source files being read for the authorized migration copy."
+    disposition: "false_positive"
 
 answer_key:
   classification: "False Positive"
