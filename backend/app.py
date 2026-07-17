@@ -2610,12 +2610,20 @@ def _attach_account_ref(view, s):
 def execute_response_action():
     """Execute one response action against a client entity id.
 
-    Body: {"action": <name>, "target": <ent-id>}. The target must be a
-    session entity id of the kind the action operates on; anything else is
-    a client error and is NOT written to the action log. Valid attempts
-    always log, with outcome success / no_op / failed_precondition and an
-    in-fiction reason where applicable. All effects live in the overlay;
-    the base world and the event record never change.
+    Body: {"action": <name>, "target": <ent-id>}.
+
+    Logging boundary (ruled at the 3a close-out):
+    - Rejected at the API, NEVER logged: malformed ids, foreign-session
+      ids, stale/unknown ids, wrong-kind ids. All of these return the same
+      400 body, so a foreign-session rejection is indistinguishable from
+      an unknown-id rejection (no cross-session existence leak).
+    - Logged as failed_precondition: a valid session target that fails an
+      in-world precondition (offline isolate, missing pid/path, release
+      of a non-isolated host), with the in-fiction reason.
+    - Logged as no_op: a repeated valid action (already isolated, already
+      terminated, already deleted, repeated identity actions).
+    All effects live in the overlay; the base world and the event record
+    never change.
     """
     s = g.session
     body = request.get_json(silent=True) or {}

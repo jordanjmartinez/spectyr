@@ -299,6 +299,35 @@ def test_api_rejects_invalid_targets_unlogged():
         _cleanup(sid)
 
 
+def test_api_foreign_session_ids_indistinguishable_from_unknown():
+    """Logging boundary: a valid entity id from ANOTHER session is rejected
+    exactly like a garbage id (same status, same body: no cross-session
+    existence leak) and neither session's action log records the attempt."""
+    client_a, sid_a, s_a = _api_session()
+    client_b, sid_b, s_b = _api_session()
+    try:
+        foreign_id, _ = _eid(s_a["entity_index"], "host", hostname="ACME-WS12")
+        assert foreign_id not in s_b["entity_index"], \
+            "fixture invalid: entity id collided across sessions"
+
+        r_foreign = client_b.post("/api/actions",
+                                  json={"action": "isolate_host", "target": foreign_id},
+                                  headers={"X-Session-ID": sid_b})
+        r_garbage = client_b.post("/api/actions",
+                                  json={"action": "isolate_host",
+                                        "target": "ent-000000000000"},
+                                  headers={"X-Session-ID": sid_b})
+        assert r_foreign.status_code == r_garbage.status_code == 400
+        assert r_foreign.get_json() == r_garbage.get_json(), \
+            "foreign-session rejection distinguishable from unknown-id rejection"
+        for sid, client in ((sid_a, client_a), (sid_b, client_b)):
+            log = client.get("/api/actions", headers={"X-Session-ID": sid}).get_json()
+            assert log["count"] == 0, "a rejected attempt reached an action log"
+    finally:
+        _cleanup(sid_a)
+        _cleanup(sid_b)
+
+
 def test_api_immutable_evidence_after_kill():
     """Killing a process removes it from the live endpoint view; the event
     record (and the base world) keep it."""

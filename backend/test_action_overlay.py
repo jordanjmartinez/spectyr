@@ -164,7 +164,12 @@ def test_kill_removes_process_and_its_network_rows():
     assert any(c["pid"] == target for c in snap["network"]["connections"])
 
 
-def test_kill_parent_orphans_children_with_marker():
+def test_orphan_ppid_annotation_and_integrity_after_kill_sequences():
+    """3a close-out (c): killed parents leave surviving children rendering
+    the original PPID annotated parent_terminated (real-EDR orphan
+    rendering), the killed row itself is NOT retained, and the strict
+    base+overlay integrity suite passes. Includes the Chrome-verified
+    shape: a chrome parent killed, its renderer surviving."""
     ws = _host("workstation", "ACME-WS12", "10.0.1.12")
     owner = {"username": "nkhan", "domain": "ACME"}
     snap = sg.build_baseline(ws, owner, SEED, RESERVED, SERVERS, STARTED)
@@ -173,47 +178,70 @@ def test_kill_parent_orphans_children_with_marker():
     by_ppid = {}
     for p in snap["processes"]:
         by_ppid.setdefault(p["ppid"], []).append(p)
-    parent = next(p for p in snap["processes"] if by_ppid.get(p["pid"]))
-    children = by_ppid[parent["pid"]]
+    parents = [p for p in snap["processes"] if by_ppid.get(p["pid"])]
+    # the Chrome-verified case when the baseline carries it: a chrome.exe
+    # parent with a surviving chrome.exe child
+    chrome_parent = next((p for p in parents if p["name"] == "chrome.exe"), None)
+    parent = chrome_parent or parents[0]
+    children = [c for c in by_ppid[parent["pid"]] if c["pid"] != parent["pid"]]
+    assert children, "need a parent with a distinct surviving child"
 
     overlay = ao.new_overlay()
     overlay["killed"].add(("ACME-WS12", parent["pid"]))
     view = _view(world, "ACME-WS12", overlay)
 
+    # no Terminated row is retained in the live Processes tab
+    assert all(p["pid"] != parent["pid"] for p in view["processes"])
     live = {p["pid"]: p for p in view["processes"]}
     for child in children:
-        assert live[child["pid"]].get("parent_exited") is True, \
-            f"orphaned child {child['name']} not marked parent_exited"
+        row = live[child["pid"]]
+        assert row.get("parent_terminated") is True, \
+            f"orphaned child {child['name']} not annotated parent_terminated"
+        assert row["ppid"] == parent["pid"], "orphan must keep the original PPID"
     # the base rows carry no such marker
-    assert not any(p.get("parent_exited") for p in snap["processes"]
-                   if p["pid"] in {c["pid"] for c in children})
+    assert not any(p.get("parent_terminated") for p in snap["processes"])
+    _integrity(view, snap, overlay)
 
 
-def test_kill_service_process_stops_service_but_not_svchost_services():
+def test_kill_leaves_no_running_service_backed_by_killed_pid():
+    """3a close-out (b): no Services row still shows Running whose backing
+    process (name + svchost -k group) was killed; other groups' svchost
+    services keep Running."""
     dns = _host("dns", "ACME-SVR03", "10.0.1.202")
     snap = sg.build_baseline(dns, None, SEED, RESERVED, SERVERS, STARTED)
     world = {"hosts": {"ACME-SVR03": snap}, "started_at": STARTED}
 
     dns_proc = next(p for p in snap["processes"] if p["name"] == "dns.exe")
-    svchost = next(p for p in snap["processes"] if p["name"] == "svchost.exe")
+    netsvc_host = next(p for p in snap["processes"]
+                       if p["name"] == "svchost.exe"
+                       and "-k netsvcs" in p["cmdline"].lower())
 
     overlay = ao.new_overlay()
     overlay["killed"].add(("ACME-SVR03", dns_proc["pid"]))
-    overlay["killed"].add(("ACME-SVR03", svchost["pid"]))
+    overlay["killed"].add(("ACME-SVR03", netsvc_host["pid"]))
     view = _view(world, "ACME-SVR03", overlay)
 
+    live = view["processes"]
+    for svc in view["services"]:
+        if svc["status"] != "Running":
+            continue
+        name, group = ao._service_backing(svc.get("path") or "")
+        if not name:
+            continue
+        backed = [p for p in live if p["name"].lower() == name
+                  and (group is None or group in (p.get("cmdline") or "").lower())]
+        had = [p for p in snap["processes"] if p["name"].lower() == name
+               and (group is None or group in (p.get("cmdline") or "").lower())]
+        assert backed or not had, \
+            f"service {svc['name']} still Running with its backing process killed"
+    # the killed instances' services flipped, others did not
     dns_svc = next(s for s in view["services"] if s["name"] == "DNS")
     assert dns_svc["status"] == "Stopped"
-    # svchost-hosted services stay Running: other svchost instances remain
-    for svc in view["services"]:
-        image = ao.extract_image_path(svc.get("path") or "") or ""
-        if image.lower().endswith("svchost.exe") and svc["status"] == "Running":
-            break
-    else:
-        raise AssertionError("every svchost-hosted service stopped by one svchost kill")
-    # the base service row is untouched
-    base_dns_svc = next(s for s in snap["services"] if s["name"] == "DNS")
-    assert base_dns_svc["status"] == "Running"
+    assert any(s["status"] == "Running" for s in view["services"]
+               if "-k" in (s.get("path") or "")), \
+        "killing one svchost group stopped unrelated svchost services"
+    # the base service rows are untouched
+    assert next(s for s in snap["services"] if s["name"] == "DNS")["status"] == "Running"
 
 
 # --- isolation -----------------------------------------------------------------
@@ -337,8 +365,17 @@ def test_identity_states_render_on_user_rows():
 
 # --- Stage 1 integrity suite on base+overlay -----------------------------------
 
-def _integrity(view):
-    """The Stage 1 invariants, run against a rendered (base+overlay) view."""
+def _integrity(view, base_snap, overlay):
+    """The Stage 1 invariants against a rendered (base+overlay) view, with
+    the terminated-parent PPID exception wired in STRICTLY: a dangling PPID
+    is acceptable only for (1) a base-authored exited parent (the marker
+    must exist on the same base row) or (2) an overlay-killed parent (the
+    (host, ppid) must genuinely be in the overlay's killed set). The
+    exception never silently waives resolution for any other cause."""
+    hostname = view["hostname"]
+    killed = {pid for (h, pid) in overlay["killed"] if h == hostname}
+    base_exited = {p["pid"] for p in base_snap["processes"] if p.get("parent_exited")}
+
     pids = [p["pid"] for p in view["processes"]]
     counts = {}
     for pid in pids:
@@ -351,12 +388,24 @@ def _integrity(view):
     for d in view["network"]["dns"]:
         if d["pid"] is not None:
             assert counts.get(d["pid"]) == 1, f"live dns pid {d['pid']} unresolved"
+
     live = set(pids)
     for p in view["processes"]:
-        if p["ppid"] == 0 or p.get("parent_exited"):
+        if p["ppid"] == 0:
             continue
-        assert p["ppid"] in live, \
-            f"{p['name']}: ppid {p['ppid']} dangles in live view"
+        if p["ppid"] in live:
+            assert not p.get("parent_terminated"), \
+                f"{p['name']}: parent_terminated but parent {p['ppid']} is live"
+            continue
+        if p.get("parent_terminated"):
+            assert p["ppid"] in killed, \
+                f"{p['name']}: parent_terminated waiving a non-killed ppid {p['ppid']}"
+        elif p.get("parent_exited"):
+            assert p["pid"] in base_exited, \
+                f"{p['name']}: parent_exited marker not authored in the base"
+        else:
+            raise AssertionError(
+                f"{p['name']}: ppid {p['ppid']} dangles in live view unmarked")
 
 
 def test_integrity_suite_holds_on_base_plus_overlay_corpus_wide():
@@ -375,11 +424,63 @@ def test_integrity_suite_holds_on_base_plus_overlay_corpus_wide():
                 if np:
                     overlay["deleted_files"].add((hostname, np))
             view = _view(world, hostname, overlay)
-            _integrity(view)
+            _integrity(view, snap, overlay)
             for a in view["autoruns"]:
                 np = ao.norm_path(ao.extract_image_path(a.get("command") or ""))
                 assert not np or (hostname, np) not in overlay["deleted_files"], \
                     f"{label}/{hostname}: deleted path still in autoruns"
+
+
+def test_integrity_exception_rejects_unsanctioned_markers():
+    """The exception must not waive resolution for any other cause: a
+    parent_terminated marker pointing at a NOT-killed pid, and an unmarked
+    dangling ppid, must both fail the suite."""
+    def mini(marker):
+        return {
+            "hostname": "HOST-A", "status": "online", "isolation": "not_isolated",
+            "processes": [
+                {"pid": 4000, "ppid": 9996, "parent_name": "gone.exe",
+                 "name": "child.exe", "path": "C:\\t\\c.exe", "cmdline": "c",
+                 "user": "-", "signer": None, "signed": False, "memory_mb": 4,
+                 **marker},
+            ],
+            "services": [], "users": [], "autoruns": [],
+            "network": {"connections": [], "dns": []},
+        }
+    overlay = ao.new_overlay()
+    for marker in ({"parent_terminated": True}, {}, {"parent_exited": True}):
+        snap = mini({})  # base carries no authored exited parents
+        view = ao.apply_overlay(mini(marker), overlay)
+        try:
+            _integrity(view, snap, overlay)
+        except AssertionError:
+            continue
+        raise AssertionError(f"integrity accepted unsanctioned marker {marker}")
+
+
+def test_kill_leaves_no_live_network_or_dns_attribution_to_killed_pid():
+    """3a close-out (a): after kill sequences, no live Network connection
+    or DNS attribution resolves to a killed (host, pid), corpus-wide."""
+    for label in CATALOG:
+        _, _, _, world = _world_for(label)
+        for hostname in world["hosts"]:
+            snap = world["hosts"][hostname]
+            with_rows = sorted({c["pid"] for c in snap["network"]["connections"]
+                                if c["pid"]}
+                               | {d["pid"] for d in snap["network"]["dns"] if d["pid"]})
+            if not with_rows:
+                continue
+            overlay = ao.new_overlay()
+            overlay["killed"].update((hostname, pid) for pid in with_rows[::2])
+            view = _view(world, hostname, overlay)
+            killed = {pid for (h, pid) in overlay["killed"] if h == hostname}
+            assert all(c.get("pid") not in killed
+                       for c in view["network"]["connections"]), \
+                f"{label}/{hostname}: live connection attributed to killed pid"
+            assert all(d.get("pid") not in killed
+                       for d in view["network"]["dns"]), \
+                f"{label}/{hostname}: live dns row attributed to killed pid"
+            _integrity(view, snap, overlay)
 
 
 # --- entity registry -----------------------------------------------------------

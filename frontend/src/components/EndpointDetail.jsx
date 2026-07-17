@@ -330,7 +330,10 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
                   {processes.map(p => (
                     <tr key={`${p.pid}-${p.name}`} className="border-b border-[#eef1f4] last:border-b-0 align-top">
                       <td className="px-3 py-2 font-mono whitespace-nowrap">{p.pid}</td>
-                      <td className="px-3 py-2 font-mono whitespace-nowrap">{p.ppid}</td>
+                      <td className="px-3 py-2 font-mono whitespace-nowrap">
+                        {p.ppid}
+                        {p.parent_terminated && <span className="ml-1.5 font-sans text-xs text-[#8b949e]">(terminated)</span>}
+                      </td>
                       <td className="px-3 py-2 font-mono break-all min-w-[16rem]">{dash(p.path)}</td>
                       <td className="px-3 py-2 font-mono break-all min-w-[16rem] text-[#57606a]">{dash(p.cmdline)}</td>
                       <td className="px-3 py-2 font-mono whitespace-nowrap">{dash(p.user)}</td>

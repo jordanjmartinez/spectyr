@@ -24,13 +24,18 @@ Rules this module owes the rest of the pivot:
   under the session lock. Iteration is sorted, every id is stable-key
   derived, so drip order never changes an id or a registry entry.
 - Cascade map (applied through the overlay, never to the base):
-    kill (host, pid)   process row removed from live Processes; its live
-                       network connections and DNS attributions removed;
-                       children it leaves behind are marked parent_exited
-                       (orphaned, the established dangling-parent
-                       convention); a service whose binary's only live
-                       process was the killed one shows Stopped
-                       (svchost.exe is exempt: shared host process).
+    kill (host, pid)   the live Processes tab does NOT retain a Terminated
+                       row (killed = not running; historical rows belong to
+                       base surfaces). Its live network connections and DNS
+                       attributions go with it. Surviving children keep the
+                       original PPID, marked parent_terminated (real-EDR
+                       orphan rendering); that marker is the sanctioned
+                       terminated-parent PPID exception and the integrity
+                       suite accepts it ONLY when the PPID is genuinely in
+                       the overlay's killed set. A service whose backing
+                       process is gone shows Stopped; svchost services
+                       match on the -k group, so one killed instance stops
+                       only its own group's services.
     isolate host       live non-listening connections severed; isolation
                        badge everywhere the host renders. Release restores
                        by removing the overlay entry; the base was never
@@ -73,6 +78,19 @@ def norm_path(path):
     """Canonical form of a Windows file path for composite keys: quotes
     stripped, lowercased. Comparison key only; display keeps original case."""
     return (path or "").strip().strip('"').lower()
+
+
+_SVC_GROUP_RE = re.compile(r"-k\s+(\S+)", re.IGNORECASE)
+
+
+def _service_backing(svc_path):
+    """(binary name, svchost -k group or None) identifying the process a
+    Services row is backed by. Group-aware so killing one svchost instance
+    only stops the services of that instance's -k group."""
+    image = extract_image_path(svc_path) or ""
+    name = _basename(image).lower()
+    m = _SVC_GROUP_RE.search(svc_path)
+    return name, (m.group(1).lower() if m else None)
 
 
 def extract_image_path(command):
@@ -211,20 +229,30 @@ def apply_overlay(view, overlay):
     deleted = {p for (h, p) in overlay["deleted_files"] if h == host}
 
     if killed:
-        base_names = {p["name"].lower() for p in view["processes"]}
-        live = [p for p in view["processes"] if p["pid"] not in killed]
+        base_processes = view["processes"]
+        live = [p for p in base_processes if p["pid"] not in killed]
         for p in live:
             if p.get("ppid") in killed:
-                # orphaned by a response action: same marked-dangling
-                # convention as exited parents, so lineage never dangles
-                p["parent_exited"] = True
+                # Orphaned by a response action: the PPID keeps rendering as
+                # the original PID, annotated as terminated (real-EDR orphan
+                # rendering). This marker is the SANCTIONED instance of the
+                # terminated-parent PPID exception: the integrity suite
+                # accepts it only when (host, ppid) really is in the
+                # overlay's killed set, never for any other cause.
+                p["parent_terminated"] = True
         view["processes"] = live
-        live_names = {p["name"].lower() for p in live}
         for svc in view["services"]:
-            bname = _basename(extract_image_path(svc.get("path") or "") or "").lower()
-            if bname and bname != "svchost.exe":
-                if bname in base_names and bname not in live_names:
-                    svc["status"] = "Stopped"
+            name, group = _service_backing(svc.get("path") or "")
+            if not name:
+                continue
+
+            def backs(proc):
+                if proc["name"].lower() != name:
+                    return False
+                return group is None or group in (proc.get("cmdline") or "").lower()
+
+            if any(backs(p) for p in base_processes) and not any(backs(p) for p in live):
+                svc["status"] = "Stopped"
         view["network"]["connections"] = [
             c for c in view["network"]["connections"] if c.get("pid") not in killed]
         view["network"]["dns"] = [

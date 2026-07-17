@@ -61,6 +61,11 @@ const DETAIL_FIXTURE = {
       cmdline: 'C:\\Windows\\Explorer.EXE', user: 'ACME\\nkhan',
       signer: 'Microsoft Windows', signed: true, memory_mb: 145,
       entity_id: 'ent-cccc11112222' },
+    { pid: 7184, ppid: 11112, parent_name: 'chrome.exe', parent_terminated: true,
+      name: 'chrome.exe', path: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      cmdline: '"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --type=renderer',
+      user: 'ACME\\nkhan', signer: 'Google LLC', signed: true, memory_mb: 189,
+      entity_id: 'ent-abab11112222' },
   ],
   services: [
     { name: 'WinDefend', display_name: 'Microsoft Defender Antivirus Service',
@@ -145,8 +150,10 @@ test('endpoint detail renders all tabs with clean copy and response actions', as
 
   fireEvent.click(screen.getByRole('button', { name: 'Processes' }));
   expect(await screen.findByText('C:\\Windows\\explorer.exe')).toBeInTheDocument();
-  expect(screen.getByText('2 of 2')).toBeInTheDocument();
-  expect(screen.getAllByRole('button', { name: 'Kill' })).toHaveLength(2);
+  expect(screen.getByText('3 of 3')).toBeInTheDocument();
+  expect(screen.getAllByRole('button', { name: 'Kill' })).toHaveLength(3);
+  // orphan of an overlay-killed parent: original PPID annotated terminated
+  expect(screen.getByText('(terminated)')).toBeInTheDocument();
   assertCleanCopy(container);
 
   fireEvent.click(screen.getByRole('button', { name: 'Network' }));

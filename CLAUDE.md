@@ -91,6 +91,16 @@ A full-stack Security Information and Event Management (SIEM) simulation platfor
 - Frontend: `Endpoints.jsx` (list) + `EndpointDetail.jsx` (two-pane, tabs Overview/Processes/Network/Services/Users/Autoruns); no polling, snapshot fetched on tab open/reset/pivot; hostname values in event detail views pivot to the endpoint page
 - Gates: `python test_snapshot_generator.py` (backend), `CI=true npx react-scripts test --watchAll=false` (frontend render + em-dash copy scan)
 
+### Response Actions (Phase 2 Stage 3a)
+- Immutable base world + session-local action overlay (`action_overlay.py`): actions never mutate the world or event pool. Current-state surfaces (endpoint ENUMERATE tabs, status/isolation badges, identity state) render base+overlay at serialization time; historical surfaces (SIEM, detections, evidence, lineage) always render the base. Response changes the present, never the record
+- Seven actions: `isolate_host`, `release_host`, `kill_process`, `delete_file`, `disable_account`, `revoke_sessions`, `force_password_reset`. All action APIs accept session-local client entity ids only (`ent-` + 12 hex, stable-key, shape-uniform across kinds); the registry (`session["entity_index"]`) resolves ids server-side and is rebuilt from the base world after each drip. Composite targets: process = (host, pid), file = (host, normalized path), account = (domain, username)
+- Cascade on kill: live process row removed (no Terminated row is retained), its network/DNS rows go with it, surviving children keep the original PPID annotated `parent_terminated` (the sanctioned terminated-parent PPID exception; the integrity suite accepts it only when the PPID is genuinely overlay-killed), services stop when their backing process (name + svchost `-k` group) has no live instance. Isolation severs non-listening connections; release restores. Deleted files leave autorun rows
+- Action log: every valid attempt records seq, action, target {id, kind, label}, outcome (`success` / `no_op` / `failed_precondition`), in-fiction reason. Logical timestamp = frozen session clock + monotonic sequence, never wall clock; identical sequences yield byte-identical logs
+- **Logging boundary (ruled):** rejected at the API and never logged: malformed, foreign-session, stale/unknown, and wrong-kind ids — all with an identical 400 body (foreign-session rejections are indistinguishable from unknown-id rejections; no cross-session existence leak). Logged `failed_precondition`: valid targets failing in-world preconditions (isolating an OFFLINE host is the live difficulty lever). Logged `no_op`: repeated valid actions
+- **Scoring rule (binding for 3b):** `compute_action_score` consumes successful actions only; `no_op` and `failed_precondition` are score-neutral in v1. Isolation is graded on END-STATE at report submission (required containment released before submission forfeits the credit; clean-host isolation is collateral only while still in effect); kill/delete/identity are graded on OCCURRENCE from successful log entries. `release_host` is absent from the answer-key enum: a rollback control, never a gradable step, no positive credit
+- `answer_key.actions` grammar (schema `$defs/answer_action`): action + composite internal target + optional `after` order-sensitivity ids; per-action conditionals forbid wrong composite fields; loader validates referential integrity and rejects cycles. Corpus stays `actions: []` until Stage 3c authors it (test-enforced)
+- UI: Isolate/Release in the endpoint Overview reserved area (button stays enabled on offline hosts; the server enforces), Kill on process rows, identity actions (Disable / Revoke / Reset PW) on account entities in the Threats view, shared ConfirmDialog, Response Log as the third Detections view toggle
+
 ### Scenario Catalog (`CAMPAIGN_LEVELS`)
 Despite the name, this is a flat catalog now — the level grouping only organizes the 20 definitions, it does not gate progression. Queue metadata (ticket_title/storyline) still comes from this dict; chains and triage reviews come from the YAML source:
 
@@ -199,6 +209,8 @@ Note: `simulated_attack_logs.ndjson` is at `backend/logs/` root (shared across s
 | `/api/detections/<id>/disposition` | POST | Triage: promote / dismiss / open |
 | `/api/threats` | GET | Promoted detections (Threats view) |
 | `/api/analytics/detection_score` | GET | Disposition scoring v1 (deterministic, server-side) |
+| `/api/actions` | POST | Execute one response action `{action, target: <ent-id>}` (Stage 3a) |
+| `/api/actions` | GET | The session Response Log (whitelist-serialized attempts) |
 | `/api/game-state` | GET | Get game mode, timer status, paused state |
 | `/api/game-timeout` | POST | Hardcore timeout: pause session (FailureModal handles retry) |
 
