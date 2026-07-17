@@ -166,8 +166,135 @@ indistinguishable from an attack scenario until the analyst reads the evidence
 
 ---
 
-## STOP — awaiting owner approval of these two pilot narratives (step 3a)
+## PILOTS DONE (commits 5801cd1, 099b908) + amendments (cf3d26d, 95efd99).
 
-On approval I proceed to 3b: implement the pilot one scenario per commit
-(schema supplemental_events + supplemental_entities, ACME-SEC01 canonical add,
-the detections, integrity + leak + parity + density gates), STOP for review.
+Rules from the pilot review, applied to every 3c scaffold:
+- Any supplemental event within the attack's plausible correlation window is a
+  DECLARED red herring (`red_herring: true`); else moved genuinely outside.
+- Detection entity resolves from source_ip for sensor events (firewall/proxy/
+  dns), so the actor shows, not the reporting device.
+- Supplemental events only where a benign chain step cannot carry the story.
+- Severity inverted where it aids indistinguishability; FPs span up to
+  Critical-looking, TPs include Medium-looking.
+- Every invented entity/product is stub-flagged for owner approval or
+  verification (Tenable-style) before its flag closes.
+
+---
+
+# STEP 3c BATCH 1 — candidate narratives (SCAFFOLD, awaiting approval)
+
+Four scenarios: malware_usb, c2_http, password_spray, false_positive_pentest.
+One scenario per commit on approval.
+
+## B1.1 malware_usb (Malware) — 1 -> 3 (2 TP + 1 FP)
+
+Chain: s1 6416 device install, s2 payload exec from E:\ (trigger, TP), s3
+FileCreate, s4 SetValue Run key to C:\Users\Public\winupdate.exe, s5
+NetworkConnect. Env: workstation only.
+
+- **D1 KEEP** `det_usb_exec` (TP, yara, high, s2): executable launched from
+  removable media (existing).
+- **D2 ADD** `det_usb_persist` (TP, sigma, **medium**, s4): "Run Key
+  Persistence to Public-Folder Binary". mitre T1547.001 Persistence. "A Run
+  key was set to a binary in C:\Users\Public with a system-update masquerade
+  name (winupdate.exe). Persistence following the removable-media execution."
+- **D3 ADD** `det_pubfolder_autorun_fp` (FP, sigma, **medium**, supplemental
+  **sup1**): "Autorun Registration to Public-Folder Binary". "An endpoint
+  management agent registered a Run key pointing to a signed binary under
+  C:\Users\Public. Reads like the persistence above; it is a routine managed
+  deployment." Resolution evidence: the binary is vendor-signed and the Run
+  key was written by the management agent, not the USB payload.
+  - supplemental sup1: Sysmon EventID 13 (SetValue) on the victim workstation,
+    a Run key to a signed agent binary in C:\Users\Public. In-window ->
+    **RED HERRING** (two Public-folder Run keys, distinguished by signer).
+  - entities NEEDED: a signed endpoint-management agent product (binary name,
+    vendor/signer, install path). **STUB-FLAG** — propose e.g. ManageEngine
+    Endpoint Central agent, or supply the product to use; verify identity
+    (Tenable-style) before its flag closes.
+
+## B1.2 c2_http (Command & Control) — 1 -> 3 (2 TP + 1 FP)
+
+Chain: s1 rundll32.exe (loader), s2/s4 DNS to c2 domain, s3/s5 HTTPS beacon to
+c2 (s3 trigger, TP). Env: workstation, dns, proxy.
+
+- **D1 KEEP** `det_beacon` (TP, sigma, high, s3): periodic HTTPS beacon to
+  uncategorized domain (existing).
+- **D2 ADD** `det_rundll_no_args` (TP, sigma, **medium**, s1): "rundll32
+  Executed Without a Module". mitre T1218.011. "rundll32.exe launched by
+  explorer with no DLL/entry-point argument, a common loader pattern that
+  preceded the beacon."
+- **D3 ADD** `det_saas_poll_fp` (FP, sigma, **high**, supplemental **sup1**):
+  "Periodic HTTPS Connections to External Host". "A SaaS telemetry/updater
+  agent polls its vendor endpoint on a fixed interval, the same beacon shape.
+  Benign: the destination is an allowlisted, categorized vendor domain."
+  Resolution evidence: destination is a categorized vendor domain on the
+  allowlist, vs the C2's uncategorized lookalike.
+  - supplemental sup1: Proxy HTTP_CONNECT from the victim workstation to a
+    benign SaaS domain at a regular interval. In-window -> **RED HERRING**
+    (two beacon-shaped signals, distinguished by domain reputation/category).
+  - entities NEEDED: one benign external SaaS/telemetry domain in
+    `supplemental_entities` (one-off external). **STUB-FLAG** — propose e.g.
+    an updater/telemetry domain; approve or supply.
+
+## B1.3 password_spray (Brute Force) — 1 -> 3 (2 TP + 1 FP)
+
+Chain: s1-s5 4625 failures across accounts from one source, s6 4624 success
+(trigger, TP). Env: workstation, dc.
+
+- **D1 KEEP** `det_spray` (TP, sigma, high, s6): spray pattern then a
+  successful logon (existing).
+- **D2 ADD** `det_multi_account_failures` (TP, sigma, **medium**, s1): "Failed
+  Logons Across Many Accounts from One Source". mitre T1110.003. "One source
+  attempted single NTLM logons against many distinct accounts in a short
+  window, the spray signature, before the success."
+- **D3 ADD** `det_svc_stale_creds_fp` (FP, sigma, **high**, supplemental
+  **sup1**): "Repeated Authentication Failures for a Single Account". "A
+  service account with a stale password repeatedly failed against the DC,
+  generating a lockout-shaped burst that reads like targeted brute force.
+  Benign: a known service account misconfiguration." Resolution evidence: one
+  account (not many), from a known service host, failure cause = bad password
+  from a scheduled task, vs the spray's many-accounts-one-source.
+  - supplemental sup1: 4625 failures on the DC for one service account from a
+    known internal service host. In-window -> **RED HERRING** (both
+    4625-bursts on the DC, distinguished by account cardinality and source).
+  - entities NEEDED: a canonical service account + the host it runs on.
+    **STUB-FLAG** — propose e.g. svc_reporting on a canonical app server, or
+    supply.
+
+## B1.4 false_positive_pentest (False Positive) — 1 -> 3 (all TP-looking FP)
+
+Chain: s1 GET to KnowBe4 phish sim, s2 DNS to training domain, s3 GET to
+lookalike login (trigger), s4 firewall ALLOW, s5 POST to KnowBe4 tracker. Env:
+workstation, dns, proxy, firewall. All benign (authorized KnowBe4 campaign).
+No supplemental events needed: every benign chain step carries a story.
+
+- **D1 KEEP** `det_fp_pentest` (FP, sigma, medium, s3): credential-harvest POST
+  to a lookalike domain (existing; reads like phishing).
+- **D2 ADD** `det_pentest_tracker_fp` (FP, sigma, **high**, s5): "Outbound POST
+  to Recently-Seen Domain After Credential Page". "A POST to an external
+  tracking endpoint right after a credential-harvest page reads like
+  exfiltration of harvested creds. Benign: the authorized KnowBe4 campaign
+  tracker." Resolution: destination is the security-awareness training
+  platform; the campaign is scheduled.
+- **D3 ADD** `det_pentest_newdomain_fp` (FP, sigma, **medium**, s2): "DNS
+  Resolution of a Newly-Observed Lookalike Domain". "A first-seen lookalike
+  domain (acme-password-reset.com) was resolved, the shape of phishing infra.
+  Benign: the training vendor's simulated lure domain." Resolution: SPF
+  passes, the domain belongs to the onboarded training vendor.
+  - spans medium/high; all three read as real threats (phishing, exfil,
+    phishing-infra) until the analyst sees the KnowBe4 / training-platform
+    evidence.
+
+---
+
+## STOP — awaiting owner approval of Batch 1 (step 3c)
+
+Two decisions needed at approval, each stub-flagged above:
+1. B1.1 management-agent product (name/vendor/signer/path) — approve a proposed
+   product or supply one; I verify its identity before implementing.
+2. B1.2 benign SaaS/telemetry domain and B1.3 service account + host — approve
+   proposed values or supply canonical ones.
+
+On approval I implement Batch 1 one scenario per commit, run full gates after
+the batch, print the distribution report (per-scenario TP/FP counts, severity
+spread, source spread), and STOP for review.
