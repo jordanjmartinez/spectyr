@@ -198,21 +198,68 @@ attack:
 
 noise: {}
 
-supplemental_events: []
+supplemental_events:
+  - id: "sup1"
+    host: "ws_victim"
+    user: "victim"
+    offset: -65
+    red_herring: true
+    event_type: "HTTP_GET"
+    source_type: "Proxy"
+    log_source: "Proxy"
+    severity: "low"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "ACME\\{victim.username}"
+    message: "GET document from acme-my.sharepoint.com"
+    key_value_pairs:
+      src_ip: "{victim.ip}"
+      dst_ip: "52.96.128.144"
+      src_user: "{victim.user_domain}"
+      dvc: "{infra.proxy.hostname}"
+      url: "https://acme-my.sharepoint.com/personal/{victim.username}_acme_com/Documents/Q3_Report.docx"
+      app: "microsoft-onedrive"
+      transport: "tcp"
+      dest_port: "443"
+      action: "allow"
+      http_method: "GET"
+      content_type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      bytes_received: "184320"
 
-supplemental_entities: []
+supplemental_entities:
+  - id: "sup_sharepoint"
+    type: "domain"
+    value: "acme-my.sharepoint.com"
+    description: "The corporate SharePoint/OneDrive tenant (real Microsoft domain). Byte-identical tenant literal (4th consumer); the sanctioned download source the FP resolves to, vs the phishing domain."
 
 detections:
   - id: "det_link_payload"
     rule_name: "Payload Process Spawned After Email Link Click"
     rule_type: "sigma_behavioral"
-    severity: "high"
+    severity: "critical"
     triggers: ["s3"]
     mitre:
       id: "T1566.002"
       tactic: "Initial Access"
     description: "A process launched from a user profile path shortly after the user followed a link to a lookalike domain."
     disposition: "true_positive"
+  - id: "det_payload_persistence"
+    rule_name: "Run Key Persistence Written by a Download"
+    rule_type: "sigma_behavioral"
+    severity: "medium"
+    triggers: ["s5"]
+    mitre:
+      id: "T1547.001"
+      tactic: "Persistence"
+    description: "The downloaded payload wrote a Run key pointing to a copy of itself in AppData, establishing persistence."
+    disposition: "true_positive"
+  - id: "det_doc_download_fp"
+    rule_name: "Document Downloaded From an External Site"
+    rule_type: "sigma_behavioral"
+    severity: "high"
+    triggers: ["sup1"]
+    description: "A file downloaded from an external site reads like the malicious invoice lure. It is a routine document download from the sanctioned corporate SharePoint/OneDrive tenant, not the phishing domain."
+    disposition: "false_positive"
 
 answer_key:
   classification: "Phishing"

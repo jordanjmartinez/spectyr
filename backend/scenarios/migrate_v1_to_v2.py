@@ -428,12 +428,27 @@ DETECTIONS = {
              "takeover. It is a non-interactive OAuth refresh-token renewal from "
              "a known compliant device with MFA satisfied, not an interactive "
              "sign-in following a credential-harvest page.")],
-    "phishing_link": [_det(
-        "det_link_payload", "Payload Process Spawned After Email Link Click",
-        "sigma_behavioral", "high", ["s3"], "true_positive",
-        "A process launched from a user profile path shortly after the user "
-        "followed a link to a lookalike domain.",
-        mitre=("T1566.002", "Initial Access"))],
+    # Density batch 4 (B4.4): 2 TP + 1 FP. FP severity rank = MIDDLE (high),
+    # between a critical TP (payload exec) and a medium TP (Run-key
+    # persistence). The FP is a benign sanctioned-tenant document download;
+    # resolved by destination (sanctioned tenant vs the phishing domain).
+    "phishing_link": [
+        _det("det_link_payload", "Payload Process Spawned After Email Link Click",
+             "sigma_behavioral", "critical", ["s3"], "true_positive",
+             "A process launched from a user profile path shortly after the user "
+             "followed a link to a lookalike domain.",
+             mitre=("T1566.002", "Initial Access")),
+        _det("det_payload_persistence", "Run Key Persistence Written by a Download",
+             "sigma_behavioral", "medium", ["s5"], "true_positive",
+             "The downloaded payload wrote a Run key pointing to a copy of "
+             "itself in AppData, establishing persistence.",
+             mitre=("T1547.001", "Persistence")),
+        _det("det_doc_download_fp", "Document Downloaded From an External Site",
+             "sigma_behavioral", "high", ["sup1"], "false_positive",
+             "A file downloaded from an external site reads like the malicious "
+             "invoice lure. It is a routine document download from the "
+             "sanctioned corporate SharePoint/OneDrive tenant, not the phishing "
+             "domain.")],
     # Density batch 2: 2 FP (varying from batch 1's three). The KEPT detection
     # is the high-severity one and the ADDED FP is medium, so the FP is not
     # predictably the high detection.
@@ -631,6 +646,33 @@ SUPPLEMENTAL_EVENTS = {
                  "target_account_name": "svc_backup",
                  "target_domain_name": "ACME",
                  "caller_computer_name": "{infra.backup.hostname}",
+             }),
+    ],
+    "phishing_link": [
+        # Benign document download from the sanctioned SharePoint tenant --
+        # reads like the invoice-lure download. det_doc_download_fp triggers
+        # here. In-window -> DECLARED red herring; resolved by the sanctioned
+        # tenant destination vs the phishing domain. Reuses the byte-identical
+        # SharePoint tenant literal (4th consumer, declared as sup_sharepoint).
+        _sup("sup1", "ws_victim", -65, "HTTP_GET", "Proxy", "low",
+             "{victim.hostname}", user="victim", red_herring=True,
+             source_ip="{victim.ip}", user_account="ACME\\{victim.username}",
+             message="GET document from " + _SHAREPOINT_TENANT,
+             key_value_pairs={
+                 "src_ip": "{victim.ip}",
+                 "dst_ip": "52.96.128.144",
+                 "src_user": "{victim.user_domain}",
+                 "dvc": "{infra.proxy.hostname}",
+                 "url": "https://" + _SHAREPOINT_TENANT +
+                        "/personal/{victim.username}_acme_com/Documents/Q3_Report.docx",
+                 "app": "microsoft-onedrive",
+                 "transport": "tcp",
+                 "dest_port": "443",
+                 "action": "allow",
+                 "http_method": "GET",
+                 "content_type": "application/vnd.openxmlformats-"
+                                 "officedocument.wordprocessingml.document",
+                 "bytes_received": "184320",
              }),
     ],
     "phishing_1": [
@@ -1034,6 +1076,14 @@ SUPPLEMENTAL_ENTITIES = {
                         "Microsoft domain). Byte-identical to the robocopy and "
                         "data_exfil_archive tenant literal; single source of "
                         "truth. The sanctioned destination the FP resolves to."},
+    ],
+    "phishing_link": [
+        {"id": "sup_sharepoint", "type": "domain",
+         "value": _SHAREPOINT_TENANT,
+         "description": "The corporate SharePoint/OneDrive tenant (real "
+                        "Microsoft domain). Byte-identical tenant literal (4th "
+                        "consumer); the sanctioned download source the FP "
+                        "resolves to, vs the phishing domain."},
     ],
 }
 
