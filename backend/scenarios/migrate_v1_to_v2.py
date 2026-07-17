@@ -236,12 +236,30 @@ DETECTIONS = {
              "pattern reads like malware staging. It is a routine ManageEngine "
              "Endpoint Central software deployment; the parent is the signed "
              "agent service and the payload is a signed installer.")],
-    "password_spray": [_det(
-        "det_spray", "Password Spray Pattern Across Many Accounts",
-        "sigma_behavioral", "high", ["s6"], "true_positive",
-        "One source attempted single logons against many distinct accounts in "
-        "a short window, then authenticated successfully, the password-spray "
-        "signature.", mitre=("T1110.003", "Credential Access"))],
+    # Density batch 1: 2 TP + 1 coexisting FP. The FP is a stale-credential
+    # backup job (svc_backup on ACME-VEEAM01) generating rhythmic auth
+    # failures against the DC: one account, one server, machine-regular
+    # cadence, versus the spray's many-accounts-from-one-workstation shape.
+    "password_spray": [
+        _det("det_spray", "Password Spray Pattern Across Many Accounts",
+             "sigma_behavioral", "high", ["s6"], "true_positive",
+             "One source attempted single logons against many distinct "
+             "accounts in a short window, then authenticated successfully, the "
+             "password-spray signature.", mitre=("T1110.003", "Credential Access")),
+        _det("det_multi_account_failures",
+             "Failed Logons Across Many Accounts from One Source",
+             "sigma_behavioral", "medium", ["s1"], "true_positive",
+             "One source produced NTLM logon failures against many distinct "
+             "accounts in a short window, the spray signature, before the "
+             "successful logon.", mitre=("T1110.003", "Credential Access")),
+        _det("det_svc_stale_creds_fp",
+             "Repeated Authentication Failures for a Single Account",
+             "sigma_behavioral", "high", ["sup1"], "false_positive",
+             "One account failed authentication against the domain controller "
+             "repeatedly at a fixed cadence, reading like targeted brute "
+             "force. It is a backup service account with a stale password: one "
+             "account (not many), from the backup server, on a scheduled "
+             "job.")],
     "phishing_1": [_det(
         "det_impossible_travel", "Entra Impossible-Travel Risk Detection",
         "sigma_behavioral", "high", ["s4"], "true_positive",
@@ -335,7 +353,50 @@ _MEEC_AGENT_SVC = "C:\\Program Files (x86)\\DesktopCentral_Agent\\bin\\dcagentse
 _MEEC_STAGE = "C:\\Program Files (x86)\\DesktopCentral_Agent\\staging\\EC_Patch_KB5039211.exe"
 _MEEC_SIGNER = "ZOHO Corporation Private Limited"
 
+def _stale_4625(id, offset, src_port):
+    """A benign 4625: the backup service account failing against the DC with a
+    stale password. Shape matches password_spray's own 4625s."""
+    return _sup(id, "backup", offset, "4625", "Windows Security", "medium",
+                "{infra.dc.hostname}", user="svc_backup", red_herring=True,
+                source_ip="{infra.backup.ip}", destination_ip="{infra.dc.ip}",
+                user_account="ACME\\svc_backup",
+                message="An account failed to log on.",
+                key_value_pairs={
+                    "event_id": 4625,
+                    "channel": "WinEventLog:Security",
+                    "computer": "{infra.dc.hostname}",
+                    "subject_security_id": "NULL SID",
+                    "subject_account_name": "-",
+                    "subject_account_domain": "-",
+                    "subject_logon_id": "0x0",
+                    "logon_type": "3",
+                    "account_name": "svc_backup",
+                    "account_domain": "ACME",
+                    "failure_reason": "Unknown user name or bad password",
+                    "status": "0xC000006D",
+                    "sub_status": "0xC000006A",
+                    "caller_process_id": "0x0",
+                    "caller_process_name": "-",
+                    "workstation_name": "{infra.backup.hostname}",
+                    "src_ip": "{infra.backup.ip}",
+                    "src_port": src_port,
+                    "logon_process": "NtLmSsp",
+                    "authentication_package": "NTLM",
+                    "transited_services": "-",
+                    "package_name": "-",
+                    "key_length": "0",
+                })
+
+
 SUPPLEMENTAL_EVENTS = {
+    "password_spray": [
+        # Two rhythmic failures (fixed cadence) from the backup job; the FP
+        # detection triggers on sup1. Both in-window -> DECLARED red herrings;
+        # resolved by account cardinality (one) and source (backup server),
+        # not timing.
+        _stale_4625("sup1", -300, "50120"),
+        _stale_4625("sup2", -180, "50121"),
+    ],
     "c2_http": [
         # Benign Windows telemetry beacon to a real Microsoft endpoint (fixed
         # interval, reads like C2). In-window (attack_base minus 60s) ->
@@ -471,11 +532,17 @@ CANONICAL_ACCOUNTS = {
         "type": "service", "host": "scan",
         "groups": ["Domain Users", "Scanning Service Accounts"],
     },
+    "svc_backup": {
+        "id": "svc_backup", "username": "svc_backup", "domain": "ACME",
+        "type": "service", "host": "backup",
+        "groups": ["Domain Users", "Backup Operators"],
+    },
 }
 
 # Which canonical accounts each scenario's supplemental content needs.
 SCENARIO_CANONICAL_ACCOUNTS = {
     "lateral_movement_1": ["svc_vulnscan"],
+    "password_spray": ["svc_backup"],
 }
 
 

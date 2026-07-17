@@ -979,6 +979,11 @@ SERVICE_ACCOUNTS = {
         "groups": ["Domain Users", "Scanning Service Accounts"],
         "hosts": ["ACME-SEC01"],
     },
+    "svc_backup": {
+        "username": "svc_backup", "domain": "ACME", "type": "service",
+        "groups": ["Domain Users", "Backup Operators"],
+        "hosts": ["ACME-VEEAM01"],
+    },
 }
 
 # Network firewalls

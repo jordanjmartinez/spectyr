@@ -330,8 +330,8 @@ All 15 answer_key technique IDs are current; none deprecated, revoked, or merged
 
 - classification: `Brute Force` | root_cause: `s1` | techniques: `['T1110.003']`
 - scope.hosts: `['dc', 'ws_victim']` | scope.accounts: `['dpark', 'mjohnson', 'bwilliams', 'achen', 'jkim', 'lgreen']`
-- environment hosts: `ws_victim` (workstation), `dc` (dc)
-- environment accounts: `victim`, `dpark`, `mjohnson`, `bwilliams`, `achen`, `jkim`, `lgreen`
+- environment hosts: `ws_victim` (workstation), `dc` (dc), `backup` (backup)
+- environment accounts: `victim`, `dpark`, `mjohnson`, `bwilliams`, `achen`, `jkim`, `lgreen`, `svc_backup`
 
 | step | event | source | hostname (v1 field) | host tag | user tag |
 |---|---|---|---|---|---|

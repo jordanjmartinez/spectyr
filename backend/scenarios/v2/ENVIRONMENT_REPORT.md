@@ -22,6 +22,14 @@ resolves it (resolution noted inline, entry kept for the record).
 
 ### Density batch 1
 
+- **svc_backup** (canonical service account, `SERVICE_ACCOUNTS['svc_backup']`,
+  domain ACME, groups Domain Users + Backup Operators, on ACME-VEEAM01): the
+  backup job's service account (password_spray FP). A stale password produces
+  rhythmic auth failures against the DC that read like targeted brute force;
+  the dismissal evidence is the single account, the backup-server source, and
+  the scheduled cadence. **Invented; flagged for owner approval.** ACME-VEEAM01
+  (canonical backup role) enters the password_spray environment via the
+  supplemental events.
 - **ManageEngine Endpoint Central agent** (malware_usb FP): the agent process
   `dcagentservice.exe` is VERIFIED against manageengine.com (agent footprint).
   The install path (C:\Program Files (x86)\DesktopCentral_Agent\...), the
