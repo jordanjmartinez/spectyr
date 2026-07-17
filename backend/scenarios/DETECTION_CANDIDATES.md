@@ -424,3 +424,188 @@ acme-my.sharepoint.com pattern). Everything else reuses Windows built-ins,
 ambient benign, and the established Veeam identity. On approval I implement
 one scenario per commit, run full gates, print the distribution report with
 the varied mixes, and STOP.
+
+---
+
+# BATCH 2 DONE (commits 6ec2a29, 69e4706, d3b202e, 2cfd293).
+
+# STEP 3c BATCH 3 — candidate narratives (SCAFFOLD, awaiting approval)
+
+Four scenarios: **defense_evasion, c2_dns_tunnel, insider_shadow_it,
+false_positive_robocopy.** One scenario per commit on approval.
+
+## Batch 3 focus: FP severity-rank de-correlation
+
+The severity-rank target (validated at 3d): across the final densified corpus,
+the authored FP's rank within its scenario (top / shared-top / middle /
+bottom) must be roughly uniform — no rank may hold more than ~40% of
+FP-bearing scenarios. The current baseline is top-skewed:
+
+| rank | densified attack scenarios so far |
+|---|---|
+| shared-top | lateral_movement_1, malware_usb, c2_http, password_spray, data_exfil_archive(FP2) = **5** |
+| middle | **0** |
+| bottom | lateral_movement_2, data_exfil_archive(FP1) = **2** |
+| sole-top | 0 |
+
+Batch 3 therefore adds **only middle and bottom FPs, zero new shared-top**, to
+begin offsetting the batch-1 residual (batch 4 finishes the balance):
+
+| Scenario | Category | Mix | FP severity | **FP rank** |
+|---|---|---|---|---|
+| defense_evasion | Defense Evasion | 2TP + 1FP | high | **middle** (between critical & medium TPs) |
+| c2_dns_tunnel | Command & Control | 2TP + 1FP | medium | **bottom** (under two high TPs) |
+| insider_shadow_it | Insider Threat | 2TP + 1FP | medium | **bottom** (under two high TPs) |
+| false_positive_robocopy | False Positive | 3 FP | medium/high/medium | all-FP (no TP to rank against) |
+
+Batch 3 deliberately holds the attack mix constant at 2TP+1FP to isolate the
+rank-correction variable; corpus mix variety was already achieved in batches
+1–2. **Entity discipline: zero new invented identities — every FP reuses an
+already-established, already-flagged actor.**
+
+## B3.1 defense_evasion (Defense Evasion, T1562.001) — 1 → 3 (2TP + 1FP)
+
+Chain: s1 PowerShell exec, s2 Defender 5007 real-time-protection disabled
+(trigger, TP), s3 FileCreate PS transcript, s4 svchost32.exe from
+C:\Users\Public, s5 SetValue Run key, s6 NetworkConnect C2. Env: workstation.
+
+- **D1 KEEP** `det_av_disabled` (TP, sigma, **critical**, s2): Windows Defender
+  real-time protection disabled via PowerShell (bumped high→critical; disabling
+  AV is a critical impairment). mitre T1562.001.
+- **D2 ADD** `det_pubfolder_masquerade` (TP, sigma, **medium**, s4):
+  "Masquerading Binary Executed from Public Folder". mitre T1036.005. "A binary
+  named svchost32.exe (system-binary masquerade) launched from C:\Users\Public
+  right after AV was disabled — the payload the evasion cleared the way for. A
+  real but quieter signal than the AV-disable." (deliberately medium-looking TP.)
+- **D3 ADD** `det_defender_policy_fp` (FP, sigma, **high**, supplemental
+  **sup1**): "Windows Defender Policy Setting Modified". "A Defender
+  configuration value was changed, the AV-tampering shape. Benign: the endpoint
+  management agent applied a scheduled Defender policy push." Resolution
+  evidence: the modifying process is the signed ZOHO agent (dcagentservice.exe),
+  the value is a management-policy key (not the real-time-protection disable the
+  attack performed), and it lands in the deployment window.
+  - **sup1**: Sysmon EventID 13 (SetValue) on a Windows Defender **policy**
+    registry key by dcagentservice.exe on the victim workstation. In-window ->
+    **RED HERRING: true** (two Defender-modification signals, distinguished by
+    process identity/signer, not by guessing).
+  - entities NEEDED: **REUSE** ManageEngine Endpoint Central agent
+    (dcagentservice.exe / ZOHO signer / staging path) established in B1.1. No
+    new entity. Realism note (non-blocking, for owner): Endpoint Central's
+    Security-Configuration / Defender-management behavior — consistent with the
+    already-open staging-path stub; verify in-browser at leisure.
+
+FP rank: TPs **critical + medium**, FP **high** -> **MIDDLE** (a new rank).
+
+## B3.2 c2_dns_tunnel (Command & Control, T1071.004) — 1 → 3 (2TP + 1FP)
+
+Chain: s1 loader exec from Downloads, s2 DNS data.<tunnel>, s3 DNS high-entropy
+subdomain (trigger, TP), s4 firewall ALLOW, s5 DNS. Env: workstation, dns,
+firewall.
+
+- **D1 KEEP** `det_dns_tunnel` (TP, sigma, **high**, s3): high-entropy,
+  data-bearing subdomains under a single parent — the tunneling signature.
+  mitre T1071.004.
+- **D2 ADD** `det_dns_loader_exec` (TP, sigma, **high**, s1): "Process Launched
+  from Downloads Generating Anomalous DNS". mitre T1071.004. "A binary run from
+  the user's Downloads folder is the source of the anomalous DNS traffic — the
+  tunnel client." (second high TP, so the medium FP is strictly the lowest.)
+- **D3 ADD** `det_dns_volume_fp` (FP, sigma, **medium**, supplemental
+  **sup1–sup3**): "High-Volume DNS Query Rate to Single Domain". "A host issued
+  many DNS queries to one external domain in a short window — the volume shape
+  of DNS beaconing/tunneling. Benign: a Microsoft telemetry agent's routine
+  check-ins." Resolution evidence: the destination is a categorized
+  Microsoft-owned telemetry domain and the subdomains are low-entropy and
+  stable (no encoded data), vs the tunnel's high-entropy data subdomains.
+  - **sup1–sup3**: three DNS QUERY events from the victim workstation to
+    `v10.events.data.microsoft.com` at a regular interval, so the "volume" is
+    genuinely present in the pool (not just narrative). Detection triggers on
+    sup1. In-window -> **RED HERRING: true**.
+  - entities NEEDED: **REUSE** `v10.events.data.microsoft.com` (the Microsoft
+    telemetry domain established as a supplemental_entity in c2_http). Add it to
+    this scenario's supplemental_entities (self-contained, byte-identical
+    literal). No new entity.
+
+FP rank: TPs **high + high**, FP **medium** -> **BOTTOM**.
+
+## B3.3 insider_shadow_it (Insider Threat, T1567.002) — 1 → 3 (2TP + 1FP)
+
+Chain: s1 shadow app exec from AppData\Roaming, s2/s3 FileCreate staging, s4
+DNS to unsanctioned cloud, s5 HTTP_POST upload (trigger, TP). Env: workstation,
+dns, proxy.
+
+- **D1 KEEP** `det_shadow_upload` (TP, sigma, **high**, s5): outbound upload to
+  an unsanctioned personal-cloud endpoint. mitre T1567.002.
+- **D2 ADD** `det_shadow_app_exec` (TP, sigma, **high**, s1): "Unsanctioned
+  File-Transfer Application Launched from User Profile". mitre T1567. "An
+  unsanctioned cloud/file-transfer client ran from a user AppData path and then
+  moved corporate files out — shadow-IT tooling used for exfil." (second high
+  TP, so the medium FP is the lowest.)
+- **D3 ADD** `det_cloud_upload_fp` (FP, sigma, **medium**, supplemental
+  **sup1**): "Outbound File Upload to Cloud Storage". "A file upload left the
+  host for external cloud storage — the exfil shape. Benign: sanctioned
+  corporate OneDrive/SharePoint sync to the company tenant." Resolution
+  evidence: the destination is the sanctioned company tenant
+  (acme-my.sharepoint.com) over an authenticated corporate session, vs the
+  attack's unsanctioned personal-cloud destination.
+  - **sup1**: Proxy FileSyncUploadedFull (or HTTP_POST) from the victim
+    workstation to `acme-my.sharepoint.com`. In-window -> **RED HERRING: true**.
+  - entities NEEDED: **REUSE** `acme-my.sharepoint.com` (established in
+    false_positive_robocopy and data_exfil_archive). Add it to this scenario's
+    supplemental_entities. **Update the BACKLOG org-prefix note** to list this
+    third consumer of the tenant literal. No new entity.
+
+FP rank: TPs **high + high**, FP **medium** -> **BOTTOM**.
+
+## B3.4 false_positive_robocopy (False Positive, benign) — 1 → 3 (all-FP, 3 FP)
+
+Chain: s1 robocopy (trigger), s2 4663 mass file access, s3 DNS to the corporate
+tenant, s4 firewall ALLOW, s5 Proxy FileSyncUploadedFull to the tenant. Env:
+workstation, file, dns, proxy, firewall. All benign (an authorized bulk data
+migration to the corporate SharePoint/OneDrive tenant). NO supplemental events:
+every benign chain step carries an FP story.
+
+- **D1 KEEP** `det_fp_robocopy` (FP, sigma, **medium**, s1): "Bulk File Copy via
+  robocopy" — reads like collection/staging. Benign IT-driven migration.
+- **D2 ADD** `det_fp_cloud_sync` (FP, sigma, **high**, s5): "Large Upload to
+  Cloud Storage" — reads like mass exfiltration (the scariest-looking detection
+  in the scenario, and it is benign). Benign: sanctioned-tenant sync completing
+  the migration. Resolution: destination is the corporate tenant.
+- **D3 ADD** `det_fp_mass_fileaccess` (FP, sigma, **medium**, s2): "Mass File
+  Access on File Share" (4663) — reads like bulk collection. Benign: the source
+  files being read for the migration copy.
+  - severities span **medium / high / medium**; the high-severity detection is
+    an FP, so within an all-FP scenario the scary one is not a tell. Reuses the
+    existing `sharepoint` entity (acme-my.sharepoint.com already in-environment);
+    no supplemental events, no new entity.
+
+## Post-batch-3 FP-rank trajectory (recorded, validated at 3d)
+
+| rank | after batch 3 (attack-scenario FP instances) |
+|---|---|
+| shared-top | 5 (unchanged — batch 3 adds none) |
+| **middle** | **1** (defense_evasion) — new |
+| **bottom** | **4** (lateral_movement_2, data_exfil FP1, c2_dns_tunnel, insider_shadow_it) |
+| sole-top | 0 |
+
+Shared-top drops from 5/7 to 5/10 (50%); still above the ~40% target, so
+**batch 4 will add further middle / sole-top / bottom FPs** to bring shared-top
+under 40% corpus-wide. The 3d close-out then validates uniformity after the
+deterministic stable-key detection-order shuffle, against all three solver
+priors (odd-one-out, promote-N, dismiss-the-top-severity).
+
+---
+
+## STOP — awaiting owner approval of Batch 3 (step 3c)
+
+No new identities to approve or verify — every batch-3 FP reuses an
+already-established, already-flagged actor:
+- B3.1 reuses the Endpoint Central agent (staging-path stub already open;
+  Defender-management behavior is a non-blocking realism note for in-browser
+  verification at leisure).
+- B3.2 reuses `v10.events.data.microsoft.com`; B3.3 reuses
+  `acme-my.sharepoint.com` (backlog org-prefix note gains a third consumer).
+- B3.4 reuses the in-scenario `sharepoint` entity; no supplemental events.
+
+On approval I implement one scenario per commit, run full gates after the
+batch, print the distribution report (per-scenario mix, severity spread, **FP
+severity rank**, source spread), and STOP for review.

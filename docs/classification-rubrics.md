@@ -3,6 +3,30 @@
 Rubrics for classifying and difficulty-tiering scenarios. Guidance for future
 authoring; recording a rubric changes no existing scenario.
 
+## ATT&CK baseline (pinned)
+
+Spectyr's ATT&CK baseline is **Enterprise ATT&CK content v18.1**, verified
+against the live attack.mitre.org site on 2026-07-16. Every technique ID, name,
+and tactic name in the corpus (answer keys, `DETECTIONS` mitre tags,
+`TRIAGE_REVIEWS`, `CANONICAL_TECHNIQUE_NAMES`) is interpreted against this
+pinned baseline.
+
+**Upgrades are deliberate migrations, never ambient drift.** Moving to a newer
+ATT&CK version is a single dedicated commit that updates the pinned version
+here, the canonical name map, and any affected answer keys — each individual
+change justified by the live technique-page URL. A technique ID, name, or
+tactic must never change value incidentally inside an unrelated commit.
+
+**Live-URL rule (standing).** No ATT&CK technique or tactic change may enter the
+repo without a live attack.mitre.org URL for the specific technique page
+attached to the change request, regardless of who requests it. This applies to
+new `DETECTIONS` mitre tags as much as to answer-key edits.
+
+For the record (re-verified live 2026-07-16): `T1070.001` (Indicator Removal:
+Clear Windows Event Logs, tactic Defense Evasion) is current in v18.1;
+`T1685.005` and a "Defense Impairment" tactic do not exist in the live model
+and remain guarded strings (see the correction guard below).
+
 ## Log-clearing scenarios (Indicator Removal: Clear Windows Event Logs)
 
 ### Ruling for `defense_evasion_log_clearing` (final, 2026-07-16)

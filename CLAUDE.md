@@ -263,6 +263,11 @@ cd frontend && npm install && npm start
 Each scenario label should be unique across the whole catalog. If a category repeats, use different attack variants:
 - `malware_usb` vs `malware_ransomware`
 
+### MITRE ATT&CK baseline (pinned)
+- Baseline is **Enterprise ATT&CK v18.1**, verified live on attack.mitre.org 2026-07-16. All technique IDs/names and tactic names in the corpus are interpreted against this pin (see `docs/classification-rubrics.md`).
+- **Standing rule (any requester):** no ATT&CK technique or tactic change may enter the repo without a live `attack.mitre.org` URL for that specific technique page attached to the change request. Applies to new `DETECTIONS` mitre tags, answer-key techniques, and `CANONICAL_TECHNIQUE_NAMES`. Version upgrades are one deliberate migration commit (pin + name map + affected keys), never ambient drift.
+- `test_no_nonexistent_technique_strings` guards the discarded-draft strings `T1685.005` and "Defense Impairment" (neither exists); it must stay green.
+
 ### Deployment
 - Backend must run as a **single worker** (`gunicorn.conf.py` pins `workers = 1`, `threads = 8`); sessions and log-writer threads live in-process
 
