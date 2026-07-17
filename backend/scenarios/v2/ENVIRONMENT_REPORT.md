@@ -141,16 +141,16 @@ resolves it (resolution noted inline, entry kept for the record).
   PAN-OS). Same treatment as ACME-FW01: present in the environment and in
   network events, never in the Endpoints list, no Windows telemetry. Its
   Windows noise profile entries were deleted.
-- **ATT&CK verification (FU1) — STALE as of 2026-07-16.** The audit conclusion
-  "all 15 answer_key technique IDs current, no deprecated/revoked/merged IDs"
-  was performed against **cached pre-v19 pages** and is superseded. Current live
-  ATT&CK is **v19.1 (2026-04-28)**: at minimum `T1070.001` and `T1562.001` have
-  v19 successors (their content merged under `T1685` "Disable or Modify Tools";
-  Defense Evasion split into Stealth + Defense Impairment). The 15 IDs remain
-  valid under the **pinned v18.1 baseline** the corpus deliberately targets, but
-  are NOT "current." A dedicated v19 migration (re-verify every ID/name/tactic
-  against live v19 pages) is pending owner scheduling. Original audit note kept
-  below for provenance:
+- **ATT&CK verification (FU1) — SUPERSEDED by the v19.1 migration (2026-07-17).**
+  The old audit ("all 15 answer_key technique IDs current") was run against
+  cached pre-v19 pages. The corpus is now pinned to **Enterprise ATT&CK v19.1**,
+  validated against the official v19.1 STIX dataset (github.com/mitre/cti tag
+  `ATT&CK-v19.1`; `enterprise-attack.json` sha256
+  `fc783039f17fba646f79448f1322996457c658a9474f6d14c3bc924a2cf1c97d`). All 22
+  active mappings re-validated (each exists, non-revoked/deprecated, name +
+  tactic match). `T1562.001`→`T1685` and `T1070.001`→`T1685.005` (both revoked in
+  v19); tactic Defense Evasion → Stealth / Defense Impairment as applicable.
+  Original audit note kept below for provenance:
   - _All 15 answer_key technique IDs verified live against attack.mitre.org on
     2026-07-16 (13 by fetch during the audit; T1562.001 and T1070.001 by the
     reviewer). Display names updated where ATT&CK renamed: T1046 is now Network

@@ -3,33 +3,34 @@
 Rubrics for classifying and difficulty-tiering scenarios. Guidance for future
 authoring; recording a rubric changes no existing scenario.
 
-## ATT&CK baseline (pinned to pre-v19)
+## ATT&CK baseline (pinned to v19.1)
 
-Spectyr's ATT&CK mappings are **pinned to the pre-v19 baseline (Enterprise
-ATT&CK v18.1 semantics)**. Every technique ID, name, and tactic name in the
-corpus (answer keys, `DETECTIONS` mitre tags, `TRIAGE_REVIEWS`,
-`CANONICAL_TECHNIQUE_NAMES`) is interpreted against this pinned baseline.
+Spectyr's ATT&CK mappings are **pinned to Enterprise ATT&CK v19.1** — migrated
+on 2026-07-17 from the pre-v19 (v18.1) baseline. Every technique ID, name, and
+tactic name in the corpus (answer keys, `DETECTIONS` mitre tags, v2
+`triage_review`, `CANONICAL_TECHNIQUE_NAMES`, `CANONICAL_TACTICS`, radar axes) is
+interpreted against this pinned baseline.
 
-**The pinned baseline is NOT the current live model.** Current live ATT&CK is
-**v19.1 (released 2026-04-28)**, verified against attack.mitre.org/resources/
-versions/ on 2026-07-16. v19 restructured Defense Evasion — it split into
-**Stealth (TA0005)** and **Defense Impairment (TA0112)**, and merged `T1562`
-and `T1070.001` content under **`T1685` (Disable or Modify Tools)** (so
-log-clearing now lives at `T1685.005`). Spectyr stays on v18.1 semantics until a
-**dedicated, owner-scheduled v19 migration** (recommended after Batch 4).
+**Verification basis.** The migration validated all 22 active technique mappings
+against the official v19.1 STIX dataset (github.com/mitre/cti tag
+`ATT&CK-v19.1`; `enterprise-attack.json` sha256
+`fc783039f17fba646f79448f1322996457c658a9474f6d14c3bc924a2cf1c97d`, recorded in
+`test_scenario_loader_v2.py`): each target ID exists, is non-revoked/deprecated,
+its name matches the dataset, and it carries the target tactic. v19 retired
+Defense Evasion, splitting it into **Stealth (TA0005)** and **Defense Impairment
+(TA0112)**, and merged `T1562`/`T1070.001` (both revoked) under **`T1685`
+(Disable or Modify Tools)** — log-clearing now lives at `T1685.005`. The radar
+carries 13 axes in live-matrix order.
 
-**Upgrades are deliberate migrations, never ambient drift.** The v19 migration
-is a single dedicated commit that updates together: the pinned version here, the
-canonical technique/tactic maps, ALL answer keys re-verified against live v19
-pages (URL per change), the radar tactic axes re-enumerated from the live v19
-Enterprise matrix (Defense Evasion retired; Stealth + Defense Impairment
-replace it), the rubrics docs, and the guard test. A technique ID, name, or
-tactic must never change value incidentally inside an unrelated commit.
-
-**Live-URL rule (standing).** No ATT&CK technique or tactic change may enter the
-repo without a live attack.mitre.org URL for the specific technique page
-attached to the change request, regardless of who requests it. This applies to
-new `DETECTIONS` mitre tags as much as to answer-key edits.
+**Upgrades are deliberate migrations, never ambient drift.** A version bump is a
+single dedicated migration that updates together: the pinned version, the
+canonical technique/tactic maps, ALL corpus values (answer keys, detection tags,
+triage via the correction registry, radar axes), validated against that
+version's official STIX dataset (tag + file hash recorded). A technique ID,
+name, or tactic must never change value incidentally inside an unrelated commit.
+Commit boundaries fall where the repo is internally consistent per its own
+invariant guards (pin, name-match, coverage); a guard red at a boundary means
+the boundary is wrong — never land a knowingly-red commit, never loosen a guard.
 
 ## Log-clearing scenarios (Indicator Removal: Clear Windows Event Logs)
 
@@ -42,8 +43,8 @@ The Stage 2 blocker on this scenario's tier/classification is resolved:
 | difficulty | medium (corpus difficulty 2) |
 | detection disposition | `true_positive` |
 | classification_event | step `s5` (the Windows Security Event ID 1102 step) |
-| mitre_technique | `T1070.001` |
-| mitre_tactic | Defense Evasion |
+| mitre_technique | `T1685.005` (v19.1; was `T1070.001` pre-migration) |
+| mitre_tactic | Defense Impairment (v19.1; was Defense Evasion) |
 
 `classification_event` is the 1102 step (`s5`), verified present in the
 scenario. It is distinct from `answer_key.root_cause` (`s1`, patient zero):
@@ -62,14 +63,12 @@ attack.mitre.org/techniques/T1685/005/ and attack.mitre.org/tactics/TA0112/.
 They are the **v19 successors** of the log-clearing mapping (see the ATT&CK
 baseline section above).
 
-Because Spectyr is pinned to the pre-v19 baseline, the log-clearing scenario
-keeps `T1070.001` (Indicator Removal: Clear Windows Event Logs, tactic Defense
-Evasion) under v18.1 semantics until the deliberate v19 migration. The guard is
-therefore no longer a blacklist of "fake" strings; it is a **positive pin**:
-every technique ID and tactic name in the corpus must be a pinned-baseline
-string, so a v19 successor entering ahead of the migration fails loudly.
-Enforced by `test_corpus_strings_match_pinned_attack_baseline` in
-`test_scenario_loader_v2.py`.
+As of the **v19.1 migration (2026-07-17)** these successors are now the corpus
+values: the log-clearing scenario carries `T1685.005` (Disable or Modify Tools:
+Clear Windows Event Logs, tactic Defense Impairment). The guard is a **positive
+pin**: every technique ID and tactic name in the corpus must be a pinned v19.1
+string, so a value from a different ATT&CK version fails loudly. Enforced by
+`test_corpus_strings_match_pinned_attack_baseline` in `test_scenario_loader_v2.py`.
 
 ### Difficulty rubric for log-clearing variants
 
