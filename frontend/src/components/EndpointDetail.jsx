@@ -1,10 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { apiFetch } from '../api';
-import { StatusBadge, OsChip } from './Endpoints';
+import { StatusBadge, OsChip, IsolationBadge } from './Endpoints';
+import ConfirmDialog from './ConfirmDialog';
 
 // Endpoint detail (Stage 1): two-pane EDR-style view over the cached session
 // snapshot. Fetched once per host; search and sort operate on the cached
 // data only. Attack rows render identically to benign rows.
+// Stage 3a: response actions. Isolate/Release live in the reserved control
+// area on Overview; Kill Process on process rows. The server renders
+// base+overlay, so a successful action shows up on refetch; failed attempts
+// return an in-fiction reason that renders as a quiet notice line.
 
 const shortDate = (iso) => (iso ? iso.slice(0, 10) : '-');
 const shortDateTime = (iso) => (iso ? iso.slice(0, 16).replace('T', ' ') : '-');
@@ -60,16 +65,45 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
   const [tab, setTab] = useState('overview');
   const [procSearch, setProcSearch] = useState('');
   const [procSort, setProcSort] = useState({ key: 'pid', dir: 'asc' });
+  const [confirm, setConfirm] = useState(null); // {title, body, confirmLabel, action, target}
+  const [busy, setBusy] = useState(false);
+  const [actionNotice, setActionNotice] = useState(null);
 
-  useEffect(() => {
-    setSnap(null);
-    setNotFound(false);
-    setTab('overview');
+  const fetchSnap = useCallback(() => {
     apiFetch(`/api/endpoints/${encodeURIComponent(hostname)}`)
       .then(res => (res.ok ? res.json() : Promise.reject(res.status)))
       .then(setSnap)
       .catch(() => setNotFound(true));
   }, [hostname]);
+
+  useEffect(() => {
+    setSnap(null);
+    setNotFound(false);
+    setTab('overview');
+    setConfirm(null);
+    setActionNotice(null);
+    fetchSnap();
+  }, [hostname, fetchSnap]);
+
+  const runAction = (action, target) => {
+    setBusy(true);
+    apiFetch('/api/actions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, target }),
+    })
+      .then(res => res.json())
+      .then(entry => {
+        setActionNotice(entry.outcome === 'success' ? null : (entry.reason || entry.error || null));
+        setConfirm(null);
+        setBusy(false);
+        fetchSnap();
+      })
+      .catch(() => {
+        setConfirm(null);
+        setBusy(false);
+      });
+  };
 
   const processes = useMemo(() => {
     if (!snap) return [];
@@ -122,7 +156,10 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
           <div className="p-4">
             <button type="button" onClick={onBack} className="text-sm text-[#16436b] hover:underline">&larr; All Endpoints</button>
             <h3 className="mt-3 font-mono text-lg font-semibold text-[#1a2332] truncate" title={snap.hostname}>{snap.hostname}</h3>
-            <div className="mt-2"><StatusBadge status={snap.status} /></div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <StatusBadge status={snap.status} />
+              {snap.isolation === 'isolated' && <IsolationBadge isolation="isolated" />}
+            </div>
             <dl className="mt-4 space-y-2 text-xs">
               {[['OS', snap.os, false],
                 ['Agent', sys.agent, true],
@@ -171,7 +208,11 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
                 <div className="flex flex-wrap items-center gap-3">
                   <h3 className="font-mono text-2xl font-semibold text-[#1a2332]">{snap.hostname}</h3>
                   <StatusBadge status={snap.status} />
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-[#57606a]">Connected</span>
+                  {snap.isolation === 'isolated' ? (
+                    <IsolationBadge isolation="isolated" />
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-[#57606a]">Connected</span>
+                  )}
                 </div>
                 <div className="mt-5 grid grid-cols-2 lg:grid-cols-4 gap-3">
                   {[['OS', snap.os, false],
@@ -192,12 +233,48 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
                 <SectionLabel>Network isolation</SectionLabel>
                 <div className="mt-2 flex items-center justify-between gap-4">
                   <p className="text-sm text-[#57606a]">Isolation cuts the host off from the network while the agent channel stays up.</p>
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Connected
-                  </span>
+                  {snap.isolation === 'isolated' ? (
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-red-600 text-white whitespace-nowrap">
+                      <span className="w-1.5 h-1.5 rounded-full bg-white" />Isolated
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Connected
+                    </span>
+                  )}
                 </div>
-                {/* Response actions land here in a later stage. */}
-                <div className="mt-4 h-9" aria-hidden="true" />
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  {snap.isolation === 'isolated' ? (
+                    <button
+                      type="button"
+                      onClick={() => setConfirm({
+                        title: 'Release host',
+                        body: `Restore network connectivity for ${snap.hostname}.`,
+                        confirmLabel: 'Release',
+                        action: 'release_host',
+                        target: snap.entity_id,
+                      })}
+                      className="px-3 py-1.5 text-sm font-medium rounded-md border border-[#d0d7de] text-[#1a2332] hover:bg-[#eef1f4]"
+                    >
+                      Release Host
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirm({
+                        title: 'Isolate host',
+                        body: `Cut ${snap.hostname} off from the network. Existing connections drop; the agent channel stays up.`,
+                        confirmLabel: 'Isolate',
+                        action: 'isolate_host',
+                        target: snap.entity_id,
+                      })}
+                      className="px-3 py-1.5 text-sm font-medium rounded-md bg-[#101218] text-white hover:bg-[#1a2332]"
+                    >
+                      Isolate Host
+                    </button>
+                  )}
+                  {actionNotice && <p className="text-xs text-[#57606a]">{actionNotice}</p>}
+                </div>
               </div>
             </Card>
 
@@ -235,6 +312,7 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
                 className="w-full sm:w-72 px-3 py-2 text-sm rounded-md border border-[#d0d7de] bg-white text-[#1a2332] placeholder-[#8b949e] focus:outline-none focus:ring-2 focus:ring-[#16436b]/30"
               />
               <span className="text-sm text-[#57606a]">{processes.length} of {snap.processes.length}</span>
+              {actionNotice && <span className="text-xs text-[#57606a]">{actionNotice}</span>}
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
@@ -245,9 +323,10 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
                   <Th>Command</Th>
                   <Th onClick={procSortBtn('user')} active={procSort.key === 'user'} dir={procSort.dir}>User</Th>
                   <Th onClick={procSortBtn('memory_mb')} active={procSort.key === 'memory_mb'} dir={procSort.dir}>Memory</Th>
+                  <Th>Action</Th>
                 </tr></thead>
                 <tbody>
-                  {processes.length === 0 && <EmptyRow span={6} />}
+                  {processes.length === 0 && <EmptyRow span={7} />}
                   {processes.map(p => (
                     <tr key={`${p.pid}-${p.name}`} className="border-b border-[#eef1f4] last:border-b-0 align-top">
                       <td className="px-3 py-2 font-mono whitespace-nowrap">{p.pid}</td>
@@ -256,6 +335,23 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
                       <td className="px-3 py-2 font-mono break-all min-w-[16rem] text-[#57606a]">{dash(p.cmdline)}</td>
                       <td className="px-3 py-2 font-mono whitespace-nowrap">{dash(p.user)}</td>
                       <td className="px-3 py-2 whitespace-nowrap text-[#57606a]">{p.memory_mb} MB</td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {p.entity_id && (
+                          <button
+                            type="button"
+                            onClick={() => setConfirm({
+                              title: 'Kill process',
+                              body: `Terminate ${p.name} (PID ${p.pid}) on ${snap.hostname}. The process record stays in the event log.`,
+                              confirmLabel: 'Kill',
+                              action: 'kill_process',
+                              target: p.entity_id,
+                            })}
+                            className="px-2.5 py-1 text-xs font-medium rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4]"
+                          >
+                            Kill
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -387,6 +483,16 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
           </Card>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!confirm}
+        title={confirm?.title}
+        body={confirm?.body}
+        confirmLabel={confirm?.confirmLabel}
+        busy={busy}
+        onConfirm={() => confirm && runAction(confirm.action, confirm.target)}
+        onCancel={() => setConfirm(null)}
+      />
     </div>
   );
 };
