@@ -137,12 +137,26 @@ DETECTIONS = {
              "beacon shape as C2. It is Windows diagnostic telemetry to a "
              "Microsoft endpoint: a categorized, allowlisted vendor domain, "
              "not an uncategorized lookalike.")],
-    "data_exfil_archive": [_det(
-        "det_exfil_upload", "Outbound Transfer to Consumer File-Sharing Host",
-        "sigma_behavioral", "high", ["s5"], "true_positive",
-        "A large outbound transfer to a consumer file-sharing service shortly "
-        "after local archive creation, consistent with staged exfiltration.",
-        mitre=("T1560.001", "Collection"))],
+    # Density batch 2: 1 TP + 2 FP. One real exfil hidden among two benign
+    # upload/archive signals. Severity: TP high, FPs medium + high (severity
+    # does not separate them).
+    "data_exfil_archive": [
+        _det("det_exfil_upload", "Outbound Transfer to Consumer File-Sharing Host",
+             "sigma_behavioral", "high", ["s5"], "true_positive",
+             "A large outbound transfer to a consumer file-sharing service "
+             "shortly after local archive creation, consistent with staged "
+             "exfiltration.", mitre=("T1560.001", "Collection")),
+        _det("det_cloud_sync_fp", "Outbound Upload to Cloud Storage",
+             "sigma_behavioral", "medium", ["sup1"], "false_positive",
+             "A large upload to an external cloud endpoint reads like "
+             "exfiltration. It is corporate OneDrive sync to the sanctioned "
+             "SharePoint tenant, not a consumer file host."),
+        _det("det_backup_archive_fp", "Archive Utility Created a Large Archive",
+             "sigma_behavioral", "high", ["sup2"], "false_positive",
+             "An archive utility produced a large archive, the collection and "
+             "staging shape. It is the endpoint backup agent creating a "
+             "scheduled backup archive; the archiver's parent is the signed "
+             "backup service.")],
     "defense_evasion": [_det(
         "det_av_disabled", "Endpoint Protection Real-Time Scanning Disabled",
         "sigma_behavioral", "high", ["s2"], "true_positive",
@@ -441,8 +455,65 @@ def _stale_4625(id, offset, src_port):
 
 
 _WERFAULT = "C:\\Windows\\System32\\WerFault.exe"
+# Established Veeam endpoint agent identity (see false_positive_veeam / noise
+# profiles). Reused, not reinvented.
+_VEEAM_SVC = "C:\\Program Files\\Veeam\\Endpoint Backup\\Veeam.EndPoint.Service.exe"
+_SEVENZIP = "C:\\Program Files\\7-Zip\\7z.exe"
+# Byte-identical to false_positive_robocopy's sharepoint tenant (single source
+# of truth). Backlog: joins the {org_prefix} theming set when that lands.
+_SHAREPOINT_TENANT = "acme-my.sharepoint.com"
 
 SUPPLEMENTAL_EVENTS = {
+    "data_exfil_archive": [
+        # Benign corporate OneDrive sync to the sanctioned SharePoint tenant
+        # (reads like exfil). In-window (attack_base minus 80s) -> RED HERRING.
+        _sup("sup1", "ws_victim", -80, "HTTP_CONNECT", "Proxy", "medium",
+             "{victim.hostname}", user="victim", red_herring=True,
+             source_ip="{victim.ip}", user_account="ACME\\{victim.username}",
+             message="CONNECT tunnel established to " + _SHAREPOINT_TENANT + ":443",
+             key_value_pairs={
+                 "src_ip": "{victim.ip}",
+                 "dst_ip": "52.96.128.144",
+                 "src_user": "{victim.username}",
+                 "dvc": "{infra.proxy.hostname}",
+                 "url": "https://" + _SHAREPOINT_TENANT + "/personal/",
+                 "app": "ssl",
+                 "transport": "tcp",
+                 "dest_port": "443",
+                 "action": "allow",
+                 "http_method": "CONNECT",
+                 "url_category": "file-sharing/corporate",
+             }),
+        # Benign scheduled backup: the Veeam endpoint agent runs 7-Zip to
+        # stage a backup archive (reads like collection). In-window (attack_
+        # base minus 65s) -> RED HERRING; resolved by the signed Veeam parent.
+        _sup("sup2", "ws_victim", -65, "ProcessCreate", "Sysmon", "low",
+             "{victim.hostname}", user="victim", red_herring=True,
+             source_ip="{victim.ip}", user_account="NT AUTHORITY\\SYSTEM",
+             message="Process created: 7z.exe scheduled backup archive",
+             key_value_pairs={
+                 "event_id": 1,
+                 "channel": "Microsoft-Windows-Sysmon/Operational",
+                 "computer": "{victim.hostname}",
+                 "rule_name": "",
+                 "process_id": "6820",
+                 "image": _SEVENZIP,
+                 "file_version": "24.09",
+                 "description": "7-Zip Console",
+                 "product": "7-Zip",
+                 "company": "Igor Pavlov",
+                 "original_file_name": "7z.exe",
+                 "command_line": "7z.exe a -t7z C:\\ProgramData\\Veeam\\Backup\\EP_20260716.7z C:\\Users\\{victim.username}\\Documents",
+                 "current_directory": "C:\\Program Files\\7-Zip\\",
+                 "user": "NT AUTHORITY\\SYSTEM",
+                 "terminal_session_id": "0",
+                 "integrity_level": "System",
+                 "parent_process_id": "3080",
+                 "parent_image": _VEEAM_SVC,
+                 "parent_command_line": "\"" + _VEEAM_SVC + "\"",
+                 "parent_user": "NT AUTHORITY\\SYSTEM",
+             }),
+    ],
     "lateral_movement_2": [
         # Windows Error Reporting dumping a crashed benign app. sup1 is the
         # WerFault process with its canonical identity (signed Windows, svchost
@@ -621,6 +692,14 @@ SUPPLEMENTAL_ENTITIES = {
                         "Benign vendor domain; the fallback for a documented "
                         "SaaS check-in since the ManageEngine cloud domain is "
                         "not published."},
+    ],
+    "data_exfil_archive": [
+        {"id": "sup_sharepoint", "type": "domain",
+         "value": _SHAREPOINT_TENANT,
+         "description": "The corporate SharePoint/OneDrive tenant (real "
+                        "Microsoft domain). Byte-identical to the "
+                        "false_positive_robocopy tenant literal; single "
+                        "source of truth."},
     ],
 }
 

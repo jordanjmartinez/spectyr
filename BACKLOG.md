@@ -28,3 +28,15 @@ Scope notes for the implementer:
   must switch from literal ids to the indexed placeholders' resolved ids.
 - Remove the six username entries from the placeholder-integrity
   grandfather allowlist in `test_scenario_loader_v2.py` when done.
+
+## Org-prefix theming substitution set
+
+**Target: when the {org_prefix} theming feature lands.**
+
+The SharePoint/OneDrive tenant literal `acme-my.sharepoint.com` is currently
+duplicated as a single source of truth across two scenarios
+(`false_positive_robocopy` entity `sharepoint`, and `data_exfil_archive`
+supplemental_entity `sup_sharepoint`, byte-identical). When org-prefix theming
+substitution lands, this tenant literal joins the `{org_prefix}` set so the
+`acme` prefix is substituted consistently (e.g. `{org_prefix}-my.sharepoint.com`)
+rather than hardcoded in two places.
