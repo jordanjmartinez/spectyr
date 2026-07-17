@@ -213,12 +213,30 @@ DETECTIONS = {
         "The Windows Security event log was cleared (1102). Clearing destroys "
         "forensic evidence and, absent a change record, indicates an attacker "
         "removing traces.", mitre=("T1070.001", "Defense Evasion"))],
-    "insider_shadow_it": [_det(
-        "det_shadow_upload", "Upload to Unsanctioned Cloud Storage",
-        "sigma_behavioral", "medium", ["s5"], "true_positive",
-        "Sensitive files uploaded to an unsanctioned cloud provider by an "
-        "unapproved application, consistent with insider data movement.",
-        mitre=("T1567.002", "Exfiltration"))],
+    # Density batch 3 (B3.3): 2 TP + 1 FP. FP severity rank = BOTTOM (medium),
+    # under two high TPs. The FP is a benign sanctioned-tenant OneDrive sync
+    # coexisting with the shadow-IT exfil by the cloud-upload class; resolved by
+    # destination (sanctioned company tenant vs unsanctioned personal cloud).
+    # The added TP reuses the scenario's pinned technique (T1567.002).
+    "insider_shadow_it": [
+        _det("det_shadow_upload", "Upload to Unsanctioned Cloud Storage",
+             "sigma_behavioral", "high", ["s5"], "true_positive",
+             "Sensitive files uploaded to an unsanctioned cloud provider by an "
+             "unapproved application, consistent with insider data movement.",
+             mitre=("T1567.002", "Exfiltration")),
+        _det("det_shadow_app_exec",
+             "Unsanctioned File-Transfer Application Launched from User Profile",
+             "sigma_behavioral", "high", ["s1"], "true_positive",
+             "An unsanctioned cloud/file-transfer client ran from a user "
+             "AppData path and then moved corporate files out, shadow-IT "
+             "tooling used for exfiltration.",
+             mitre=("T1567.002", "Exfiltration")),
+        _det("det_cloud_upload_fp", "Outbound File Upload to Cloud Storage",
+             "sigma_behavioral", "medium", ["sup1"], "false_positive",
+             "A file upload left the host for external cloud storage, the "
+             "exfiltration shape. It is sanctioned corporate OneDrive sync to "
+             "the company tenant over an authenticated session, not the "
+             "unsanctioned personal-cloud destination of the exfil.")],
     "insider_staging": [_det(
         "det_staging", "Sensitive Share Access Then Local Staging",
         "sigma_behavioral", "medium", ["s5"], "true_positive",
@@ -587,6 +605,36 @@ SUPPLEMENTAL_EVENTS = {
                  "message_type": "QUERY", "reply_code": "NOERROR",
                  "dvc": "{infra.dns.hostname}"}),
     ],
+    "insider_shadow_it": [
+        # Benign sanctioned-tenant OneDrive sync (reads like cloud exfil):
+        # det_cloud_upload_fp triggers here. In-window (attack_base minus 70s)
+        # -> DECLARED red herring; resolved by the sanctioned destination
+        # (acme-my.sharepoint.com), not timing. FileSyncUploadedFull is the
+        # OneDrive sync telemetry (does not merge into world network). Reuses the
+        # byte-identical sharepoint tenant literal (declared as sup_sharepoint).
+        _sup("sup1", "ws_victim", -70, "FileSyncUploadedFull", "Proxy", "low",
+             "{victim.hostname}", user="victim", red_herring=True,
+             source_ip="{victim.ip}", user_account="ACME\\{victim.username}",
+             message="OneDrive sync upload to " + _SHAREPOINT_TENANT,
+             key_value_pairs={
+                 "src_ip": "{victim.ip}",
+                 "dst_ip": "52.96.128.144",
+                 "src_user": "{victim.user_domain}",
+                 "dvc": "{infra.proxy.hostname}",
+                 "url": _SHAREPOINT_TENANT,
+                 "app": "microsoft-onedrive",
+                 "transport": "tcp",
+                 "dest_port": "443",
+                 "action": "allow",
+                 "http_method": "PUT",
+                 "user_agent": "Microsoft SkyDriveSync/24.001.0107.0003 "
+                               "OneDrive-Windows/23.234.1121.0003",
+                 "site_url": "https://" + _SHAREPOINT_TENANT +
+                             "/personal/{victim.username}_acme_com",
+                 "file_count": "312",
+                 "bytes_uploaded": "486539264",
+             }),
+    ],
     "data_exfil_archive": [
         # Benign corporate OneDrive sync to the sanctioned SharePoint tenant
         # (reads like exfil). In-window (attack_base minus 80s) -> RED HERRING.
@@ -830,6 +878,14 @@ SUPPLEMENTAL_ENTITIES = {
                         "Microsoft domain). Byte-identical to the "
                         "false_positive_robocopy tenant literal; single "
                         "source of truth."},
+    ],
+    "insider_shadow_it": [
+        {"id": "sup_sharepoint", "type": "domain",
+         "value": _SHAREPOINT_TENANT,
+         "description": "The corporate SharePoint/OneDrive tenant (real "
+                        "Microsoft domain). Byte-identical to the robocopy and "
+                        "data_exfil_archive tenant literal; single source of "
+                        "truth. The sanctioned destination the FP resolves to."},
     ],
 }
 

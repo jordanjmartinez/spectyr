@@ -34,9 +34,11 @@ Scope notes for the implementer:
 **Target: when the {org_prefix} theming feature lands.**
 
 The SharePoint/OneDrive tenant literal `acme-my.sharepoint.com` is currently
-duplicated as a single source of truth across two scenarios
-(`false_positive_robocopy` entity `sharepoint`, and `data_exfil_archive`
-supplemental_entity `sup_sharepoint`, byte-identical). When org-prefix theming
+duplicated as a single source of truth across three scenarios
+(`false_positive_robocopy` entity `sharepoint`; `data_exfil_archive`
+supplemental_entity `sup_sharepoint`; and `insider_shadow_it`
+supplemental_entity `sup_sharepoint` — all byte-identical, via the
+`_SHAREPOINT_TENANT` constant in `migrate_v1_to_v2.py`). When org-prefix theming
 substitution lands, this tenant literal joins the `{org_prefix}` set so the
 `acme` prefix is substituted consistently (e.g. `{org_prefix}-my.sharepoint.com`)
-rather than hardcoded in two places.
+rather than hardcoded in three places.
