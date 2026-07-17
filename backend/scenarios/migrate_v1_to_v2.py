@@ -109,12 +109,32 @@ DETECTIONS = {
         "A domain account locked out (4740) after a burst of failed logons "
         "from a single external source, consistent with online password "
         "guessing.", mitre=("T1110.001", "Credential Access"))],
-    "c2_dns_tunnel": [_det(
-        "det_dns_tunnel", "Anomalous DNS TXT Query Volume to Rare Domain",
-        "sigma_behavioral", "high", ["s3"], "true_positive",
-        "Repeated TXT lookups to non-standard subdomains of a rarely seen "
-        "parent domain, a common DNS tunneling and C2 pattern.",
-        mitre=("T1071.004", "Command and Control"))],
+    # Density batch 3 (B3.2): 2 TP + 1 FP. FP severity rank = BOTTOM (medium),
+    # strictly under two high TPs. The FP is benign high-volume DNS to a
+    # Microsoft telemetry endpoint (normal-length repeated hostname, no data
+    # encoding), coexisting with the tunnel by DNS-anomaly class; resolved by
+    # domain reputation + subdomain entropy. The added TP reuses the scenario's
+    # pinned technique (T1071.004) -- no new technique string.
+    "c2_dns_tunnel": [
+        _det("det_dns_tunnel", "Anomalous DNS TXT Query Volume to Rare Domain",
+             "sigma_behavioral", "high", ["s3"], "true_positive",
+             "Repeated TXT lookups to non-standard subdomains of a rarely seen "
+             "parent domain, a common DNS tunneling and C2 pattern.",
+             mitre=("T1071.004", "Command and Control")),
+        _det("det_dns_loader_exec",
+             "Process from Downloads Generating Anomalous DNS",
+             "sigma_behavioral", "high", ["s1"], "true_positive",
+             "A binary launched from the user's Downloads folder is the source "
+             "of the anomalous DNS traffic, the tunnel client that established "
+             "the covert channel.", mitre=("T1071.004", "Command and Control")),
+        _det("det_dns_volume_fp", "High-Volume DNS Query Rate to Single Domain",
+             "sigma_behavioral", "medium", ["sup1", "sup2", "sup3"],
+             "false_positive",
+             "A host issued many DNS queries to one external domain in a short "
+             "window, the volume shape of DNS beaconing or tunneling. It is a "
+             "Microsoft telemetry agent's routine check-ins to a categorized "
+             "vendor domain with normal-length, low-entropy hostnames, not the "
+             "high-entropy data subdomains of a tunnel.")],
     # Density batch 1: 2 TP + 1 coexisting FP. The FP is benign Windows
     # telemetry beaconing to a Microsoft endpoint (the ManageEngine cloud
     # check-in domain is not documented, so per the ruling the fallback is a
@@ -495,6 +515,9 @@ _SEVENZIP = "C:\\Program Files\\7-Zip\\7z.exe"
 # Byte-identical to false_positive_robocopy's sharepoint tenant (single source
 # of truth). Backlog: joins the {org_prefix} theming set when that lands.
 _SHAREPOINT_TENANT = "acme-my.sharepoint.com"
+# Microsoft diagnostic-telemetry endpoint (real vendor domain). Byte-identical
+# to c2_http's sup_ms_telemetry literal; single source of truth.
+_MS_TELEMETRY = "v10.events.data.microsoft.com"
 
 SUPPLEMENTAL_EVENTS = {
     "defense_evasion": [
@@ -528,6 +551,41 @@ SUPPLEMENTAL_EVENTS = {
                  "details": "DWORD (0x00000000)",
                  "user": "NT AUTHORITY\\SYSTEM",
              }),
+    ],
+    "c2_dns_tunnel": [
+        # Benign high-volume DNS to a Microsoft telemetry endpoint: a real
+        # 3-query burst so the "volume" is present in the pool. Normal-length,
+        # repeated hostname (low entropy, no data encoding), contrasting the
+        # tunnel's high-entropy TXT subdomains. det_dns_volume_fp triggers on all
+        # three. In-window -> DECLARED red herrings; resolved by domain
+        # reputation + subdomain entropy, not timing. Query type A (not TXT).
+        _sup("sup1", "ws_victim", -55, "QUERY", "DNS", "low",
+             "{infra.dns.hostname}", red_herring=True, source_ip="{victim.ip}",
+             message="DNS query A " + _MS_TELEMETRY,
+             key_value_pairs={
+                 "src_ip": "{victim.ip}", "dst_ip": "{infra.dns.ip}",
+                 "src_port": "51837", "dest_port": "53", "transport": "udp",
+                 "query": _MS_TELEMETRY, "query_type": "A",
+                 "message_type": "QUERY", "reply_code": "NOERROR",
+                 "dvc": "{infra.dns.hostname}"}),
+        _sup("sup2", "ws_victim", -41, "QUERY", "DNS", "low",
+             "{infra.dns.hostname}", red_herring=True, source_ip="{victim.ip}",
+             message="DNS query A " + _MS_TELEMETRY,
+             key_value_pairs={
+                 "src_ip": "{victim.ip}", "dst_ip": "{infra.dns.ip}",
+                 "src_port": "51902", "dest_port": "53", "transport": "udp",
+                 "query": _MS_TELEMETRY, "query_type": "A",
+                 "message_type": "QUERY", "reply_code": "NOERROR",
+                 "dvc": "{infra.dns.hostname}"}),
+        _sup("sup3", "ws_victim", -27, "QUERY", "DNS", "low",
+             "{infra.dns.hostname}", red_herring=True, source_ip="{victim.ip}",
+             message="DNS query A " + _MS_TELEMETRY,
+             key_value_pairs={
+                 "src_ip": "{victim.ip}", "dst_ip": "{infra.dns.ip}",
+                 "src_port": "52014", "dest_port": "53", "transport": "udp",
+                 "query": _MS_TELEMETRY, "query_type": "A",
+                 "message_type": "QUERY", "reply_code": "NOERROR",
+                 "dvc": "{infra.dns.hostname}"}),
     ],
     "data_exfil_archive": [
         # Benign corporate OneDrive sync to the sanctioned SharePoint tenant
@@ -757,6 +815,13 @@ SUPPLEMENTAL_ENTITIES = {
                         "Benign vendor domain; the fallback for a documented "
                         "SaaS check-in since the ManageEngine cloud domain is "
                         "not published."},
+    ],
+    "c2_dns_tunnel": [
+        {"id": "sup_ms_telemetry", "type": "domain", "value": _MS_TELEMETRY,
+         "description": "Microsoft Windows diagnostic telemetry endpoint. "
+                        "Byte-identical to c2_http's sup_ms_telemetry literal; "
+                        "the benign high-volume DNS destination the FP resolves "
+                        "against by reputation and subdomain entropy."},
     ],
     "data_exfil_archive": [
         {"id": "sup_sharepoint", "type": "domain",

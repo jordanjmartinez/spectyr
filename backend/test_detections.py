@@ -205,7 +205,7 @@ def test_density_no_single_authored_detection():
                  "c2_http", "password_spray", "false_positive_pentest",
                  "lateral_movement_2", "malware_ransomware",
                  "data_exfil_archive", "false_positive_oauth",
-                 "defense_evasion")
+                 "defense_evasion", "c2_dns_tunnel")
     for label in densified:
         assert len(CATALOG[label]["detections"]) >= 2, label
 

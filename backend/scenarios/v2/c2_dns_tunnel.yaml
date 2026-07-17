@@ -178,9 +178,79 @@ attack:
 
 noise: {}
 
-supplemental_events: []
+supplemental_events:
+  - id: "sup1"
+    host: "ws_victim"
+    offset: -55
+    red_herring: true
+    event_type: "QUERY"
+    source_type: "DNS"
+    log_source: "DNS"
+    severity: "low"
+    hostname: "{infra.dns.hostname}"
+    source_ip: "{victim.ip}"
+    message: "DNS query A v10.events.data.microsoft.com"
+    key_value_pairs:
+      src_ip: "{victim.ip}"
+      dst_ip: "{infra.dns.ip}"
+      src_port: "51837"
+      dest_port: "53"
+      transport: "udp"
+      query: "v10.events.data.microsoft.com"
+      query_type: "A"
+      message_type: "QUERY"
+      reply_code: "NOERROR"
+      dvc: "{infra.dns.hostname}"
+  - id: "sup2"
+    host: "ws_victim"
+    offset: -41
+    red_herring: true
+    event_type: "QUERY"
+    source_type: "DNS"
+    log_source: "DNS"
+    severity: "low"
+    hostname: "{infra.dns.hostname}"
+    source_ip: "{victim.ip}"
+    message: "DNS query A v10.events.data.microsoft.com"
+    key_value_pairs:
+      src_ip: "{victim.ip}"
+      dst_ip: "{infra.dns.ip}"
+      src_port: "51902"
+      dest_port: "53"
+      transport: "udp"
+      query: "v10.events.data.microsoft.com"
+      query_type: "A"
+      message_type: "QUERY"
+      reply_code: "NOERROR"
+      dvc: "{infra.dns.hostname}"
+  - id: "sup3"
+    host: "ws_victim"
+    offset: -27
+    red_herring: true
+    event_type: "QUERY"
+    source_type: "DNS"
+    log_source: "DNS"
+    severity: "low"
+    hostname: "{infra.dns.hostname}"
+    source_ip: "{victim.ip}"
+    message: "DNS query A v10.events.data.microsoft.com"
+    key_value_pairs:
+      src_ip: "{victim.ip}"
+      dst_ip: "{infra.dns.ip}"
+      src_port: "52014"
+      dest_port: "53"
+      transport: "udp"
+      query: "v10.events.data.microsoft.com"
+      query_type: "A"
+      message_type: "QUERY"
+      reply_code: "NOERROR"
+      dvc: "{infra.dns.hostname}"
 
-supplemental_entities: []
+supplemental_entities:
+  - id: "sup_ms_telemetry"
+    type: "domain"
+    value: "v10.events.data.microsoft.com"
+    description: "Microsoft Windows diagnostic telemetry endpoint. Byte-identical to c2_http's sup_ms_telemetry literal; the benign high-volume DNS destination the FP resolves against by reputation and subdomain entropy."
 
 detections:
   - id: "det_dns_tunnel"
@@ -193,6 +263,23 @@ detections:
       tactic: "Command and Control"
     description: "Repeated TXT lookups to non-standard subdomains of a rarely seen parent domain, a common DNS tunneling and C2 pattern."
     disposition: "true_positive"
+  - id: "det_dns_loader_exec"
+    rule_name: "Process from Downloads Generating Anomalous DNS"
+    rule_type: "sigma_behavioral"
+    severity: "high"
+    triggers: ["s1"]
+    mitre:
+      id: "T1071.004"
+      tactic: "Command and Control"
+    description: "A binary launched from the user's Downloads folder is the source of the anomalous DNS traffic, the tunnel client that established the covert channel."
+    disposition: "true_positive"
+  - id: "det_dns_volume_fp"
+    rule_name: "High-Volume DNS Query Rate to Single Domain"
+    rule_type: "sigma_behavioral"
+    severity: "medium"
+    triggers: ["sup1", "sup2", "sup3"]
+    description: "A host issued many DNS queries to one external domain in a short window, the volume shape of DNS beaconing or tunneling. It is a Microsoft telemetry agent's routine check-ins to a categorized vendor domain with normal-length, low-entropy hostnames, not the high-entropy data subdomains of a tunnel."
+    disposition: "false_positive"
 
 answer_key:
   classification: "Command & Control"
