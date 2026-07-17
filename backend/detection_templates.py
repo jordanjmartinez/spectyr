@@ -24,6 +24,7 @@ Realism bar: benign templates are plausible per host role. The set is
 intentionally small and flagged in FLAGS; expand only from real product
 behavior, same bar as noise_profiles.
 """
+import datetime as _dt
 import hashlib
 
 FLAGS = [
@@ -76,6 +77,17 @@ def _digest(*parts):
 
 def _stable_int(lo, hi, *parts):
     return lo + int.from_bytes(_digest(*parts)[:8], "big") % (hi - lo + 1)
+
+
+def _stable_time(base_iso, *parts):
+    """A stable, spread timestamp within ~29 min of the session start, so ambient
+    detections do not all cluster at the exact session-start time (3d close-out,
+    component 2: that cluster was a benign-vs-authored tell)."""
+    try:
+        base = _dt.datetime.fromisoformat(base_iso)
+    except (ValueError, TypeError):
+        return base_iso
+    return (base + _dt.timedelta(seconds=_stable_int(0, 1740, *parts))).isoformat()
 
 
 def _det_id(*parts):
@@ -203,6 +215,7 @@ def benign_detections_for_host(host, owner, session_seed, base_time_iso):
     owner_user = owner["username"] if owner else "SYSTEM"
     out = []
     for key, rule_name, severity, roles, image, pname, desc in ranked[:count]:
+        ts = _stable_time(base_time_iso, session_seed, hostname, key, "det_time")
         # a minimal synthetic triggering event (flagged: not a full Sysmon record)
         synth = {
             "event_type": "ProcessCreate",
@@ -212,7 +225,7 @@ def benign_detections_for_host(host, owner, session_seed, base_time_iso):
             "source_ip": host["ip"],
             "user_account": owner_user,
             "message": f"Process observed: {pname}",
-            "timestamp": base_time_iso,
+            "timestamp": ts,
             "key_value_pairs": {
                 "image": image,
                 "process_id": str(4 * _stable_int(400, 3000, session_seed, hostname, key, "pid")),
@@ -233,7 +246,7 @@ def benign_detections_for_host(host, owner, session_seed, base_time_iso):
             "yara_rule_name": None,
             "description": desc,
             "entity": {"host": hostname, "account": owner_user if owner else None},
-            "time": base_time_iso,
+            "time": ts,
             "triggering_events": [synth],
             "sha256": _evidence_sha256(session_seed, synth),
             "disposition": "benign_expected",    # answer key, server-side

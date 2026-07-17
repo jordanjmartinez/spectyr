@@ -139,6 +139,9 @@ def create_session():
         # server-side dispositions; benign_hosts tracks which hosts already
         # got their ambient benign detections.
         "detections": [],
+        # Component 2: client-facing detection id -> instance (server-side),
+        # rebuilt whenever detections materialize.
+        "detection_index": {},
         "benign_hosts": set(),
     }
     with sessions_lock:
@@ -2332,6 +2335,11 @@ def build_attack_chain_logs(session, scenario_entry, employee=None):
                         session["detections"].extend(
                             detection_templates.benign_detections_for_host(
                                 host, owner, session["id"], started))
+                    # Component 2: session-local client-id -> instance index,
+                    # rebuilt under io_lock. Client-facing ids drive every
+                    # detection op; the internal detection_key never serializes.
+                    session["detection_index"] = {
+                        d["id"]: d for d in session["detections"]}
 
     return threat_logs
 
@@ -2507,7 +2515,7 @@ def get_detection_detail(det_id):
     """Full detail for one detection (Section 8 card data), sanitized."""
     s = g.session
     with s["io_lock"]:
-        inst = next((d for d in s.get("detections", []) if d["id"] == det_id), None)
+        inst = s.get("detection_index", {}).get(det_id)
         view = detection_templates.sanitize_detection(inst, include_events=True) if inst else None
     if view is None:
         return jsonify({"error": "Unknown detection"}), 404
@@ -2524,7 +2532,7 @@ def set_detection_disposition(det_id):
         return jsonify({"error": "action must be promote, dismiss, or open"}), 400
     player_action = {"promote": "promoted", "dismiss": "dismissed", "open": "open"}[action]
     with s["io_lock"]:
-        inst = next((d for d in s.get("detections", []) if d["id"] == det_id), None)
+        inst = s.get("detection_index", {}).get(det_id)
         if inst is None:
             return jsonify({"error": "Unknown detection"}), 404
         inst["player_action"] = player_action
@@ -2565,6 +2573,7 @@ def reset_simulator():
     with s["io_lock"]:
         s["world"] = {"hosts": {}, "started_at": None}
         s["detections"] = []
+        s["detection_index"] = {}
         s["benign_hosts"] = set()
         for filepath in [s["paths"]["generated_logs"], s["paths"]["analyst_actions"], s["paths"]["incident_reports"]]:
             with open(filepath, "w", encoding="utf-8") as f:
@@ -3443,6 +3452,7 @@ def start_simulator():
         # generated world times derive from (nothing reads the live clock)
         s["world"] = {"hosts": {}, "started_at": now.replace(microsecond=0).isoformat()}
         s["detections"] = []
+        s["detection_index"] = {}
         s["benign_hosts"] = set()
     s["timer_start"] = now
     s["next_drip_at"] = now  # First alert drips immediately
