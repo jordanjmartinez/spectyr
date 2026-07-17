@@ -222,13 +222,26 @@ DETECTIONS = {
              "is Windows Error Reporting writing a crash dump of a hung "
              "application: the dumping process is the signed WerFault.exe and "
              "the target is a crashed app, not lsass.")],
-    "malware_ransomware": [_det(
-        "det_ransom_note", "Ransom Note File Signature Match",
-        "yara", "high", ["s3"], "true_positive",
-        "A file matching a generic ransom-note signature was written to disk "
-        "amid mass file renames with an unfamiliar extension.",
-        mitre=("T1486", "Impact"),
-        yara_rule_name="Spectyr_Ransom_Note_Generic")],
+    # Density batch 2: all-TP (3 TP, no authored FP). The dismissables are the
+    # workstation's ambient benign detections (guaranteed >= 1). Severity
+    # high/high/critical.
+    "malware_ransomware": [
+        _det("det_ransom_note", "Ransom Note File Signature Match",
+             "yara", "high", ["s3"], "true_positive",
+             "A file matching a generic ransom-note signature was written to "
+             "disk amid mass file changes with an unfamiliar extension.",
+             mitre=("T1486", "Impact"),
+             yara_rule_name="Spectyr_Ransom_Note_Generic"),
+        _det("det_vss_delete", "Shadow Copy Deletion via vssadmin",
+             "sigma_behavioral", "high", ["s2"], "true_positive",
+             "vssadmin deleted volume shadow copies, inhibiting recovery, a "
+             "ransomware precursor before encryption.",
+             mitre=("T1490", "Impact")),
+        _det("det_mass_encrypt", "Rapid Mass File Writes with Unfamiliar Extension",
+             "sigma_behavioral", "critical", ["s5"], "true_positive",
+             "Many files were rewritten with an unfamiliar extension within "
+             "seconds, the encryption stage of ransomware.",
+             mitre=("T1486", "Impact"))],
     # Density batch 1: 2 TP + 1 coexisting FP. Severity inverted (a TP is
     # medium, the FP high). The FP is a ManageEngine Endpoint Central
     # software deployment (verified: agent process dcagentservice.exe) whose

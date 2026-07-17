@@ -180,11 +180,30 @@ def test_supplemental_events_never_carry_answer_fields():
             assert set(dt.sanitize_event(log)).issubset(set(dt.EVENT_WHITELIST))
 
 
+def test_all_tp_scenario_has_ambient_dismissables():
+    """Batch 2 binding: an all-TP scenario (malware_ransomware) is only valid
+    if the feed also carries ambient benign dismissables. The victim
+    workstation always yields at least one ambient benign detection."""
+    sc = CATALOG["malware_ransomware"]
+    assert all(d["disposition"] == "true_positive" for d in sc["detections"])
+    assert len(sc["detections"]) >= 3
+    # the workstation the scenario runs on always has >= 1 ambient benign
+    ws = next(h for h in sc["environment"]["hosts"] if h["role"] == "workstation")
+    host = {"id": ws["id"], "role": "workstation",
+            "hostname": ws["hostname"].replace("{victim.hostname}", "ACME-WS12"),
+            "ip": "10.0.1.12"}
+    owner = {"username": "nkhan", "domain": "ACME"}
+    benign = dt.benign_detections_for_host(host, owner, SEED, "2026-07-16T12:00:00+00:00")
+    assert len(benign) >= 1, "all-TP scenario has no discoverable dismissables"
+    assert all(b["disposition"] == "benign_expected" for b in benign)
+
+
 def test_density_no_single_authored_detection():
     """Densified scenarios (pilots + batch 1) have more than one authored
     detection. The corpus-wide invariant lands at 3d close-out."""
     densified = ("lateral_movement_1", "false_positive_veeam", "malware_usb",
-                 "c2_http", "password_spray", "false_positive_pentest")
+                 "c2_http", "password_spray", "false_positive_pentest",
+                 "lateral_movement_2", "malware_ransomware")
     for label in densified:
         assert len(CATALOG[label]["detections"]) >= 2, label
 

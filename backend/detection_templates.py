@@ -176,8 +176,12 @@ def benign_detections_for_host(host, owner, session_seed, base_time_iso):
     eligible = [t for t in BENIGN_DETECTIONS if role in t[3]]
     if not eligible:
         return []
-    # pick 0-2, stable-key
-    count = _stable_int(0, min(2, len(eligible)), session_seed, hostname, "benign_n")
+    # Workstations always carry at least one ambient benign detection (every
+    # managed workstation runs an updater), so all-TP scenarios on a
+    # workstation always have discoverable dismissables in the feed. Servers
+    # get 0-2.
+    lo = 1 if role == "workstation" else 0
+    count = _stable_int(lo, min(2, len(eligible)), session_seed, hostname, "benign_n")
     if count == 0:
         return []
     ranked = sorted(eligible, key=lambda t: _digest(session_seed, hostname, t[0]))
