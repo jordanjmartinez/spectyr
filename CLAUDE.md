@@ -209,6 +209,7 @@ Note: `simulated_attack_logs.ndjson` is at `backend/logs/` root (shared across s
 | `/api/detections/<id>/disposition` | POST | Triage: promote / dismiss / open |
 | `/api/threats` | GET | Promoted detections (Threats view) |
 | `/api/analytics/detection_score` | GET | Disposition scoring v1 (deterministic, server-side) |
+| `/api/analytics/action_score` | GET | Response-action scoring v1 (counts + grade only, no target detail) |
 | `/api/actions` | POST | Execute one response action `{action, target: <ent-id>}` (Stage 3a) |
 | `/api/actions` | GET | The session Response Log (whitelist-serialized attempts) |
 | `/api/game-state` | GET | Get game mode, timer status, paused state |

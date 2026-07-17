@@ -430,6 +430,22 @@ def sanitize_action_entry(log_entry):
     }
 
 
+def successful_executions(overlay, registry):
+    """The scorer's view of the action log: successful entries only (the
+    binding 3b rule: no_op and failed_precondition are score-neutral),
+    each resolved to its server-side composite through the registry. Pure
+    read; caller holds the session lock."""
+    out = []
+    for e in overlay["log"]:
+        if e["outcome"] != SUCCESS:
+            continue
+        entry = registry.get(e["target"]["id"])
+        if entry is None:
+            continue  # registry always covers logged ids; guard for safety
+        out.append({"seq": e["seq"], "action": e["action"], "target": entry})
+    return out
+
+
 def identity_state_for(overlay, domain, username):
     """The current identity state for an account, defaults when untouched.
     For rendering account chips wherever the account appears in current

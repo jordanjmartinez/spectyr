@@ -157,6 +157,10 @@ def create_session():
         "overlay": action_overlay.new_overlay(),
         "entity_index": {},
         "env_accounts": {},
+        # Stage 3b: answer_key.actions resolved to concrete composites at
+        # drip time (server-side only; feeds compute_action_score, never
+        # serialized). Empty until a dripped scenario authors actions (3c).
+        "expected_actions": [],
     }
     with sessions_lock:
         sessions[session_id] = session
@@ -2239,6 +2243,40 @@ class _ForcedChoice(random.Random):
         return self._forced
 
 
+def materialize_expected_actions(actions, scenario_id, concrete_env, resolved):
+    """Resolve one scenario's answer_key.actions to concrete composites at
+    drip time (Stage 3b). Placeholders in targets substitute exactly like
+    chain content; host/account ids resolve through the concrete
+    environment; paths normalize with the same canonical form the overlay
+    uses. Server-side only: these composites never serialize."""
+    concrete = scenario_loader.substitute_deep(copy.deepcopy(actions), resolved)
+    hosts_by_id = {h["id"]: h for h in concrete_env.get("hosts", [])}
+    accounts_by_id = {a["id"]: a for a in concrete_env.get("accounts", [])}
+
+    out = []
+    for act in concrete:
+        tgt = act["target"]
+        kind = action_overlay.ACTION_TARGET_KINDS[act["action"]]
+        if kind == "account":
+            acct = accounts_by_id[tgt["account"]]
+            target = {"domain": acct["domain"], "username": acct["username"]}
+        else:
+            hostname = hosts_by_id[tgt["host"]]["hostname"]
+            target = {"hostname": hostname}
+            if "pid" in tgt:
+                target["pid"] = tgt["pid"]
+            if "path" in tgt:
+                target["path"] = action_overlay.norm_path(tgt["path"])
+        out.append({
+            "scenario_id": scenario_id,
+            "eid": act.get("id"),
+            "action": act["action"],
+            "target": target,
+            "after": list(act.get("after", [])),
+        })
+    return out
+
+
 def build_attack_chain_logs(session, scenario_entry, employee=None):
     """Build the list of attack logs for a scenario entry from the queue.
     Mutates scenario_entry in place to set scenario_id.
@@ -2361,6 +2399,14 @@ def build_attack_chain_logs(session, scenario_entry, employee=None):
                         session["env_accounts"], concrete_env)
                     session["entity_index"] = action_overlay.build_entity_registry(
                         session["world"], session["env_accounts"], session["id"])
+                    # Stage 3b: this scenario's expected response actions,
+                    # resolved to concrete composites (empty until 3c authors
+                    # them). Undripped scenarios are never graded: there is
+                    # no world to act on yet.
+                    session["expected_actions"].extend(
+                        materialize_expected_actions(
+                            entry["answer_key"].get("actions", []),
+                            scenario_id, concrete_env, resolved))
 
     return threat_logs
 
@@ -2682,6 +2728,7 @@ def reset_simulator():
         s["overlay"] = action_overlay.new_overlay()
         s["entity_index"] = {}
         s["env_accounts"] = {}
+        s["expected_actions"] = []
         for filepath in [s["paths"]["generated_logs"], s["paths"]["analyst_actions"], s["paths"]["incident_reports"]]:
             with open(filepath, "w", encoding="utf-8") as f:
                 f.truncate(0)
@@ -2863,6 +2910,122 @@ def get_detection_score():
     s = g.session
     with s["io_lock"]:
         result = compute_detection_score(list(s.get("detections", [])))
+    return jsonify(result)
+
+
+def _action_target_key(action, target):
+    """Canonical match key for one action target, identical for the
+    expected side (materialized composites) and the executed side
+    (registry entries), so the two compare exactly."""
+    if action in ("isolate_host", "release_host"):
+        return (target["hostname"],)
+    if action == "kill_process":
+        return (target["hostname"], target["pid"])
+    if action == "delete_file":
+        return (target["hostname"], target["path"])
+    return action_overlay.account_key(target["domain"], target["username"])
+
+
+def compute_action_score(expected, executed, isolated_hosts):
+    """Response-action scoring v1 (Stage 3b). Deterministic pure function
+    of (expected actions, successful executions, end-state isolation); no
+    clock, no rng. Server-side only: expected composites never serialize.
+
+    The ruled grading model:
+    - SUCCESSFUL actions only ever count; no_op and failed_precondition
+      are logged but score-neutral (the offline-host trap costs the
+      missing required action, not an added penalty).
+    - Isolation grades on END-STATE at scoring time: required containment
+      released before submission forfeits that credit (the forfeiture is
+      the whole cost; no stacked reversal penalty). Clean-host isolation
+      is collateral only while still in effect.
+    - Kill / delete / identity actions grade on OCCURRENCE: one credited
+      success per required composite; a success on a composite outside
+      the answer key is collateral (irreversible in-fiction).
+    - release_host is a rollback control: never credit, never collateral.
+    - Order-sensitivity only where the answer key declares `after`. The
+      comparison uses FIRST successful occurrence sequence numbers
+      (occurrence, not credit: releasing containment later does not
+      retroactively invalidate an action correctly taken under it). An
+      order-violated action is not credited and counts order_violations.
+    """
+    first = {}
+    for e in executed:
+        if e["action"] == "release_host":
+            continue
+        key = (e["action"], _action_target_key(e["action"], e["target"]))
+        if key not in first or e["seq"] < first[key]:
+            first[key] = e["seq"]
+
+    def occurrence_seq(exp):
+        if exp is None:
+            return None
+        return first.get((exp["action"], _action_target_key(exp["action"], exp["target"])))
+
+    by_eid = {(x["scenario_id"], x["eid"]): x for x in expected if x.get("eid")}
+
+    required = len(expected)
+    correct = missed = order_violations = 0
+    for exp in expected:
+        seq = occurrence_seq(exp)
+        if exp["action"] == "isolate_host":
+            achieved = seq is not None and exp["target"]["hostname"] in isolated_hosts
+        else:
+            achieved = seq is not None
+        order_ok = True
+        if achieved:
+            for ref in exp.get("after", []):
+                pre_seq = occurrence_seq(by_eid.get((exp["scenario_id"], ref)))
+                if pre_seq is None or pre_seq >= seq:
+                    order_ok = False
+                    break
+        if achieved and order_ok:
+            correct += 1
+        else:
+            missed += 1
+            if achieved and not order_ok:
+                order_violations += 1
+
+    expected_keys = {(x["action"], _action_target_key(x["action"], x["target"]))
+                     for x in expected}
+    collateral = 0
+    for action, key in first:
+        if action == "isolate_host":
+            continue  # isolation collateral is end-state, counted below
+        if (action, key) not in expected_keys:
+            collateral += 1
+    required_iso = {x["target"]["hostname"] for x in expected
+                    if x["action"] == "isolate_host"}
+    collateral += sum(1 for hostname in isolated_hosts
+                      if hostname not in required_iso)
+
+    graded = required + collateral
+    accuracy = round(correct / graded * 100, 1) if graded else 0.0
+    return {
+        "required": required,
+        "correct": correct,
+        "missed": missed,
+        "collateral": collateral,
+        "order_violations": order_violations,
+        "graded": graded,
+        "accuracy": accuracy,
+        "grade": _letter_grade(accuracy, graded),
+    }
+
+
+@app.route('/api/analytics/action_score', methods=['GET'])
+def get_action_score():
+    """Response-action scoring v1: counts and grade only. Which targets
+    were expected never serializes (the payload carries no target detail,
+    so the answer key cannot be reconstructed from a score poll)."""
+    s = g.session
+    with s["io_lock"]:
+        executed = action_overlay.successful_executions(
+            s.get("overlay") or action_overlay.new_overlay(),
+            s.get("entity_index", {}))
+        result = compute_action_score(
+            list(s.get("expected_actions", [])), executed,
+            set((s.get("overlay") or {}).get("isolated", ())))
     return jsonify(result)
 
 
