@@ -62,17 +62,28 @@ BENIGN_DETECTIONS = [
      "Veeam.EndPoint.Service.exe",
      "Regular outbound from the endpoint backup agent to the backup server on "
      "the backup port. Expected during backup windows."),
-    ("admin_psexec", "Remote Admin Tool Service Install", ("medium", "high"),
+    ("admin_psexec", "Remote Admin Tool Service Install", ("medium", "high", "critical"),
      ("file", "dc", "web"),
      "C:\\Windows\\PSEXESVC.exe", "PSEXESVC.exe",
-     "PsExec service installed by an administrator for remote management. "
-     "Common in IT operations; benign when tied to a named admin and a change "
-     "record."),
+     "PsExec service installed by an administrator for remote management. A "
+     "favourite lateral-movement tool, so EDR often scores it critical; benign "
+     "when tied to a named admin and a change record."),
     ("patch_scan", "Vulnerability Scanner Authenticated Sweep", ("medium", "high"),
      ("workstation", "file", "web"),
      "C:\\Program Files\\Tenable\\Nessus Agent\\nessusd.exe", "nessusd.exe",
      "Authenticated vulnerability-scanner sweep from the security team's "
      "scanning host. Expected on scan days."),
+    # Reads like ransomware staging (mass file read through a shadow copy) but is
+    # the endpoint backup agent; a realistic critical-severity benign, so benign
+    # detections contest critical-severity true positives (3d close-out: keeps the
+    # severity-based solvers at chance without changing the FP severity ranks).
+    ("backup_vss", "Backup Agent Bulk File Read via Shadow Copy", ("high", "critical"),
+     ("workstation", "file", "backup"),
+     "C:\\Program Files\\Veeam\\Backup and Replication\\Backup\\Veeam.EndPoint.Service.exe",
+     "Veeam.EndPoint.Service.exe",
+     "The endpoint backup agent read a large set of files through a volume shadow "
+     "copy, the mass-read-plus-VSS shape of ransomware staging. Expected during "
+     "scheduled backups."),
 ]
 
 
@@ -85,6 +96,7 @@ BENIGN_MITRE = {
     "backup_agent": ("T1071.001", "Command and Control"),
     "admin_psexec": ("T1543.003", "Persistence"),
     "patch_scan": ("T1046", "Discovery"),
+    "backup_vss": ("T1490", "Impact"),
 }
 
 
