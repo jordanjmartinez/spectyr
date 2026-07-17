@@ -262,10 +262,79 @@ def test_rejects_attack_without_technique():
     _expect_error(doc, "at least one ATT&CK technique")
 
 
-def test_rejects_nonempty_actions_reserved_for_stage_3():
+def test_accepts_well_formed_answer_actions():
+    """Stage 3a unlock: the action grammar validates (composite targets,
+    order sensitivity). Content authoring is still Stage 3c; the corpus
+    keeps actions: [] until then."""
     doc = _one_valid_doc()
-    doc["answer_key"]["actions"] = [{"action": "isolate_host", "target": "ws_victim"}]
+    host = doc["environment"]["hosts"][0]["id"]
+    account = doc["environment"]["accounts"][0]["id"]
+    doc["answer_key"]["actions"] = [
+        {"id": "a_isolate", "action": "isolate_host", "target": {"host": host}},
+        {"id": "a_kill", "action": "kill_process",
+         "target": {"host": host, "pid": 4756}},
+        {"action": "delete_file",
+         "target": {"host": host, "path": "C:\\Users\\Public\\payload.exe"}},
+        {"id": "a_reset", "action": "force_password_reset",
+         "target": {"account": account}, "after": ["a_isolate"]},
+    ]
+    v2.validate_scenario_v2(doc, _SCHEMA_V2, _SCHEMA_V1, "fixture.yaml")
+
+
+def test_rejects_action_with_wrong_target_shape():
+    doc = _one_valid_doc()
+    host = doc["environment"]["hosts"][0]["id"]
+    # isolate_host must not carry a pid; loader message is the actionable one
+    doc["answer_key"]["actions"] = [
+        {"action": "isolate_host", "target": {"host": host, "pid": 4}}]
+    _expect_error(doc, "target takes exactly")
+
+
+def test_rejects_action_with_unknown_action_name():
+    doc = _one_valid_doc()
+    doc["answer_key"]["actions"] = [
+        {"action": "release_host",
+         "target": {"host": doc["environment"]["hosts"][0]["id"]}}]
+    # release_host is a rollback control, not an answer-key action
     _expect_error(doc, "schema v2 violation")
+
+
+def test_rejects_action_targeting_unknown_host_or_account():
+    doc = _one_valid_doc()
+    doc["answer_key"]["actions"] = [
+        {"action": "isolate_host", "target": {"host": "ghost"}}]
+    _expect_error(doc, "not a declared environment host")
+    doc["answer_key"]["actions"] = [
+        {"action": "disable_account", "target": {"account": "nobody"}}]
+    _expect_error(doc, "not a declared environment account")
+
+
+def test_rejects_action_order_violations():
+    doc = _one_valid_doc()
+    host = doc["environment"]["hosts"][0]["id"]
+    doc["answer_key"]["actions"] = [
+        {"id": "a_one", "action": "isolate_host", "target": {"host": host},
+         "after": ["a_ghost"]}]
+    _expect_error(doc, "unknown action id")
+    doc["answer_key"]["actions"] = [
+        {"id": "a_one", "action": "isolate_host", "target": {"host": host},
+         "after": ["a_one"]}]
+    _expect_error(doc, "references itself")
+    doc["answer_key"]["actions"] = [
+        {"id": "a_one", "action": "isolate_host", "target": {"host": host},
+         "after": ["a_two"]},
+        {"id": "a_two", "action": "kill_process",
+         "target": {"host": host, "pid": 4756}, "after": ["a_one"]}]
+    _expect_error(doc, "order cycle")
+
+
+def test_corpus_actions_still_empty_until_stage_3c():
+    """The unlock is grammar only: every scenario keeps actions: [] until
+    3c authors them (one scenario per commit, owner approval first)."""
+    catalog, _ = _load_corpus()
+    for label, sc in catalog.items():
+        assert sc["answer_key"]["actions"] == [], \
+            f"{label}: answer_key.actions authored before Stage 3c"
 
 
 def test_detections_load_and_reference_real_steps():

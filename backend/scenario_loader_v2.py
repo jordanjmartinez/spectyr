@@ -9,7 +9,8 @@ chain inside it, instead of a bare chain:
     noise:       per-host noise profile references (profiles land in Stage 1;
                  empty in every migrated scenario)
     answer_key:  classification, scope, root_cause, techniques, actions
-                 (actions reserved for Stage 3 — must stay empty until then)
+                 (action grammar unlocked in Stage 3a: composite internal
+                 targets, optional order sensitivity; content lands in 3c)
 
 Dispatch: load_scenarios() reads backend/scenarios/v2/*.yaml and dispatches on
 each file's schema_version — 2 goes through this module's validation, 1 (or
@@ -105,6 +106,11 @@ def validate_scenario_v2(doc, schema_v2, v1_schema, filename):
             f"{filename}: a False Positive scenario must have root_cause: null "
             f"(got {ak.get('root_cause')!r})"
         )
+
+    # Same principle for action target shapes (Stage 3a): the schema's
+    # per-action conditionals reject a wrong composite with a bare "False
+    # schema does not allow" message, so the author-facing reason runs first.
+    _pre_check_action_target_shapes(doc, filename)
 
     try:
         jsonschema.validate(doc, schema_v2)
@@ -229,6 +235,12 @@ def validate_scenario_v2(doc, schema_v2, v1_schema, filename):
             f"{filename}: an attack scenario needs at least one true_positive detection"
         )
 
+    # Response actions (Stage 3a unlock): grammar is schema-enforced; the
+    # loader adds the referential rules (targets resolve to environment
+    # hosts/accounts; `after` references resolve, no self-reference, no
+    # cycles). Content stays empty until Stage 3c authors it.
+    _validate_answer_actions(ak["actions"], hosts, accounts, filename)
+
     root_cause = ak["root_cause"]
     if root_cause is not None and root_cause not in step_ids:
         raise ScenarioError(
@@ -278,6 +290,94 @@ def validate_scenario_v2(doc, schema_v2, v1_schema, filename):
             raise ScenarioError(
                 f"{filename}: environment employee entity {path!r} has no field {field!r}"
             )
+
+
+# Action -> exactly the composite target fields it takes. Mirrors the
+# schema's per-action conditionals so loader errors stay actionable
+# (the schema conditional's failure message names a boolean subschema).
+_ACTION_TARGET_FIELDS = {
+    "isolate_host": ("host",),
+    "kill_process": ("host", "pid"),
+    "delete_file": ("host", "path"),
+    "disable_account": ("account",),
+    "revoke_sessions": ("account",),
+    "force_password_reset": ("account",),
+}
+
+
+def _pre_check_action_target_shapes(doc, filename):
+    """Author-facing target-shape errors, raised ahead of the schema (which
+    enforces the same shapes via per-action conditionals). Defensive on
+    structure: anything not yet dict/list-shaped falls through to the schema,
+    as do unknown action names (the enum message names the valid set)."""
+    ak = doc.get("answer_key")
+    if not isinstance(ak, dict) or not isinstance(ak.get("actions"), list):
+        return
+    for i, act in enumerate(ak["actions"]):
+        if not isinstance(act, dict):
+            continue
+        name = act.get("action")
+        fields = _ACTION_TARGET_FIELDS.get(name)
+        tgt = act.get("target")
+        if fields is None or not isinstance(tgt, dict):
+            continue
+        missing = [f for f in fields if f not in tgt]
+        extra = [f for f in tgt if f not in fields]
+        if missing or extra:
+            raise ScenarioError(
+                f"{filename}: answer_key.actions[{i}] ({name}): target takes "
+                f"exactly {list(fields)}; missing {missing}, extra {extra}")
+
+
+def _validate_answer_actions(actions, hosts, accounts, filename):
+    """Referential rules for answer-key actions (shapes are handled by the
+    schema and the pre-check above)."""
+    act_ids = [a["id"] for a in actions if "id" in a]
+    dup = _dupes(act_ids)
+    if dup:
+        raise ScenarioError(
+            f"{filename}: duplicate answer_key.actions id(s): {sorted(set(dup))}")
+    known = set(act_ids)
+
+    for i, act in enumerate(actions):
+        name = act["action"]
+        tgt = act["target"]
+        if "host" in tgt and tgt["host"] not in hosts:
+            raise ScenarioError(
+                f"{filename}: answer_key.actions[{i}] ({name}): target host "
+                f"{tgt['host']!r} is not a declared environment host")
+        if "account" in tgt and tgt["account"] not in accounts:
+            raise ScenarioError(
+                f"{filename}: answer_key.actions[{i}] ({name}): target account "
+                f"{tgt['account']!r} is not a declared environment account")
+        for ref in act.get("after", []):
+            if ref not in known:
+                raise ScenarioError(
+                    f"{filename}: answer_key.actions[{i}] ({name}): after "
+                    f"references unknown action id {ref!r}")
+            if ref == act.get("id"):
+                raise ScenarioError(
+                    f"{filename}: answer_key.actions[{i}] ({name}): after "
+                    f"references itself")
+
+    # No cycles in the order-sensitivity graph.
+    edges = {a["id"]: list(a.get("after", [])) for a in actions if "id" in a}
+    state = {}  # id -> 1 visiting, 2 done
+
+    def visit(node, trail):
+        if state.get(node) == 2:
+            return
+        if state.get(node) == 1:
+            raise ScenarioError(
+                f"{filename}: answer_key.actions order cycle: "
+                f"{' -> '.join(trail + [node])}")
+        state[node] = 1
+        for nxt in edges.get(node, []):
+            visit(nxt, trail + [node])
+        state[node] = 2
+
+    for node in edges:
+        visit(node, [])
 
 
 def _catalog_entry_v2(doc):
