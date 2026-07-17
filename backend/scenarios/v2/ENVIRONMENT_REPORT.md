@@ -40,6 +40,18 @@ resolves it (resolution noted inline, entry kept for the record).
   agent that deploys software via staged installers, not a Run-key mechanism,
   so the FP is now "executable launched from the deployment staging path"
   (documented deploy behavior). file_version is set dressing.
+  - **Reuse in defense_evasion (B3.1) — not-verified path (owner ruling
+    2026-07-16).** The Defender-policy FP renders `dcagentservice.exe` (verified
+    process) under the SYSTEM service context as the dismissal evidence; it does
+    **NOT** render the signer (company omitted — **signer flag stays open**) and
+    does not assert a new verified install path. The image reuses the same
+    Endpoint Central stub path as above. **Unverified ledger note:** the agent
+    install path is reportedly version-dependent (older
+    `DesktopCentral_Agent\bin` vs newer `UEMS_Agent\bin`); this remains a stub
+    pending confirmation against official ManageEngine documentation before any
+    path is treated as verified. Endpoint Central's Defender/Security-policy
+    management is a plausible but unverified behavior — non-blocking, for
+    in-browser confirmation at leisure.
 - **Tenable Nessus identity: VERIFIED (amendment 2).** The process
   `nessusd.exe`, the Windows service name and display name `"Tenable Nessus"`,
   and the install path `C:\Program Files\Tenable\Nessus\` are verified against

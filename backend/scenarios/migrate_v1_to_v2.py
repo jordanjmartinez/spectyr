@@ -157,12 +157,35 @@ DETECTIONS = {
              "staging shape. It is the endpoint backup agent creating a "
              "scheduled backup archive; the archiver's parent is the signed "
              "backup service.")],
-    "defense_evasion": [_det(
-        "det_av_disabled", "Endpoint Protection Real-Time Scanning Disabled",
-        "sigma_behavioral", "high", ["s2"], "true_positive",
-        "Defender real-time protection was turned off (5007) outside a "
-        "maintenance window, a common precursor to payload execution.",
-        mitre=("T1562.001", "Defense Evasion"))],
+    # Density batch 3 (B3.1): 2 TP + 1 FP. FP severity rank = MIDDLE (high),
+    # bracketed by a critical TP (av_disabled) and a medium TP (masquerade), so
+    # the FP is neither the top nor the bottom detection. The FP is a benign
+    # Defender policy push by the endpoint management agent; the dismissal path
+    # is the documented agent process (dcagentservice.exe) in SYSTEM service
+    # context -- NOT a rendered signer and NOT a verified install path.
+    "defense_evasion": [
+        _det("det_av_disabled", "Endpoint Protection Real-Time Scanning Disabled",
+             "sigma_behavioral", "critical", ["s2"], "true_positive",
+             "Defender real-time protection was turned off (5007) outside a "
+             "maintenance window, a common precursor to payload execution.",
+             mitre=("T1562.001", "Defense Evasion")),
+        # mitre T1036.005 (Match Legitimate Name or Location, verified to exist
+        # live) is intentionally NOT tagged here: introducing a new technique
+        # string is deferred out of scenario commits (see commit message).
+        _det("det_pubfolder_masquerade",
+             "Masquerading Binary Executed from Public Folder",
+             "sigma_behavioral", "medium", ["s4"], "true_positive",
+             "A binary named to impersonate a Windows system process "
+             "(svchost32.exe) launched from C:\\Users\\Public right after "
+             "real-time protection was disabled, the payload the evasion "
+             "cleared the way for."),
+        _det("det_defender_policy_fp", "Windows Defender Policy Setting Modified",
+             "sigma_behavioral", "high", ["sup1"], "false_positive",
+             "A Windows Defender policy value was changed, the security-tool "
+             "tampering shape. It is the endpoint management agent "
+             "(dcagentservice.exe) applying a scheduled Defender configuration "
+             "under the SYSTEM service context, not a user or attacker "
+             "disabling protection.")],
     "defense_evasion_log_clearing": [_det(
         # classification_event ruling (2026-07-16): bound to the 1102 step s5.
         "det_log_cleared", "Windows Security Event Log Cleared (1102)",
@@ -474,6 +497,38 @@ _SEVENZIP = "C:\\Program Files\\7-Zip\\7z.exe"
 _SHAREPOINT_TENANT = "acme-my.sharepoint.com"
 
 SUPPLEMENTAL_EVENTS = {
+    "defense_evasion": [
+        # Benign Windows Defender path exclusion applied by the ManageEngine
+        # Endpoint Central agent (a scheduled policy push). Reads like AV
+        # tampering (T1562-shaped); det_defender_policy_fp triggers here.
+        # In-window (attack_base minus 95s) -> DECLARED red herring. Dismissal
+        # evidence is the documented agent process (dcagentservice.exe) under
+        # the SYSTEM service context. Per the B3.1 not-verified ruling: NO
+        # signer is rendered (company omitted; flag stays open) and NO new
+        # versioned install path is asserted -- the image reuses the corpus-
+        # established Endpoint Central stub, whose path is version-dependent and
+        # flagged in ENVIRONMENT_REPORT.md. The exclusions target is not a Run
+        # key, so it never merges into the endpoint autoruns view.
+        _sup("sup1", "ws_victim", -95, "SetValue", "Sysmon", "medium",
+             "{victim.hostname}", user="victim", red_herring=True,
+             source_ip="{victim.ip}", user_account="NT AUTHORITY\\SYSTEM",
+             message="Registry value set: Windows Defender path exclusion "
+                     "applied by management agent",
+             key_value_pairs={
+                 "event_id": 13,
+                 "channel": "Microsoft-Windows-Sysmon/Operational",
+                 "computer": "{victim.hostname}",
+                 "rule_name": "",
+                 "event_type": "SetValue",
+                 "process_id": "3180",
+                 "image": _MEEC_AGENT_SVC,
+                 "target_object": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows "
+                                  "Defender\\Exclusions\\Paths\\C:\\Program "
+                                  "Files\\ACME\\FieldServiceApp",
+                 "details": "DWORD (0x00000000)",
+                 "user": "NT AUTHORITY\\SYSTEM",
+             }),
+    ],
     "data_exfil_archive": [
         # Benign corporate OneDrive sync to the sanctioned SharePoint tenant
         # (reads like exfil). In-window (attack_base minus 80s) -> RED HERRING.

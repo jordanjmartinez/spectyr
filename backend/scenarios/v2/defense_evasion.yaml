@@ -209,7 +209,31 @@ attack:
 
 noise: {}
 
-supplemental_events: []
+supplemental_events:
+  - id: "sup1"
+    host: "ws_victim"
+    user: "victim"
+    offset: -95
+    red_herring: true
+    event_type: "SetValue"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "medium"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "NT AUTHORITY\\SYSTEM"
+    message: "Registry value set: Windows Defender path exclusion applied by management agent"
+    key_value_pairs:
+      event_id: 13
+      channel: "Microsoft-Windows-Sysmon/Operational"
+      computer: "{victim.hostname}"
+      rule_name: ""
+      event_type: "SetValue"
+      process_id: "3180"
+      image: "C:\\Program Files (x86)\\DesktopCentral_Agent\\bin\\dcagentservice.exe"
+      target_object: "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\Exclusions\\Paths\\C:\\Program Files\\ACME\\FieldServiceApp"
+      details: "DWORD (0x00000000)"
+      user: "NT AUTHORITY\\SYSTEM"
 
 supplemental_entities: []
 
@@ -217,13 +241,27 @@ detections:
   - id: "det_av_disabled"
     rule_name: "Endpoint Protection Real-Time Scanning Disabled"
     rule_type: "sigma_behavioral"
-    severity: "high"
+    severity: "critical"
     triggers: ["s2"]
     mitre:
       id: "T1562.001"
       tactic: "Defense Evasion"
     description: "Defender real-time protection was turned off (5007) outside a maintenance window, a common precursor to payload execution."
     disposition: "true_positive"
+  - id: "det_pubfolder_masquerade"
+    rule_name: "Masquerading Binary Executed from Public Folder"
+    rule_type: "sigma_behavioral"
+    severity: "medium"
+    triggers: ["s4"]
+    description: "A binary named to impersonate a Windows system process (svchost32.exe) launched from C:\\Users\\Public right after real-time protection was disabled, the payload the evasion cleared the way for."
+    disposition: "true_positive"
+  - id: "det_defender_policy_fp"
+    rule_name: "Windows Defender Policy Setting Modified"
+    rule_type: "sigma_behavioral"
+    severity: "high"
+    triggers: ["sup1"]
+    description: "A Windows Defender policy value was changed, the security-tool tampering shape. It is the endpoint management agent (dcagentservice.exe) applying a scheduled Defender configuration under the SYSTEM service context, not a user or attacker disabling protection."
+    disposition: "false_positive"
 
 answer_key:
   classification: "Defense Evasion"
