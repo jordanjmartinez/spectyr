@@ -227,13 +227,30 @@ DETECTIONS = {
              "(dcagentservice.exe) applying a scheduled Defender configuration "
              "under the SYSTEM service context, not a user or attacker "
              "disabling protection.")],
-    "defense_evasion_log_clearing": [_det(
-        # classification_event ruling (2026-07-16): bound to the 1102 step s5.
-        "det_log_cleared", "Windows Security Event Log Cleared (1102)",
-        "sigma_behavioral", "high", ["s5"], "true_positive",
-        "The Windows Security event log was cleared (1102). Clearing destroys "
-        "forensic evidence and, absent a change record, indicates an attacker "
-        "removing traces.", mitre=("T1070.001", "Defense Evasion"))],
+    # Density batch 4 (B4.5): 2 TP + 1 FP. FP severity rank = BOTTOM (medium),
+    # under two high TPs. The s5 binding (det_log_cleared / T1070.001) is
+    # UNTOUCHED; the new high TP on the wevtutil exec SURROUNDS it, never
+    # replaces it. classification_event stays s5, unambiguous.
+    "defense_evasion_log_clearing": [
+        _det(  # classification_event ruling (2026-07-16): bound to the 1102 step s5.
+            "det_log_cleared", "Windows Security Event Log Cleared (1102)",
+            "sigma_behavioral", "high", ["s5"], "true_positive",
+            "The Windows Security event log was cleared (1102). Clearing destroys "
+            "forensic evidence and, absent a change record, indicates an attacker "
+            "removing traces.", mitre=("T1070.001", "Defense Evasion")),
+        _det("det_wevtutil_exec", "Event Log Utility Executed to Clear a Log",
+             "sigma_behavioral", "high", ["s4"], "true_positive",
+             "wevtutil.exe was run to clear an event log (cl Security), the "
+             "command that produced the 1102, launched interactively (cmd.exe "
+             "parent) rather than by a maintenance task.",
+             mitre=("T1070.001", "Defense Evasion")),
+        _det("det_maint_logclear_fp", "Event Log Cleared by Scheduled Process",
+             "sigma_behavioral", "medium", ["sup1"], "false_positive",
+             "An event log was cleared, the evidence-destruction shape. It is a "
+             "scheduled maintenance task archiving then clearing a non-Security "
+             "operational log (wevtutil cl ... /bu:) under SYSTEM, with the "
+             "cleared events saved to a backup file, not the attacker's "
+             "unbacked-up Security-log clear.")],
     # Density batch 3 (B3.3): 2 TP + 1 FP. FP severity rank = BOTTOM (medium),
     # under two high TPs. The FP is a benign sanctioned-tenant OneDrive sync
     # coexisting with the shadow-IT exfil by the cloud-upload class; resolved by
@@ -620,6 +637,45 @@ _SHAREPOINT_TENANT = "acme-my.sharepoint.com"
 _MS_TELEMETRY = "v10.events.data.microsoft.com"
 
 SUPPLEMENTAL_EVENTS = {
+    "defense_evasion_log_clearing": [
+        # Benign scheduled maintenance clearing a NON-Security operational log
+        # WITH a backup (/bu:, verified against Microsoft's wevtutil docs), run
+        # by the Task Scheduler (svchost -k netsvcs Schedule) under SYSTEM. Reads
+        # like the attack's log-clearing; the affirmative legitimate-admin
+        # evidence (backup-before-clear, scheduled-task parent, SYSTEM, a
+        # non-Security target log) resolves it. det_maint_logclear_fp triggers
+        # here. In-window -> DECLARED red herring. classification_event stays s5
+        # (the Security 1102 clear); this FP is unambiguously distinct.
+        _sup("sup1", "ws_victim", -50, "ProcessCreate", "Sysmon", "medium",
+             "{victim.hostname}", user="victim", red_herring=True,
+             source_ip="{victim.ip}", user_account="NT AUTHORITY\\SYSTEM",
+             message="Process created: wevtutil.exe scheduled log archive+clear",
+             key_value_pairs={
+                 "event_id": 1,
+                 "channel": "Microsoft-Windows-Sysmon/Operational",
+                 "computer": "{victim.hostname}",
+                 "rule_name": "",
+                 "process_id": "8820",
+                 "image": "C:\\Windows\\System32\\wevtutil.exe",
+                 "file_version": "10.0.19041.1",
+                 "description": "Event Trace Management Tool",
+                 "product": "Microsoft Windows Operating System",
+                 "company": "Microsoft Corporation",
+                 "original_file_name": "wevtutil.exe",
+                 "command_line": "wevtutil.exe cl Microsoft-Windows-GroupPolicy"
+                                 "/Operational /bu:C:\\ProgramData\\LogArchive\\"
+                                 "GPO_Operational_20260716.evtx",
+                 "current_directory": "C:\\Windows\\System32\\",
+                 "user": "NT AUTHORITY\\SYSTEM",
+                 "terminal_session_id": "0",
+                 "integrity_level": "System",
+                 "parent_process_id": "1360",
+                 "parent_image": "C:\\Windows\\System32\\svchost.exe",
+                 "parent_command_line": "C:\\Windows\\System32\\svchost.exe -k "
+                                        "netsvcs -p -s Schedule",
+                 "parent_user": "NT AUTHORITY\\SYSTEM",
+             }),
+    ],
     "brute_force_attack": [
         # svc_backup failing then locking out on the DC after a password
         # rotation wasn't propagated -- reads like a targeted attack on backup

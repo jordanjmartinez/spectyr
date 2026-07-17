@@ -361,14 +361,16 @@ def test_rejects_detection_triggering_unknown_supplemental():
 
 
 def test_log_clearing_tp_detection_binds_to_1102_step():
-    """Part 2 ruling: the log-clearing TP detection fires on s5 (the 1102
-    step) and carries T1070.001 / Defense Evasion."""
+    """Part 2 ruling (batch-4 density-safe): the log-clearing TP bound to s5
+    (the 1102 step) still exists and carries T1070.001 / Defense Evasion. Batch
+    4 adds a surrounding TP on the wevtutil exec (s4); the density additions
+    surround the s5 binding, they must never replace it."""
     catalog, _ = _load_corpus()
     dets = catalog["defense_evasion_log_clearing"]["detections"]
-    tp = [d for d in dets if d["disposition"] == "true_positive"]
-    assert len(tp) == 1
-    assert tp[0]["triggers"] == ["s5"]
-    assert tp[0]["mitre"] == {"id": "T1070.001", "tactic": "Defense Evasion"}
+    s5_tp = [d for d in dets
+             if d["disposition"] == "true_positive" and d["triggers"] == ["s5"]]
+    assert len(s5_tp) == 1, "the s5-bound TP must exist exactly once"
+    assert s5_tp[0]["mitre"] == {"id": "T1070.001", "tactic": "Defense Evasion"}
 
 
 def test_rejects_fp_scenario_with_true_positive_detection():

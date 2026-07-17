@@ -191,7 +191,41 @@ attack:
 
 noise: {}
 
-supplemental_events: []
+supplemental_events:
+  - id: "sup1"
+    host: "ws_victim"
+    user: "victim"
+    offset: -50
+    red_herring: true
+    event_type: "ProcessCreate"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "medium"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "NT AUTHORITY\\SYSTEM"
+    message: "Process created: wevtutil.exe scheduled log archive+clear"
+    key_value_pairs:
+      event_id: 1
+      channel: "Microsoft-Windows-Sysmon/Operational"
+      computer: "{victim.hostname}"
+      rule_name: ""
+      process_id: "8820"
+      image: "C:\\Windows\\System32\\wevtutil.exe"
+      file_version: "10.0.19041.1"
+      description: "Event Trace Management Tool"
+      product: "Microsoft Windows Operating System"
+      company: "Microsoft Corporation"
+      original_file_name: "wevtutil.exe"
+      command_line: "wevtutil.exe cl Microsoft-Windows-GroupPolicy/Operational /bu:C:\\ProgramData\\LogArchive\\GPO_Operational_20260716.evtx"
+      current_directory: "C:\\Windows\\System32\\"
+      user: "NT AUTHORITY\\SYSTEM"
+      terminal_session_id: "0"
+      integrity_level: "System"
+      parent_process_id: "1360"
+      parent_image: "C:\\Windows\\System32\\svchost.exe"
+      parent_command_line: "C:\\Windows\\System32\\svchost.exe -k netsvcs -p -s Schedule"
+      parent_user: "NT AUTHORITY\\SYSTEM"
 
 supplemental_entities: []
 
@@ -206,6 +240,23 @@ detections:
       tactic: "Defense Evasion"
     description: "The Windows Security event log was cleared (1102). Clearing destroys forensic evidence and, absent a change record, indicates an attacker removing traces."
     disposition: "true_positive"
+  - id: "det_wevtutil_exec"
+    rule_name: "Event Log Utility Executed to Clear a Log"
+    rule_type: "sigma_behavioral"
+    severity: "high"
+    triggers: ["s4"]
+    mitre:
+      id: "T1070.001"
+      tactic: "Defense Evasion"
+    description: "wevtutil.exe was run to clear an event log (cl Security), the command that produced the 1102, launched interactively (cmd.exe parent) rather than by a maintenance task."
+    disposition: "true_positive"
+  - id: "det_maint_logclear_fp"
+    rule_name: "Event Log Cleared by Scheduled Process"
+    rule_type: "sigma_behavioral"
+    severity: "medium"
+    triggers: ["sup1"]
+    description: "An event log was cleared, the evidence-destruction shape. It is a scheduled maintenance task archiving then clearing a non-Security operational log (wevtutil cl ... /bu:) under SYSTEM, with the cleared events saved to a backup file, not the attacker's unbacked-up Security-log clear."
+    disposition: "false_positive"
 
 answer_key:
   classification: "Defense Evasion"
