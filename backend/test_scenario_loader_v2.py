@@ -501,6 +501,7 @@ PINNED_DETECTION_TECHNIQUES = frozenset({
     "T1218.011",  # System Binary Proxy Execution: Rundll32
     "T1490",      # Inhibit System Recovery
     "T1547.001",  # Boot or Logon Autostart Execution: Registry Run Keys
+    "T1036.005",  # Masquerading: Match Legitimate Name or Location (v18.1)
 })
 
 

@@ -253,6 +253,9 @@ detections:
     rule_type: "sigma_behavioral"
     severity: "medium"
     triggers: ["s4"]
+    mitre:
+      id: "T1036.005"
+      tactic: "Defense Evasion"
     description: "A binary named to impersonate a Windows system process (svchost32.exe) launched from C:\\Users\\Public right after real-time protection was disabled, the payload the evasion cleared the way for."
     disposition: "true_positive"
   - id: "det_defender_policy_fp"

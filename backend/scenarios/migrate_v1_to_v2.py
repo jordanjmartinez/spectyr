@@ -189,16 +189,18 @@ DETECTIONS = {
              "Defender real-time protection was turned off (5007) outside a "
              "maintenance window, a common precursor to payload execution.",
              mitre=("T1562.001", "Defense Evasion")),
-        # mitre T1036.005 (Match Legitimate Name or Location, verified to exist
-        # live) is intentionally NOT tagged here: introducing a new technique
-        # string is deferred out of scenario commits (see commit message).
         _det("det_pubfolder_masquerade",
              "Masquerading Binary Executed from Public Folder",
              "sigma_behavioral", "medium", ["s4"], "true_positive",
              "A binary named to impersonate a Windows system process "
              "(svchost32.exe) launched from C:\\Users\\Public right after "
              "real-time protection was disabled, the payload the evasion "
-             "cleared the way for."),
+             "cleared the way for.",
+             # Tagged against the PINNED v18.1 baseline: T1036.005 "Match
+             # Legitimate Name or Location", Defense Evasion. Validated by the
+             # pinned canonical map (PINNED_DETECTION_TECHNIQUES); the v19
+             # migration re-verifies with a live URL.
+             mitre=("T1036.005", "Defense Evasion")),
         _det("det_defender_policy_fp", "Windows Defender Policy Setting Modified",
              "sigma_behavioral", "high", ["sup1"], "false_positive",
              "A Windows Defender policy value was changed, the security-tool "
