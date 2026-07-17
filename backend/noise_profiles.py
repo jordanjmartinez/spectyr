@@ -311,6 +311,13 @@ ROLE_SERVICES = {
             "\"C:\\Program Files\\Veeam\\Backup and Replication\\Backup\\Veeam.Backup.Service.exe\"",
             "Automatic"),
     ],
+    "scanner": [
+        # Tenable Nessus: service name/display and install path verified
+        # against docs.tenable.com (net start "Tenable Nessus"; nessuscli.exe
+        # under C:\Program Files\Tenable\Nessus\), 2026-07-16.
+        SVC("Tenable Nessus", "Tenable Nessus",
+            "\"C:\\Program Files\\Tenable\\Nessus\\nessusd.exe\"", "Automatic"),
+    ],
     # no "proxy" entry: PAN-OS appliance, never a managed endpoint
 }
 

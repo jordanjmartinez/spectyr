@@ -307,12 +307,18 @@ def test_supplemental_process_event_integrity():
 
 def test_supplemental_host_enters_world():
     """The canonical scanner host (ACME-SEC01) enters the world as a managed
-    endpoint via the environment, and renders all tabs."""
+    endpoint via the environment, renders all tabs, and shows the verified
+    Tenable Nessus service."""
     _, env, _, world = _world_for("lateral_movement_1", with_supplemental=True)
     assert "ACME-SEC01" in world["hosts"]
     snap = world["hosts"]["ACME-SEC01"]
     assert snap["role"] == "scanner" and snap["status"] == "online"
     assert 30 <= len(snap["processes"]) <= 60  # baseline + one supplemental proc
+    # Tenable identity verified against docs.tenable.com (amendment 2)
+    nessus_svc = [s for s in snap["services"] if s["name"] == "Tenable Nessus"]
+    assert len(nessus_svc) == 1
+    assert nessus_svc[0]["display_name"] == "Tenable Nessus"
+    assert "Tenable\\Nessus\\nessusd.exe" in nessus_svc[0]["path"]
 
 
 def test_memory_on_every_process():

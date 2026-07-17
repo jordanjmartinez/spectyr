@@ -19,9 +19,17 @@ resolves it (resolution noted inline, entry kept for the record).
   in `SERVICE_ACCOUNTS`. Authorization ground truth (that it is legitimate) is
   server-side; its evidence (service type, scanner host, group) is
   world-visible. **Invented; approve or supply.**
-- **nessusd.exe** (Tenable Nessus 10.7.2 at C:\Program Files\Tenable\Nessus\):
-  the scanner binary in supplemental telemetry. Version/path plausible;
-  **flagged, approve.**
+- **Tenable Nessus identity: VERIFIED (amendment 2).** The process
+  `nessusd.exe`, the Windows service name and display name `"Tenable Nessus"`,
+  and the install path `C:\Program Files\Tenable\Nessus\` are verified against
+  official Tenable documentation (docs.tenable.com: `net start "Tenable
+  Nessus"`; `nessuscli.exe`/`nessusd.exe` under that directory), 2026-07-16.
+  Rendered in ACME-SEC01's Processes tab (sup1) and Services tab. The
+  `file_version` "10.7.2" in sup1 is set dressing (a plausible version), not a
+  documentation-verified value. NOTE: the Tenable SOFTWARE identity is
+  verified; the scenario INFRASTRUCTURE it runs on (ACME-SEC01 host, IP
+  10.0.1.207, svc_vulnscan account) remains invented and awaits owner approval
+  above.
 
 ### Supplemental events
 
