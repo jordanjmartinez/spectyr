@@ -199,7 +199,63 @@ attack:
 
 noise: {}
 
-supplemental_events: []
+supplemental_events:
+  - id: "sup1"
+    host: "ws_victim"
+    user: "victim"
+    offset: -75
+    red_herring: true
+    event_type: "ProcessCreate"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "low"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "NT AUTHORITY\\SYSTEM"
+    message: "Process created: WerFault.exe crash reporting"
+    key_value_pairs:
+      event_id: 1
+      channel: "Microsoft-Windows-Sysmon/Operational"
+      computer: "{victim.hostname}"
+      rule_name: ""
+      process_id: "6180"
+      image: "C:\\Windows\\System32\\WerFault.exe"
+      file_version: "10.0.19041.1"
+      description: "Windows Problem Reporting"
+      product: "Microsoft Windows Operating System"
+      company: "Microsoft Corporation"
+      original_file_name: "WerFault.exe"
+      command_line: "C:\\Windows\\System32\\WerFault.exe -u -p 4180 -s 2896"
+      current_directory: "C:\\Windows\\System32\\"
+      user: "NT AUTHORITY\\SYSTEM"
+      terminal_session_id: "1"
+      integrity_level: "System"
+      parent_process_id: "1080"
+      parent_image: "C:\\Windows\\System32\\svchost.exe"
+      parent_command_line: "C:\\Windows\\System32\\svchost.exe -k WerSvcGroup -p"
+      parent_user: "NT AUTHORITY\\SYSTEM"
+  - id: "sup2"
+    host: "ws_victim"
+    user: "victim"
+    offset: -72
+    red_herring: true
+    event_type: "FileCreate"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "low"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    user_account: "NT AUTHORITY\\SYSTEM"
+    message: "File created: Windows Error Reporting crash dump"
+    key_value_pairs:
+      event_id: 11
+      channel: "Microsoft-Windows-Sysmon/Operational"
+      computer: "{victim.hostname}"
+      process_id: "6180"
+      image: "C:\\Windows\\System32\\WerFault.exe"
+      target_filename: "C:\\ProgramData\\Microsoft\\Windows\\WER\\ReportQueue\\AppCrash_CorpTimeTracker_1a2b\\CorpTimeTracker.exe.4180.dmp"
+      creation_utc_time: ""
+      user: "NT AUTHORITY\\SYSTEM"
 
 supplemental_entities: []
 
@@ -214,6 +270,33 @@ detections:
       tactic: "Credential Access"
     description: "A non-system process opened a handle to lsass.exe memory, the signature action of credential dumping."
     disposition: "true_positive"
+  - id: "det_procdump_exec"
+    rule_name: "Credential-Dump Tool Executed from Downloads"
+    rule_type: "sigma_behavioral"
+    severity: "medium"
+    triggers: ["s1"]
+    mitre:
+      id: "T1003.001"
+      tactic: "Credential Access"
+    description: "procdump ran from a user's Downloads folder, the tool that performed the lsass access."
+    disposition: "true_positive"
+  - id: "det_lsass_dumpfile"
+    rule_name: "Process Memory Dump Written After LSASS Access"
+    rule_type: "sigma_behavioral"
+    severity: "high"
+    triggers: ["s3"]
+    mitre:
+      id: "T1003.001"
+      tactic: "Credential Access"
+    description: "A memory dump file was written to a Temp path immediately after the lsass access, the exfiltrable credential material."
+    disposition: "true_positive"
+  - id: "det_crashdump_fp"
+    rule_name: "Process Memory Dump File Created"
+    rule_type: "sigma_behavioral"
+    severity: "medium"
+    triggers: ["sup2"]
+    description: "A .dmp file was written, the artifact of credential dumping. It is Windows Error Reporting writing a crash dump of a hung application: the dumping process is the signed WerFault.exe and the target is a crashed app, not lsass."
+    disposition: "false_positive"
 
 answer_key:
   classification: "Lateral Movement"

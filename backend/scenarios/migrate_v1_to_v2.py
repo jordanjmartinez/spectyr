@@ -195,12 +195,33 @@ DETECTIONS = {
              "many internal hosts including the file server, and tripped a "
              "lateral-recon rule. The source is the scanner host under a "
              "service account on the scan schedule.")],
-    "lateral_movement_2": [_det(
-        "det_lsass", "LSASS Process Memory Access",
-        "sigma_behavioral", "critical", ["s2"], "true_positive",
-        "A non-system process opened a handle to lsass.exe memory, the "
-        "signature action of credential dumping.",
-        mitre=("T1003.001", "Credential Access"))],
+    # Density batch 2: 3 TP + 1 FP. The FP is the LOWEST severity (medium)
+    # while a TP is critical, inverting batch 1. The FP is a benign Windows
+    # Error Reporting crash dump that reads like the credential-dump artifact;
+    # the dismissal path is binary identity (WerFault.exe, signed Windows),
+    # not the .dmp name.
+    "lateral_movement_2": [
+        _det("det_lsass", "LSASS Process Memory Access",
+             "sigma_behavioral", "critical", ["s2"], "true_positive",
+             "A non-system process opened a handle to lsass.exe memory, the "
+             "signature action of credential dumping.",
+             mitre=("T1003.001", "Credential Access")),
+        _det("det_procdump_exec", "Credential-Dump Tool Executed from Downloads",
+             "sigma_behavioral", "medium", ["s1"], "true_positive",
+             "procdump ran from a user's Downloads folder, the tool that "
+             "performed the lsass access.",
+             mitre=("T1003.001", "Credential Access")),
+        _det("det_lsass_dumpfile", "Process Memory Dump Written After LSASS Access",
+             "sigma_behavioral", "high", ["s3"], "true_positive",
+             "A memory dump file was written to a Temp path immediately after "
+             "the lsass access, the exfiltrable credential material.",
+             mitre=("T1003.001", "Credential Access")),
+        _det("det_crashdump_fp", "Process Memory Dump File Created",
+             "sigma_behavioral", "medium", ["sup2"], "false_positive",
+             "A .dmp file was written, the artifact of credential dumping. It "
+             "is Windows Error Reporting writing a crash dump of a hung "
+             "application: the dumping process is the signed WerFault.exe and "
+             "the target is a crashed app, not lsass.")],
     "malware_ransomware": [_det(
         "det_ransom_note", "Ransom Note File Signature Match",
         "yara", "high", ["s3"], "true_positive",
@@ -406,7 +427,56 @@ def _stale_4625(id, offset, src_port):
                 })
 
 
+_WERFAULT = "C:\\Windows\\System32\\WerFault.exe"
+
 SUPPLEMENTAL_EVENTS = {
+    "lateral_movement_2": [
+        # Windows Error Reporting dumping a crashed benign app. sup1 is the
+        # WerFault process with its canonical identity (signed Windows, svchost
+        # WER-service parent); sup2 is the crash .dmp it writes (the FP
+        # triggers here). In-window (attack_base minus 75/72s) -> DECLARED red
+        # herrings; the dismissal path is WerFault's binary identity.
+        _sup("sup1", "ws_victim", -75, "ProcessCreate", "Sysmon", "low",
+             "{victim.hostname}", user="victim", red_herring=True,
+             source_ip="{victim.ip}", user_account="NT AUTHORITY\\SYSTEM",
+             message="Process created: WerFault.exe crash reporting",
+             key_value_pairs={
+                 "event_id": 1,
+                 "channel": "Microsoft-Windows-Sysmon/Operational",
+                 "computer": "{victim.hostname}",
+                 "rule_name": "",
+                 "process_id": "6180",
+                 "image": _WERFAULT,
+                 "file_version": "10.0.19041.1",
+                 "description": "Windows Problem Reporting",
+                 "product": "Microsoft Windows Operating System",
+                 "company": "Microsoft Corporation",
+                 "original_file_name": "WerFault.exe",
+                 "command_line": _WERFAULT + " -u -p 4180 -s 2896",
+                 "current_directory": "C:\\Windows\\System32\\",
+                 "user": "NT AUTHORITY\\SYSTEM",
+                 "terminal_session_id": "1",
+                 "integrity_level": "System",
+                 "parent_process_id": "1080",
+                 "parent_image": "C:\\Windows\\System32\\svchost.exe",
+                 "parent_command_line": "C:\\Windows\\System32\\svchost.exe -k WerSvcGroup -p",
+                 "parent_user": "NT AUTHORITY\\SYSTEM",
+             }),
+        _sup("sup2", "ws_victim", -72, "FileCreate", "Sysmon", "low",
+             "{victim.hostname}", user="victim", red_herring=True,
+             source_ip="{victim.ip}", user_account="NT AUTHORITY\\SYSTEM",
+             message="File created: Windows Error Reporting crash dump",
+             key_value_pairs={
+                 "event_id": 11,
+                 "channel": "Microsoft-Windows-Sysmon/Operational",
+                 "computer": "{victim.hostname}",
+                 "process_id": "6180",
+                 "image": _WERFAULT,
+                 "target_filename": "C:\\ProgramData\\Microsoft\\Windows\\WER\\ReportQueue\\AppCrash_CorpTimeTracker_1a2b\\CorpTimeTracker.exe.4180.dmp",
+                 "creation_utc_time": "",
+                 "user": "NT AUTHORITY\\SYSTEM",
+             }),
+    ],
     "password_spray": [
         # Two rhythmic failures (fixed cadence) from the backup job; the FP
         # detection triggers on sup1. Both in-window -> DECLARED red herrings;

@@ -321,6 +321,22 @@ def test_supplemental_host_enters_world():
     assert "Tenable\\Nessus\\nessusd.exe" in nessus_svc[0]["path"]
 
 
+def test_supplemental_werfault_canonical_identity():
+    """Batch 2 binding: the lateral_movement_2 WerFault FP process merges with
+    its canonical identity (signed Windows binary, correct path, resolving
+    parent), so the dismissal path is binary identity, not the .dmp name."""
+    _, env, _, world = _world_for("lateral_movement_2", with_supplemental=True)
+    ws = next(h["hostname"] for h in env["hosts"] if h["role"] == "workstation")
+    snap = world["hosts"][ws]
+    wf = [p for p in snap["processes"] if p["name"] == "WerFault.exe"]
+    assert len(wf) == 1, "WerFault process missing/duplicated"
+    p = wf[0]
+    assert p["path"] == "C:\\Windows\\System32\\WerFault.exe"
+    assert p["signed"] and p["signer"] == "Microsoft Corporation"
+    pids = {q["pid"] for q in snap["processes"]}
+    assert p["ppid"] in pids, "WerFault parent (svchost) not materialized"
+
+
 def test_memory_on_every_process():
     for label in ("c2_http", "lateral_movement_1"):
         _, _, _, world = _world_for(label)
