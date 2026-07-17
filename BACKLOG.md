@@ -29,6 +29,22 @@ Scope notes for the implementer:
 - Remove the six username entries from the placeholder-integrity
   grandfather allowlist in `test_scenario_loader_v2.py` when done.
 
+## Scenario seed: trusted recurring actor compromised
+
+**Target: post-Phase-2.**
+
+Author a scenario that weaponizes the known-benign-actor prior this corpus
+deliberately builds. Across the density pass, recurring benign actors
+(`svc_backup` / ACME-VEEAM01, the Endpoint Central agent, the Nessus scanner,
+the sanctioned SharePoint tenant) appear as the dismissable FP in many
+scenarios, training the analyst to wave them through. A late-game scenario
+should make one of these actors the *real* compromise — e.g. `svc_backup` or
+ACME-VEEAM01 genuinely abused for lateral movement / exfiltration — so that
+"it's just the backup account again" is the wrong call. The whole point is to
+punish the reflex the earlier scenarios instilled; disposition must turn on the
+specific evidence (unusual target, off-schedule timing, new source host), not
+on actor familiarity.
+
 ## Org-prefix theming substitution set
 
 **Target: when the {org_prefix} theming feature lands.**

@@ -30,11 +30,23 @@ environment:
       ip: "{infra.dc.ip}"
       os: "Windows Server 2019"
       desc: "Domain Controller"
+    - id: "backup"
+      role: "backup"
+      hostname: "{infra.backup.hostname}"
+      ip: "{infra.backup.ip}"
+      os: "Windows Server 2019"
+      desc: "Backup Server"
   accounts:
     - id: "victim"
       username: "{victim.username}"
       domain: "ACME"
       type: "user"
+    - id: "svc_backup"
+      username: "svc_backup"
+      domain: "ACME"
+      type: "service"
+      host: "backup"
+      groups: ["Domain Users", "Backup Operators"]
 
 attack:
   - id: "s1"
@@ -212,7 +224,108 @@ attack:
 
 noise: {}
 
-supplemental_events: []
+supplemental_events:
+  - id: "sup1"
+    host: "backup"
+    user: "svc_backup"
+    offset: -300
+    red_herring: true
+    event_type: "4625"
+    source_type: "Windows Security"
+    log_source: "Windows Security"
+    severity: "medium"
+    hostname: "{infra.dc.hostname}"
+    source_ip: "{infra.backup.ip}"
+    destination_ip: "{infra.dc.ip}"
+    user_account: "ACME\\svc_backup"
+    message: "An account failed to log on."
+    key_value_pairs:
+      event_id: 4625
+      channel: "WinEventLog:Security"
+      computer: "{infra.dc.hostname}"
+      subject_security_id: "NULL SID"
+      subject_account_name: "-"
+      subject_account_domain: "-"
+      subject_logon_id: "0x0"
+      logon_type: "3"
+      account_name: "svc_backup"
+      account_domain: "ACME"
+      failure_reason: "Unknown user name or bad password"
+      status: "0xC000006D"
+      sub_status: "0xC000006A"
+      caller_process_id: "0x0"
+      caller_process_name: "-"
+      workstation_name: "{infra.backup.hostname}"
+      src_ip: "{infra.backup.ip}"
+      src_port: "50310"
+      logon_process: "NtLmSsp"
+      authentication_package: "NTLM"
+      transited_services: "-"
+      package_name: "-"
+      key_length: "0"
+  - id: "sup2"
+    host: "backup"
+    user: "svc_backup"
+    offset: -280
+    red_herring: true
+    event_type: "4625"
+    source_type: "Windows Security"
+    log_source: "Windows Security"
+    severity: "medium"
+    hostname: "{infra.dc.hostname}"
+    source_ip: "{infra.backup.ip}"
+    destination_ip: "{infra.dc.ip}"
+    user_account: "ACME\\svc_backup"
+    message: "An account failed to log on."
+    key_value_pairs:
+      event_id: 4625
+      channel: "WinEventLog:Security"
+      computer: "{infra.dc.hostname}"
+      subject_security_id: "NULL SID"
+      subject_account_name: "-"
+      subject_account_domain: "-"
+      subject_logon_id: "0x0"
+      logon_type: "3"
+      account_name: "svc_backup"
+      account_domain: "ACME"
+      failure_reason: "Unknown user name or bad password"
+      status: "0xC000006D"
+      sub_status: "0xC000006A"
+      caller_process_id: "0x0"
+      caller_process_name: "-"
+      workstation_name: "{infra.backup.hostname}"
+      src_ip: "{infra.backup.ip}"
+      src_port: "50311"
+      logon_process: "NtLmSsp"
+      authentication_package: "NTLM"
+      transited_services: "-"
+      package_name: "-"
+      key_length: "0"
+  - id: "sup3"
+    host: "backup"
+    user: "svc_backup"
+    offset: -260
+    red_herring: true
+    event_type: "4740"
+    source_type: "Windows Security"
+    log_source: "Windows Security"
+    severity: "high"
+    hostname: "{infra.dc.hostname}"
+    source_ip: "{infra.backup.ip}"
+    destination_ip: "{infra.dc.ip}"
+    user_account: "ACME\\svc_backup"
+    message: "A user account was locked out."
+    key_value_pairs:
+      event_id: 4740
+      channel: "WinEventLog:Security"
+      computer: "{infra.dc.hostname}"
+      subject_security_id: "S-1-5-18"
+      subject_account_name: "{infra.dc.hostname}$"
+      subject_account_domain: "ACME"
+      subject_logon_id: "0x3E7"
+      target_account_name: "svc_backup"
+      target_domain_name: "ACME"
+      caller_computer_name: "{infra.backup.hostname}"
 
 supplemental_entities: []
 
@@ -227,6 +340,23 @@ detections:
       tactic: "Credential Access"
     description: "A domain account locked out (4740) after a burst of failed logons from a single external source, consistent with online password guessing."
     disposition: "true_positive"
+  - id: "det_bruteforce_burst"
+    rule_name: "Repeated Failed Logons from a Single External Source"
+    rule_type: "sigma_behavioral"
+    severity: "medium"
+    triggers: ["s1"]
+    mitre:
+      id: "T1110.001"
+      tactic: "Credential Access"
+    description: "Many failed logons (4625) from one external source in a short window preceded the lockout, the online password-guessing signature."
+    disposition: "true_positive"
+  - id: "det_privileged_lockout_fp"
+    rule_name: "Privileged Service Account Locked Out"
+    rule_type: "sigma_behavioral"
+    severity: "critical"
+    triggers: ["sup1", "sup2", "sup3"]
+    description: "A backup service account locked out on the domain controller reads like a targeted attack on backup infrastructure. It is svc_backup failing repeatedly after a password rotation was not propagated, then locking out: one privileged service account from the internal backup server, not the attack's external source."
+    disposition: "false_positive"
 
 answer_key:
   classification: "Brute Force"

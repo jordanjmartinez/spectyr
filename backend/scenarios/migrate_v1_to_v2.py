@@ -103,12 +103,31 @@ def _det(id, rule_name, rule_type, severity, triggers, disposition,
 
 
 DETECTIONS = {
-    "brute_force_attack": [_det(
-        "det_lockout", "Account Lockout After Repeated External Failures",
-        "sigma_behavioral", "high", ["s5"], "true_positive",
-        "A domain account locked out (4740) after a burst of failed logons "
-        "from a single external source, consistent with online password "
-        "guessing.", mitre=("T1110.001", "Credential Access"))],
+    # Density batch 4 (B4.1): 2 TP + 1 FP. FP severity rank = SOLE-TOP
+    # (critical), above a high and a medium TP -- the scariest detection is the
+    # benign one. The FP is a privileged backup service account lockout
+    # (svc_backup) coexisting with the brute-force lockout by the lockout class;
+    # resolved by account privilege + internal-backup-server source.
+    "brute_force_attack": [
+        _det("det_lockout", "Account Lockout After Repeated External Failures",
+             "sigma_behavioral", "high", ["s5"], "true_positive",
+             "A domain account locked out (4740) after a burst of failed logons "
+             "from a single external source, consistent with online password "
+             "guessing.", mitre=("T1110.001", "Credential Access")),
+        _det("det_bruteforce_burst",
+             "Repeated Failed Logons from a Single External Source",
+             "sigma_behavioral", "medium", ["s1"], "true_positive",
+             "Many failed logons (4625) from one external source in a short "
+             "window preceded the lockout, the online password-guessing "
+             "signature.", mitre=("T1110.001", "Credential Access")),
+        _det("det_privileged_lockout_fp", "Privileged Service Account Locked Out",
+             "sigma_behavioral", "critical", ["sup1", "sup2", "sup3"],
+             "false_positive",
+             "A backup service account locked out on the domain controller reads "
+             "like a targeted attack on backup infrastructure. It is svc_backup "
+             "failing repeatedly after a password rotation was not propagated, "
+             "then locking out: one privileged service account from the internal "
+             "backup server, not the attack's external source.")],
     # Density batch 3 (B3.2): 2 TP + 1 FP. FP severity rank = BOTTOM (medium),
     # strictly under two high TPs. The FP is benign high-volume DNS to a
     # Microsoft telemetry endpoint (normal-length repeated hostname, no data
@@ -554,6 +573,34 @@ _SHAREPOINT_TENANT = "acme-my.sharepoint.com"
 _MS_TELEMETRY = "v10.events.data.microsoft.com"
 
 SUPPLEMENTAL_EVENTS = {
+    "brute_force_attack": [
+        # svc_backup failing then locking out on the DC after a password
+        # rotation wasn't propagated -- reads like a targeted attack on backup
+        # infrastructure (critical). det_privileged_lockout_fp triggers on the
+        # failure->lockout sequence. All in-window -> DECLARED red herrings;
+        # resolved by account privilege + internal backup-server source, not
+        # timing. Reuses svc_backup / ACME-VEEAM01 (canonical); the backup host
+        # is inferred from the {infra.backup.*} refs below.
+        _stale_4625("sup1", -300, "50310"),
+        _stale_4625("sup2", -280, "50311"),
+        _sup("sup3", "backup", -260, "4740", "Windows Security", "high",
+             "{infra.dc.hostname}", user="svc_backup", red_herring=True,
+             source_ip="{infra.backup.ip}", destination_ip="{infra.dc.ip}",
+             user_account="ACME\\svc_backup",
+             message="A user account was locked out.",
+             key_value_pairs={
+                 "event_id": 4740,
+                 "channel": "WinEventLog:Security",
+                 "computer": "{infra.dc.hostname}",
+                 "subject_security_id": "S-1-5-18",
+                 "subject_account_name": "{infra.dc.hostname}$",
+                 "subject_account_domain": "ACME",
+                 "subject_logon_id": "0x3E7",
+                 "target_account_name": "svc_backup",
+                 "target_domain_name": "ACME",
+                 "caller_computer_name": "{infra.backup.hostname}",
+             }),
+    ],
     "defense_evasion": [
         # Benign Windows Defender path exclusion applied by the ManageEngine
         # Endpoint Central agent (a scheduled policy push). Reads like AV
@@ -925,6 +972,7 @@ CANONICAL_ACCOUNTS = {
 SCENARIO_CANONICAL_ACCOUNTS = {
     "lateral_movement_1": ["svc_vulnscan"],
     "password_spray": ["svc_backup"],
+    "brute_force_attack": ["svc_backup"],
 }
 
 

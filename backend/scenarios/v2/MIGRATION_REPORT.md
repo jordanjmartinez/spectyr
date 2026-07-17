@@ -35,8 +35,8 @@ All 15 answer_key technique IDs are current; none deprecated, revoked, or merged
 
 - classification: `Brute Force` | root_cause: `s1` | techniques: `['T1110.001']`
 - scope.hosts: `['dc']` | scope.accounts: `['victim']`
-- environment hosts: `dc` (dc)
-- environment accounts: `victim`
+- environment hosts: `dc` (dc), `backup` (backup)
+- environment accounts: `victim`, `svc_backup`
 
 | step | event | source | hostname (v1 field) | host tag | user tag |
 |---|---|---|---|---|---|
