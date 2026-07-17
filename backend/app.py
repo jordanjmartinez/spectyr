@@ -10,6 +10,12 @@ import shutil
 from datetime import datetime, timezone, timedelta
 import threading
 
+# Stage 3a: response-action overlay. Stdlib-only, needed by every session
+# regardless of scenario source; the base world stays immutable and
+# current-state views render base+overlay while historical surfaces render
+# the base. Imported unconditionally so revert paths keep working.
+import action_overlay
+
 app = Flask(__name__)
 CORS(app, supports_credentials=True, expose_headers=["X-Session-ID"], origins=[
     "http://localhost:3000",
@@ -143,6 +149,14 @@ def create_session():
         # rebuilt whenever detections materialize.
         "detection_index": {},
         "benign_hosts": set(),
+        # Stage 3a response actions (io_lock guards all three). The overlay
+        # holds every action effect; the base world above is never mutated.
+        # entity_index: client entity id -> server-side composite entry,
+        # rebuilt from the base world after each drip. env_accounts: the
+        # concrete domain accounts seen at drip, for account entities.
+        "overlay": action_overlay.new_overlay(),
+        "entity_index": {},
+        "env_accounts": {},
     }
     with sessions_lock:
         sessions[session_id] = session
@@ -2340,6 +2354,13 @@ def build_attack_chain_logs(session, scenario_entry, employee=None):
                     # detection op; the internal detection_key never serializes.
                     session["detection_index"] = {
                         d["id"]: d for d in session["detections"]}
+                # Stage 3a: rebuild the action entity registry from the base
+                # world (stable-key ids, so a rebuild never changes one).
+                if "overlay" in session:
+                    action_overlay.collect_env_accounts(
+                        session["env_accounts"], concrete_env)
+                    session["entity_index"] = action_overlay.build_entity_registry(
+                        session["world"], session["env_accounts"], session["id"])
 
     return threat_logs
 
@@ -2463,7 +2484,11 @@ def get_endpoints():
     with s["io_lock"]:
         world = s.get("world", {})
         org = copy.deepcopy(world.get("org", {}))
-        snaps = [copy.deepcopy(snapshot_generator.public_view(v))
+        # Current-state surface: base+overlay (isolation state lives in the
+        # overlay; the base snapshot is immutable).
+        snaps = [action_overlay.apply_overlay(
+                     copy.deepcopy(snapshot_generator.public_view(v)),
+                     s["overlay"])
                  for v in world.get("hosts", {}).values()]
     rows = []
     for snap in sorted(snaps, key=lambda x: x["hostname"]):
@@ -2477,17 +2502,22 @@ def get_endpoints():
             "first_seen": snap["system"]["first_seen"],
             "last_seen": snap["system"]["last_heartbeat"],
             "owner": snap["owner"],
+            "entity_id": action_overlay.entity_id(s["id"], "host", snap["hostname"]),
         })
     return jsonify({"org": org, "endpoints": rows})
 
 
 @app.route('/api/endpoints/<hostname>', methods=['GET'])
 def get_endpoint_detail(hostname):
-    """Full snapshot for one host (all tabs)."""
+    """Full snapshot for one host (all tabs). Current-state surface:
+    base+overlay, annotated with client entity ids for action targets."""
     s = g.session
     with s["io_lock"]:
         snap = s.get("world", {}).get("hosts", {}).get(hostname)
-        snap = copy.deepcopy(snapshot_generator.public_view(snap)) if snap else None
+        if snap is not None:
+            snap = action_overlay.apply_overlay(
+                copy.deepcopy(snapshot_generator.public_view(snap)), s["overlay"])
+            action_overlay.annotate_view(snap, s["id"])
     if snap is None:
         return jsonify({"error": "Unknown endpoint"}), 404
     return jsonify(snap)
@@ -2575,6 +2605,9 @@ def reset_simulator():
         s["detections"] = []
         s["detection_index"] = {}
         s["benign_hosts"] = set()
+        s["overlay"] = action_overlay.new_overlay()
+        s["entity_index"] = {}
+        s["env_accounts"] = {}
         for filepath in [s["paths"]["generated_logs"], s["paths"]["analyst_actions"], s["paths"]["incident_reports"]]:
             with open(filepath, "w", encoding="utf-8") as f:
                 f.truncate(0)
