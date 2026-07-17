@@ -237,13 +237,31 @@ DETECTIONS = {
         "sigma_behavioral", "medium", ["s2"], "false_positive",
         "Regular-interval TLS handshake failures caused by an expanded "
         "corporate proxy SSL-inspection policy, not C2.")],
-    # Density pilot 2 (commit B): 3 FP, all TP-looking, spanning
-    # Medium/High/Critical. Authored in the false_positive_veeam commit.
-    "false_positive_veeam": [_det(
-        "det_fp_veeam", "Periodic Off-Hours Outbound Beacon (Backup Agent)",
-        "sigma_behavioral", "medium", ["s3"], "false_positive",
-        "Regular off-hours outbound connections from a backup agent running "
-        "under SYSTEM to the backup server, expected behavior.")],
+    # Density pilot 2: 3 FP, all TP-looking, spanning Medium/High/Critical.
+    # The scenario must read like it might contain a real threat until the
+    # analyst reads the evidence (signed Veeam binary, internal backup
+    # destination, backup schedule). No supplemental events needed: every
+    # benign chain step is available to trigger on.
+    "false_positive_veeam": [
+        _det("det_fp_veeam", "Periodic Outbound Beacon to Internal Host",
+             "sigma_behavioral", "high", ["s3"], "false_positive",
+             "The endpoint backup agent makes regular, fixed-interval outbound "
+             "connections to the backup server. The cadence reads like C2 "
+             "beaconing. It is the signed Veeam agent to the internal backup "
+             "server, running under SYSTEM on the backup schedule."),
+        _det("det_veeam_bulk_egress", "Large Off-Hours Data Egress Volume",
+             "sigma_behavioral", "critical", ["s5"], "false_positive",
+             "Over 1.75 GB left the host outside business hours, the "
+             "volume-plus-timing shape of staged exfiltration. It is the "
+             "nightly full backup completing to the internal repository, "
+             "logged by Veeam itself."),
+        _det("det_veeam_svc_persist",
+             "Service Binary Establishing Scheduled Outbound",
+             "sigma_behavioral", "medium", ["s2"], "false_positive",
+             "A service binary that establishes regular outbound connections "
+             "overlaps with C2 service persistence. It is the signed Veeam "
+             "endpoint service in Program Files, installed by the backup "
+             "deployment.")],
 }
 
 

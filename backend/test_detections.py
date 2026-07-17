@@ -129,7 +129,10 @@ def test_sanitized_triggering_events_are_whitelisted():
 
 def test_fp_scenario_detection_disposition():
     dets = _build("false_positive_veeam")
-    assert dets and all(d["disposition"] == "false_positive" for d in dets)
+    assert len(dets) == 3  # density pilot 2: all TP-looking FPs
+    assert all(d["disposition"] == "false_positive" for d in dets)
+    sevs = {d["severity"] for d in dets}
+    assert "critical" in sevs and "medium" in sevs, "FPs must span severities"
     for inst in dets:
         _assert_clean(dt.sanitize_detection(inst, include_events=True))
 
@@ -178,9 +181,10 @@ def test_supplemental_events_never_carry_answer_fields():
 
 
 def test_density_no_single_authored_detection():
-    """Pilot acceptance: the lateral_movement_1 pilot has more than one
-    authored detection (false_positive_veeam lands in commit B)."""
-    assert len(CATALOG["lateral_movement_1"]["detections"]) >= 2
+    """Pilot acceptance: neither pilot scenario has exactly one authored
+    detection."""
+    for label in ("lateral_movement_1", "false_positive_veeam"):
+        assert len(CATALOG[label]["detections"]) >= 2, label
 
 
 if __name__ == "__main__":
