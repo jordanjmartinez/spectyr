@@ -33,6 +33,7 @@ SERVERS = {
     "web": {"hostname": "ACME-SVR05", "ip": "10.0.1.204", "desc": "Web Server"},
     "proxy": {"hostname": "ACME-SVR06", "ip": "10.0.1.205", "desc": "Proxy Server"},
     "backup": {"hostname": "ACME-VEEAM01", "ip": "10.0.1.206", "desc": "Backup Server"},
+    "scan": {"hostname": "ACME-SEC01", "ip": "10.0.1.207", "desc": "Security Scanner"},
 }
 
 CATALOG, _ = slv2.load_scenarios()
@@ -64,10 +65,34 @@ def _render(label):
     return sc, env, logs
 
 
-def _world_for(label):
-    sc, env, logs = _render(label)
+def _render_supplemental(sc, resolved):
+    sup_logs, sup_meta = [], []
+    for i, sup in enumerate(sc.get("supplemental_events", [])):
+        fields = {k: v for k, v in sup.items() if k not in ("offset", "host", "user", "id")}
+        log = sl.substitute_deep(fields, resolved)
+        log["timestamp"] = f"2026-07-16T11:58:{i:02d}+00:00"
+        sup_logs.append(log)
+        m = {"id": sup["id"], "host": sup["host"]}
+        if "user" in sup:
+            m["user"] = sup["user"]
+        sup_meta.append(m)
+    return sup_logs, sup_meta
+
+
+def _world_for(label, with_supplemental=False):
+    sc = CATALOG[label]
+    resolved = sl.resolve_entities(sc, EMPLOYEES, SERVERS, rng=_Forced(EMPLOYEES[0]))
+    env = sl.substitute_deep(sc["environment"], resolved)
+    logs = []
+    for i, step in enumerate(sc["chain"]):
+        log = sl.substitute_deep({k: v for k, v in step.items() if k != "offset"}, resolved)
+        log["scenario_id"] = f"scenario-{label}"
+        log["timestamp"] = f"2026-07-16T12:01:{i:02d}+00:00"
+        logs.append(log)
     world = {"hosts": {}, "started_at": STARTED}
-    sg.extend_world(world, sc, env, logs, SEED, RESERVED, SERVERS)
+    supplemental = _render_supplemental(sc, resolved) if with_supplemental else None
+    sg.extend_world(world, sc, env, logs, SEED, RESERVED, SERVERS,
+                    supplemental=supplemental)
     return sc, env, logs, world
 
 
@@ -258,6 +283,36 @@ def test_defender_platform_path_versioned():
                 versions.add(m.group(1))
         assert len(versions) == 1, f"{hostname}: mixed platform versions {versions}"
         assert versions.pop() in ("4.18.25050.5", "4.18.25040.2")
+
+
+def test_supplemental_process_event_integrity():
+    """A supplemental process event (the scanner's nessusd on ACME-SEC01)
+    merges into that host's snapshot with a resolving PID/PPID, same integrity
+    bar as attack events."""
+    _, env, _, world = _world_for("lateral_movement_1", with_supplemental=True)
+    scan = next(h["hostname"] for h in env["hosts"] if h["role"] == "scanner")
+    snap = world["hosts"][scan]
+    nessus = [p for p in snap["processes"] if p["name"] == "nessusd.exe"]
+    assert len(nessus) == 1, "supplemental nessusd process missing/duplicated"
+    n = nessus[0]
+    assert n["path"] == "C:\\Program Files\\Tenable\\Nessus\\nessusd.exe"
+    pids = {p["pid"] for p in snap["processes"]}
+    # authored PID present, authored parent materialized
+    assert n["pid"] == 4120 and n["ppid"] == 784
+    assert 784 in pids, "supplemental parent PID not materialized"
+    # no duplicate PIDs after the supplemental merge
+    all_pids = [p["pid"] for p in snap["processes"]]
+    assert len(all_pids) == len(set(all_pids))
+
+
+def test_supplemental_host_enters_world():
+    """The canonical scanner host (ACME-SEC01) enters the world as a managed
+    endpoint via the environment, and renders all tabs."""
+    _, env, _, world = _world_for("lateral_movement_1", with_supplemental=True)
+    assert "ACME-SEC01" in world["hosts"]
+    snap = world["hosts"]["ACME-SEC01"]
+    assert snap["role"] == "scanner" and snap["status"] == "online"
+    assert 30 <= len(snap["processes"]) <= 60  # baseline + one supplemental proc
 
 
 def test_memory_on_every_process():

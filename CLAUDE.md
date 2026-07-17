@@ -79,6 +79,7 @@ A full-stack Security Information and Event Management (SIEM) simulation platfor
 - Session state: `session["detections"]` (instances with dispositions + player_action) and `benign_hosts`, guarded by `io_lock`, reset with the session, materialized at drip. PAN-OS devices get no detections
 - Scoring v1 (`compute_detection_score`): deterministic over (player_action, disposition); correct = promote TP / dismiss FP / dismiss benign; own commit. The dashboard radar still reads completed scenarios only — detections never feed it
 - Frontend: `Detections.jsx` (feed + Threats toggle, triage) + `DetectionDetail.jsx` (Section 8 card: triggering-event + parent-process lineage, MITRE chips, SHA256 with copy, no VirusTotal link)
+- **Density pass**: 2-4 authored detections per attack scenario (coexisting FPs), 2+ TP-looking FPs per FP scenario, so disposition is not inferable from count/severity/source. `supplemental_events` (schema v2, sibling to attack): authored benign telemetry with `sup*` ids, merged into the session pool (same seed/clock/placeholders/sanitization/integrity), referenceable by detections; `supplemental_entities` for one-off externals. Detections trigger on attack step ids or sup ids (`triggers` required). Timestamp placement authored; red herrings declared. Scaffold+approve per scenario, one scenario per commit (`scenarios/DETECTION_CANDIDATES.md`)
 
 ### Endpoint World (Phase 2 Stage 1)
 - One world state per session (`session["world"]`, guarded by `io_lock`; frozen `started_at` timestamp): per-host EDR snapshots derived purely from environment + substituted event pool + `noise_profiles.py` role baselines by `snapshot_generator.py`
@@ -233,7 +234,7 @@ cd frontend && npm install && npm start
 - `CAMPAIGN_LEVELS`: scenario catalog — 5 groups of 4 (3 attacks + 1 FP); queue sampling ignores the grouping
 - `TRIAGE_REVIEWS`: Educational content for each scenario (20 entries: 15 attacks + 5 FPs)
 - `EMPLOYEES`: 45 realistic corporate employees across 8 departments
-- `SERVERS`: 7 infrastructure hosts (DC, File, DNS, Print, Web at ACME-SVR01-05 / 10.0.1.200-204; Proxy at ACME-SVR06 / 10.0.1.205 is a PAN-OS VM-Series appliance, log source only, never a managed endpoint; Backup at ACME-VEEAM01 / 10.0.1.206)
+- `SERVERS`: 8 infrastructure hosts (DC, File, DNS, Print, Web at ACME-SVR01-05 / 10.0.1.200-204; Proxy at ACME-SVR06 / 10.0.1.205 is a PAN-OS VM-Series appliance, log source only, never a managed endpoint; Backup at ACME-VEEAM01 / 10.0.1.206; Scanner at ACME-SEC01 / 10.0.1.207, role `scanner`, managed). `SERVICE_ACCOUNTS`: canonical non-roster accounts (e.g. `svc_vulnscan`) referenced by supplemental telemetry
 - `NORMAL_TRAFFIC_TEMPLATES`: 100+ templates for legitimate system events
 - `TIMER_DURATIONS`: timer settings (only `get_timer_duration(1)` = 900s is used — one session timer, not per-level)
 - `CONCURRENT_QUEUE_CAP`: max in-flight scenarios (3)

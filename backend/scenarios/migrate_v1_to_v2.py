@@ -63,12 +63,15 @@ SERVER_TABLE = {
     "web":    ("ACME-SVR05", "10.0.1.204", "Web Server"),
     "proxy":  ("ACME-SVR06", "10.0.1.205", "Proxy (PAN-OS VM-Series)"),
     "backup": ("ACME-VEEAM01", "10.0.1.206", "Backup Server"),
+    "scan":   ("ACME-SEC01", "10.0.1.207", "Security Scanner"),
 }
 
 # Stage 1 review ruling: proxy events follow Palo Alto CIM, so the proxy is
 # a PAN-OS appliance, not a Windows server. Like the firewall, it is a log
 # source, never a managed endpoint.
 ROLE_OS = {"proxy": "PAN-OS"}
+# SERVER_TABLE key -> host role when the role name differs from the key.
+SERVER_ROLE = {"scan": "scanner"}
 
 # internal_host entities that map onto a reference-environment role.
 INTERNAL_HOST_ROLES = {"backup_server": ("backup", "Backup Server")}
@@ -149,12 +152,33 @@ DETECTIONS = {
         "A user accessed a sensitive file share outside their role and staged "
         "a copy locally before an outbound connection.",
         mitre=("T1074.001", "Collection"))],
-    "lateral_movement_1": [_det(
-        "det_lateral_logon", "Anomalous Internal Logon Following Port Scan",
-        "sigma_behavioral", "high", ["s5"], "true_positive",
-        "An interactive logon to an internal server from a workstation that "
-        "had just port-scanned it, consistent with lateral movement.",
-        mitre=("T1046", "Discovery"))],
+    # Density pilot (Stage 2 content pass): 2 TP + 1 coexisting FP. Severity
+    # deliberately inverted (FP is high, one TP is medium) so severity never
+    # reveals disposition; two scan-shaped detections can't be told apart by
+    # rule-name class.
+    "lateral_movement_1": [
+        _det("det_lateral_logon",
+             "Anomalous Internal Logon Following Connection Sweep",
+             "sigma_behavioral", "high", ["s5"], "true_positive",
+             "A network logon landed on the file server from a workstation "
+             "that had just probed its service ports. No admin task or ticket "
+             "explains it; the account is a standard user.",
+             mitre=("T1046", "Discovery")),
+        _det("det_portscan_exec",
+             "Network Scanning Utility Executed from User Profile",
+             "sigma_behavioral", "medium", ["s1"], "true_positive",
+             "nmap ran from a standard user's Downloads folder on a non-IT "
+             "workstation. Scanning tools there are unusual; here it is the "
+             "recon that precedes the lateral logon.",
+             mitre=("T1046", "Discovery")),
+        _det("det_scanner_sweep",
+             "Rapid Internal Port Connections Across Segment",
+             "sigma_behavioral", "high", ["sup2"], "false_positive",
+             "The security team's authenticated vulnerability scanner ran its "
+             "scheduled sweep from the scanner host, connecting rapidly to "
+             "many internal hosts including the file server, and tripped a "
+             "lateral-recon rule. The source is the scanner host under a "
+             "service account on the scan schedule.")],
     "lateral_movement_2": [_det(
         "det_lsass", "LSASS Process Memory Access",
         "sigma_behavioral", "critical", ["s2"], "true_positive",
@@ -213,11 +237,110 @@ DETECTIONS = {
         "sigma_behavioral", "medium", ["s2"], "false_positive",
         "Regular-interval TLS handshake failures caused by an expanded "
         "corporate proxy SSL-inspection policy, not C2.")],
+    # Density pilot 2 (commit B): 3 FP, all TP-looking, spanning
+    # Medium/High/Critical. Authored in the false_positive_veeam commit.
     "false_positive_veeam": [_det(
         "det_fp_veeam", "Periodic Off-Hours Outbound Beacon (Backup Agent)",
         "sigma_behavioral", "medium", ["s3"], "false_positive",
         "Regular off-hours outbound connections from a backup agent running "
         "under SYSTEM to the backup server, expected behavior.")],
+}
+
+
+# Stage 2 density: authored benign supplemental telemetry, keyed by label.
+# Merged into the session pool; referenceable by detections via sup* ids.
+# offset is relative to the attack base time and may be negative.
+def _sup(id, host, offset, event_type, source_type, severity, hostname,
+         message, key_value_pairs, source_ip=None, destination_ip=None,
+         user_account=None, log_source=None, user=None):
+    d = {"id": id, "host": host, "offset": offset, "event_type": event_type,
+         "source_type": source_type, "log_source": log_source or source_type,
+         "severity": severity, "hostname": hostname}
+    if source_ip:
+        d["source_ip"] = source_ip
+    if destination_ip:
+        d["destination_ip"] = destination_ip
+    if user_account:
+        d["user_account"] = user_account
+    if user:
+        d["user"] = user
+    d["message"] = message
+    d["key_value_pairs"] = key_value_pairs
+    return d
+
+
+SUPPLEMENTAL_EVENTS = {
+    "lateral_movement_1": [
+        # The vulnerability scanner's process on ACME-SEC01. Supporting
+        # telemetry (integrity + snapshot), not a detection trigger. Placed
+        # 120s before the attack: a distinct cluster, deliberately separated
+        # from the intrusion window. NOT a red herring.
+        _sup("sup1", "scan", -120, "ProcessCreate", "Sysmon", "low",
+             "{infra.scan.hostname}", user="svc_vulnscan",
+             source_ip="{infra.scan.ip}", user_account="ACME\\svc_vulnscan",
+             message="Process created: nessusd.exe scheduled vulnerability scan",
+             key_value_pairs={
+                 "event_id": 1,
+                 "channel": "Microsoft-Windows-Sysmon/Operational",
+                 "computer": "{infra.scan.hostname}",
+                 "rule_name": "",
+                 "process_id": "4120",
+                 "image": "C:\\Program Files\\Tenable\\Nessus\\nessusd.exe",
+                 "file_version": "10.7.2",
+                 "description": "Nessus Vulnerability Scanner",
+                 "product": "Nessus",
+                 "company": "Tenable, Inc.",
+                 "original_file_name": "nessusd.exe",
+                 "command_line": "\"C:\\Program Files\\Tenable\\Nessus\\nessusd.exe\" -q",
+                 "current_directory": "C:\\Program Files\\Tenable\\Nessus\\",
+                 "user": "ACME\\svc_vulnscan",
+                 "terminal_session_id": "0",
+                 "integrity_level": "System",
+                 "parent_process_id": "784",
+                 "parent_image": "C:\\Windows\\System32\\services.exe",
+                 "parent_command_line": "C:\\Windows\\System32\\services.exe",
+                 "parent_user": "NT AUTHORITY\\SYSTEM",
+             }),
+        # The scanner's rapid connections across the segment, reported by the
+        # firewall (det_scanner_sweep triggers here). 118s before the attack.
+        _sup("sup2", "scan", -118, "ALLOW", "Firewall", "medium",
+             "ACME-FW01", source_ip="{infra.scan.ip}",
+             destination_ip="{infra.file.ip}",
+             message="Scheduled scan connections from {infra.scan.hostname} to "
+                     "{infra.file.hostname} across service ports 22,80,443,445,3389",
+             key_value_pairs={
+                 "src_ip": "{infra.scan.ip}",
+                 "dst_ip": "{infra.file.ip}",
+                 "src_port": "51200",
+                 "dest_port": "445",
+                 "transport": "tcp",
+                 "action": "allow",
+                 "app": "vuln-scan",
+                 "dvc": "ACME-FW01",
+                 "rule": "security_scanning",
+             }),
+    ],
+}
+
+
+# One-off external actors referenced by supplemental events (none for the
+# pilots; the scanner is a canonical internal actor).
+SUPPLEMENTAL_ENTITIES = {}
+
+# Canonical non-roster accounts to declare in a scenario's environment when its
+# supplemental events reference them (mirrors app.SERVICE_ACCOUNTS). id ->
+# environment account entry.
+CANONICAL_ACCOUNTS = {
+    "svc_vulnscan": {
+        "id": "svc_vulnscan", "username": "svc_vulnscan", "domain": "ACME",
+        "type": "service", "host": "scan",
+        "groups": ["Domain Users", "Scanning Service Accounts"],
+    },
+}
+
+# Which canonical accounts each scenario's supplemental content needs.
+SCENARIO_CANONICAL_ACCOUNTS = {
+    "lateral_movement_1": ["svc_vulnscan"],
 }
 
 
@@ -422,11 +545,15 @@ def infer_step_tags(doc, label):
 
 
 def build_environment(doc, tags, label):
-    """hosts + accounts inferred from what the chain references."""
+    """hosts + accounts inferred from the chain AND the scenario's supplemental
+    events (which may reference canonical hosts/accounts not in the chain)."""
     employees, internals = entity_sets(doc)
     over = OVERRIDES.get(label, {})
-    chain_text = json.dumps(doc["chain"])
-    tag_hosts = {h for _, h, _ in tags}
+    sup_events = SUPPLEMENTAL_EVENTS.get(label, [])
+    # supplemental events can pull in canonical hosts (infra.*) the chain never
+    # touches; scan both when deciding which hosts the environment declares.
+    chain_text = json.dumps(doc["chain"]) + json.dumps(sup_events)
+    tag_hosts = {h for _, h, _ in tags} | {s["host"] for s in sup_events}
 
     hosts = []
     for name in doc["entities"]:  # declaration order
@@ -442,7 +569,7 @@ def build_environment(doc, tags, label):
     for key, (_hn, _ip, desc) in SERVER_TABLE.items():
         if f"{{infra.{key}." in chain_text:
             hosts.append({
-                "id": key, "role": key,
+                "id": key, "role": SERVER_ROLE.get(key, key),
                 "hostname": f"{{infra.{key}.hostname}}",
                 "ip": f"{{infra.{key}.ip}}",
                 "os": ROLE_OS.get(key, SRV_OS), "desc": desc,
@@ -476,6 +603,10 @@ def build_environment(doc, tags, label):
                 acct["host"] = f"ws_{name}"
             accounts.append(acct)
     accounts.extend(over.get("extra_accounts", []))
+    # canonical service/admin accounts this scenario's supplemental content
+    # references (e.g. the scanner's svc_vulnscan)
+    for acct_id in SCENARIO_CANONICAL_ACCOUNTS.get(label, []):
+        accounts.append(dict(CANONICAL_ACCOUNTS[acct_id]))
     return hosts, accounts
 
 
@@ -528,6 +659,39 @@ def emit_environment(hosts, accounts):
         for k in ("username", "domain", "type", "host"):
             if k in a:
                 L.append(f"      {k}: {emit(a[k])}")
+        if a.get("groups"):
+            L.append(f"      groups: {emit(a['groups'])}")
+    return L
+
+
+def emit_supplemental(events, entities):
+    L = ["supplemental_events:"]
+    if not events:
+        L[-1] = "supplemental_events: []"
+    for e in events:
+        L.append(f"  - id: {emit(e['id'])}")
+        L.append(f"    host: {emit(e['host'])}")
+        if "user" in e:
+            L.append(f"    user: {emit(e['user'])}")
+        L.append(f"    offset: {json.dumps(e['offset'])}")
+        for k in ("event_type", "source_type", "log_source", "severity",
+                  "hostname", "source_ip", "destination_ip", "user_account",
+                  "message"):
+            if k in e and e[k] not in (None, ""):
+                L.append(f"    {k}: {emit(e[k])}")
+        if e.get("key_value_pairs"):
+            L.append("    key_value_pairs:")
+            for k, v in e["key_value_pairs"].items():
+                L.append(f"      {k}: {emit(v)}")
+    L.append("")
+    if entities:
+        L.append("supplemental_entities:")
+        for ent in entities:
+            L.append(f"  - id: {emit(ent['id'])}")
+            for k in ("type", "value", "description"):
+                L.append(f"    {k}: {emit(ent[k])}")
+    else:
+        L.append("supplemental_entities: []")
     return L
 
 
@@ -697,6 +861,9 @@ def migrate(fname, report):
     L.append("")
     L.append("noise: {}")
     L.append("")
+    L.extend(emit_supplemental(SUPPLEMENTAL_EVENTS.get(label, []),
+                               SUPPLEMENTAL_ENTITIES.get(label, [])))
+    L.append("")
     L.extend(emit_detections(DETECTIONS[label]))
     L.append("")
     L.extend(emit_answer_key(answer_key))
@@ -715,6 +882,10 @@ def migrate(fname, report):
     assert new_doc["entities"] == corrected_entities, f"{label}: entities diverged"
     assert new_doc["triage_review"] == corrected_triage, f"{label}: triage diverged"
     assert new_doc["detections"] == DETECTIONS[label], f"{label}: detections diverged"
+    assert new_doc.get("supplemental_events", []) == SUPPLEMENTAL_EVENTS.get(label, []), \
+        f"{label}: supplemental_events diverged"
+    assert new_doc.get("supplemental_entities", []) == SUPPLEMENTAL_ENTITIES.get(label, []), \
+        f"{label}: supplemental_entities diverged"
     for key in ("label", "category", "difficulty", "threat_pattern", "narrative"):
         assert new_doc[key] == doc[key], f"{label}: section {key} diverged"
     v2.validate_scenario_v2(new_doc, v2._load_schema_v2(), v1._load_schema(),

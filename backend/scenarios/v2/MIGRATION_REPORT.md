@@ -265,8 +265,8 @@ All 15 answer_key technique IDs are current; none deprecated, revoked, or merged
 
 - classification: `Lateral Movement` | root_cause: `s1` | techniques: `['T1046']`
 - scope.hosts: `['ws_victim', 'file']` | scope.accounts: `['victim']`
-- environment hosts: `ws_victim` (workstation), `file` (file), `fw_perimeter` (firewall)
-- environment accounts: `victim`
+- environment hosts: `ws_victim` (workstation), `file` (file), `scan` (scanner), `fw_perimeter` (firewall)
+- environment accounts: `victim`, `svc_vulnscan`
 
 | step | event | source | hostname (v1 field) | host tag | user tag |
 |---|---|---|---|---|---|

@@ -184,6 +184,10 @@ attack:
 
 noise: {}
 
+supplemental_events: []
+
+supplemental_entities: []
+
 detections:
   - id: "det_shadow_upload"
     rule_name: "Upload to Unsanctioned Cloud Storage"

@@ -5,7 +5,33 @@ simulated environment from Stage 1 onward. MIGRATION_REPORT.md is frozen as
 the Stage 0 artifact; new flags land here. Each entry stays until a review
 resolves it (resolution noted inline, entry kept for the record).
 
-## Stage 2 (Detections Feed)
+## Stage 2 (Detection Density Pass)
+
+### Canonical environment additions (FLAG for review)
+
+- **ACME-SEC01** (`10.0.1.207`, role `scanner`, Windows Server 2019, managed):
+  the security team's vulnerability-scanner host, added to `SERVERS['scan']`.
+  A recurring benign actor whose scheduled sweeps trip recon rules. Appears as
+  a managed endpoint. **Invented infrastructure; approve or supply canonical
+  identity.**
+- **svc_vulnscan** (service account, domain ACME, groups Domain Users +
+  Scanning Service Accounts, on ACME-SEC01): the scanner's service account,
+  in `SERVICE_ACCOUNTS`. Authorization ground truth (that it is legitimate) is
+  server-side; its evidence (service type, scanner host, group) is
+  world-visible. **Invented; approve or supply.**
+- **nessusd.exe** (Tenable Nessus 10.7.2 at C:\Program Files\Tenable\Nessus\):
+  the scanner binary in supplemental telemetry. Version/path plausible;
+  **flagged, approve.**
+
+### Supplemental events
+
+- `supplemental_events` (schema v2, sibling to attack): authored benign
+  telemetry merged into the session pool, referenceable by detections via
+  `sup*` ids. lateral_movement_1 pilot carries `sup1` (nessusd ProcessCreate
+  on ACME-SEC01, integrity-checked) and `sup2` (firewall rapid connections).
+  Timestamps authored at attack_base minus 118-120s: deliberately separated
+  from the intrusion window, **NOT a red herring**. Parity CLEAN (supplemental
+  events never touch the attack chain).
 
 ### Recorded decisions
 

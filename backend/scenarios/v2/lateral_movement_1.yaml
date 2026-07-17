@@ -33,6 +33,12 @@ environment:
       ip: "{infra.file.ip}"
       os: "Windows Server 2019"
       desc: "File Server"
+    - id: "scan"
+      role: "scanner"
+      hostname: "{infra.scan.hostname}"
+      ip: "{infra.scan.ip}"
+      os: "Windows Server 2019"
+      desc: "Security Scanner"
     - id: "fw_perimeter"
       role: "firewall"
       hostname: "ACME-FW01"
@@ -45,6 +51,12 @@ environment:
       domain: "ACME"
       type: "user"
       host: "ws_victim"
+    - id: "svc_vulnscan"
+      username: "svc_vulnscan"
+      domain: "ACME"
+      type: "service"
+      host: "scan"
+      groups: ["Domain Users", "Scanning Service Accounts"]
 
 attack:
   - id: "s1"
@@ -220,17 +232,92 @@ attack:
 
 noise: {}
 
+supplemental_events:
+  - id: "sup1"
+    host: "scan"
+    user: "svc_vulnscan"
+    offset: -120
+    event_type: "ProcessCreate"
+    source_type: "Sysmon"
+    log_source: "Sysmon"
+    severity: "low"
+    hostname: "{infra.scan.hostname}"
+    source_ip: "{infra.scan.ip}"
+    user_account: "ACME\\svc_vulnscan"
+    message: "Process created: nessusd.exe scheduled vulnerability scan"
+    key_value_pairs:
+      event_id: 1
+      channel: "Microsoft-Windows-Sysmon/Operational"
+      computer: "{infra.scan.hostname}"
+      rule_name: ""
+      process_id: "4120"
+      image: "C:\\Program Files\\Tenable\\Nessus\\nessusd.exe"
+      file_version: "10.7.2"
+      description: "Nessus Vulnerability Scanner"
+      product: "Nessus"
+      company: "Tenable, Inc."
+      original_file_name: "nessusd.exe"
+      command_line: "\"C:\\Program Files\\Tenable\\Nessus\\nessusd.exe\" -q"
+      current_directory: "C:\\Program Files\\Tenable\\Nessus\\"
+      user: "ACME\\svc_vulnscan"
+      terminal_session_id: "0"
+      integrity_level: "System"
+      parent_process_id: "784"
+      parent_image: "C:\\Windows\\System32\\services.exe"
+      parent_command_line: "C:\\Windows\\System32\\services.exe"
+      parent_user: "NT AUTHORITY\\SYSTEM"
+  - id: "sup2"
+    host: "scan"
+    offset: -118
+    event_type: "ALLOW"
+    source_type: "Firewall"
+    log_source: "Firewall"
+    severity: "medium"
+    hostname: "ACME-FW01"
+    source_ip: "{infra.scan.ip}"
+    destination_ip: "{infra.file.ip}"
+    message: "Scheduled scan connections from {infra.scan.hostname} to {infra.file.hostname} across service ports 22,80,443,445,3389"
+    key_value_pairs:
+      src_ip: "{infra.scan.ip}"
+      dst_ip: "{infra.file.ip}"
+      src_port: "51200"
+      dest_port: "445"
+      transport: "tcp"
+      action: "allow"
+      app: "vuln-scan"
+      dvc: "ACME-FW01"
+      rule: "security_scanning"
+
+supplemental_entities: []
+
 detections:
   - id: "det_lateral_logon"
-    rule_name: "Anomalous Internal Logon Following Port Scan"
+    rule_name: "Anomalous Internal Logon Following Connection Sweep"
     rule_type: "sigma_behavioral"
     severity: "high"
     triggers: ["s5"]
     mitre:
       id: "T1046"
       tactic: "Discovery"
-    description: "An interactive logon to an internal server from a workstation that had just port-scanned it, consistent with lateral movement."
+    description: "A network logon landed on the file server from a workstation that had just probed its service ports. No admin task or ticket explains it; the account is a standard user."
     disposition: "true_positive"
+  - id: "det_portscan_exec"
+    rule_name: "Network Scanning Utility Executed from User Profile"
+    rule_type: "sigma_behavioral"
+    severity: "medium"
+    triggers: ["s1"]
+    mitre:
+      id: "T1046"
+      tactic: "Discovery"
+    description: "nmap ran from a standard user's Downloads folder on a non-IT workstation. Scanning tools there are unusual; here it is the recon that precedes the lateral logon."
+    disposition: "true_positive"
+  - id: "det_scanner_sweep"
+    rule_name: "Rapid Internal Port Connections Across Segment"
+    rule_type: "sigma_behavioral"
+    severity: "high"
+    triggers: ["sup2"]
+    description: "The security team's authenticated vulnerability scanner ran its scheduled sweep from the scanner host, connecting rapidly to many internal hosts including the file server, and tripped a lateral-recon rule. The source is the scanner host under a service account on the scan schedule."
+    disposition: "false_positive"
 
 answer_key:
   classification: "Lateral Movement"

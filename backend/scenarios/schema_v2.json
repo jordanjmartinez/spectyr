@@ -74,6 +74,16 @@
         }
       }
     },
+    "supplemental_events": {
+      "$comment": "Stage 2 density: authored benign telemetry, sibling to attack. Merged into the session pool (same seed, frozen clock, placeholders, sanitization, integrity). Referenceable by detections via stable id (sup*). Unlike noise (generated, unreferenced), these are authored and referenceable. offset is authored, relative to the attack base time, and may be negative.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/supplemental_event" }
+    },
+    "supplemental_entities": {
+      "$comment": "One-off external actors a supplemental event references (type, value, internal description). Recurring internal actors go canonical in the reference environment instead. Every entity referenced by any event must resolve here or in the canonical environment.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/supplemental_entity" }
+    },
     "detections": {
       "$comment": "Stage 2: the raw detections this scenario surfaces in the feed. Each fires on triggering step id(s) and carries a server-side answer-key disposition that must never reach the client.",
       "type": "array",
@@ -231,7 +241,7 @@
       "properties": {
         "id": { "$ref": "#/$defs/id" },
         "role": {
-          "enum": ["workstation", "dc", "file", "dns", "print", "web", "proxy", "backup", "firewall", "server"]
+          "enum": ["workstation", "dc", "file", "dns", "print", "web", "proxy", "backup", "scanner", "firewall", "server"]
         },
         "hostname": { "type": "string", "minLength": 1 },
         "ip": { "type": "string", "minLength": 1 },
@@ -252,7 +262,45 @@
         "username": { "type": "string", "minLength": 1 },
         "domain": { "type": "string", "minLength": 1 },
         "type": { "enum": ["user", "admin", "service"] },
-        "host": { "$ref": "#/$defs/id" }
+        "host": { "$ref": "#/$defs/id" },
+        "groups": {
+          "$comment": "World-visible group membership (authorization evidence). Optional; canonical service/admin accounts carry it.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "supplemental_entity": {
+      "type": "object",
+      "required": ["id", "type", "value", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "type": { "enum": ["external_ip", "domain", "url", "hash"] },
+        "value": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    },
+    "supplemental_event": {
+      "$comment": "Same renderable shape as an attack step, tagged with a host, but its offset is relative to the attack base time and may be negative. No trigger field: supplemental events are not analyst entry points. No disposition/answer field ever.",
+      "type": "object",
+      "required": ["id", "host", "offset", "event_type", "source_type", "severity", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^sup[0-9a-z_]*$" },
+        "host": { "$ref": "#/$defs/id" },
+        "user": { "$ref": "#/$defs/id" },
+        "offset": { "type": "number" },
+        "event_type": { "type": "string", "minLength": 1 },
+        "source_type": { "type": "string", "minLength": 1 },
+        "log_source": { "type": "string" },
+        "severity": { "enum": ["low", "medium", "high", "critical"] },
+        "hostname": { "type": "string" },
+        "source_ip": { "type": "string" },
+        "destination_ip": { "type": "string" },
+        "user_account": { "type": "string" },
+        "message": { "type": "string", "minLength": 1 },
+        "key_value_pairs": { "type": "object" }
       }
     },
     "attack_step": {

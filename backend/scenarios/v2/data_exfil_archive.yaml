@@ -188,6 +188,10 @@ attack:
 
 noise: {}
 
+supplemental_events: []
+
+supplemental_entities: []
+
 detections:
   - id: "det_exfil_upload"
     rule_name: "Outbound Transfer to Consumer File-Sharing Host"

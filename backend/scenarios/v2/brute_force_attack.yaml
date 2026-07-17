@@ -212,6 +212,10 @@ attack:
 
 noise: {}
 
+supplemental_events: []
+
+supplemental_entities: []
+
 detections:
   - id: "det_lockout"
     rule_name: "Account Lockout After Repeated External Failures"

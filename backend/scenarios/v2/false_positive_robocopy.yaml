@@ -210,6 +210,10 @@ attack:
 
 noise: {}
 
+supplemental_events: []
+
+supplemental_entities: []
+
 detections:
   - id: "det_fp_robocopy"
     rule_name: "Bulk File Copy by Service Account"

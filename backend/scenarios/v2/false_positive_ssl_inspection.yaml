@@ -202,6 +202,10 @@ attack:
 
 noise: {}
 
+supplemental_events: []
+
+supplemental_entities: []
+
 detections:
   - id: "det_fp_ssl"
     rule_name: "Repeated TLS Handshake Failures Resembling Beacon"

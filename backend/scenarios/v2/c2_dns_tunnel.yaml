@@ -178,6 +178,10 @@ attack:
 
 noise: {}
 
+supplemental_events: []
+
+supplemental_entities: []
+
 detections:
   - id: "det_dns_tunnel"
     rule_name: "Anomalous DNS TXT Query Volume to Rare Domain"

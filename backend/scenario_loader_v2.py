@@ -147,6 +147,43 @@ def validate_scenario_v2(doc, schema_v2, v1_schema, filename):
                 f"{step['user']!r} is not a declared environment account"
             )
 
+    # Supplemental events (Stage 2 density): authored benign telemetry with
+    # sup* ids, sharing the id-space with attack steps.
+    sup_events = doc.get("supplemental_events", [])
+    sup_ids = [s["id"] for s in sup_events]
+    dup = _dupes(step_ids + sup_ids)
+    if dup:
+        raise ScenarioError(
+            f"{filename}: id collision between attack/supplemental events: "
+            f"{sorted(set(dup))}")
+    for i, sup in enumerate(sup_events):
+        if sup["host"] not in hosts:
+            raise ScenarioError(
+                f"{filename}: supplemental event {sup['id']!r}: host "
+                f"{sup['host']!r} is not a declared environment host")
+        if "user" in sup and sup["user"] not in accounts:
+            raise ScenarioError(
+                f"{filename}: supplemental event {sup['id']!r}: user "
+                f"{sup['user']!r} is not a declared environment account")
+
+    sup_entity_ids = [e["id"] for e in doc.get("supplemental_entities", [])]
+    dup = _dupes(sup_entity_ids)
+    if dup:
+        raise ScenarioError(
+            f"{filename}: duplicate supplemental_entity id(s): {sorted(set(dup))}")
+
+    # Placeholders in supplemental events bind to declared entities, infra, or
+    # supplemental_entities. supplemental_entities are referenced by id.
+    declared_all = set(doc["entities"]) | set(sup_entity_ids)
+    sup_text = json.dumps(sup_events)
+    for path, field in v1.PLACEHOLDER.findall(sup_text):
+        if path.startswith("infra."):
+            continue
+        if path not in declared_all:
+            raise ScenarioError(
+                f"{filename}: supplemental event references undeclared entity "
+                f"{{{path}.{field}}}")
+
     ak = doc["answer_key"]
     for hid in ak["scope"]["hosts"]:
         if hid not in hosts:
@@ -165,14 +202,16 @@ def validate_scenario_v2(doc, schema_v2, v1_schema, filename):
     dup = _dupes(det_ids)
     if dup:
         raise ScenarioError(f"{filename}: duplicate detection id(s): {sorted(set(dup))}")
-    step_id_set = set(step_ids)
+    # Detections trigger on attack step ids or supplemental event ids.
+    triggerable = set(step_ids) | {s["id"] for s in doc.get("supplemental_events", [])}
     is_fp_scenario = ak["classification"] == "False Positive"
     has_true_positive = False
     for det in doc["detections"]:
-        bad = [t for t in det["triggers"] if t not in step_id_set]
+        bad = [t for t in det["triggers"] if t not in triggerable]
         if bad:
             raise ScenarioError(
-                f"{filename}: detection {det['id']!r} triggers on unknown step(s) {bad}"
+                f"{filename}: detection {det['id']!r} triggers on unknown "
+                f"attack/supplemental event(s) {bad}"
             )
         if det["rule_type"] == "yara" and "yara_rule_name" not in det:
             raise ScenarioError(
@@ -260,6 +299,8 @@ def _catalog_entry_v2(doc):
         "schema_version": 2,
         "environment": doc["environment"],
         "noise": doc["noise"],
+        "supplemental_events": doc.get("supplemental_events", []),
+        "supplemental_entities": doc.get("supplemental_entities", []),
         "detections": doc["detections"],
         "answer_key": doc["answer_key"],
         "attack_meta": attack_meta,

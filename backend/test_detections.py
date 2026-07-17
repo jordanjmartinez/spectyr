@@ -25,6 +25,7 @@ SERVERS = {
     "web": {"hostname": "ACME-SVR05", "ip": "10.0.1.204"},
     "proxy": {"hostname": "ACME-SVR06", "ip": "10.0.1.205"},
     "backup": {"hostname": "ACME-VEEAM01", "ip": "10.0.1.206"},
+    "scan": {"hostname": "ACME-SEC01", "ip": "10.0.1.207"},
 }
 CATALOG, _ = slv2.load_scenarios()
 SEED = "test-session-det"
@@ -45,8 +46,11 @@ class _Forced(random.Random):
 
 
 def _render(label):
+    """Render the attack chain AND supplemental events, mirroring the drip.
+    Returns (sc, attack_logs, sup_logs, sup_meta, concrete_env)."""
     sc = CATALOG[label]
     resolved = sl.resolve_entities(sc, EMPLOYEES, SERVERS, rng=_Forced(EMPLOYEES[0]))
+    env = sl.substitute_deep(sc["environment"], resolved)
     logs = []
     for i, step in enumerate(sc["chain"]):
         log = sl.substitute_deep({k: v for k, v in step.items() if k != "offset"}, resolved)
@@ -56,7 +60,25 @@ def _render(label):
                     "alert_id": "INC-9999", "storyline": "secret",
                     "timestamp": f"2026-07-16T12:00:{i:02d}+00:00", "status": "active"})
         logs.append(log)
-    return sc, logs
+    sup_logs, sup_meta = [], []
+    for sup in sc.get("supplemental_events", []):
+        fields = {k: v for k, v in sup.items() if k not in ("offset", "host", "user", "id")}
+        log = sl.substitute_deep(fields, resolved)
+        log.update({"category": "Benign", "status": "active",
+                    "timestamp": "2026-07-16T11:58:00+00:00"})
+        sup_logs.append(log)
+        m = {"id": sup["id"], "host": sup["host"]}
+        if "user" in sup:
+            m["user"] = sup["user"]
+        sup_meta.append(m)
+    return sc, logs, sup_logs, sup_meta, env
+
+
+def _build(label, scenario_id=None):
+    sc, logs, sup_logs, sup_meta, env = _render(label)
+    return dt.build_scenario_detections(
+        scenario_id or f"scenario-{label}", sc, logs, SEED,
+        supplemental_logs=sup_logs, supplemental_meta=sup_meta, concrete_env=env)
 
 
 def _assert_clean(payload):
@@ -66,40 +88,50 @@ def _assert_clean(payload):
 
 
 def test_scenario_detection_builds_and_carries_disposition():
-    sc, logs = _render("lateral_movement_1")
-    dets = dt.build_scenario_detections("scenario-lm1", sc, logs, SEED)
-    assert len(dets) == 1
-    inst = dets[0]
-    assert inst["disposition"] == "true_positive"       # server-side present
-    assert inst["scenario_id"] == "scenario-lm1"
-    assert inst["rule_name"]
-    assert inst["triggering_events"], "detail card needs the trigger event"
+    dets = _build("lateral_movement_1")
+    # density pilot: 2 TP + 1 coexisting FP (the FP triggers on a supplemental
+    # event, so it only resolves when supplemental logs are rendered too)
+    assert len(dets) == 3
+    keys = {d["detection_key"]: d["disposition"] for d in dets}
+    assert keys["det_lateral_logon"] == "true_positive"
+    assert keys["det_portscan_exec"] == "true_positive"
+    assert keys["det_scanner_sweep"] == "false_positive"
+    for inst in dets:
+        assert inst["scenario_id"] == "scenario-lateral_movement_1"
+        assert inst["triggering_events"], "detail card needs the trigger event"
+
+
+def test_supplemental_triggered_detection_entity_is_actor():
+    """The scanner-sweep FP triggers on a firewall supplemental event; its
+    entity resolves to the scanner host (source), not the firewall."""
+    dets = _build("lateral_movement_1")
+    sweep = next(d for d in dets if d["detection_key"] == "det_scanner_sweep")
+    assert sweep["entity"]["host"] == "ACME-SEC01"
 
 
 def test_sanitize_strips_disposition_and_linkage():
-    sc, logs = _render("lateral_movement_1")
-    inst = dt.build_scenario_detections("scenario-lm1", sc, logs, SEED)[0]
-    for include in (False, True):
-        view = dt.sanitize_detection(inst, include_events=include)
-        _assert_clean(view)
-        assert "disposition" not in view
-        assert view["rule_name"] == inst["rule_name"]
+    for inst in _build("lateral_movement_1"):
+        for include in (False, True):
+            view = dt.sanitize_detection(inst, include_events=include)
+            _assert_clean(view)
+            assert "disposition" not in view
+            assert view["rule_name"] == inst["rule_name"]
 
 
 def test_sanitized_triggering_events_are_whitelisted():
-    sc, logs = _render("malware_usb")
-    inst = dt.build_scenario_detections("scenario-usb", sc, logs, SEED)[0]
-    view = dt.sanitize_detection(inst, include_events=True)
-    for ev in view["triggering_events"]:
-        assert set(ev).issubset(set(dt.EVENT_WHITELIST)), ev
-    _assert_clean(view)
+    for label in ("malware_usb", "lateral_movement_1"):
+        for inst in _build(label):
+            view = dt.sanitize_detection(inst, include_events=True)
+            for ev in view["triggering_events"]:
+                assert set(ev).issubset(set(dt.EVENT_WHITELIST)), ev
+            _assert_clean(view)
 
 
 def test_fp_scenario_detection_disposition():
-    sc, logs = _render("false_positive_veeam")
-    inst = dt.build_scenario_detections("scenario-veeam", sc, logs, SEED)[0]
-    assert inst["disposition"] == "false_positive"
-    _assert_clean(dt.sanitize_detection(inst, include_events=True))
+    dets = _build("false_positive_veeam")
+    assert dets and all(d["disposition"] == "false_positive" for d in dets)
+    for inst in dets:
+        _assert_clean(dt.sanitize_detection(inst, include_events=True))
 
 
 def test_benign_detections_deterministic_and_benign():
@@ -128,9 +160,27 @@ def test_benign_only_on_eligible_roles():
 
 def test_whole_corpus_detections_sanitize_clean():
     for label in CATALOG:
-        sc, logs = _render(label)
-        for inst in dt.build_scenario_detections(f"scenario-{label}", sc, logs, SEED):
+        for inst in _build(label):
             _assert_clean(dt.sanitize_detection(inst, include_events=True))
+
+
+def test_supplemental_events_never_carry_answer_fields():
+    """Supplemental benign telemetry, rendered into the pool, must carry no
+    disposition/answer field and sanitize like any event."""
+    for label in CATALOG:
+        _, _, sup_logs, _, _ = _render(label)
+        for log in sup_logs:
+            blob = json.dumps(log)
+            for bad in ("disposition", "answer_key", "true_positive",
+                        "false_positive", "benign_expected"):
+                assert bad not in blob, f"{label}: supplemental event leaked {bad}"
+            assert set(dt.sanitize_event(log)).issubset(set(dt.EVENT_WHITELIST))
+
+
+def test_density_no_single_authored_detection():
+    """Pilot acceptance: the lateral_movement_1 pilot has more than one
+    authored detection (false_positive_veeam lands in commit B)."""
+    assert len(CATALOG["lateral_movement_1"]["detections"]) >= 2
 
 
 if __name__ == "__main__":

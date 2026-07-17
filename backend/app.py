@@ -964,6 +964,21 @@ SERVERS = {
     # the environment and its events, never a managed endpoint.
     "proxy": {"hostname": "ACME-SVR06", "ip": "10.0.1.205", "desc": "Proxy (PAN-OS VM-Series)"},
     "backup": {"hostname": "ACME-VEEAM01", "ip": "10.0.1.206", "desc": "Backup Server"},
+    # Stage 2 density: security team's vulnerability-scanner host, a recurring
+    # benign actor whose scheduled sweeps trip recon rules. Managed Windows.
+    "scan": {"hostname": "ACME-SEC01", "ip": "10.0.1.207", "desc": "Security Scanner"},
+}
+
+# Canonical non-roster accounts (service/admin), referenced by supplemental
+# benign telemetry. name, domain scope, type, groups, and the hosts they run
+# on. Authorization ground truth (that these are legitimate) stays server-side;
+# their evidence (account type, host role, group) is world-visible.
+SERVICE_ACCOUNTS = {
+    "svc_vulnscan": {
+        "username": "svc_vulnscan", "domain": "ACME", "type": "service",
+        "groups": ["Domain Users", "Scanning Service Accounts"],
+        "hosts": ["ACME-SEC01"],
+    },
 }
 
 # Network firewalls
@@ -2257,16 +2272,49 @@ def build_attack_chain_logs(session, scenario_entry, employee=None):
             resolved = scenario_loader.resolve_entities(
                 entry, EMPLOYEES, SERVERS, rng=_ForcedChoice(emp))
             concrete_env = scenario_loader.substitute_deep(entry["environment"], resolved)
+
+            # Stage 2 density: render authored supplemental benign telemetry at
+            # its authored offset (relative to base_time, may be negative).
+            sup_logs, sup_meta = [], []
+            for sup in entry.get("supplemental_events", []):
+                fields = {k: v for k, v in sup.items()
+                          if k not in ("offset", "host", "user", "id")}
+                log = scenario_loader.substitute_deep(fields, resolved)
+                log["timestamp"] = (base_time + timedelta(seconds=sup["offset"])).isoformat()
+                log["id"] = str(uuid.uuid4())
+                if not log.get("severity"):
+                    log["severity"] = "low"
+                # benign: no attack category, not flagged, no scenario linkage
+                # in the pool. Detection linkage is passed in-memory below.
+                log["category"] = "Benign"
+                log["status"] = "active"
+                log["chain_complete"] = True
+                sup_logs.append(log)
+                m = {"id": sup["id"], "host": sup["host"]}
+                if "user" in sup:
+                    m["user"] = sup["user"]
+                sup_meta.append(m)
+
             with session["io_lock"]:
                 snapshot_generator.extend_world(
                     session["world"], entry, concrete_env, threat_logs,
-                    session["id"], RESERVED_PIDS, SERVERS)
-                # Stage 2: this scenario's authored detections, plus ambient
-                # benign detections for any host now seen for the first time.
+                    session["id"], RESERVED_PIDS, SERVERS,
+                    supplemental=(sup_logs, sup_meta))
+                # supplemental logs join the pool immediately (raw append; we
+                # already hold io_lock, so append_ndjson would deadlock).
+                if sup_logs:
+                    with open(session["paths"]["generated_logs"], "a", encoding="utf-8") as f:
+                        for log in sup_logs:
+                            f.write(json.dumps(log) + "\n")
+                # Stage 2: this scenario's authored detections (triggering on
+                # attack or supplemental events), plus ambient benign
+                # detections for any host now seen for the first time.
                 if "detections" in session:
                     session["detections"].extend(
                         detection_templates.build_scenario_detections(
-                            scenario_id, entry, threat_logs, session["id"]))
+                            scenario_id, entry, threat_logs, session["id"],
+                            supplemental_logs=sup_logs, supplemental_meta=sup_meta,
+                            concrete_env=concrete_env))
                     started = session["world"].get("started_at")
                     accounts = concrete_env.get("accounts", [])
                     for host in concrete_env["hosts"]:

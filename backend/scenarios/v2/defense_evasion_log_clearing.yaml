@@ -191,6 +191,10 @@ attack:
 
 noise: {}
 
+supplemental_events: []
+
+supplemental_entities: []
+
 detections:
   - id: "det_log_cleared"
     rule_name: "Windows Security Event Log Cleared (1102)"

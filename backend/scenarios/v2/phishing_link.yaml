@@ -198,6 +198,10 @@ attack:
 
 noise: {}
 
+supplemental_events: []
+
+supplemental_entities: []
+
 detections:
   - id: "det_link_payload"
     rule_name: "Payload Process Spawned After Email Link Click"

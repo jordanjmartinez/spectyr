@@ -97,18 +97,41 @@ def _evidence_sha256(session_seed, event):
 
 # --- scenario detections ------------------------------------------------------
 
+# Sensor sources report on behalf of the traffic origin, so the detection
+# entity is the source host (by source_ip), not the reporting device.
+_SENSOR_SOURCES = {"Firewall", "Proxy", "DNS"}
+
+
 def build_scenario_detections(scenario_id, catalog_entry, rendered_logs,
-                              session_seed):
+                              session_seed, supplemental_logs=None,
+                              supplemental_meta=None, concrete_env=None):
     """Materialize a scenario's authored detections into session instances.
 
-    Each authored detection fires on trigger step id(s); the matching rendered
-    log(s) are attached for the detail card. Entity and time come from the
-    first trigger event. The answer-key disposition is carried server-side.
+    Each authored detection fires on attack step id(s) and/or supplemental
+    event id(s); the matching rendered log(s) are attached for the detail
+    card. Entity is the actor host (resolved from source_ip for sensor
+    events), and time comes from the first trigger event. The answer-key
+    disposition is carried server-side.
     """
-    meta = catalog_entry.get("attack_meta", [])
     id_to_log = {}
-    for m, log in zip(meta, rendered_logs):
+    for m, log in zip(catalog_entry.get("attack_meta", []), rendered_logs):
         id_to_log[m["id"]] = log
+    for m, log in zip(supplemental_meta or [], supplemental_logs or []):
+        id_to_log[m["id"]] = log
+
+    ip_to_host = {}
+    if concrete_env:
+        for h in concrete_env.get("hosts", []):
+            if h.get("ip"):
+                ip_to_host[h["ip"]] = h["hostname"]
+
+    def entity_host(log):
+        # sensor events (firewall/proxy/dns) report on behalf of the source
+        if log.get("source_type") in _SENSOR_SOURCES:
+            src = log.get("source_ip")
+            if src in ip_to_host:
+                return ip_to_host[src]
+        return log.get("hostname")
 
     out = []
     for det in catalog_entry.get("detections", []):
@@ -129,7 +152,7 @@ def build_scenario_detections(scenario_id, catalog_entry, rendered_logs,
             "mitre": det.get("mitre"),
             "yara_rule_name": det.get("yara_rule_name"),
             "description": det["description"],
-            "entity": {"host": first.get("hostname"), "account": account},
+            "entity": {"host": entity_host(first), "account": account},
             "time": first.get("timestamp"),
             "triggering_events": trig_logs,
             "sha256": _evidence_sha256(session_seed, first),  # fictional, evidence

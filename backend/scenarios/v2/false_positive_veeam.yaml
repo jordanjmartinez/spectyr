@@ -191,6 +191,10 @@ attack:
 
 noise: {}
 
+supplemental_events: []
+
+supplemental_entities: []
+
 detections:
   - id: "det_fp_veeam"
     rule_name: "Periodic Off-Hours Outbound Beacon (Backup Agent)"

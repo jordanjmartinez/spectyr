@@ -424,6 +424,8 @@ ROLE_LISTENING = {
                ("tcp", 10006, "Veeam.Backup.Service.exe")],
     "server": [("tcp", 135, "svchost.exe"), ("tcp", 445, "System"),
                ("tcp", 3389, "svchost.exe"), ("tcp", 5985, "System")],
+    "scanner": [("tcp", 135, "svchost.exe"), ("tcp", 445, "System"),
+                ("tcp", 3389, "svchost.exe"), ("tcp", 5985, "System")],
 }
 
 

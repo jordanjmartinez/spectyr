@@ -578,11 +578,13 @@ def _sort_merged(snapshot):
 # --- world assembly -----------------------------------------------------------------
 
 def extend_world(world, scenario, concrete_env, rendered_logs, session_seed,
-                 reserved_pids, servers):
+                 reserved_pids, servers, supplemental=None):
     """Fold one dripped scenario into the session world (caller holds the
     session lock). Baselines build once per host and persist; attack
-    artifacts merge on top. PAN-OS devices (firewall, proxy) are log
-    sources, never endpoints. Returns the hostnames touched."""
+    artifacts merge on top, then authored supplemental benign telemetry
+    (same integrity: PID/PPID/host resolution, snapshot consistency). PAN-OS
+    devices (firewall, proxy) are log sources, never endpoints. Returns the
+    hostnames touched."""
     session_started_at = world.get("started_at") or (
         rendered_logs[0].get("timestamp") if rendered_logs else None)
     world.setdefault("org", concrete_env.get("org", {}))
@@ -606,6 +608,14 @@ def extend_world(world, scenario, concrete_env, rendered_logs, session_seed,
         host = hosts_by_id.get(m["host"])
         if host is None:
             continue  # actor is a non-endpoint (never the case today)
+        per_host.setdefault(host["hostname"], []).append((log, m))
+
+    # supplemental benign telemetry merges the same way, tagged by its own host
+    sup_logs, sup_meta = supplemental if supplemental else ([], [])
+    for log, m in zip(sup_logs, sup_meta):
+        host = hosts_by_id.get(m["host"])
+        if host is None:
+            continue
         per_host.setdefault(host["hostname"], []).append((log, m))
 
     scenario_id = rendered_logs[0].get("scenario_id") if rendered_logs else None

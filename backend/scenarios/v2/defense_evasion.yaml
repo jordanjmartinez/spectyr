@@ -209,6 +209,10 @@ attack:
 
 noise: {}
 
+supplemental_events: []
+
+supplemental_entities: []
+
 detections:
   - id: "det_av_disabled"
     rule_name: "Endpoint Protection Real-Time Scanning Disabled"

@@ -273,13 +273,14 @@ def test_detections_load_and_reference_real_steps():
     for label, sc in catalog.items():
         dets = sc["detections"]
         assert dets, f"{label}: no detections"
-        step_ids = {m["id"] for m in sc["attack_meta"]}
+        triggerable = ({m["id"] for m in sc["attack_meta"]}
+                       | {s["id"] for s in sc.get("supplemental_events", [])})
         det_ids = [d["id"] for d in dets]
         assert len(det_ids) == len(set(det_ids)), f"{label}: dup detection ids"
         is_fp = sc["category"] == "False Positive"
         tp = 0
         for d in dets:
-            assert set(d["triggers"]) <= step_ids, f"{label}/{d['id']}: bad triggers"
+            assert set(d["triggers"]) <= triggerable, f"{label}/{d['id']}: bad triggers"
             assert d["severity"] in ("critical", "high", "medium")
             assert d["rule_type"] in ("sigma_behavioral", "yara")
             if d["rule_type"] == "yara":
@@ -289,6 +290,54 @@ def test_detections_load_and_reference_real_steps():
                 assert not is_fp, f"{label}: FP scenario has a TP detection"
         if not is_fp:
             assert tp >= 1, f"{label}: attack scenario needs a TP detection"
+
+
+def test_registry_resolution_supplemental_hosts_and_accounts():
+    """Every host and account a supplemental event references resolves to the
+    scenario's declared environment (canonical) or supplemental_entities. No
+    entity exists only inside an event string."""
+    catalog, _ = _load_corpus()
+    for label, sc in catalog.items():
+        sups = sc.get("supplemental_events", [])
+        if not sups:
+            continue
+        env_host_ids = {h["id"] for h in sc["environment"]["hosts"]}
+        env_account_ids = {a["id"] for a in sc["environment"]["accounts"]}
+        for sup in sups:
+            assert sup["host"] in env_host_ids, \
+                f"{label}: supplemental {sup['id']} host {sup['host']} unresolved"
+            if "user" in sup:
+                assert sup["user"] in env_account_ids, \
+                    f"{label}: supplemental {sup['id']} user {sup['user']} unresolved"
+        # supplemental entities carry a resolvable value
+        for ent in sc.get("supplemental_entities", []):
+            assert ent["value"], f"{label}: empty supplemental_entity value"
+
+
+def test_supplemental_events_have_unique_ids_vs_attack():
+    catalog, _ = _load_corpus()
+    for label, sc in catalog.items():
+        step_ids = {m["id"] for m in sc["attack_meta"]}
+        sup_ids = [s["id"] for s in sc.get("supplemental_events", [])]
+        assert all(s.startswith("sup") for s in sup_ids), f"{label}: sup id prefix"
+        assert not (set(sup_ids) & step_ids), f"{label}: id collision"
+        assert len(sup_ids) == len(set(sup_ids)), f"{label}: dup supplemental ids"
+
+
+def test_detection_triggers_on_supplemental():
+    """The lateral_movement_1 coexisting FP triggers on a supplemental event."""
+    catalog, _ = _load_corpus()
+    sc = catalog["lateral_movement_1"]
+    sup_ids = {s["id"] for s in sc["supplemental_events"]}
+    sweep = next(d for d in sc["detections"] if d["id"] == "det_scanner_sweep")
+    assert set(sweep["triggers"]) <= sup_ids
+    assert sweep["disposition"] == "false_positive"
+
+
+def test_rejects_detection_triggering_unknown_supplemental():
+    doc = _one_valid_doc()  # lateral_movement_1
+    doc["detections"][-1]["triggers"] = ["sup_missing"]
+    _expect_error(doc, "unknown")
 
 
 def test_log_clearing_tp_detection_binds_to_1102_step():
@@ -309,15 +358,16 @@ def test_rejects_fp_scenario_with_true_positive_detection():
 
 
 def test_rejects_attack_without_true_positive_detection():
-    doc = _one_valid_doc()  # lateral_movement_1, an attack
-    doc["detections"][0]["disposition"] = "benign_expected"
+    doc = _one_valid_doc()  # lateral_movement_1, an attack (multiple detections)
+    for d in doc["detections"]:
+        d["disposition"] = "benign_expected"
     _expect_error(doc, "needs at least one true_positive detection")
 
 
 def test_rejects_detection_trigger_on_unknown_step():
     doc = _one_valid_doc()
     doc["detections"][0]["triggers"] = ["s99"]
-    _expect_error(doc, "unknown step")
+    _expect_error(doc, "unknown attack/supplemental event")
 
 
 def test_rejects_yara_without_rule_name():
