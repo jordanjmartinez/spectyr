@@ -249,6 +249,167 @@ def apply_overlay(view, overlay):
     return view
 
 
+# --- action engine (Stage 3a.2) ------------------------------------------------
+
+# Action name -> the entity kind its target must resolve to. The API rejects
+# any id of another kind as a client error before the attempt exists.
+ACTION_TARGET_KINDS = {
+    "isolate_host": "host",
+    "release_host": "host",
+    "kill_process": "process",
+    "delete_file": "file",
+    "disable_account": "account",
+    "revoke_sessions": "account",
+    "force_password_reset": "account",
+}
+
+SUCCESS = "success"
+NO_OP = "no_op"
+FAILED = "failed_precondition"
+
+# Identity action -> (state flag, no_op reason when already in target state)
+_IDENTITY_ACTIONS = {
+    "disable_account": ("disabled", "Account is already disabled."),
+    "revoke_sessions": ("sessions_revoked",
+                        "Sessions for this account are already revoked."),
+    "force_password_reset": ("password_reset",
+                             "A password reset has already been completed for this account."),
+}
+
+
+def _host_file_set(snap):
+    """Every file path the base snapshot carries (process images plus
+    autorun-borne executables), in composite-key form."""
+    files = set()
+    for p in snap["processes"]:
+        np = norm_path(p.get("path"))
+        if np:
+            files.add(np)
+    for a in snap["autoruns"]:
+        np = norm_path(extract_image_path(a.get("command") or ""))
+        if np:
+            files.add(np)
+    return files
+
+
+def execute(world, overlay, entry, action):
+    """One validated action attempt against the overlay (the base world is
+    read, never written). Caller holds the session lock and has already
+    resolved `entry` from the registry with the kind matched to `action`.
+    Returns (outcome, reason); reason is the in-fiction explanation for
+    no_op and failed_precondition outcomes, None on success.
+    """
+    if action in ("isolate_host", "release_host"):
+        hostname = entry["hostname"]
+        snap = world["hosts"].get(hostname)
+        if action == "isolate_host":
+            if snap is not None and snap.get("status") == "offline":
+                return FAILED, ("Host is offline. The isolation command could "
+                                "not be delivered to the endpoint agent.")
+            if hostname in overlay["isolated"]:
+                return NO_OP, "Host is already isolated."
+            overlay["isolated"].add(hostname)
+            return SUCCESS, None
+        if hostname not in overlay["isolated"]:
+            return FAILED, "Host is not isolated. There is nothing to release."
+        overlay["isolated"].discard(hostname)
+        return SUCCESS, None
+
+    if action == "kill_process":
+        hostname, pid = entry["hostname"], entry["pid"]
+        if (hostname, pid) in overlay["killed"]:
+            return NO_OP, "Process is already terminated."
+        snap = world["hosts"].get(hostname)
+        alive = snap is not None and any(
+            p["pid"] == pid for p in snap["processes"])
+        if not alive:
+            return FAILED, (f"No running process with PID {pid} was found "
+                            f"on {hostname}.")
+        overlay["killed"].add((hostname, pid))
+        return SUCCESS, None
+
+    if action == "delete_file":
+        hostname, path = entry["hostname"], entry["path"]
+        if (hostname, path) in overlay["deleted_files"]:
+            return NO_OP, "File is already deleted."
+        snap = world["hosts"].get(hostname)
+        if snap is None or path not in _host_file_set(snap):
+            return FAILED, "File not found at the specified path."
+        overlay["deleted_files"].add((hostname, path))
+        return SUCCESS, None
+
+    if action in _IDENTITY_ACTIONS:
+        flag, already = _IDENTITY_ACTIONS[action]
+        key = account_key(entry["domain"], entry["username"])
+        state = overlay["accounts"].setdefault(key, _identity_state())
+        if state[flag]:
+            return NO_OP, already
+        state[flag] = True
+        return SUCCESS, None
+
+    raise ValueError(f"unknown action {action!r}")  # route validates first
+
+
+def target_label(entry):
+    """Human display for an action target, composed of world-visible values
+    only (the same values the endpoint and detection views already render)."""
+    kind = entry["kind"]
+    if kind == "host":
+        return entry["hostname"]
+    if kind == "process":
+        return f"{entry['name']} (PID {entry['pid']}) on {entry['hostname']}"
+    if kind == "file":
+        return f"{entry['display']} on {entry['hostname']}"
+    return f"{entry['domain']}\\{entry['username']}"
+
+
+def record_attempt(overlay, started_at, action, target_id, entry, outcome, reason):
+    """Append one attempt to the action log. Deterministic by construction:
+    the logical timestamp is the frozen session clock plus the monotonic
+    sequence number, never the wall clock, and the entry carries no random
+    ids. Callers only reach this with a registry-validated target, and a
+    non-empty registry implies the session world (and started_at) exists.
+    """
+    overlay["seq"] += 1
+    ts = (datetime.fromisoformat(started_at)
+          + timedelta(seconds=overlay["seq"])).replace(microsecond=0)
+    log_entry = {
+        "seq": overlay["seq"],
+        "timestamp": ts.isoformat(),
+        "action": action,
+        "target": {"id": target_id, "kind": entry["kind"],
+                   "label": target_label(entry)},
+        "outcome": outcome,
+        "reason": reason,
+    }
+    overlay["log"].append(log_entry)
+    return log_entry
+
+
+def sanitize_action_entry(log_entry):
+    """Client-safe action log entry: the whitelist is the entire shape.
+    Target serializes as id + kind + display label only; composite keys and
+    registry internals never leave the server as machine-readable fields."""
+    return {
+        "seq": log_entry["seq"],
+        "timestamp": log_entry["timestamp"],
+        "action": log_entry["action"],
+        "outcome": log_entry["outcome"],
+        "reason": log_entry.get("reason"),
+        "target": {"id": log_entry["target"]["id"],
+                   "kind": log_entry["target"]["kind"],
+                   "label": log_entry["target"]["label"]},
+    }
+
+
+def identity_state_for(overlay, domain, username):
+    """The current identity state for an account, defaults when untouched.
+    For rendering account chips wherever the account appears in current
+    state."""
+    state = overlay["accounts"].get(account_key(domain, username))
+    return dict(state) if state else _identity_state()
+
+
 def annotate_view(view, session_seed):
     """Attach client entity ids to a rendered (base+overlay) host view so
     the UI can address action targets. Ids only; composites never leave

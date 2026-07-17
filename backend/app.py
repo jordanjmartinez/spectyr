@@ -2529,7 +2529,7 @@ def get_detections():
     sanitize_detection: server-side dispositions never reach the client."""
     s = g.session
     with s["io_lock"]:
-        dets = [detection_templates.sanitize_detection(d)
+        dets = [_attach_account_ref(detection_templates.sanitize_detection(d), s)
                 for d in s.get("detections", [])]
     # Component 1: deterministic stable-key order (no authored-first/ambient-last
     # or time-based ordering that would encode disposition).
@@ -2546,7 +2546,9 @@ def get_detection_detail(det_id):
     s = g.session
     with s["io_lock"]:
         inst = s.get("detection_index", {}).get(det_id)
-        view = detection_templates.sanitize_detection(inst, include_events=True) if inst else None
+        view = (_attach_account_ref(
+                    detection_templates.sanitize_detection(inst, include_events=True), s)
+                if inst else None)
     if view is None:
         return jsonify({"error": "Unknown detection"}), 404
     return jsonify(view)
@@ -2575,11 +2577,75 @@ def get_threats():
     """Promoted detections: the Threats view (Stage 3+ response lives here)."""
     s = g.session
     with s["io_lock"]:
-        threats = [detection_templates.sanitize_detection(d, include_events=True)
+        threats = [_attach_account_ref(
+                       detection_templates.sanitize_detection(d, include_events=True), s)
                    for d in s.get("detections", []) if d["player_action"] == "promoted"]
     # Component 1: same deterministic stable-key order as the feed.
     threats = detection_templates.order_detections_for_client(threats)
     return jsonify({"threats": threats})
+
+
+def _attach_account_ref(view, s):
+    """Stage 3a: attach the account entity id and its CURRENT identity state
+    to a sanitized detection view, so identity actions can target the account
+    wherever it renders. Derived values only: the entity id is stable-key,
+    the state is overlay response state; no answer-key linkage exists here.
+    Caller holds io_lock."""
+    ent = view.get("entity") or {}
+    acct = ent.get("account")
+    if not acct:
+        return view
+    eid = action_overlay.resolve_account_key(acct, s.get("entity_index", {}))
+    ent["account_id"] = eid
+    if eid:
+        entry = s["entity_index"][eid]
+        ent["account_state"] = action_overlay.identity_state_for(
+            s["overlay"], entry["domain"], entry["username"])
+    else:
+        ent["account_state"] = None
+    return view
+
+
+@app.route('/api/actions', methods=['POST'])
+def execute_response_action():
+    """Execute one response action against a client entity id.
+
+    Body: {"action": <name>, "target": <ent-id>}. The target must be a
+    session entity id of the kind the action operates on; anything else is
+    a client error and is NOT written to the action log. Valid attempts
+    always log, with outcome success / no_op / failed_precondition and an
+    in-fiction reason where applicable. All effects live in the overlay;
+    the base world and the event record never change.
+    """
+    s = g.session
+    body = request.get_json(silent=True) or {}
+    action = body.get("action")
+    kind = action_overlay.ACTION_TARGET_KINDS.get(action)
+    if kind is None:
+        return jsonify({"error": "Unknown action."}), 400
+    target_id = body.get("target")
+    with s["io_lock"]:
+        entry = s.get("entity_index", {}).get(target_id)
+        if entry is None or entry["kind"] != kind:
+            # invalid, stale, or wrong-kind target: rejected, never logged
+            return jsonify({"error": "Unknown target for this action."}), 400
+        outcome, reason = action_overlay.execute(
+            s["world"], s["overlay"], entry, action)
+        log_entry = action_overlay.record_attempt(
+            s["overlay"], s["world"]["started_at"], action, target_id, entry,
+            outcome, reason)
+        view = action_overlay.sanitize_action_entry(log_entry)
+    return jsonify(view)
+
+
+@app.route('/api/actions', methods=['GET'])
+def get_response_actions():
+    """The session Response Log: every attempt, oldest first, sanitized."""
+    s = g.session
+    with s["io_lock"]:
+        entries = [action_overlay.sanitize_action_entry(e)
+                   for e in s.get("overlay", {}).get("log", [])]
+    return jsonify({"actions": entries, "count": len(entries)})
 
 
 @app.route("/api/reset-simulator", methods=["POST"])
