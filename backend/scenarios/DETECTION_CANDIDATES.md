@@ -609,3 +609,214 @@ already-established, already-flagged actor:
 On approval I implement one scenario per commit, run full gates after the
 batch, print the distribution report (per-scenario mix, severity spread, **FP
 severity rank**, source spread), and STOP for review.
+
+---
+
+# BATCH 3 DONE (commits 87497e1, a56959c, f423cd3, b3e0588; +86950a7 follow-up).
+
+# STEP 3c BATCH 4 — candidate narratives (SCAFFOLD, awaiting approval)
+
+The final six: **brute_force_attack, defense_evasion_log_clearing,
+insider_staging, phishing_1, phishing_link** (attacks) + **false_positive_ssl_
+inspection** (FP). One scenario per commit on approval.
+
+## Batch 4 focus: finish the FP severity-rank de-correlation
+
+After batch 3 the attack-scenario FP-rank stands at **shared-top 5 / bottom 4 /
+middle 1 / sole-top 0** (10 instances; shared-top 50%). Batch 4 introduces the
+corpus's **first sole-top FPs** plus more middle/bottom, **zero new shared-top**,
+to bring shared-top to ~5/15 (33%) and spread the other ranks:
+
+| Scenario | Category | Mix | FP sev | **FP rank** |
+|---|---|---|---|---|
+| brute_force_attack | Brute Force | 2TP+1FP | critical | **sole-top** |
+| insider_staging | Insider Threat | 2TP+1FP | critical | **sole-top** |
+| phishing_1 | Phishing | 2TP+1FP | high | **middle** (crit + med TPs) |
+| phishing_link | Phishing | 2TP+1FP | high | **middle** (crit + med TPs) |
+| defense_evasion_log_clearing | Defense Evasion | 2TP+1FP | medium | **bottom** (two high TPs) |
+| false_positive_ssl_inspection | False Positive | 3FP | med/high/med | all-FP |
+
+**Entity discipline: zero new invented identities.** Every FP reuses an
+established, already-flagged actor (svc_backup / ACME-VEEAM01, the Veeam agent,
+the SharePoint tenant, MS Office/outlook, Windows built-ins). No vendor identity
+needs verification; the only set-dressing additions are canonical hosts/accounts
+joined to a scenario env via the established `SCENARIO_CANONICAL_ACCOUNTS` +
+`build_environment` mechanism (same as lateral_movement_1 / password_spray).
+
+## B4.1 brute_force_attack (Brute Force, T1110.001) — 2TP + 1FP
+
+Chain: s1-s4 4625 failures from an external source, s5 4740 lockout (trigger,
+TP). Env: dc.
+
+- **D1 KEEP** `det_lockout` (TP, sigma, **high**, s5): account lockout after
+  external failures. mitre T1110.001.
+- **D2 ADD** `det_bruteforce_burst` (TP, sigma, **medium**, s1): "Repeated
+  Failed Logons from a Single External Source". The 4625 burst preceding the
+  lockout. mitre T1110.001 (pinned, scenario's own).
+- **D3 ADD** `det_privileged_lockout_fp` (FP, sigma, **critical**, supplemental
+  **sup1**): "Privileged Service Account Locked Out". A backup service account
+  locked out on the DC reads like a targeted attack on backup infrastructure
+  (critical). Benign: `svc_backup` failed repeatedly after a password rotation
+  wasn't propagated, then locked out. Resolution: one privileged service account
+  from the internal backup server on a rotation window, vs the attack's targeted
+  user from an external source.
+  - **sup1**: 4740 lockout (optionally preceded by a small 4625 burst) on the DC
+    for `svc_backup`, source `ACME-VEEAM01`. In-window -> **RED HERRING: true**
+    (two lockout signals, distinguished by account privilege + source).
+  - entities NEEDED: **REUSE** `svc_backup` + `ACME-VEEAM01` (canonical). Add
+    both to this scenario's env via `SCENARIO_CANONICAL_ACCOUNTS` (as
+    password_spray already does). No new identity.
+
+FP rank: TPs **high + medium**, FP **critical** -> **SOLE-TOP** (a new rank; the
+scariest detection is the benign one).
+
+## B4.2 insider_staging (Insider Threat, T1074.001) — 2TP + 1FP
+
+Chain: s1 4624 logon, s2 5140 sensitive-share access, s3 FileCreate local
+staging, s4 NetworkConnect, s5 HTTP_CONNECT to an external exfil host (trigger,
+TP). Env: workstation, file, proxy.
+
+- **D1 KEEP** `det_staging` (TP, sigma, bumped medium -> **high**, s5): sensitive
+  share access then local staging then an outbound connection. mitre T1074.001.
+- **D2 ADD** `det_share_harvest` (TP, sigma, **medium**, s2): "Sensitive Share
+  Accessed Outside Role" (5140). mitre T1074.001 (pinned, scenario's own).
+- **D3 ADD** `det_mass_egress_fp` (FP, sigma, **critical**, supplemental
+  **sup1**): "Large Off-Hours Data Egress Volume". A large volume leaving the
+  host off-hours reads like mass exfiltration (critical). Benign: the scheduled
+  Veeam endpoint backup completing a large transfer to the internal backup
+  repository. Resolution: signed Veeam agent to the internal backup server on
+  schedule, vs the attack's outbound to an external exfil host.
+  - **sup1**: a Veeam backup-completion / large NetworkConnect from the victim
+    workstation to `ACME-VEEAM01` (>1.75 GB). In-window -> **RED HERRING: true**.
+    Reuses the established Veeam identity (`_VEEAM_SVC`, ACME-VEEAM01) and mirrors
+    false_positive_veeam's critical bulk-egress FP shape. No new identity.
+
+FP rank: TPs **high + medium**, FP **critical** -> **SOLE-TOP**.
+
+## B4.3 phishing_1 (Phishing, T1583.001) — 2TP + 1FP
+
+Chain: s1 GET lookalike/signin, s2 POST creds to lookalike, s3 SigninLogs, s4
+AADUserRiskEvents impossible-travel (trigger, TP). Env: workstation, proxy;
+Azure AD events.
+
+- **D1 KEEP** `det_impossible_travel` (TP, sigma, bumped high -> **critical**,
+  s4): Entra confirmed impossible-travel risk = account takeover. mitre
+  T1583.001 (unchanged).
+- **D2 ADD** `det_credential_post` (TP, sigma, **medium**, s2): "Credentials
+  Submitted to a Lookalike Sign-In Page". mitre **T1566.002** (pinned; the
+  Spearphishing-Link technique accurately fits the credential-submission action;
+  flagged here because it is borrowed from phishing_link's answer key — pinned,
+  so no new string. Alternatively omit the tag; owner's call).
+- **D3 ADD** `det_benign_risky_signin_fp` (FP, sigma, **high**, supplemental
+  **sup1**): "Risky Sign-In From New Location". A risky sign-in from an
+  unexpected location reads like the account-takeover TP. Benign: a
+  non-interactive OAuth refresh-token renewal from a new-but-known device with
+  MFA satisfied (reuses the false_positive_oauth benign-auth pattern; no new
+  external entity — it concerns the user's own account). Resolution: no
+  preceding credential POST, non-interactive token, known device.
+  - **sup1**: an Azure AD SigninLogs / risk entry for a benign non-interactive
+    sign-in. In-window -> **RED HERRING: true**. **Implementation check:** Azure
+    AD is not a sensor source, so the detection entity resolves from the event
+    `hostname`; confirm phishing_1's Azure AD steps carry a resolvable host.
+
+FP rank: TPs **critical + medium**, FP **high** -> **MIDDLE**.
+
+## B4.4 phishing_link (Phishing, T1566.002) — 2TP + 1FP
+
+Chain: s1 DNS phish domain, s2 GET invoice lure, s3 Invoice.exe from Downloads
+(trigger, TP), s4 PowerShell, s5 SetValue Run key. Env: workstation, dns, proxy.
+
+- **D1 KEEP** `det_link_payload` (TP, sigma, bumped high -> **critical**, s3): a
+  malicious executable launched from Downloads right after the link click. mitre
+  T1566.002.
+- **D2 ADD** `det_payload_persistence` (TP, sigma, **medium**, s5): "Run Key
+  Persistence Written by a Downloaded Payload". mitre **T1547.001** (pinned;
+  already in `PINNED_DETECTION_TECHNIQUES`).
+- **D3 ADD** `det_doc_download_fp` (FP, sigma, **high**, supplemental **sup1**):
+  "Document Downloaded From an External Site". A document fetched from an
+  external site reads like the invoice lure. Benign: a routine download from the
+  sanctioned SharePoint/OneDrive tenant. Resolution: sanctioned corporate tenant
+  vs the phishing domain.
+  - **sup1**: a Proxy GET/download of a document from `acme-my.sharepoint.com`
+    by the victim. In-window -> **RED HERRING: true**. **REUSE** the
+    byte-identical SharePoint tenant literal (`_SHAREPOINT_TENANT`) — this is the
+    **fourth** consumer; update the BACKLOG org-prefix note. No new identity.
+
+FP rank: TPs **critical + medium**, FP **high** -> **MIDDLE**.
+
+## B4.5 defense_evasion_log_clearing (Defense Evasion, T1070.001) — 2TP + 1FP
+
+Chain: s1-s3 WMI event-subscription persistence, s4 wevtutil ProcessCreate, s5
+1102 Security-log cleared (trigger, TP), s6 wevtutil ProcessCreate. Env:
+workstation. **The s5 binding (classification_event = s5, pinned T1070.001 /
+Defense Evasion) is UNTOUCHED; density surrounds it, never replaces it.**
+
+- **D1 KEEP** `det_log_cleared` (TP, sigma, **high**, s5, mitre T1070.001):
+  unchanged — the s5-bound detection, counts in the mix.
+- **D2 ADD** `det_wevtutil_exec` (TP, sigma, **high**, s4): "Event Log Utility
+  Executed to Clear a Log" (`wevtutil cl`). mitre T1070.001 (pinned, scenario's
+  own) — the clearing action that produced the 1102.
+- **D3 ADD** `det_maint_logclear_fp` (FP, sigma, **medium**, supplemental
+  **sup1**): "Event Log Cleared by Scheduled Process". A log clear reads like
+  evidence destruction. Benign: a scheduled maintenance task rotating/clearing a
+  **non-Security operational** channel (there is no 1102 — that is Security-only)
+  under SYSTEM with a change record. Resolution: the channel cleared (a benign
+  operational log, not Security), the parent (scheduled task), and the change
+  record.
+  - **sup1**: a Sysmon ProcessCreate of `wevtutil.exe cl <operational-channel>`
+    launched by a scheduled maintenance task under SYSTEM (Windows built-in; no
+    new identity). In-window -> **RED HERRING: true**.
+
+FP rank: TPs **high + high**, FP **medium** -> **BOTTOM**.
+
+## B4.6 false_positive_ssl_inspection (False Positive, benign) — 3 FP
+
+Chain: s1 SSL_INSPECT outlook.office365.com, s2 SSL_HANDSHAKE_FAILED (trigger),
+s3 firewall ALLOW, s4 NetworkConnect Office, s5 SSL_INSPECT owa. Env:
+workstation, proxy, firewall. All benign (an expanded corporate proxy
+SSL-inspection policy breaking certificate-pinned Office connections). No
+supplemental events: every benign chain step carries a story.
+
+- **D1 KEEP** `det_fp_ssl` (FP, sigma, **medium**, s2): repeated TLS handshake
+  failures resembling a beacon.
+- **D2 ADD** `det_fp_pinned_tls` (FP, sigma, **high**, s4): "Repeated TLS
+  Failures to a Cloud Service" — reads like C2 connection failures. Benign: a
+  certificate-pinned Office client rejecting the new inspection CA.
+- **D3 ADD** `det_fp_inspection_bypass` (FP, sigma, **medium**, s3): "Flow
+  Allowed Around Inspection Policy" — reads like proxy/inspection evasion.
+  Benign: the firewall allow for the same inspected Office flow.
+  - severities span **medium / high / medium**; the high detection is an FP.
+    Reuses outlook.office365.com / Office (already in-chain, real Microsoft); no
+    supplemental events, no new entity.
+
+## Projected post-batch-4 FP-rank (validated at 3d)
+
+| rank | after batch 4 (attack-scenario FP instances) | share |
+|---|---|---|
+| shared-top | 5 (unchanged — batch 4 adds none) | 33% |
+| bottom | 5 (+ log_clearing) | 33% |
+| middle | 3 (+ phishing_1, phishing_link) | 20% |
+| **sole-top** | **2** (brute_force, insider_staging) — new | 13% |
+
+15 attack-scenario FP instances; every rank ≤ ~40%, target met. The 3d close-out
+then lands the deterministic stable-key detection-order shuffle and validates
+all three solver priors (odd-one-out, promote-N, dismiss-the-top-severity) score
+no better than chance corpus-wide, plus the rank uniformity above.
+
+---
+
+## STOP — awaiting owner approval of Batch 4 (step 3c)
+
+No new identities to approve or verify — every batch-4 FP reuses an established,
+already-flagged actor:
+- B4.1 reuses svc_backup / ACME-VEEAM01 (canonical); B4.2 reuses the Veeam agent
+  identity; B4.4 reuses `acme-my.sharepoint.com` (backlog note gains a 4th
+  consumer); B4.3 reuses the false_positive_oauth benign-auth pattern; B4.5
+  reuses Windows built-ins; B4.6 reuses in-chain MS Office/outlook.
+- Two implementation checks flagged (non-blocking): phishing_1's Azure AD event
+  host resolution for the FP entity, and the phishing_1 D2 borrowed T1566.002
+  tag (pinned) vs omitting it — owner's call.
+
+On approval I implement one scenario per commit, run full gates after the batch,
+print the final distribution report (per-scenario mix, severity spread, FP
+severity rank), and STOP before the 3d close-out.
