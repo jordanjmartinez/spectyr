@@ -38,32 +38,37 @@ FLAGS = [
 
 # All rule text here is ORIGINAL (no SigmaHQ content). See ENVIRONMENT_REPORT.md
 # Stage 2 license note.
-# Each: (key, rule_name, severity, roles, image, process_name, description)
+# Each: (key, rule_name, severities, roles, image, process_name, description)
+# `severities` is a tuple of plausible severities for the rule; each ambient
+# instance picks one by stable key, so ambient benign span low/medium/high
+# rather than clustering at one severity (3d close-out: a single ambient severity
+# made the severity-based solvers informative). Ranges are realistic per rule
+# (updaters read low/medium; beacon/psexec/scan-sweep rules read medium/high).
 BENIGN_DETECTIONS = [
-    ("chrome_updater", "Software Updater Outbound Connection", "medium",
+    ("chrome_updater", "Software Updater Outbound Connection", ("low", "medium"),
      ("workstation",),
      "C:\\Program Files (x86)\\Google\\Update\\GoogleUpdate.exe", "GoogleUpdate.exe",
      "Periodic outbound connection from the Google Update service checking for "
      "browser updates. Expected on managed workstations."),
-    ("edge_updater", "Microsoft Edge Update Service Beacon", "medium",
+    ("edge_updater", "Microsoft Edge Update Service Beacon", ("low", "medium"),
      ("workstation",),
      "C:\\Program Files (x86)\\Microsoft\\EdgeUpdate\\MicrosoftEdgeUpdate.exe",
      "MicrosoftEdgeUpdate.exe",
      "Scheduled Edge update check reaching Microsoft update endpoints. "
      "Routine background activity."),
-    ("backup_agent", "Backup Agent Periodic Beacon", "medium",
+    ("backup_agent", "Backup Agent Periodic Beacon", ("medium", "high"),
      ("workstation", "file", "backup"),
      "C:\\Program Files\\Veeam\\Backup and Replication\\Backup\\Veeam.EndPoint.Service.exe",
      "Veeam.EndPoint.Service.exe",
      "Regular outbound from the endpoint backup agent to the backup server on "
      "the backup port. Expected during backup windows."),
-    ("admin_psexec", "Remote Admin Tool Service Install", "medium",
+    ("admin_psexec", "Remote Admin Tool Service Install", ("medium", "high"),
      ("file", "dc", "web"),
      "C:\\Windows\\PSEXESVC.exe", "PSEXESVC.exe",
      "PsExec service installed by an administrator for remote management. "
      "Common in IT operations; benign when tied to a named admin and a change "
      "record."),
-    ("patch_scan", "Vulnerability Scanner Authenticated Sweep", "medium",
+    ("patch_scan", "Vulnerability Scanner Authenticated Sweep", ("medium", "high"),
      ("workstation", "file", "web"),
      "C:\\Program Files\\Tenable\\Nessus Agent\\nessusd.exe", "nessusd.exe",
      "Authenticated vulnerability-scanner sweep from the security team's "
@@ -214,7 +219,9 @@ def benign_detections_for_host(host, owner, session_seed, base_time_iso):
     ranked = sorted(eligible, key=lambda t: _digest(session_seed, hostname, t[0]))
     owner_user = owner["username"] if owner else "SYSTEM"
     out = []
-    for key, rule_name, severity, roles, image, pname, desc in ranked[:count]:
+    for key, rule_name, sev_opts, roles, image, pname, desc in ranked[:count]:
+        severity = sev_opts[_stable_int(0, len(sev_opts) - 1,
+                                        session_seed, hostname, key, "sev")]
         ts = _stable_time(base_time_iso, session_seed, hostname, key, "det_time")
         # a minimal synthetic triggering event (flagged: not a full Sysmon record)
         synth = {
