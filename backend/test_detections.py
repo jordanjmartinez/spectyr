@@ -11,6 +11,7 @@ import random
 
 import scenario_loader as sl
 import scenario_loader_v2 as slv2
+import snapshot_generator as sg
 import detection_templates as dt
 
 EMPLOYEES = [
@@ -196,6 +197,37 @@ def test_all_tp_scenario_has_ambient_dismissables():
     benign = dt.benign_detections_for_host(host, owner, SEED, "2026-07-16T12:00:00+00:00")
     assert len(benign) >= 1, "all-TP scenario has no discoverable dismissables"
     assert all(b["disposition"] == "benign_expected" for b in benign)
+
+
+def _full_feed(label):
+    """A scenario's materialized feed: authored detections + the ambient benign
+    of its endpoint hosts (mirrors the runtime drip)."""
+    sc, logs, sup_logs, sup_meta, env = _render(label)
+    insts = dt.build_scenario_detections(
+        f"scenario-{label}", sc, logs, SEED, supplemental_logs=sup_logs,
+        supplemental_meta=sup_meta, concrete_env=env)
+    started = "2026-07-16T12:00:00+00:00"
+    seen = set()
+    for h in env["hosts"]:
+        if h["role"] in sg.NON_ENDPOINT_ROLES or h["hostname"] in seen:
+            continue
+        seen.add(h["hostname"])
+        owner = next((a for a in env.get("accounts", []) if a.get("host") == h["id"]), None)
+        owner = {"username": owner["username"], "domain": owner.get("domain", "ACME")} if owner else None
+        insts += dt.benign_detections_for_host(h, owner, SEED, started)
+    return insts
+
+
+def test_every_scenario_feed_has_a_dismissable():
+    """3d close-out (component 6): the ransomware-specific ambient-dismissables
+    check, promoted corpus-wide. Every scenario's materialized feed must contain
+    at least one dismissable detection (a false_positive or benign_expected), so
+    there is always something correct to dismiss."""
+    for label in CATALOG:
+        insts = _full_feed(label)
+        dismissable = [i for i in insts
+                       if i["disposition"] in ("false_positive", "benign_expected")]
+        assert dismissable, f"{label}: materialized feed has no dismissable detection"
 
 
 def test_density_no_single_authored_detection():
