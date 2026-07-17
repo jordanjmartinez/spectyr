@@ -1,28 +1,47 @@
-"""Tests for Stage 3b response-action scoring v1 (deterministic, server-side).
+"""Tests for Stage 3b response-action scoring v1, amended by the 3c
+tri-state grading marker and the achievability rule.
 
 Run: python -m pytest test_action_scoring.py -q  (or python test_action_scoring.py)
 
-The ruled grading model: successful actions only; isolation graded on
-END-STATE at scoring time (released required containment = forfeited
-credit, nothing stacked; clean-host isolation is collateral only while in
-effect); kill/delete/identity graded on OCCURRENCE; release_host never
-credits and never penalizes; order-sensitive checks only where the answer
-key declares them, compared on first successful occurrence; identical
-inputs (including reversal sequences) always yield identical scores; the
-scoring endpoint leaks no target detail.
+The ruled model: successful actions only; per-scenario tri-state gate
+(unreviewed scenarios excluded entirely, reviewed-empty scenarios graded
+as intentional correct inaction); collateral scoped to targets claimed by
+reviewed scenarios and no unreviewed one; isolation graded on END-STATE;
+kill/delete/identity on OCCURRENCE; release_host fully neutral; order only
+where declared, compared on first successful occurrence; failed attempts
+surfaced factually (score-neutral); required actions achievable from the
+initial world state under every seed (authored sources only).
 """
 import json
 import os
+import random
 import shutil
 
 os.environ.setdefault("SPECTYR_SCENARIO_SOURCE", "yaml_v2")
 import app  # noqa: E402
 import action_overlay as ao  # noqa: E402
 import scenario_loader as sl  # noqa: E402
+import snapshot_generator as sg  # noqa: E402
 
 WS = "ACME-WS12"
 SVR = "ACME-SVR02"
 STARTED = "2026-07-17T12:00:00+00:00"
+
+EMPLOYEE = {"name": "nkhan", "full_name": "Nadia Khan",
+            "email": "nadia.khan@acme.com", "dept": "HR",
+            "workstation": "ACME-WS12", "ip": "10.0.1.12"}
+
+# One reviewed scenario claiming the fixture hosts/accounts: preserves the
+# plain 3b semantics for the baseline tests.
+GRADING = [{"scenario_id": "scenario-x", "reviewed": True,
+            "hostnames": {WS, SVR},
+            "accounts": {("acme", "nkhan"), ("acme", "innocent")}}]
+
+
+def _grading(scenario="scenario-x", reviewed=True, hostnames=(WS, SVR),
+             accounts=(("acme", "nkhan"), ("acme", "innocent"))):
+    return {"scenario_id": scenario, "reviewed": reviewed,
+            "hostnames": set(hostnames), "accounts": set(accounts)}
 
 
 def _exp(action, target, eid=None, after=None, scenario="scenario-x"):
@@ -50,42 +69,45 @@ EXECUTED_FULL = [
 ]
 
 
+def _score(expected, executed, isolated, grading=None):
+    return app.compute_action_score(expected, executed, isolated,
+                                    GRADING if grading is None else grading)
+
+
+# --- baseline 3b semantics (one reviewed scenario) -----------------------------
+
 def test_all_required_actions_credited():
-    r = app.compute_action_score(EXPECTED_FULL, EXECUTED_FULL, {WS})
+    r = _score(EXPECTED_FULL, EXECUTED_FULL, {WS})
     assert r["required"] == 4 and r["correct"] == 4 and r["missed"] == 0
     assert r["collateral"] == 0 and r["order_violations"] == 0
     assert r["accuracy"] == 100.0 and r["grade"] == "A"
 
 
 def test_missing_required_actions_are_missed():
-    r = app.compute_action_score(EXPECTED_FULL, EXECUTED_FULL[:1], {WS})
+    r = _score(EXPECTED_FULL, EXECUTED_FULL[:1], {WS})
     assert r["correct"] == 1 and r["missed"] == 3
     assert r["accuracy"] == 25.0 and r["grade"] == "F"
 
 
 def test_isolation_grades_on_end_state_release_forfeits_without_stacking():
-    """Required containment released before submission: the credit is
-    forfeited (missed), and that forfeiture is the WHOLE cost: no
-    collateral, no extra penalty for the reversal."""
     expected = [_exp("isolate_host", {"hostname": WS})]
     executed = [_run("isolate_host", {"hostname": WS}, 1),
                 _run("release_host", {"hostname": WS}, 2)]
-    r = app.compute_action_score(expected, executed, set())
+    r = _score(expected, executed, set())
     assert r["correct"] == 0 and r["missed"] == 1
     assert r["collateral"] == 0, "reversal must not stack a penalty"
 
-    # re-isolated before submission: end-state credit restored
     executed_again = executed + [_run("isolate_host", {"hostname": WS}, 3)]
-    r2 = app.compute_action_score(expected, executed_again, {WS})
+    r2 = _score(expected, executed_again, {WS})
     assert r2["correct"] == 1 and r2["missed"] == 0
 
 
 def test_clean_host_isolation_is_collateral_only_while_in_effect():
     executed = [_run("isolate_host", {"hostname": SVR}, 1)]
-    still = app.compute_action_score([], executed, {SVR})
-    assert still["collateral"] == 1 and still["grade"] == "F"
-    released = app.compute_action_score([], executed, set())
-    assert released["collateral"] == 0 and released["grade"] == "-"
+    still = _score([], executed, {SVR})
+    assert still["collateral"] == 1
+    released = _score([], executed, set())
+    assert released["collateral"] == 0
 
 
 def test_collateral_on_irreversible_clean_targets():
@@ -94,26 +116,22 @@ def test_collateral_on_irreversible_clean_targets():
         _run("delete_file", {"hostname": WS, "path": "c:\\good\\tool.exe"}, 2),
         _run("disable_account", {"domain": "ACME", "username": "innocent"}, 3),
     ]
-    r = app.compute_action_score([], executed, set())
-    assert r["collateral"] == 3 and r["required"] == 0
-    assert r["graded"] == 3 and r["accuracy"] == 0.0
+    r = _score([], executed, set())
+    assert r["collateral"] == 3 and r["accuracy"] == 0.0
 
 
 def test_same_pid_or_path_on_other_host_is_not_credit():
-    """Composite matching: the right PID or path on the WRONG host is a
-    collateral hit plus a miss, never a credit."""
     expected = [_exp("kill_process", {"hostname": WS, "pid": 4756})]
     executed = [_run("kill_process", {"hostname": SVR, "pid": 4756,
                                       "name": "same.exe"}, 1)]
-    r = app.compute_action_score(expected, executed, set())
+    r = _score(expected, executed, set())
     assert r["correct"] == 0 and r["missed"] == 1 and r["collateral"] == 1
 
 
 def test_release_host_never_credits_or_penalizes():
     executed = [_run("isolate_host", {"hostname": WS}, 1),
                 _run("release_host", {"hostname": WS}, 2)]
-    r = app.compute_action_score([], executed, set())
-    assert r == app.compute_action_score([], [], set())
+    assert _score([], executed, set()) == _score([], [], set())
 
 
 def test_order_sensitivity_only_where_declared():
@@ -125,26 +143,20 @@ def test_order_sensitivity_only_where_declared():
     reset = _run("force_password_reset", {"domain": "ACME", "username": "nkhan"}, 1)
     iso = _run("isolate_host", {"hostname": WS}, 2)
 
-    # declared order violated: reset before containment
-    r = app.compute_action_score(expected, [reset, iso], {WS})
+    r = _score(expected, [reset, iso], {WS})
     assert r["correct"] == 1 and r["missed"] == 1 and r["order_violations"] == 1
 
-    # declared order satisfied
-    ok = app.compute_action_score(
-        expected,
-        [_run("isolate_host", {"hostname": WS}, 1),
-         _run("force_password_reset", {"domain": "ACME", "username": "nkhan"}, 2)],
-        {WS})
+    ok = _score(expected,
+                [_run("isolate_host", {"hostname": WS}, 1),
+                 _run("force_password_reset",
+                      {"domain": "ACME", "username": "nkhan"}, 2)], {WS})
     assert ok["correct"] == 2 and ok["order_violations"] == 0
 
-    # prerequisite never occurred: dependent action is order-violated
-    r2 = app.compute_action_score(expected, [reset], set())
+    r2 = _score(expected, [reset], set())
     assert r2["correct"] == 0 and r2["order_violations"] == 1
 
 
 def test_order_uses_first_occurrence_not_end_state_credit():
-    """Releasing containment later forfeits the isolation credit but does
-    not retroactively invalidate an action correctly taken under it."""
     expected = [
         _exp("isolate_host", {"hostname": WS}, eid="a_iso"),
         _exp("force_password_reset", {"domain": "ACME", "username": "nkhan"},
@@ -155,97 +167,298 @@ def test_order_uses_first_occurrence_not_end_state_credit():
         _run("force_password_reset", {"domain": "ACME", "username": "nkhan"}, 2),
         _run("release_host", {"hostname": WS}, 3),
     ]
-    r = app.compute_action_score(expected, executed, set())
+    r = _score(expected, executed, set())
     assert r["missed"] == 1, "isolation credit is forfeited by the release"
-    assert r["correct"] == 1 and r["order_violations"] == 0, \
-        "the reset stays credited: it happened under containment"
+    assert r["correct"] == 1 and r["order_violations"] == 0
 
 
 def test_replay_determinism_including_reversal_sequences():
-    expected = EXPECTED_FULL
     executed = EXECUTED_FULL + [
         _run("release_host", {"hostname": WS}, 5),
         _run("isolate_host", {"hostname": WS}, 6),
     ]
-    a = app.compute_action_score(expected, executed, {WS})
-    b = app.compute_action_score(expected, executed, {WS})
+    a = _score(EXPECTED_FULL, executed, {WS})
+    b = _score(EXPECTED_FULL, executed, {WS})
     assert json.dumps(a, sort_keys=True) == json.dumps(b, sort_keys=True)
 
 
-def test_empty_session_grades_dash():
-    r = app.compute_action_score([], [], set())
+# --- tri-state gate ------------------------------------------------------------
+
+def test_unreviewed_scenario_is_excluded_entirely():
+    """actions_reviewed false: earns nothing, costs nothing; the section
+    grades '-'."""
+    grading = [_grading(reviewed=False)]
+    executed = [
+        _run("kill_process", {"hostname": WS, "pid": 900, "name": "x.exe"}, 1),
+        _run("isolate_host", {"hostname": WS}, 2),
+    ]
+    r = _score([], executed, {WS}, grading)
+    assert r["graded"] == 0 and r["grade"] == "-"
+    assert r["collateral"] == 0
+
+
+def test_no_grading_records_grades_dash():
+    r = _score([], [], set(), [])
     assert r["grade"] == "-" and r["graded"] == 0 and r["accuracy"] == 0.0
 
 
-def test_materialize_expected_actions_resolves_composites():
-    """Drip-time resolution: environment ids to concrete hostnames and
-    accounts, placeholders substituted like chain content, paths in the
-    overlay's canonical form."""
-    sc = app.yaml_catalog["malware_usb"]
-    emp = {"name": "nkhan", "full_name": "Nadia Khan",
-           "email": "nadia.khan@acme.com", "dept": "HR",
-           "workstation": "ACME-WS12", "ip": "10.0.1.12"}
+def test_shared_target_with_unreviewed_scenario_gets_benefit_of_doubt():
+    """A target claimed by BOTH a reviewed and an unreviewed scenario is
+    out of collateral scope while the review is in flight; a target
+    claimed only by the reviewed scenario still counts."""
+    grading = [
+        _grading(scenario="scenario-r", reviewed=True, hostnames={WS, SVR}),
+        _grading(scenario="scenario-u", reviewed=False, hostnames={SVR},
+                 accounts=()),
+    ]
+    executed = [
+        _run("kill_process", {"hostname": SVR, "pid": 3312, "name": "net.exe"}, 1),
+        _run("kill_process", {"hostname": WS, "pid": 900, "name": "x.exe"}, 2),
+    ]
+    r = _score([], executed, set(), grading)
+    assert r["collateral"] == 1, \
+        "shared-host action must be ungraded; reviewed-only host counts"
 
-    class _Forced:
-        def choice(self, seq):
-            return emp
-    resolved = sl.resolve_entities(sc, [emp], app.SERVERS, rng=_Forced())
+
+def test_reviewed_empty_set_is_intentional_correct_inaction():
+    """The FP contract: clean hands earn the unit; a collateral hit in the
+    scenario's scope costs both the collateral and the inaction credit."""
+    grading = [_grading()]
+    clean = _score([], [], set(), grading)
+    assert clean["required"] == 1 and clean["correct"] == 1
+    assert clean["accuracy"] == 100.0 and clean["grade"] == "A"
+
+    acted = _score([], [_run("kill_process",
+                             {"hostname": WS, "pid": 900, "name": "x.exe"}, 1)],
+                   set(), grading)
+    assert acted["required"] == 1 and acted["correct"] == 0
+    assert acted["missed"] == 1 and acted["collateral"] == 1
+    assert acted["graded"] == 2 and acted["accuracy"] == 0.0
+
+
+def test_expected_actions_only_count_for_reviewed_scenarios():
+    """Belt and braces: expected entries from a scenario without a reviewed
+    grading record are filtered out (the loader forbids authoring them,
+    but the scorer never trusts that)."""
+    expected = [_exp("isolate_host", {"hostname": WS}, scenario="scenario-ghost")]
+    r = _score(expected, [], set(), [_grading()])
+    # ghost expected filtered; the reviewed scenario grades as inaction
+    assert r["required"] == 1 and r["correct"] == 1
+
+
+# --- materialization and grading records ---------------------------------------
+
+class _Forced(random.Random):
+    def __init__(self, forced):
+        super().__init__()
+        self._forced = forced
+
+    def choice(self, seq):
+        return self._forced
+
+
+def _resolved_env(label):
+    sc = app.yaml_catalog[label]
+    resolved = sl.resolve_entities(sc, [EMPLOYEE], app.SERVERS,
+                                   rng=_Forced(EMPLOYEE))
     env = sl.substitute_deep(sc["environment"], resolved)
-    host_id = env["hosts"][0]["id"]
-    account_id = env["accounts"][0]["id"]
+    return sc, resolved, env
 
-    entity = next(iter(sc["entities"]))
+
+def test_materialize_expected_actions_resolves_composites():
+    sc, resolved, env = _resolved_env("lateral_movement_1")
     actions = [
-        {"id": "a_iso", "action": "isolate_host", "target": {"host": host_id}},
+        {"id": "a_iso", "action": "isolate_host", "target": {"host": "ws_victim"}},
         {"action": "delete_file",
-         "target": {"host": host_id,
-                    "path": "C:\\Users\\{%s.username}\\payload.exe" % entity
-                    if sc["entities"][entity]["type"] == "employee"
-                    else "C:\\Users\\Public\\payload.exe"}},
-        {"action": "disable_account", "target": {"account": account_id},
+         "target": {"host": "ws_victim",
+                    "path": "C:\\Users\\{victim.username}\\Downloads\\nmap-7.95\\nmap.exe"}},
+        {"action": "disable_account", "target": {"account": "victim"},
          "after": ["a_iso"]},
     ]
     out = app.materialize_expected_actions(actions, "scenario-t", env, resolved)
-    assert out[0]["target"] == {"hostname": env["hosts"][0]["hostname"]}
-    assert out[1]["target"]["hostname"] == env["hosts"][0]["hostname"]
+    ws = next(h for h in env["hosts"] if h["id"] == "ws_victim")
+    assert out[0]["target"] == {"hostname": ws["hostname"]}
     path = out[1]["target"]["path"]
-    assert path == ao.norm_path(path) and "{" not in path, \
-        "path must be substituted and canonical"
-    acct = env["accounts"][0]
+    assert path == ao.norm_path(path) and "{" not in path
+    assert "nkhan" in path, "employee placeholder must substitute"
+    acct = next(a for a in env["accounts"] if a["id"] == "victim")
     assert out[2]["target"] == {"domain": acct["domain"],
                                 "username": acct["username"]}
-    assert out[2]["after"] == ["a_iso"] and out[2]["eid"] is None
+    assert out[2]["after"] == ["a_iso"]
 
 
-def test_score_endpoint_counts_only_no_target_leak():
-    """Leak guard: the scoring payload carries counts and a grade only;
-    expected composites (a distinctive path, host, account) never appear,
-    and neither does any answer-key field."""
+def test_scenario_grading_record_carries_scope_and_flag():
+    sc, resolved, env = _resolved_env("lateral_movement_1")
+    rec = app.scenario_grading_record("scenario-t", sc, env)
+    assert rec["reviewed"] is False, "corpus is unreviewed until 3c"
+    assert {h["hostname"] for h in env["hosts"]} == rec["hostnames"]
+    assert ("acme", "svc_vulnscan") in rec["accounts"]
+    assert ("acme", "nkhan") in rec["accounts"]
+
+
+# --- achievability across the fixed seed set ------------------------------------
+
+SEED_SET = ["ach-seed-1", "ach-seed-2", "ach-seed-3", "ach-seed-4", "ach-seed-5"]
+
+AUTHORED_LM1 = [
+    {"id": "a_iso", "action": "isolate_host", "target": {"host": "ws_victim"}},
+    {"action": "kill_process", "target": {"host": "ws_victim", "pid": 8844}},
+    {"action": "delete_file",
+     "target": {"host": "ws_victim",
+                "path": "C:\\Users\\{victim.username}\\Downloads\\nmap-7.95\\nmap.exe"}},
+    {"action": "disable_account", "target": {"account": "victim"},
+     "after": ["a_iso"]},
+]
+
+
+def _world_for_seed(label, seed):
+    sc, resolved, env = _resolved_env(label)
+    logs = []
+    for i, step in enumerate(sc["chain"]):
+        log = sl.substitute_deep({k: v for k, v in step.items() if k != "offset"},
+                                 resolved)
+        log["scenario_id"] = f"scenario-{label}"
+        log["timestamp"] = f"2026-07-17T12:01:{i:02d}+00:00"
+        logs.append(log)
+    world = {"hosts": {}, "started_at": STARTED}
+    sg.extend_world(world, sc, env, logs, seed, app.RESERVED_PIDS, app.SERVERS)
+    return sc, resolved, env, world
+
+
+def _dependency_order(expected):
+    done, out, pending = set(), [], list(expected)
+    while pending:
+        progressed = False
+        for exp in list(pending):
+            if all(ref in done for ref in exp.get("after", [])):
+                out.append(exp)
+                pending.remove(exp)
+                if exp.get("eid"):
+                    done.add(exp["eid"])
+                progressed = True
+        assert progressed, "declared order is unsatisfiable"
+    return out
+
+
+def _all_succeed(world, expected):
+    overlay = ao.new_overlay()
+    for exp in _dependency_order(expected):
+        outcome, _ = ao.execute(world, overlay, dict(exp["target"]), exp["action"])
+        if outcome != ao.SUCCESS:
+            return False
+    return True
+
+
+def test_reviewed_corpus_actions_achievable_across_seed_set():
+    """The 3c/3d gate, live from day one: every reviewed scenario's
+    required actions must execute successfully from the initial world
+    under every seed in the fixed set. Vacuous until batches land, then
+    it bites."""
+    for label, sc in app.yaml_catalog.items():
+        ak = sc["answer_key"]
+        if not (ak.get("actions_reviewed") and ak["actions"]):
+            continue
+        for seed in SEED_SET:
+            sc2, resolved, env, world = _world_for_seed(label, seed)
+            expected = app.materialize_expected_actions(
+                ak["actions"], f"scenario-{label}", env, resolved)
+            assert _all_succeed(world, expected), \
+                f"{label}: required action unachievable under seed {seed}"
+
+
+def test_authored_targets_achievable_and_noise_targets_seed_fragile():
+    """Authored targets execute under EVERY seed; a pid harvested from one
+    seed's noise baseline fails under at least one other seed: exactly why
+    the loader only accepts authored sources."""
+    per_seed_worlds = {}
+    for seed in SEED_SET:
+        sc, resolved, env, world = _world_for_seed("lateral_movement_1", seed)
+        expected = app.materialize_expected_actions(
+            AUTHORED_LM1, "scenario-t", env, resolved)
+        assert _all_succeed(world, expected), f"authored set failed under {seed}"
+        per_seed_worlds[seed] = (env, world)
+
+    env0, world0 = per_seed_worlds[SEED_SET[0]]
+    ws = next(h for h in env0["hosts"] if h["id"] == "ws_victim")["hostname"]
+    authored = {8844, 6240}
+    noise_pid = next(p["pid"] for p in world0["hosts"][ws]["processes"]
+                     if p["pid"] not in authored and p["pid"] > 4)
+    fragile = [{"action": "kill_process",
+                "target": {"host": "ws_victim", "pid": noise_pid}}]
+    outcomes = []
+    for seed in SEED_SET:
+        env, world = per_seed_worlds[seed]
+        sc, resolved, _ = _resolved_env("lateral_movement_1")
+        expected = app.materialize_expected_actions(fragile, "scenario-t",
+                                                    env, resolved)
+        outcomes.append(_all_succeed(world, expected))
+    assert not all(outcomes), \
+        "a noise pid must not be achievable under every seed"
+
+
+# --- route: surfacing and leak guard -------------------------------------------
+
+def _api_session():
     client = app.app.test_client()
     r = client.get("/api/health")
     sid = r.headers["X-Session-ID"]
-    s = app.sessions[sid]
+    return client, sid, app.sessions[sid]
+
+
+def _cleanup(sid, s):
+    app.sessions.pop(sid, None)
+    shutil.rmtree(s["session_dir"], ignore_errors=True)
+
+
+def test_score_endpoint_shape_surfacing_and_no_leak():
+    """Counts + grade + the factual not-executed record. Expected
+    composites and the reviewed marker never serialize; no_op attempts are
+    not surfaced (only failed_precondition)."""
+    client, sid, s = _api_session()
     try:
         marker_path = "c:\\users\\public\\very_distinctive_payload_xyz.exe"
         with s["io_lock"]:
             s["expected_actions"] = [
-                _exp("delete_file", {"hostname": "ACME-WS77", "path": marker_path}),
-                _exp("isolate_host", {"hostname": "ACME-WS77"}),
+                _exp("delete_file", {"hostname": "ACME-WS77", "path": marker_path},
+                     scenario="scenario-m"),
+                _exp("isolate_host", {"hostname": "ACME-WS77"},
+                     scenario="scenario-m"),
+            ]
+            s["scenario_grading"] = [
+                _grading(scenario="scenario-m", hostnames={"ACME-WS77"},
+                         accounts=())]
+            s["overlay"]["log"] = [
+                {"seq": 1, "timestamp": STARTED, "action": "isolate_host",
+                 "target": {"id": "ent-aaaaaaaaaaaa", "kind": "host",
+                            "label": "ACME-OFF01"},
+                 "outcome": "failed_precondition",
+                 "reason": "Host is offline. The isolation command could not "
+                           "be delivered to the endpoint agent."},
+                {"seq": 2, "timestamp": STARTED, "action": "isolate_host",
+                 "target": {"id": "ent-bbbbbbbbbbbb", "kind": "host",
+                            "label": "ACME-WS90"},
+                 "outcome": "no_op", "reason": "Host is already isolated."},
             ]
         resp = client.get("/api/analytics/action_score",
                           headers={"X-Session-ID": sid})
         assert resp.status_code == 200
         body = resp.get_json()
         assert set(body) == {"required", "correct", "missed", "collateral",
-                             "order_violations", "graded", "accuracy", "grade"}
+                             "order_violations", "graded", "accuracy", "grade",
+                             "not_executed"}
+        assert body["required"] == 2 and body["missed"] == 2
+        assert body["not_executed"]["count"] == 1
+        entry = body["not_executed"]["entries"][0]
+        assert entry["action"] == "isolate_host"
+        assert entry["outcome"] == "failed_precondition"
+        assert "offline" in entry["reason"]
         blob = json.dumps(body)
         for needle in ("very_distinctive_payload_xyz", "ACME-WS77",
-                       "answer_key", "expected", "target"):
+                       "answer_key", '"actions_reviewed"', '"reviewed"',
+                       '"expected"', "ACME-WS90"):
             assert needle not in blob, f"score payload leaked {needle!r}"
-        assert body["required"] == 2 and body["missed"] == 2
     finally:
-        app.sessions.pop(sid, None)
-        shutil.rmtree(s["session_dir"], ignore_errors=True)
+        _cleanup(sid, s)
 
 
 if __name__ == "__main__":

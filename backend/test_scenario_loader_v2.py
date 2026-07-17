@@ -263,20 +263,21 @@ def test_rejects_attack_without_technique():
 
 
 def test_accepts_well_formed_answer_actions():
-    """Stage 3a unlock: the action grammar validates (composite targets,
-    order sensitivity). Content authoring is still Stage 3c; the corpus
-    keeps actions: [] until then."""
+    """Stage 3a unlock + 3c amendments: the action grammar validates
+    (composite targets, order sensitivity) when the set is reviewed and
+    every target is an authored artifact. Content authoring is still
+    Stage 3c; the corpus keeps actions: [] until then."""
     doc = _one_valid_doc()
-    host = doc["environment"]["hosts"][0]["id"]
-    account = doc["environment"]["accounts"][0]["id"]
+    doc["answer_key"]["actions_reviewed"] = True
     doc["answer_key"]["actions"] = [
-        {"id": "a_isolate", "action": "isolate_host", "target": {"host": host}},
+        {"id": "a_isolate", "action": "isolate_host", "target": {"host": "ws_victim"}},
         {"id": "a_kill", "action": "kill_process",
-         "target": {"host": host, "pid": 4756}},
+         "target": {"host": "ws_victim", "pid": 8844}},
         {"action": "delete_file",
-         "target": {"host": host, "path": "C:\\Users\\Public\\payload.exe"}},
+         "target": {"host": "ws_victim",
+                    "path": "C:\\Users\\{victim.username}\\Downloads\\nmap-7.95\\nmap.exe"}},
         {"id": "a_reset", "action": "force_password_reset",
-         "target": {"account": account}, "after": ["a_isolate"]},
+         "target": {"account": "victim"}, "after": ["a_isolate"]},
     ]
     v2.validate_scenario_v2(doc, _SCHEMA_V2, _SCHEMA_V1, "fixture.yaml")
 
@@ -329,12 +330,85 @@ def test_rejects_action_order_violations():
 
 
 def test_corpus_actions_still_empty_until_stage_3c():
-    """The unlock is grammar only: every scenario keeps actions: [] until
-    3c authors them (one scenario per commit, owner approval first)."""
+    """The unlock is grammar only: every scenario keeps actions: [] and
+    actions_reviewed unset until 3c authors and reviews them (one scenario
+    per commit, owner approval first)."""
     catalog, _ = _load_corpus()
     for label, sc in catalog.items():
         assert sc["answer_key"]["actions"] == [], \
             f"{label}: answer_key.actions authored before Stage 3c"
+        assert not sc["answer_key"].get("actions_reviewed", False), \
+            f"{label}: actions_reviewed flipped before its 3c commit"
+
+
+def test_rejects_authored_actions_without_reviewed_flag():
+    """Authored actions and the reviewed marker flip together: an authored
+    set without actions_reviewed: true is an inconsistent state."""
+    doc = _one_valid_doc()
+    doc["answer_key"]["actions"] = [
+        {"action": "isolate_host", "target": {"host": "ws_victim"}}]
+    _expect_error(doc, "require actions_reviewed: true")
+
+
+def test_accepts_reviewed_intentional_inaction():
+    """actions_reviewed: true with actions: [] is the FP contract:
+    intentional correct inaction, graded as such."""
+    doc = _one_valid_doc("false_positive_veeam")
+    doc["answer_key"]["actions_reviewed"] = True
+    v2.validate_scenario_v2(doc, _SCHEMA_V2, _SCHEMA_V1, "fixture.yaml")
+
+
+def test_achievability_accepts_authored_targets():
+    """A reviewed action set whose targets are all authored artifacts
+    (chain pids/images, environment hosts/accounts) validates."""
+    doc = _one_valid_doc()
+    doc["answer_key"]["actions_reviewed"] = True
+    doc["answer_key"]["actions"] = [
+        {"id": "a_iso", "action": "isolate_host", "target": {"host": "ws_victim"}},
+        {"action": "kill_process", "target": {"host": "ws_victim", "pid": 8844}},
+        {"action": "delete_file",
+         "target": {"host": "ws_victim",
+                    "path": "C:\\Users\\{victim.username}\\Downloads\\nmap-7.95\\nmap.exe"}},
+        {"action": "disable_account", "target": {"account": "victim"},
+         "after": ["a_iso"]},
+    ]
+    v2.validate_scenario_v2(doc, _SCHEMA_V2, _SCHEMA_V1, "fixture.yaml")
+
+
+def test_achievability_rejects_unauthored_pid_and_path():
+    """Seed independence: a target that only seed-generated noise could
+    satisfy is a hard error (kill of a non-authored pid, delete of a
+    non-authored path)."""
+    doc = _one_valid_doc()
+    doc["answer_key"]["actions_reviewed"] = True
+    doc["answer_key"]["actions"] = [
+        {"action": "kill_process", "target": {"host": "ws_victim", "pid": 4321}}]
+    _expect_error(doc, "not an authored process")
+    doc["answer_key"]["actions"] = [
+        {"action": "delete_file",
+         "target": {"host": "ws_victim", "path": "C:\\Windows\\explorer.exe"}}]
+    _expect_error(doc, "not an authored deletable file")
+
+
+def test_achievability_rejects_offline_isolate_requirement():
+    """The offline-host wrinkle can never carry required-action credit:
+    a required isolate on a declared-offline host is unachievable."""
+    doc = _one_valid_doc()
+    doc["environment"]["hosts"][0]["status"] = "offline"
+    doc["answer_key"]["actions_reviewed"] = True
+    doc["answer_key"]["actions"] = [
+        {"action": "isolate_host", "target": {"host": "ws_victim"}}]
+    _expect_error(doc, "declared offline")
+
+
+def test_achievability_rejects_non_endpoint_host_target():
+    """PAN-OS devices are log sources, never managed endpoints: no action
+    on them is achievable."""
+    doc = _one_valid_doc()
+    doc["answer_key"]["actions_reviewed"] = True
+    doc["answer_key"]["actions"] = [
+        {"action": "isolate_host", "target": {"host": "fw_perimeter"}}]
+    _expect_error(doc, "never a managed endpoint")
 
 
 def test_detections_load_and_reference_real_steps():

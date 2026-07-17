@@ -148,6 +148,10 @@
           "$comment": "Stage 3 response-action answer key (grammar unlocked in 3a; content authored in 3c). Internal composite targets: environment host id plus pid/path, or environment account id. Server-side only, never serialized; the scorer resolves executed client-id actions to these composites. release_host is deliberately absent: it is a rollback control, not a gradable response step.",
           "type": "array",
           "items": { "$ref": "#/$defs/answer_action" }
+        },
+        "actions_reviewed": {
+          "$comment": "Stage 3c tri-state grading marker, SERVER-SIDE ONLY (never serialized; leak-guard tested). Absent/false = this scenario's response actions are not yet reviewed: it is excluded from action scoring entirely. True with actions = grade normally. True with actions: [] = intentional correct inaction: clean hands earn the credit, successful unnecessary actions are collateral. Each 3c scenario commit flips this to true; 3d gates on all 20 reviewed.",
+          "type": "boolean"
         }
       }
     },

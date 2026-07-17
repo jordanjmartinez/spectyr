@@ -36,11 +36,14 @@ scenario_loader.resolve_entities/substitute_deep, same as v1.
 """
 import json
 import os
+import re
 
 import yaml
 import jsonschema
 
+import action_overlay
 import scenario_loader as v1
+import snapshot_generator
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCENARIO_V2_DIR = os.path.join(HERE, "scenarios", "v2")
@@ -241,6 +244,18 @@ def validate_scenario_v2(doc, schema_v2, v1_schema, filename):
     # cycles). Content stays empty until Stage 3c authors it.
     _validate_answer_actions(ak["actions"], hosts, accounts, filename)
 
+    # Stage 3c tri-state marker + achievability. Authored actions and the
+    # reviewed flag flip together (one scenario per commit), so an authored
+    # set without the flag is an inconsistent state, rejected loudly. A
+    # reviewed scenario failing achievability is a hard validation error,
+    # same severity as a schema violation.
+    if ak["actions"] and not ak.get("actions_reviewed", False):
+        raise ScenarioError(
+            f"{filename}: authored answer_key.actions require "
+            f"actions_reviewed: true (the 3c review flips both together)")
+    if ak.get("actions_reviewed", False):
+        _validate_action_achievability(doc, filename)
+
     root_cause = ak["root_cause"]
     if root_cause is not None and root_cause not in step_ids:
         raise ScenarioError(
@@ -378,6 +393,107 @@ def _validate_answer_actions(actions, hosts, accounts, filename):
 
     for node in edges:
         visit(node, [])
+
+
+# Mirrors snapshot_generator.RUN_KEY_RE: only run-key SetValue events
+# materialize autorun rows, so only those paths are deletable via autoruns.
+_RUN_KEY_RE = re.compile(r"\\CurrentVersion\\Run\\", re.IGNORECASE)
+
+
+def _authored_action_sources(doc):
+    """Per environment host id: the authored PIDs and deletable file paths
+    (canonical raw form, placeholders intact) that the world merger
+    materializes from this scenario's own events.
+
+    SEED INDEPENDENCE is structural: only the attack chain, supplemental
+    events, and the canonical environment count as sources. Baselines and
+    noise are seed-generated and never satisfy an answer-key target, so a
+    validated target resolves identically under every seed (substitution
+    is uniform across the answer key and the chain, so raw-string equality
+    implies post-substitution equality).
+    """
+    pids, paths = {}, {}
+
+    def add_pid(host, value):
+        v = str(value or "")
+        if v.isdigit():
+            pids.setdefault(host, set()).add(int(v))
+
+    def add_path(host, value):
+        p = action_overlay.norm_path(value)
+        if p:
+            paths.setdefault(host, set()).add(p)
+
+    for step in list(doc["attack"]) + list(doc.get("supplemental_events", [])):
+        host = step["host"]
+        kvp = step.get("key_value_pairs") or {}
+        src = step.get("source_type")
+        etype = step.get("event_type", "")
+        event_id = str(kvp.get("event_id", ""))
+        if src == "Sysmon" and event_id == "1":
+            add_pid(host, kvp.get("process_id"))
+            add_pid(host, kvp.get("parent_process_id"))
+            add_path(host, kvp.get("image"))
+            add_path(host, kvp.get("parent_image"))
+        elif ((src == "Sysmon" and event_id == "3")
+              or (src == "Firewall" and etype == "ALLOW")
+              or (src == "Proxy" and (etype.startswith("HTTP_")
+                                      or etype.startswith("SSL_")))):
+            add_pid(host, kvp.get("process_id"))
+            add_path(host, kvp.get("image"))
+        elif src == "Sysmon" and event_id == "13":
+            if _RUN_KEY_RE.search(kvp.get("target_object", "")):
+                add_path(host, action_overlay.extract_image_path(
+                    kvp.get("details", "")))
+    return pids, paths
+
+
+def _validate_action_achievability(doc, filename):
+    """Every required action must be executable from the scenario's INITIAL
+    world state (enforced, not advisory): isolate needs a declared-online
+    managed host; kill needs an authored (host, PID); delete needs an
+    authored (host, path); identity needs an environment account (already
+    referentially checked). Declared `after` orderings are satisfiable by
+    construction once every action is achievable: the reference/cycle
+    checks above guarantee a topological order exists.
+
+    Consequence for the offline-host wrinkle: an offline host can never
+    carry required-action credit; it may only appear as a tempting-but-
+    wrong target or a factually surfaced failed attempt.
+    """
+    env_hosts = {h["id"]: h for h in doc["environment"]["hosts"]}
+    pids, paths = _authored_action_sources(doc)
+
+    for i, act in enumerate(doc["answer_key"]["actions"]):
+        name = act["action"]
+        tgt = act["target"]
+        host = env_hosts.get(tgt.get("host")) if "host" in tgt else None
+        if host is not None:
+            if host["role"] in snapshot_generator.NON_ENDPOINT_ROLES:
+                raise ScenarioError(
+                    f"{filename}: answer_key.actions[{i}] ({name}): target "
+                    f"host {host['id']!r} is a {host['role']} (log source, "
+                    f"never a managed endpoint); the action is unachievable")
+            if name == "isolate_host" and host.get("status") == "offline":
+                raise ScenarioError(
+                    f"{filename}: answer_key.actions[{i}] (isolate_host): "
+                    f"host {host['id']!r} is declared offline; isolation "
+                    f"cannot succeed, so it can never be a required action")
+        if name == "kill_process":
+            if tgt["pid"] not in pids.get(tgt["host"], set()):
+                raise ScenarioError(
+                    f"{filename}: answer_key.actions[{i}] (kill_process): "
+                    f"pid {tgt['pid']} on host {tgt['host']!r} is not an "
+                    f"authored process of this scenario (chain/supplemental); "
+                    f"seed-generated noise never qualifies")
+        if name == "delete_file":
+            if action_overlay.norm_path(tgt["path"]) not in paths.get(tgt["host"], set()):
+                raise ScenarioError(
+                    f"{filename}: answer_key.actions[{i}] (delete_file): "
+                    f"path {tgt['path']!r} on host {tgt['host']!r} is not an "
+                    f"authored deletable file of this scenario (Sysmon image/"
+                    f"parent_image or run-key autorun); seed-generated noise "
+                    f"never qualifies")
 
 
 def _catalog_entry_v2(doc):

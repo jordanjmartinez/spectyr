@@ -32,7 +32,8 @@ EMPLOYEE = {"name": "nkhan", "full_name": "Nadia Khan",
 
 # Fields that must never appear anywhere in an action payload.
 FORBIDDEN = ("disposition", "scenario_id", "detection_key", "answer_key",
-             "category", "flagged", "level", "storyline", "alert_id")
+             "category", "flagged", "level", "storyline", "alert_id",
+             "actions_reviewed")
 
 
 class _Forced(random.Random):

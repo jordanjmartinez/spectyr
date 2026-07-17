@@ -34,7 +34,8 @@ SEED = "test-session-det"
 # Fields that must never appear anywhere in a client payload.
 FORBIDDEN = ("disposition", "scenario_id", "detection_key", "label",
              "category", "analyst_category", "category_correct", "flagged",
-             "level", "level_name", "storyline", "alert_id", "answer_key")
+             "level", "level_name", "storyline", "alert_id", "answer_key",
+             "actions_reviewed")
 
 
 class _Forced(random.Random):
