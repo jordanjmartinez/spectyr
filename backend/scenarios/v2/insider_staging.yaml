@@ -256,6 +256,9 @@ detections:
     rule_type: "sigma_behavioral"
     severity: "critical"
     triggers: ["sup1"]
+    mitre:
+      id: "T1567.002"
+      tactic: "Exfiltration"
     description: "Over 1.75 GB left the host, the volume-plus-timing shape of staged exfiltration. It is the scheduled Veeam endpoint backup completing to the internal repository, logged by Veeam itself, not an outbound transfer to an external host."
     disposition: "false_positive"
 

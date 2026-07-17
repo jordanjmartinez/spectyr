@@ -278,6 +278,9 @@ detections:
     rule_type: "sigma_behavioral"
     severity: "medium"
     triggers: ["sup1", "sup2", "sup3"]
+    mitre:
+      id: "T1071.004"
+      tactic: "Command and Control"
     description: "A host issued many DNS queries to one external domain in a short window, the volume shape of DNS beaconing or tunneling. It is a Microsoft telemetry agent's routine check-ins to a categorized vendor domain with normal-length, low-entropy hostnames, not the high-entropy data subdomains of a tunnel."
     disposition: "false_positive"
 

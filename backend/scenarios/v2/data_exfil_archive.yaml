@@ -271,6 +271,9 @@ detections:
     rule_type: "sigma_behavioral"
     severity: "medium"
     triggers: ["sup1"]
+    mitre:
+      id: "T1567.002"
+      tactic: "Exfiltration"
     description: "A large upload to an external cloud endpoint reads like exfiltration. It is corporate OneDrive sync to the sanctioned SharePoint tenant, not a consumer file host."
     disposition: "false_positive"
   - id: "det_backup_archive_fp"
@@ -278,6 +281,9 @@ detections:
     rule_type: "sigma_behavioral"
     severity: "high"
     triggers: ["sup2"]
+    mitre:
+      id: "T1560.001"
+      tactic: "Collection"
     description: "An archive utility produced a large archive, the collection and staging shape. It is the endpoint backup agent creating a scheduled backup archive; the archiver's parent is the signed backup service."
     disposition: "false_positive"
 

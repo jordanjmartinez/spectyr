@@ -506,6 +506,10 @@ PINNED_DETECTION_TECHNIQUES = frozenset({
     "T1036.005",  # Masquerading: Match Legitimate Name or Location (v18.1)
     "T1566.002",  # Phishing: Spearphishing Link (also phishing_link's answer key;
                   # borrowed as a detection tag on phishing_1's credential POST)
+    # 3d close-out: techniques FP / ambient detections RESEMBLE (mitre-leak fix).
+    "T1078",      # Valid Accounts (risky-signin / OAuth FPs)
+    "T1543.003",  # Create or Modify System Process: Windows Service (svc/psexec)
+    "T1090",      # Proxy (SSL-inspection-bypass FP)
 })
 
 

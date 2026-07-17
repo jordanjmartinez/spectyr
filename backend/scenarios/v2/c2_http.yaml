@@ -244,6 +244,9 @@ detections:
     rule_type: "sigma_behavioral"
     severity: "high"
     triggers: ["sup1"]
+    mitre:
+      id: "T1071.001"
+      tactic: "Command and Control"
     description: "Fixed-interval outbound HTTPS to an external host, the same beacon shape as C2. It is Windows diagnostic telemetry to a Microsoft endpoint: a categorized, allowlisted vendor domain, not an uncategorized lookalike."
     disposition: "false_positive"
 

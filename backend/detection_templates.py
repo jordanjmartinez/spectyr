@@ -76,6 +76,18 @@ BENIGN_DETECTIONS = [
 ]
 
 
+# 3d close-out: ambient benign detections also carry the technique their rule
+# resembles, so mitre-presence never separates benign from authored. key ->
+# (technique, tactic), pinned v18.1 baseline.
+BENIGN_MITRE = {
+    "chrome_updater": ("T1071.001", "Command and Control"),
+    "edge_updater": ("T1071.001", "Command and Control"),
+    "backup_agent": ("T1071.001", "Command and Control"),
+    "admin_psexec": ("T1543.003", "Persistence"),
+    "patch_scan": ("T1046", "Discovery"),
+}
+
+
 def _digest(*parts):
     return hashlib.sha256(":".join(str(p) for p in parts).encode()).digest()
 
@@ -249,7 +261,8 @@ def benign_detections_for_host(host, owner, session_seed, base_time_iso):
             "rule_name": rule_name,
             "rule_type": "sigma_behavioral",
             "severity": severity,
-            "mitre": None,
+            "mitre": ({"id": BENIGN_MITRE[key][0], "tactic": BENIGN_MITRE[key][1]}
+                      if key in BENIGN_MITRE else None),
             "yara_rule_name": None,
             "description": desc,
             "entity": {"host": hostname, "account": owner_user if owner else None},

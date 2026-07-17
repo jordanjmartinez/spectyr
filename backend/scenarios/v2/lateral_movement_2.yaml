@@ -295,6 +295,9 @@ detections:
     rule_type: "sigma_behavioral"
     severity: "medium"
     triggers: ["sup2"]
+    mitre:
+      id: "T1003.001"
+      tactic: "Credential Access"
     description: "A .dmp file was written, the artifact of credential dumping. It is Windows Error Reporting writing a crash dump of a hung application: the dumping process is the signed WerFault.exe and the target is a crashed app, not lsass."
     disposition: "false_positive"
 

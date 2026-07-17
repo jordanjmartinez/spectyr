@@ -355,6 +355,9 @@ detections:
     rule_type: "sigma_behavioral"
     severity: "critical"
     triggers: ["sup1", "sup2", "sup3"]
+    mitre:
+      id: "T1110.001"
+      tactic: "Credential Access"
     description: "A backup service account locked out on the domain controller reads like a targeted attack on backup infrastructure. It is svc_backup failing repeatedly after a password rotation was not propagated, then locking out: one privileged service account from the internal backup server, not the attack's external source."
     disposition: "false_positive"
 

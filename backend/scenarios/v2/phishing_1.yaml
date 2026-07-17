@@ -202,6 +202,9 @@ detections:
     rule_type: "sigma_behavioral"
     severity: "high"
     triggers: ["sup1"]
+    mitre:
+      id: "T1078"
+      tactic: "Initial Access"
     description: "A risky sign-in from an unexpected location reads like account takeover. It is a non-interactive OAuth refresh-token renewal from a known compliant device with MFA satisfied, not an interactive sign-in following a credential-harvest page."
     disposition: "false_positive"
 

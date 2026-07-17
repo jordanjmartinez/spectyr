@@ -220,6 +220,9 @@ detections:
     rule_type: "sigma_behavioral"
     severity: "medium"
     triggers: ["s1"]
+    mitre:
+      id: "T1074.001"
+      tactic: "Collection"
     description: "A scheduled service account copied a large volume of files to a cloud endpoint as part of a planned migration project."
     disposition: "false_positive"
   - id: "det_fp_cloud_sync"
@@ -227,6 +230,9 @@ detections:
     rule_type: "sigma_behavioral"
     severity: "high"
     triggers: ["s5"]
+    mitre:
+      id: "T1567.002"
+      tactic: "Exfiltration"
     description: "A large file volume was uploaded to an external cloud endpoint, the mass-exfiltration shape. It is the sanctioned-tenant SharePoint/OneDrive sync completing the authorized migration."
     disposition: "false_positive"
   - id: "det_fp_mass_fileaccess"
@@ -234,6 +240,9 @@ detections:
     rule_type: "sigma_behavioral"
     severity: "medium"
     triggers: ["s2"]
+    mitre:
+      id: "T1074.001"
+      tactic: "Collection"
     description: "A single account read a large number of files on a share in a short window, the collection/staging shape. It is the source files being read for the authorized migration copy."
     disposition: "false_positive"
 

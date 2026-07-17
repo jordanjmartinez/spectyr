@@ -246,6 +246,9 @@ detections:
     rule_type: "sigma_behavioral"
     severity: "medium"
     triggers: ["sup1"]
+    mitre:
+      id: "T1567.002"
+      tactic: "Exfiltration"
     description: "A file upload left the host for external cloud storage, the exfiltration shape. It is sanctioned corporate OneDrive sync to the company tenant over an authenticated session, not the unsanctioned personal-cloud destination of the exfil."
     disposition: "false_positive"
 

@@ -201,6 +201,9 @@ detections:
     rule_type: "sigma_behavioral"
     severity: "high"
     triggers: ["s3"]
+    mitre:
+      id: "T1071.001"
+      tactic: "Command and Control"
     description: "The endpoint backup agent makes regular, fixed-interval outbound connections to the backup server. The cadence reads like C2 beaconing. It is the signed Veeam agent to the internal backup server, running under SYSTEM on the backup schedule."
     disposition: "false_positive"
   - id: "det_veeam_bulk_egress"
@@ -208,6 +211,9 @@ detections:
     rule_type: "sigma_behavioral"
     severity: "critical"
     triggers: ["s5"]
+    mitre:
+      id: "T1567.002"
+      tactic: "Exfiltration"
     description: "Over 1.75 GB left the host outside business hours, the volume-plus-timing shape of staged exfiltration. It is the nightly full backup completing to the internal repository, logged by Veeam itself."
     disposition: "false_positive"
   - id: "det_veeam_svc_persist"
@@ -215,6 +221,9 @@ detections:
     rule_type: "sigma_behavioral"
     severity: "medium"
     triggers: ["s2"]
+    mitre:
+      id: "T1543.003"
+      tactic: "Persistence"
     description: "A service binary that establishes regular outbound connections overlaps with C2 service persistence. It is the signed Veeam endpoint service in Program Files, installed by the backup deployment."
     disposition: "false_positive"
 

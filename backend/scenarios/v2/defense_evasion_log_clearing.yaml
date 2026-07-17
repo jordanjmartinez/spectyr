@@ -255,6 +255,9 @@ detections:
     rule_type: "sigma_behavioral"
     severity: "medium"
     triggers: ["sup1"]
+    mitre:
+      id: "T1070.001"
+      tactic: "Defense Evasion"
     description: "An event log was cleared, the evidence-destruction shape. It is a scheduled maintenance task archiving then clearing a non-Security operational log (wevtutil cl ... /bu:) under SYSTEM, with the cleared events saved to a backup file, not the attacker's unbacked-up Security-log clear."
     disposition: "false_positive"
 

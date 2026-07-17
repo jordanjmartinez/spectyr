@@ -572,6 +572,52 @@ DETECTIONS = {
 }
 
 
+# 3d close-out: MITRE-presence must not separate TP from FP. A detection rule
+# maps to the technique it is written to catch regardless of whether it fired on
+# a true or false positive, so every FP carries the ATT&CK technique its rule
+# RESEMBLES (pinned v18.1 baseline). Mapping: FP detection id -> (technique,
+# tactic). Applied as a post-pass so the FP authoring above stays readable.
+FP_RESEMBLES = {
+    "det_scanner_sweep": ("T1046", "Discovery"),
+    "det_deploy_staging_fp": ("T1036.005", "Defense Evasion"),
+    "det_telemetry_beacon_fp": ("T1071.001", "Command and Control"),
+    "det_cloud_sync_fp": ("T1567.002", "Exfiltration"),
+    "det_backup_archive_fp": ("T1560.001", "Collection"),
+    "det_crashdump_fp": ("T1003.001", "Credential Access"),
+    "det_defender_policy_fp": ("T1562.001", "Defense Evasion"),
+    "det_dns_volume_fp": ("T1071.004", "Command and Control"),
+    "det_cloud_upload_fp": ("T1567.002", "Exfiltration"),
+    "det_privileged_lockout_fp": ("T1110.001", "Credential Access"),
+    "det_svc_stale_creds_fp": ("T1110.001", "Credential Access"),
+    "det_mass_egress_fp": ("T1567.002", "Exfiltration"),
+    "det_benign_risky_signin_fp": ("T1078", "Initial Access"),
+    "det_doc_download_fp": ("T1566.002", "Initial Access"),
+    "det_maint_logclear_fp": ("T1070.001", "Defense Evasion"),
+    "det_fp_veeam": ("T1071.001", "Command and Control"),
+    "det_veeam_bulk_egress": ("T1567.002", "Exfiltration"),
+    "det_veeam_svc_persist": ("T1543.003", "Persistence"),
+    "det_fp_pentest": ("T1566.002", "Initial Access"),
+    "det_pentest_tracker_fp": ("T1567.002", "Exfiltration"),
+    "det_pentest_newdomain_fp": ("T1583.001", "Resource Development"),
+    "det_fp_oauth": ("T1078", "Initial Access"),
+    "det_oauth_noninteractive_fp": ("T1078", "Initial Access"),
+    "det_fp_robocopy": ("T1074.001", "Collection"),
+    "det_fp_cloud_sync": ("T1567.002", "Exfiltration"),
+    "det_fp_mass_fileaccess": ("T1074.001", "Collection"),
+    "det_fp_ssl": ("T1071.001", "Command and Control"),
+    "det_fp_pinned_tls": ("T1071.001", "Command and Control"),
+    "det_fp_inspection_bypass": ("T1090", "Command and Control"),
+}
+for _dets in DETECTIONS.values():
+    for _d in _dets:
+        if _d["disposition"] == "false_positive" and "mitre" not in _d:
+            _t = FP_RESEMBLES.get(_d["id"])
+            if _t is None:
+                raise SystemExit(f"[FLAG] FP detection {_d['id']} has no "
+                                 f"resembling-technique mapping (FP_RESEMBLES)")
+            _d["mitre"] = {"id": _t[0], "tactic": _t[1]}
+
+
 # Stage 2 density: authored benign supplemental telemetry, keyed by label.
 # Merged into the session pool; referenceable by detections via sup* ids.
 # offset is relative to the attack base time and may be negative.

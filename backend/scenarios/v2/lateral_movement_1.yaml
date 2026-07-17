@@ -318,6 +318,9 @@ detections:
     rule_type: "sigma_behavioral"
     severity: "high"
     triggers: ["sup2"]
+    mitre:
+      id: "T1046"
+      tactic: "Discovery"
     description: "The security team's authenticated vulnerability scanner ran its scheduled sweep from the scanner host, connecting rapidly to many internal hosts including the file server, and tripped a lateral-recon rule. The source is the scanner host under a service account on the scan schedule."
     disposition: "false_positive"
 
