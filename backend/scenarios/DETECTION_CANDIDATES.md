@@ -298,3 +298,129 @@ Two decisions needed at approval, each stub-flagged above:
 On approval I implement Batch 1 one scenario per commit, run full gates after
 the batch, print the distribution report (per-scenario TP/FP counts, severity
 spread, source spread), and STOP for review.
+
+---
+
+# BATCH 1 DONE (commits a9c1dbb, 0a26dd7, 57c5310, 9ae27b5).
+
+# STEP 3c BATCH 2 — candidate narratives (SCAFFOLD, awaiting approval)
+
+Four scenarios chosen to cover four NEW disposition mixes (batch 1 was all
+2TP+1FP / 3FP). Severity deliberately varied so the authored FP is NOT
+predictably the high-severity detection (several FPs are medium; several TPs
+are high/critical).
+
+| Scenario | Category | Mix | FP severities | note |
+|---|---|---|---|---|
+| lateral_movement_2 | Lateral Movement | **3TP + 1FP** | medium | FP is the lowest severity |
+| malware_ransomware | Malware | **all-TP (3TP)** | (none authored) | dismissables from ambient benign |
+| data_exfil_archive | Data Exfiltration | **1TP + 2FP** | medium, high | one real exfil hidden among benign uploads |
+| false_positive_oauth | False Positive | **2 FP** | high, medium | |
+
+Reused canonical actors (no new invented identities): WerFault (Windows),
+ambient benign, the Veeam endpoint agent, real Microsoft/SharePoint domains.
+One identity to verify: the benign cloud-sync domain (real Microsoft domain,
+verified, never invented).
+
+## B2.1 lateral_movement_2 (Lateral Movement, T1003.001) — 3TP + 1FP
+
+Chain: s1 procdump.exe from Downloads, s2 ProcessAccess on lsass (trigger),
+s3 FileCreate (lsass dump), s4 ProcessCreate from Temp, s5 4624 on file server.
+Env: workstation, file.
+
+- **D1 KEEP** `det_lsass` (TP, sigma, **critical**, s2): a non-system process
+  opened lsass memory, the credential-dumping signature.
+- **D2 ADD** `det_procdump_exec` (TP, sigma, **medium**, s1): procdump.exe ran
+  from a user's Downloads folder, the tool that performed the dump.
+- **D3 ADD** `det_lsass_dumpfile` (TP, sigma, **high**, s3): a memory dump
+  file was written to disk immediately after the lsass access.
+- **D4 ADD** `det_crashdump_fp` (FP, sigma, **medium**, supplemental **sup1**):
+  "Process Memory Dump File Created". "A .dmp file was written, the artifact
+  of credential dumping. It is Windows Error Reporting (WerFault.exe) writing
+  a crash dump of a hung application, not lsass." Resolution: the dumping
+  process is WerFault.exe (Windows), target is a crashed app, not lsass.
+  - sup1: Sysmon FileCreate of a WER crash .dmp by WerFault.exe on the victim
+    workstation. In-window -> **RED HERRING**. No new entity (WerFault is
+    built-in Windows).
+
+Severity: TP critical/high/medium, FP medium. The FP is the lowest severity,
+inverting batch 1 where the FP was the high one.
+
+## B2.2 malware_ransomware (Malware, T1486) — all-TP (3TP)
+
+Chain: s1 payload from Temp, s2 vssadmin, s3 FileCreate first .locked
+(trigger), s4/s5 more .locked. Env: workstation only. NO authored FP: the
+dismissables are the workstation's ambient benign detections (updaters/backup
+agent). This is the all-TP mix.
+
+- **D1 KEEP** `det_ransom_note` (TP, yara, **high**, s3): ransom-note file
+  signature match amid mass file changes.
+- **D2 ADD** `det_vss_delete` (TP, sigma, **high**, s2): "Shadow Copy Deletion
+  via vssadmin". mitre T1490 Impact. "vssadmin deleted volume shadow copies,
+  inhibiting recovery, a ransomware precursor."
+- **D3 ADD** `det_mass_encrypt` (TP, sigma, **critical**, s5): "Rapid Mass
+  File Writes with Unfamiliar Extension". mitre T1486 Impact. "Many files
+  rewritten with an unfamiliar extension in seconds, the encryption stage."
+
+Severity: high/high/critical, no FP. Dismissables come from ambient benign.
+
+## B2.3 data_exfil_archive (Data Exfiltration, T1560.001) — 1TP + 2FP
+
+Chain: s1 7z.exe launch, s2 FileCreate archive, s3 DNS to mega.nz, s4 firewall
+ALLOW, s5 HTTP_CONNECT to mega.nz (trigger). Env: workstation, dns, proxy,
+firewall. One real exfil hidden among two benign uploads/archives.
+
+- **D1 KEEP** `det_exfil_upload` (TP, sigma, **high**, s5): outbound to a
+  consumer file-sharing host after local archiving, the real exfil.
+- **D2 ADD** `det_cloud_sync_fp` (FP, sigma, **medium**, supplemental
+  **sup1**): "Outbound Upload to Cloud Storage". "A large upload to an
+  external cloud endpoint reads like exfiltration. It is corporate OneDrive
+  sync to the sanctioned tenant." Resolution: destination is the corporate
+  SharePoint/OneDrive tenant (sanctioned), not a consumer file host.
+  - sup1: Proxy HTTP_CONNECT from the victim workstation to the corporate
+    OneDrive/SharePoint tenant. In-window -> **RED HERRING**.
+  - entity: the corporate SharePoint domain in supplemental_entities. **Verify
+    a real Microsoft domain** (e.g. acme-my.sharepoint.com, the pattern the
+    robocopy FP already uses); never invented.
+- **D3 ADD** `det_backup_archive_fp` (FP, sigma, **high**, supplemental
+  **sup2**): "Archive Utility Created a Large Archive". "An archive utility
+  created a large archive, the collection/staging shape. It is the Veeam
+  endpoint backup agent creating a scheduled local backup archive."
+  Resolution: the archiver's parent is the signed Veeam agent, output to the
+  backup path.
+  - sup2: Sysmon ProcessCreate of an archiver launched by the Veeam endpoint
+    agent on the victim workstation. In-window -> **RED HERRING**. Reuses the
+    Veeam identity (established in false_positive_veeam).
+
+Severity: TP high, FP medium + high. Two upload/archive FPs coexist with the
+single real exfil; severity does not separate them.
+
+## B2.4 false_positive_oauth (False Positive, benign) — 2 FP
+
+Chain: s1 SigninLogs, s2 HTTP_POST OAuth token to login.microsoftonline.com,
+s3 SigninLogs, s4 AADUserRiskEvents impossible-travel (trigger). Env:
+workstation, proxy. All benign (modern-auth OAuth refresh tokens after an
+endpoint migration). Two FPs (varying from batch 1's three).
+
+- **D1 KEEP** `det_fp_oauth` (FP, sigma, **high**, s4): "Impossible-Travel
+  Sign-In Risk". Reads like account takeover; benign OAuth refresh tokens.
+- **D2 ADD** `det_oauth_noninteractive_fp` (FP, sigma, **medium**, s2):
+  "Non-Interactive OAuth Token Activity from New Location". "A token-based
+  sign-in from an unexpected location reads like token theft or replay. It is
+  a modern-auth refresh token after the endpoint's migration to OAuth."
+  Resolution: the sign-ins are non-interactive refresh-token renewals from the
+  migrated device.
+
+Severity: high + medium (the high one is the kept detection, not the added
+one), so the added FP is medium here.
+
+---
+
+## STOP — awaiting owner approval of Batch 2 (step 3c)
+
+One verification at approval: the corporate SharePoint/OneDrive domain for
+B2.3 sup1 (real Microsoft domain; I will verify or reuse the established
+acme-my.sharepoint.com pattern). Everything else reuses Windows built-ins,
+ambient benign, and the established Veeam identity. On approval I implement
+one scenario per commit, run full gates, print the distribution report with
+the varied mixes, and STOP.
