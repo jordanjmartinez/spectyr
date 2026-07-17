@@ -214,6 +214,20 @@ detections:
     triggers: ["s2"]
     description: "Regular-interval TLS handshake failures caused by an expanded corporate proxy SSL-inspection policy, not C2."
     disposition: "false_positive"
+  - id: "det_fp_pinned_tls"
+    rule_name: "Client Repeatedly Reconnecting to External Host After TLS Failures"
+    rule_type: "sigma_behavioral"
+    severity: "high"
+    triggers: ["s4"]
+    description: "A client repeatedly reconnecting to an external host after TLS failures reads like C2 beaconing. It is a certificate-pinned Office client retrying because the new inspection CA breaks pinning, not malware."
+    disposition: "false_positive"
+  - id: "det_fp_inspection_bypass"
+    rule_name: "Traffic Allowed Around SSL Inspection"
+    rule_type: "sigma_behavioral"
+    severity: "medium"
+    triggers: ["s3"]
+    description: "A flow permitted without inspection reads like an attempt to evade the proxy. It is the firewall allow for the pinned Office flow the inspection policy could not decrypt."
+    disposition: "false_positive"
 
 answer_key:
   classification: "False Positive"

@@ -523,11 +523,27 @@ DETECTIONS = {
              "A single account read a large number of files on a share in a "
              "short window, the collection/staging shape. It is the source "
              "files being read for the authorized migration copy.")],
-    "false_positive_ssl_inspection": [_det(
-        "det_fp_ssl", "Repeated TLS Handshake Failures Resembling Beacon",
-        "sigma_behavioral", "medium", ["s2"], "false_positive",
-        "Regular-interval TLS handshake failures caused by an expanded "
-        "corporate proxy SSL-inspection policy, not C2.")],
+    # Density batch 4 (B4.6): 3 FP, all TP-looking, spanning medium/high. The
+    # high-severity detection is an FP, so within this all-FP scenario the
+    # scariest signal is not a tell. No supplemental events (every benign chain
+    # step carries a story); reuses in-chain outlook.office365.com / Office.
+    "false_positive_ssl_inspection": [
+        _det("det_fp_ssl", "Repeated TLS Handshake Failures Resembling Beacon",
+             "sigma_behavioral", "medium", ["s2"], "false_positive",
+             "Regular-interval TLS handshake failures caused by an expanded "
+             "corporate proxy SSL-inspection policy, not C2."),
+        _det("det_fp_pinned_tls",
+             "Client Repeatedly Reconnecting to External Host After TLS Failures",
+             "sigma_behavioral", "high", ["s4"], "false_positive",
+             "A client repeatedly reconnecting to an external host after TLS "
+             "failures reads like C2 beaconing. It is a certificate-pinned "
+             "Office client retrying because the new inspection CA breaks "
+             "pinning, not malware."),
+        _det("det_fp_inspection_bypass", "Traffic Allowed Around SSL Inspection",
+             "sigma_behavioral", "medium", ["s3"], "false_positive",
+             "A flow permitted without inspection reads like an attempt to evade "
+             "the proxy. It is the firewall allow for the pinned Office flow the "
+             "inspection policy could not decrypt.")],
     # Density pilot 2: 3 FP, all TP-looking, spanning Medium/High/Critical.
     # The scenario must read like it might contain a real threat until the
     # analyst reads the evidence (signed Veeam binary, internal backup
