@@ -258,12 +258,27 @@ DETECTIONS = {
              "exfiltration shape. It is sanctioned corporate OneDrive sync to "
              "the company tenant over an authenticated session, not the "
              "unsanctioned personal-cloud destination of the exfil.")],
-    "insider_staging": [_det(
-        "det_staging", "Sensitive Share Access Then Local Staging",
-        "sigma_behavioral", "medium", ["s5"], "true_positive",
-        "A user accessed a sensitive file share outside their role and staged "
-        "a copy locally before an outbound connection.",
-        mitre=("T1074.001", "Collection"))],
+    # Density batch 4 (B4.2): 2 TP + 1 FP. FP severity rank = SOLE-TOP
+    # (critical). The FP is a benign Veeam mass egress coexisting with the
+    # insider exfil by the large-egress class; resolved by destination (internal
+    # backup repository vs external exfil host).
+    "insider_staging": [
+        _det("det_staging", "Sensitive Share Access Then Local Staging",
+             "sigma_behavioral", "high", ["s5"], "true_positive",
+             "A user accessed a sensitive file share outside their role and "
+             "staged a copy locally before an outbound connection.",
+             mitre=("T1074.001", "Collection")),
+        _det("det_share_harvest", "Sensitive File Share Accessed Outside Role",
+             "sigma_behavioral", "medium", ["s2"], "true_positive",
+             "A user opened a sensitive file share (5140) they have no "
+             "role-based reason to touch, the collection step before staging.",
+             mitre=("T1074.001", "Collection")),
+        _det("det_mass_egress_fp", "Large Off-Hours Data Egress Volume",
+             "sigma_behavioral", "critical", ["sup1"], "false_positive",
+             "Over 1.75 GB left the host, the volume-plus-timing shape of staged "
+             "exfiltration. It is the scheduled Veeam endpoint backup completing "
+             "to the internal repository, logged by Veeam itself, not an "
+             "outbound transfer to an external host.")],
     # Density pilot (Stage 2 content pass): 2 TP + 1 coexisting FP. Severity
     # deliberately inverted (FP is high, one TP is medium) so severity never
     # reveals disposition; two scan-shaped detections can't be told apart by
@@ -599,6 +614,34 @@ SUPPLEMENTAL_EVENTS = {
                  "target_account_name": "svc_backup",
                  "target_domain_name": "ACME",
                  "caller_computer_name": "{infra.backup.hostname}",
+             }),
+    ],
+    "insider_staging": [
+        # Benign Veeam endpoint backup completing a large transfer to the
+        # internal repository -- reads like off-hours mass exfiltration
+        # (critical). det_mass_egress_fp triggers here. In-window -> DECLARED red
+        # herring; resolved by the signed Veeam job to the internal backup repo
+        # on schedule, vs the attack's outbound to an external exfil host.
+        # Reuses the established Veeam identity (mirrors false_positive_veeam's
+        # bulk-egress); ACME-VEEAM01 is a destination literal, not an endpoint.
+        _sup("sup1", "ws_victim", -85, "190", "Veeam", "low",
+             "{victim.hostname}", user="victim", red_herring=True,
+             source_ip="{victim.ip}",
+             message="Veeam Agent backup job completed: 1.75 GB to ACME-VEEAM01",
+             key_value_pairs={
+                 "host": "{victim.hostname}",
+                 "src_ip": "{victim.ip}",
+                 "event_log": "Veeam Agent",
+                 "event_id": "190",
+                 "event_level": "Information",
+                 "job_name": "{victim.hostname} Nightly Backup",
+                 "status": "Success",
+                 "bytes_backed_up": "1879048192",
+                 "bytes_backed_up_human": "1.75 GB",
+                 "repository": "ACME-VEEAM01",
+                 "repository_ip": "10.0.1.206",
+                 "duration_seconds": "4208",
+                 "scheduled_time": "22:00",
              }),
     ],
     "defense_evasion": [

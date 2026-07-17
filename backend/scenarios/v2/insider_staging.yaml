@@ -200,7 +200,33 @@ attack:
 
 noise: {}
 
-supplemental_events: []
+supplemental_events:
+  - id: "sup1"
+    host: "ws_victim"
+    user: "victim"
+    offset: -85
+    red_herring: true
+    event_type: "190"
+    source_type: "Veeam"
+    log_source: "Veeam"
+    severity: "low"
+    hostname: "{victim.hostname}"
+    source_ip: "{victim.ip}"
+    message: "Veeam Agent backup job completed: 1.75 GB to ACME-VEEAM01"
+    key_value_pairs:
+      host: "{victim.hostname}"
+      src_ip: "{victim.ip}"
+      event_log: "Veeam Agent"
+      event_id: "190"
+      event_level: "Information"
+      job_name: "{victim.hostname} Nightly Backup"
+      status: "Success"
+      bytes_backed_up: "1879048192"
+      bytes_backed_up_human: "1.75 GB"
+      repository: "ACME-VEEAM01"
+      repository_ip: "10.0.1.206"
+      duration_seconds: "4208"
+      scheduled_time: "22:00"
 
 supplemental_entities: []
 
@@ -208,13 +234,30 @@ detections:
   - id: "det_staging"
     rule_name: "Sensitive Share Access Then Local Staging"
     rule_type: "sigma_behavioral"
-    severity: "medium"
+    severity: "high"
     triggers: ["s5"]
     mitre:
       id: "T1074.001"
       tactic: "Collection"
     description: "A user accessed a sensitive file share outside their role and staged a copy locally before an outbound connection."
     disposition: "true_positive"
+  - id: "det_share_harvest"
+    rule_name: "Sensitive File Share Accessed Outside Role"
+    rule_type: "sigma_behavioral"
+    severity: "medium"
+    triggers: ["s2"]
+    mitre:
+      id: "T1074.001"
+      tactic: "Collection"
+    description: "A user opened a sensitive file share (5140) they have no role-based reason to touch, the collection step before staging."
+    disposition: "true_positive"
+  - id: "det_mass_egress_fp"
+    rule_name: "Large Off-Hours Data Egress Volume"
+    rule_type: "sigma_behavioral"
+    severity: "critical"
+    triggers: ["sup1"]
+    description: "Over 1.75 GB left the host, the volume-plus-timing shape of staged exfiltration. It is the scheduled Veeam endpoint backup completing to the internal repository, logged by Veeam itself, not an outbound transfer to an external host."
+    disposition: "false_positive"
 
 answer_key:
   classification: "Insider Threat"
