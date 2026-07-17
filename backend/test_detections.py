@@ -181,9 +181,11 @@ def test_supplemental_events_never_carry_answer_fields():
 
 
 def test_density_no_single_authored_detection():
-    """Pilot acceptance: neither pilot scenario has exactly one authored
-    detection."""
-    for label in ("lateral_movement_1", "false_positive_veeam"):
+    """Densified scenarios (pilots + batch 1) have more than one authored
+    detection. The corpus-wide invariant lands at 3d close-out."""
+    densified = ("lateral_movement_1", "false_positive_veeam", "malware_usb",
+                 "c2_http", "password_spray", "false_positive_pentest")
+    for label in densified:
         assert len(CATALOG[label]["detections"]) >= 2, label
 
 
