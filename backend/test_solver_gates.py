@@ -30,6 +30,7 @@ seeds; macro -> 1/(scenarios * seeds).
 
 Run: python test_solver_gates.py   (prints the full table; also used by pytest)
 """
+import json
 import random
 
 import scenario_loader as sl
@@ -91,6 +92,38 @@ def _materialize(label, seed):
         owner = {"username": owner["username"], "domain": owner.get("domain", "ACME")} if owner else None
         insts += dt.benign_detections_for_host(h, owner, seed, started)
     return [(dt.sanitize_detection(i), i["disposition"]) for i in insts]
+
+
+def _materialize_ev(label, seed):
+    """Same feed, but with the sanitized triggering events (the detail card the
+    player can open) so the known-actor solver can read process lineage and
+    destinations, not just the feed-row entity."""
+    sc = CATALOG[label]
+    res = sl.resolve_entities(sc, EMP, SRV, rng=_Forced(EMP[0]))
+    env = sl.substitute_deep(sc["environment"], res)
+    logs, sup_logs, sup_meta = [], [], []
+    for i, step in enumerate(sc["chain"]):
+        lg = sl.substitute_deep({k: v for k, v in step.items() if k != "offset"}, res)
+        lg.update({"scenario_id": f"scenario-{label}",
+                   "timestamp": f"2026-07-16T12:00:{i:02d}+00:00"})
+        logs.append(lg)
+    for sup in sc.get("supplemental_events", []):
+        f = {k: v for k, v in sup.items() if k not in ("offset", "host", "user", "id")}
+        lg = sl.substitute_deep(f, res); lg["timestamp"] = "2026-07-16T11:58:00+00:00"
+        sup_logs.append(lg); sup_meta.append({"id": sup["id"], "host": sup["host"]})
+    insts = dt.build_scenario_detections(f"scenario-{label}", sc, logs, seed,
+                                         supplemental_logs=sup_logs,
+                                         supplemental_meta=sup_meta, concrete_env=env)
+    started = "2026-07-16T12:00:00+00:00"
+    seen = set()
+    for h in env["hosts"]:
+        if h["role"] in sg.NON_ENDPOINT_ROLES or h["hostname"] in seen:
+            continue
+        seen.add(h["hostname"])
+        owner = next((a for a in env.get("accounts", []) if a.get("host") == h["id"]), None)
+        owner = {"username": owner["username"], "domain": owner.get("domain", "ACME")} if owner else None
+        insts += dt.benign_detections_for_host(h, owner, seed, started)
+    return [(dt.sanitize_detection(i, include_events=True), i["disposition"]) for i in insts]
 
 
 ALL_FEEDS = {seed: {lbl: _materialize(lbl, seed) for lbl in CATALOG} for seed in SEEDS}
@@ -216,6 +249,61 @@ def results():
     return rows
 
 
+# --- component 4: known-actor prior (REPORT-ONLY, never gates) --------------
+# Amendment 8: uses only actor information visible to the player -- the feed-row
+# entity (host/account) and the detail card's process lineage / destinations.
+# It is deliberately learnable; its counter is the backlogged
+# trusted-actor-compromised scenario, and this number calibrates that scenario.
+CANONICAL_BENIGN_ACTORS = {
+    "hosts": {"ACME-SEC01", "ACME-VEEAM01"},
+    "accounts": {"svc_backup", "svc_vulnscan"},
+    "process_substr": ("dcagentservice.exe", "Veeam.EndPoint", "Veeam.Endpoint",
+                       "nessusd.exe", "GoogleUpdate.exe", "MicrosoftEdgeUpdate.exe",
+                       "PSEXESVC.exe"),
+    "dest_substr": ("events.data.microsoft.com", "sharepoint.com",
+                    "office365.com"),
+}
+
+
+def _actor_is_canonical_benign(view):
+    ent = view.get("entity") or {}
+    if ent.get("host") in CANONICAL_BENIGN_ACTORS["hosts"]:
+        return True
+    if str(ent.get("account") or "").split("\\")[-1] in CANONICAL_BENIGN_ACTORS["accounts"]:
+        return True
+    for ev in view.get("triggering_events", []):
+        blob = json.dumps(ev)
+        if any(s in blob for s in CANONICAL_BENIGN_ACTORS["process_substr"]):
+            return True
+        if any(s in blob for s in CANONICAL_BENIGN_ACTORS["dest_substr"]):
+            return True
+    return False
+
+
+def solve_known_actor(feed_ev):
+    return [("dismiss" if _actor_is_canonical_benign(v) else "promote", d)
+            for v, d in feed_ev]
+
+
+def known_actor_result():
+    micro_c = micro_n = 0
+    pair_accs = []
+    for seed in SEEDS:
+        for lbl in CATALOG:
+            feed = _materialize_ev(lbl, seed)
+            dec = solve_known_actor(feed)
+            c = sum(_correct(a, d) for a, d in dec)
+            micro_c += c; micro_n += len(dec)
+            pair_accs.append(c / len(dec))
+    return micro_c / micro_n, sum(pair_accs) / len(pair_accs)
+
+
+def test_known_actor_prior_is_measurable_report_only():
+    """Report-only: it must run and produce a rate; it never fails the build."""
+    mi, ma = known_actor_result()
+    assert 0.0 <= mi <= 1.0 and 0.0 <= ma <= 1.0
+
+
 def test_gated_solvers_do_not_beat_baseline():
     rows = results()
     failures = []
@@ -241,5 +329,10 @@ if __name__ == "__main__":
     best = min(pn, key=lambda n: max(pn[n][0], pn[n][1]))
     print(f"\npromote-N worst N={worst} (micro {pn[worst][0]:.4f}), "
           f"best N={best} (micro {pn[best][0]:.4f})")
+    ka_mi, ka_ma = known_actor_result()
+    print(f"\nknown-actor prior (REPORT-ONLY, not gated): "
+          f"micro={ka_mi:.4f}  macro={ka_ma:.4f}")
+    print("  deliberately learnable; counter = backlogged trusted-actor-"
+          "compromised scenario.")
     allok = all(ok_mi and ok_ma for _, _, ok_mi, ok_ma in rows.values())
     print("\nGATE:", "PASS" if allok else "FAIL")
