@@ -72,6 +72,9 @@ A full-stack Security Information and Event Management (SIEM) simulation platfor
 - Gates (run from `backend/`): `python test_scenario_loader_v2.py`, `python parity_check_v2.py`, `python test_scenario_loader.py`, `python parity_check.py`, `python fairness_check.py`
 - Migration + review artifact: `scenarios/migrate_v1_to_v2.py` regenerates `scenarios/v2/` and `scenarios/v2/MIGRATION_REPORT.md` (per-step tag tables, grandfathered literals, open flags). MIGRATION_REPORT.md is frozen as the Stage 0 artifact; Stage 1+ flags live in `scenarios/v2/ENVIRONMENT_REPORT.md`
 
+### Identity-entity rule (detections)
+- Identity-provider-sourced detections (source_type in `_IDENTITY_SOURCES`, e.g. `Azure AD`) resolve their entity to the **account** (UPN or `{user_domain}\{username}` per source), **never** to a host. An identity event's sign-in IP (ClientIP/IPAddress) is the origin, not an org endpoint, so it is never force-resolved to a host and the entity carries **no endpoint link** (frontend shows the account, unlinked). Host-local (Sysmon/Windows Security/Veeam/Defender) and sensor (Firewall/Proxy/DNS) detections resolve to a host as before.
+
 ### Detections Feed (Phase 2 Stage 2)
 - Schema v2 `detections` per scenario: rule_name, rule_type (sigma_behavioral | yara), severity, triggers (step ids), optional mitre, description, and a server-side answer-key `disposition` (true_positive | false_positive | benign_expected). Authored in `migrate_v1_to_v2.DETECTIONS`; all rule text is original (no SigmaHQ content, so DRL attribution does not attach)
 - `detection_templates.py`: ambient benign_expected detections per managed host (updaters, backup agents, admin tooling), stable-key generated; plus `build_scenario_detections`, `benign_detections_for_host`, and `sanitize_detection`

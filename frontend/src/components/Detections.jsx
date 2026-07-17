@@ -164,7 +164,7 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot })
                 </td>
                 <td className="px-3 sm:px-4 py-3"><RuleTypeChip type={d.rule_type} /></td>
                 <td className="px-3 sm:px-4 py-3 font-mono whitespace-nowrap text-[#1a2332]">
-                  {d.entity?.host || '-'}
+                  {d.entity?.host || d.entity?.account || '-'}
                 </td>
                 <td className="px-3 sm:px-4 py-3 font-mono whitespace-nowrap text-[#57606a]">{shortTime(d.time)}</td>
                 <td className="px-3 sm:px-4 py-3">

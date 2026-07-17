@@ -140,6 +140,8 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot }) => {
               <button type="button" onClick={() => onHostPivot?.(det.entity.host)} className="text-[#16436b] hover:underline" title={`Open ${det.entity.host} in Endpoints`}>
                 {det.entity.host}
               </button>
+            ) : det.entity?.account ? (
+              <span className="text-[#57606a]" title="Identity entity (no endpoint)">{det.entity.account}</span>
             ) : '-'}
             {' '}&middot;{' '}
             <span className="text-[#8b949e]">{det.id}</span>

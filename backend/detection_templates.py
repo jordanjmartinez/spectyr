@@ -101,6 +101,12 @@ def _evidence_sha256(session_seed, event):
 # entity is the source host (by source_ip), not the reporting device.
 _SENSOR_SOURCES = {"Firewall", "Proxy", "DNS"}
 
+# Identity-provider sources: the entity is the ACCOUNT, never a host. An identity
+# event's ClientIP/IPAddress is the sign-in origin, not an endpoint the org owns,
+# so it is never force-resolved to a host and the entity carries no endpoint link
+# (standing identity-entity rule).
+_IDENTITY_SOURCES = {"Azure AD"}
+
 
 def build_scenario_detections(scenario_id, catalog_entry, rendered_logs,
                               session_seed, supplemental_logs=None,
@@ -125,13 +131,25 @@ def build_scenario_detections(scenario_id, catalog_entry, rendered_logs,
             if h.get("ip"):
                 ip_to_host[h["ip"]] = h["hostname"]
 
-    def entity_host(log):
-        # sensor events (firewall/proxy/dns) report on behalf of the source
-        if log.get("source_type") in _SENSOR_SOURCES:
-            src = log.get("source_ip")
-            if src in ip_to_host:
-                return ip_to_host[src]
-        return log.get("hostname")
+    def entity_for(log):
+        src = log.get("source_type")
+        kvp = log.get("key_value_pairs") or {}
+        if src in _IDENTITY_SOURCES:
+            # identity-provider event: the entity is the account (UPN or
+            # domain\user), never a host. Do not resolve the sign-in IP to an
+            # endpoint; no endpoint link.
+            acct = (kvp.get("UserPrincipalName") or log.get("user_account")
+                    or kvp.get("account_name") or None)
+            return {"host": None, "account": acct}
+        # host-local or sensor event: resolve the actor host
+        host = log.get("hostname")
+        if src in _SENSOR_SOURCES:
+            s = log.get("source_ip")
+            if s in ip_to_host:
+                host = ip_to_host[s]
+        account = (log.get("user_account") or kvp.get("account_name") or "")
+        account = account.split("\\")[-1] if account and account != "-" else None
+        return {"host": host, "account": account}
 
     out = []
     for det in catalog_entry.get("detections", []):
@@ -139,9 +157,6 @@ def build_scenario_detections(scenario_id, catalog_entry, rendered_logs,
         if not trig_logs:
             continue
         first = trig_logs[0]
-        kvp = first.get("key_value_pairs") or {}
-        account = (first.get("user_account") or kvp.get("account_name") or "")
-        account = account.split("\\")[-1] if account and account != "-" else None
         instance = {
             "id": _det_id(session_seed, scenario_id, det["id"]),
             "scenario_id": scenario_id,          # server-side linkage
@@ -152,7 +167,7 @@ def build_scenario_detections(scenario_id, catalog_entry, rendered_logs,
             "mitre": det.get("mitre"),
             "yara_rule_name": det.get("yara_rule_name"),
             "description": det["description"],
-            "entity": {"host": entity_host(first), "account": account},
+            "entity": entity_for(first),
             "time": first.get("timestamp"),
             "triggering_events": trig_logs,
             "sha256": _evidence_sha256(session_seed, first),  # fictional, evidence

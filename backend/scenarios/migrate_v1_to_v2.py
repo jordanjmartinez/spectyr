@@ -405,12 +405,29 @@ DETECTIONS = {
              "force. It is a backup service account with a stale password: one "
              "account (not many), from the backup server, on a scheduled "
              "job.")],
-    "phishing_1": [_det(
-        "det_impossible_travel", "Entra Impossible-Travel Risk Detection",
-        "sigma_behavioral", "high", ["s4"], "true_positive",
-        "Entra ID flagged risky sign-in activity from an unexpected location "
-        "after a credential-harvest page interaction.",
-        mitre=("T1583.001", "Resource Development"))],
+    # Density batch 4 (B4.3): 2 TP + 1 FP. FP severity rank = MIDDLE (high),
+    # between a critical TP (impossible travel) and a medium TP (credential
+    # POST). The FP is a benign non-interactive OAuth refresh-token risky
+    # sign-in; resolved by non-interactive token + known device + MFA and no
+    # preceding credential POST. Identity-sourced detections resolve to the
+    # ACCOUNT (no endpoint link).
+    "phishing_1": [
+        _det("det_impossible_travel", "Entra Impossible-Travel Risk Detection",
+             "sigma_behavioral", "critical", ["s4"], "true_positive",
+             "Entra ID flagged risky sign-in activity from an unexpected "
+             "location after a credential-harvest page interaction.",
+             mitre=("T1583.001", "Resource Development")),
+        _det("det_credential_post", "Credentials Submitted to a Lookalike Domain",
+             "sigma_behavioral", "medium", ["s2"], "true_positive",
+             "Credentials were POSTed to a sign-in form on a newly-registered "
+             "lookalike domain, the credential-harvest step.",
+             mitre=("T1566.002", "Initial Access")),
+        _det("det_benign_risky_signin_fp", "Risky Sign-In From New Location",
+             "sigma_behavioral", "high", ["sup1"], "false_positive",
+             "A risky sign-in from an unexpected location reads like account "
+             "takeover. It is a non-interactive OAuth refresh-token renewal from "
+             "a known compliant device with MFA satisfied, not an interactive "
+             "sign-in following a credential-harvest page.")],
     "phishing_link": [_det(
         "det_link_payload", "Payload Process Spawned After Email Link Click",
         "sigma_behavioral", "high", ["s3"], "true_positive",
@@ -614,6 +631,31 @@ SUPPLEMENTAL_EVENTS = {
                  "target_account_name": "svc_backup",
                  "target_domain_name": "ACME",
                  "caller_computer_name": "{infra.backup.hostname}",
+             }),
+    ],
+    "phishing_1": [
+        # Benign non-interactive OAuth refresh-token sign-in from a new-but-known
+        # location, flagged risky -- reads like the impossible-travel / account-
+        # takeover TP. det_benign_risky_signin_fp triggers here. In-window ->
+        # DECLARED red herring; resolved by non-interactive token + known
+        # compliant device + MFA, and no preceding credential POST. Azure AD is
+        # an identity source -> the detection entity is the ACCOUNT, no endpoint.
+        # Reuses the false_positive_oauth benign-auth pattern; no new entity.
+        _sup("sup1", "ws_victim", -75, "SigninLogs", "Azure AD", "medium",
+             "{victim.hostname}", user="victim", red_herring=True,
+             user_account="ACME\\{victim.username}",
+             message="Non-interactive sign-in (refresh token) from a new location",
+             key_value_pairs={
+                 "UserPrincipalName": "{victim.username}@acme.com",
+                 "IPAddress": "203.0.113.77",
+                 "Location": "Austin, US",
+                 "DeviceDetail": "Windows 10 - Compliant - Entra Joined",
+                 "ResultType": "0",
+                 "AppDisplayName": "Microsoft 365",
+                 "IsInteractive": "false",
+                 "AuthenticationRequirement": "multiFactorAuthentication",
+                 "RiskLevelDuringSignIn": "medium",
+                 "OperationName": "Sign-in activity",
              }),
     ],
     "insider_staging": [

@@ -149,7 +149,30 @@ attack:
 
 noise: {}
 
-supplemental_events: []
+supplemental_events:
+  - id: "sup1"
+    host: "ws_victim"
+    user: "victim"
+    offset: -75
+    red_herring: true
+    event_type: "SigninLogs"
+    source_type: "Azure AD"
+    log_source: "Azure AD"
+    severity: "medium"
+    hostname: "{victim.hostname}"
+    user_account: "ACME\\{victim.username}"
+    message: "Non-interactive sign-in (refresh token) from a new location"
+    key_value_pairs:
+      UserPrincipalName: "{victim.username}@acme.com"
+      IPAddress: "203.0.113.77"
+      Location: "Austin, US"
+      DeviceDetail: "Windows 10 - Compliant - Entra Joined"
+      ResultType: "0"
+      AppDisplayName: "Microsoft 365"
+      IsInteractive: "false"
+      AuthenticationRequirement: "multiFactorAuthentication"
+      RiskLevelDuringSignIn: "medium"
+      OperationName: "Sign-in activity"
 
 supplemental_entities: []
 
@@ -157,13 +180,30 @@ detections:
   - id: "det_impossible_travel"
     rule_name: "Entra Impossible-Travel Risk Detection"
     rule_type: "sigma_behavioral"
-    severity: "high"
+    severity: "critical"
     triggers: ["s4"]
     mitre:
       id: "T1583.001"
       tactic: "Resource Development"
     description: "Entra ID flagged risky sign-in activity from an unexpected location after a credential-harvest page interaction."
     disposition: "true_positive"
+  - id: "det_credential_post"
+    rule_name: "Credentials Submitted to a Lookalike Domain"
+    rule_type: "sigma_behavioral"
+    severity: "medium"
+    triggers: ["s2"]
+    mitre:
+      id: "T1566.002"
+      tactic: "Initial Access"
+    description: "Credentials were POSTed to a sign-in form on a newly-registered lookalike domain, the credential-harvest step."
+    disposition: "true_positive"
+  - id: "det_benign_risky_signin_fp"
+    rule_name: "Risky Sign-In From New Location"
+    rule_type: "sigma_behavioral"
+    severity: "high"
+    triggers: ["sup1"]
+    description: "A risky sign-in from an unexpected location reads like account takeover. It is a non-interactive OAuth refresh-token renewal from a known compliant device with MFA satisfied, not an interactive sign-in following a credential-harvest page."
+    disposition: "false_positive"
 
 answer_key:
   classification: "Phishing"
