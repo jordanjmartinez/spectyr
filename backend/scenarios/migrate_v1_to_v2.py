@@ -192,13 +192,34 @@ DETECTIONS = {
         "amid mass file renames with an unfamiliar extension.",
         mitre=("T1486", "Impact"),
         yara_rule_name="Spectyr_Ransom_Note_Generic")],
-    "malware_usb": [_det(
-        "det_usb_exec", "Executable Launched from Removable Media",
-        "yara", "high", ["s2"], "true_positive",
-        "A binary matching a suspicious-loader signature executed directly "
-        "from a removable drive path.",
-        mitre=("T1091", "Initial Access"),
-        yara_rule_name="Spectyr_USB_Loader_Generic")],
+    # Density batch 1: 2 TP + 1 coexisting FP. Severity inverted (a TP is
+    # medium, the FP high). The FP is a ManageEngine Endpoint Central
+    # software deployment (verified: agent process dcagentservice.exe) whose
+    # staged-installer execution reads like the USB payload's unusual-path
+    # launch. Adjusted from the scaffolded Run-key FP for realism: Endpoint
+    # Central is a service-based agent that deploys via staged installers, not
+    # a Run-key-to-Public-folder mechanism (noted in ENVIRONMENT_REPORT.md).
+    "malware_usb": [
+        _det("det_usb_exec", "Executable Launched from Removable Media",
+             "yara", "high", ["s2"], "true_positive",
+             "A binary matching a suspicious-loader signature executed "
+             "directly from a removable drive path.",
+             mitre=("T1091", "Initial Access"),
+             yara_rule_name="Spectyr_USB_Loader_Generic"),
+        _det("det_usb_persist", "Run Key Persistence to Public-Folder Binary",
+             "sigma_behavioral", "medium", ["s4"], "true_positive",
+             "A Run key was set to a binary in C:\\Users\\Public with a "
+             "system-update masquerade name, establishing persistence after "
+             "the removable-media execution.",
+             mitre=("T1547.001", "Persistence")),
+        _det("det_deploy_staging_fp",
+             "Executable Launched from Software-Deployment Staging Path",
+             "sigma_behavioral", "high", ["sup1"], "false_positive",
+             "A signed installer executed from a management-agent staging "
+             "directory, launched by the agent service. The staged-and-run "
+             "pattern reads like malware staging. It is a routine ManageEngine "
+             "Endpoint Central software deployment; the parent is the signed "
+             "agent service and the payload is a signed installer.")],
     "password_spray": [_det(
         "det_spray", "Password Spray Pattern Across Many Accounts",
         "sigma_behavioral", "high", ["s6"], "true_positive",
@@ -289,7 +310,48 @@ def _sup(id, host, offset, event_type, source_type, severity, hostname,
     return d
 
 
+# ManageEngine Endpoint Central agent identity. dcagentservice.exe is VERIFIED
+# against manageengine.com (agent footprint). The install path and the signer
+# are NOT documented in the accessible pages -> STUB, flagged in
+# ENVIRONMENT_REPORT.md. ZOHO Corporation is ManageEngine's parent (plausible
+# signer, unverified).
+_MEEC_AGENT_SVC = "C:\\Program Files (x86)\\DesktopCentral_Agent\\bin\\dcagentservice.exe"
+_MEEC_STAGE = "C:\\Program Files (x86)\\DesktopCentral_Agent\\staging\\EC_Patch_KB5039211.exe"
+_MEEC_SIGNER = "ZOHO Corporation Private Limited"
+
 SUPPLEMENTAL_EVENTS = {
+    "malware_usb": [
+        # ManageEngine Endpoint Central deploying a patch: the agent service
+        # stages an installer and runs it. Reads like malware staging (exec
+        # from a working dir), resolved by the signed agent parent + signed
+        # payload. In-window (attack_base minus 90s) -> DECLARED red herring.
+        _sup("sup1", "ws_victim", -90, "ProcessCreate", "Sysmon", "medium",
+             "{victim.hostname}", user="victim", red_herring=True,
+             source_ip="{victim.ip}", user_account="ACME\\{victim.username}",
+             message="Process created: Endpoint Central staged installer executed",
+             key_value_pairs={
+                 "event_id": 1,
+                 "channel": "Microsoft-Windows-Sysmon/Operational",
+                 "computer": "{victim.hostname}",
+                 "rule_name": "",
+                 "process_id": "7340",
+                 "image": _MEEC_STAGE,
+                 "file_version": "11.3.2416.1",
+                 "description": "Endpoint Central Patch Installer",
+                 "product": "ManageEngine Endpoint Central",
+                 "company": _MEEC_SIGNER,
+                 "original_file_name": "EC_Patch.exe",
+                 "command_line": "\"" + _MEEC_STAGE + "\" /silent /norestart",
+                 "current_directory": "C:\\Program Files (x86)\\DesktopCentral_Agent\\staging\\",
+                 "user": "ACME\\{victim.username}",
+                 "terminal_session_id": "1",
+                 "integrity_level": "System",
+                 "parent_process_id": "3180",
+                 "parent_image": _MEEC_AGENT_SVC,
+                 "parent_command_line": "\"" + _MEEC_AGENT_SVC + "\"",
+                 "parent_user": "NT AUTHORITY\\SYSTEM",
+             }),
+    ],
     "lateral_movement_1": [
         # The vulnerability scanner's process on ACME-SEC01. Placed 120s before
         # the attack. DECLARED red herring (Stage 2 review, amendment 1): it

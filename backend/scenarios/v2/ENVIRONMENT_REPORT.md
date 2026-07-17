@@ -18,7 +18,20 @@ resolves it (resolution noted inline, entry kept for the record).
   Scanning Service Accounts, on ACME-SEC01): the scanner's service account,
   in `SERVICE_ACCOUNTS`. Authorization ground truth (that it is legitimate) is
   server-side; its evidence (service type, scanner host, group) is
-  world-visible. **Invented; approve or supply.**
+  world-visible. **APPROVED by owner (batch 1 review, 2026-07-16).**
+
+### Density batch 1
+
+- **ManageEngine Endpoint Central agent** (malware_usb FP): the agent process
+  `dcagentservice.exe` is VERIFIED against manageengine.com (agent footprint).
+  The install path (C:\Program Files (x86)\DesktopCentral_Agent\...), the
+  staging path, and the signer (ZOHO Corporation Private Limited) are NOT
+  documented in the accessible pages -> **STUB, flagged; verify in-browser or
+  supply.** REALISM ADJUSTMENT (owner visibility): the scaffolded FP was a
+  Run-key-to-Public-folder registration; Endpoint Central is a service-based
+  agent that deploys software via staged installers, not a Run-key mechanism,
+  so the FP is now "executable launched from the deployment staging path"
+  (documented deploy behavior). file_version is set dressing.
 - **Tenable Nessus identity: VERIFIED (amendment 2).** The process
   `nessusd.exe`, the Windows service name and display name `"Tenable Nessus"`,
   and the install path `C:\Program Files\Tenable\Nessus\` are verified against
