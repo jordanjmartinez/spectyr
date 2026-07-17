@@ -2493,8 +2493,9 @@ def get_detections():
     with s["io_lock"]:
         dets = [detection_templates.sanitize_detection(d)
                 for d in s.get("detections", [])]
-    # newest first, stable secondary sort on id
-    dets.sort(key=lambda d: (str(d.get("time") or ""), d["id"]), reverse=True)
+    # Component 1: deterministic stable-key order (no authored-first/ambient-last
+    # or time-based ordering that would encode disposition).
+    dets = detection_templates.order_detections_for_client(dets)
     counts = {"open": 0, "promoted": 0, "dismissed": 0}
     for d in dets:
         counts[d["player_action"]] = counts.get(d["player_action"], 0) + 1
@@ -2538,7 +2539,8 @@ def get_threats():
     with s["io_lock"]:
         threats = [detection_templates.sanitize_detection(d, include_events=True)
                    for d in s.get("detections", []) if d["player_action"] == "promoted"]
-    threats.sort(key=lambda d: (str(d.get("time") or ""), d["id"]), reverse=True)
+    # Component 1: same deterministic stable-key order as the feed.
+    threats = detection_templates.order_detections_for_client(threats)
     return jsonify({"threats": threats})
 
 

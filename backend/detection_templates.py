@@ -257,6 +257,20 @@ def sanitize_event(log):
             if log.get(k) not in (None, "")}
 
 
+def order_detections_for_client(views):
+    """Deterministic client-facing detection order (3d close-out, component 1).
+
+    Ordering is by the stable-key detection id (sha256 over session_seed +
+    scenario_id/hostname + detection_key). Consequently the order is
+    deterministic within a session, independent of authoring / materialization
+    order, and different across sessions -- so feed position never encodes
+    disposition (the old newest-first-by-time sort sank the ambient benign,
+    which all share the session-start time, to the bottom: an authored-first /
+    ambient-last tell). Returns a new list; the input order is irrelevant.
+    """
+    return sorted(views, key=lambda v: v["id"])
+
+
 def sanitize_detection(instance, include_events=False):
     """Client-safe detection. Drops disposition and scenario linkage; runs
     triggering events through the field whitelist. `include_events` adds the
