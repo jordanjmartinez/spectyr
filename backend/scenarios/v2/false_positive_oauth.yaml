@@ -163,11 +163,18 @@ supplemental_entities: []
 
 detections:
   - id: "det_fp_oauth"
-    rule_name: "Impossible-Travel Sign-In (OAuth Refresh Token)"
+    rule_name: "Impossible-Travel Sign-In Risk"
+    rule_type: "sigma_behavioral"
+    severity: "high"
+    triggers: ["s4"]
+    description: "Entra flagged a sign-in from an unexpected location, reading like account takeover. It is a modern-auth OAuth refresh token after an endpoint migration, a common benign trigger."
+    disposition: "false_positive"
+  - id: "det_oauth_noninteractive_fp"
+    rule_name: "Non-Interactive OAuth Token Activity from New Location"
     rule_type: "sigma_behavioral"
     severity: "medium"
-    triggers: ["s4"]
-    description: "An impossible-travel risk event driven by modern-auth OAuth refresh tokens after an endpoint migration, a common benign trigger."
+    triggers: ["s2"]
+    description: "A token-based sign-in from an unexpected location reads like token theft or replay. It is a non-interactive refresh-token renewal from the migrated device."
     disposition: "false_positive"
 
 answer_key:

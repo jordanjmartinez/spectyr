@@ -320,11 +320,21 @@ DETECTIONS = {
         "A process launched from a user profile path shortly after the user "
         "followed a link to a lookalike domain.",
         mitre=("T1566.002", "Initial Access"))],
-    "false_positive_oauth": [_det(
-        "det_fp_oauth", "Impossible-Travel Sign-In (OAuth Refresh Token)",
-        "sigma_behavioral", "medium", ["s4"], "false_positive",
-        "An impossible-travel risk event driven by modern-auth OAuth refresh "
-        "tokens after an endpoint migration, a common benign trigger.")],
+    # Density batch 2: 2 FP (varying from batch 1's three). The KEPT detection
+    # is the high-severity one and the ADDED FP is medium, so the FP is not
+    # predictably the high detection.
+    "false_positive_oauth": [
+        _det("det_fp_oauth", "Impossible-Travel Sign-In Risk",
+             "sigma_behavioral", "high", ["s4"], "false_positive",
+             "Entra flagged a sign-in from an unexpected location, reading "
+             "like account takeover. It is a modern-auth OAuth refresh token "
+             "after an endpoint migration, a common benign trigger."),
+        _det("det_oauth_noninteractive_fp",
+             "Non-Interactive OAuth Token Activity from New Location",
+             "sigma_behavioral", "medium", ["s2"], "false_positive",
+             "A token-based sign-in from an unexpected location reads like "
+             "token theft or replay. It is a non-interactive refresh-token "
+             "renewal from the migrated device.")],
     # Density batch 1: 3 FP, all TP-looking, spanning Medium/High. The
     # scenario must read like a real phishing compromise until the analyst
     # sees the KnowBe4 / training-platform evidence. No supplemental events:

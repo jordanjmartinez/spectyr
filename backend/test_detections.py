@@ -203,7 +203,8 @@ def test_density_no_single_authored_detection():
     detection. The corpus-wide invariant lands at 3d close-out."""
     densified = ("lateral_movement_1", "false_positive_veeam", "malware_usb",
                  "c2_http", "password_spray", "false_positive_pentest",
-                 "lateral_movement_2", "malware_ransomware")
+                 "lateral_movement_2", "malware_ransomware",
+                 "data_exfil_archive", "false_positive_oauth")
     for label in densified:
         assert len(CATALOG[label]["detections"]) >= 2, label
 
