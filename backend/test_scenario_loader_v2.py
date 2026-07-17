@@ -362,7 +362,7 @@ def test_rejects_detection_triggering_unknown_supplemental():
 
 def test_log_clearing_tp_detection_binds_to_1102_step():
     """Part 2 ruling (batch-4 density-safe): the log-clearing TP bound to s5
-    (the 1102 step) still exists and carries T1070.001 / Defense Evasion. Batch
+    (the 1102 step) still exists and carries T1685.005 / Defense Impairment. Batch
     4 adds a surrounding TP on the wevtutil exec (s4); the density additions
     surround the s5 binding, they must never replace it."""
     catalog, _ = _load_corpus()
@@ -370,7 +370,7 @@ def test_log_clearing_tp_detection_binds_to_1102_step():
     s5_tp = [d for d in dets
              if d["disposition"] == "true_positive" and d["triggers"] == ["s5"]]
     assert len(s5_tp) == 1, "the s5-bound TP must exist exactly once"
-    assert s5_tp[0]["mitre"] == {"id": "T1070.001", "tactic": "Defense Evasion"}
+    assert s5_tp[0]["mitre"] == {"id": "T1685.005", "tactic": "Defense Impairment"}
 
 
 def test_rejects_fp_scenario_with_true_positive_detection():
@@ -441,15 +441,22 @@ def test_host_status_scenario_declared():
     _expect_error(doc, "schema v2 violation")
 
 
-# Canonical ATT&CK display names, verified against attack.mitre.org
-# 2026-07-16 (13 live-fetched during the follow-up 5 audit; T1562.001 and
-# T1070.001 verified live by the reviewer the same day). If MITRE renames a
-# technique again, this map is updated together with a triage correction,
-# and this test fails loudly until both happen.
+# Canonical ATT&CK display names, PINNED to Enterprise ATT&CK v19.1 and validated
+# against the official v19.1 STIX dataset (github.com/mitre/cti tag ATT&CK-v19.1;
+# enterprise-attack.json sha256
+# fc783039f17fba646f79448f1322996457c658a9474f6d14c3bc924a2cf1c97d). Every ID
+# exists, is non-revoked/non-deprecated, and its name matches the dataset. v19
+# migration (2026-07-17) changed entries, official URLs recorded:
+#   T1562.001 -> T1685  "Disable or Modify Tools"
+#               (attack.mitre.org/techniques/T1685/)
+#   T1070.001 -> T1685.005 "Disable or Modify Tools: Clear Windows Event Logs"
+#               (attack.mitre.org/techniques/T1685/005/)
+# If MITRE renames a technique again, this map is updated together with a triage
+# correction, and this test fails loudly until both happen.
 CANONICAL_TECHNIQUE_NAMES = {
     "T1091": "Replication Through Removable Media",
     "T1583.001": "Acquire Infrastructure: Domains",
-    "T1562.001": "Impair Defenses: Disable or Modify Tools",
+    "T1685": "Disable or Modify Tools",
     "T1046": "Network Service Discovery",
     "T1071.001": "Application Layer Protocol: Web Protocols",
     "T1110.001": "Brute Force: Password Guessing",
@@ -458,7 +465,7 @@ CANONICAL_TECHNIQUE_NAMES = {
     "T1074.001": "Data Staged: Local Data Staging",
     "T1486": "Data Encrypted for Impact",
     "T1003.001": "OS Credential Dumping: LSASS Memory",
-    "T1070.001": "Indicator Removal: Clear Windows Event Logs",
+    "T1685.005": "Disable or Modify Tools: Clear Windows Event Logs",
     "T1567.002": "Exfiltration Over Web Service: Exfiltration to Cloud Storage",
     "T1110.003": "Brute Force: Password Spraying",
     "T1071.004": "Application Layer Protocol: DNS",
@@ -477,33 +484,32 @@ CANONICAL_TECHNIQUE_NAMES = {
 # T1685. Refs: attack.mitre.org/resources/versions/ ,
 # attack.mitre.org/resources/updates/updates-april-2026/ .
 #
-# Spectyr's corpus is deliberately PINNED to the pre-v19 baseline (v18.1
-# semantics) until a scheduled, one-shot v19 migration. So the guard is no
-# longer a blacklist of "fake" strings; it is a POSITIVE pin: every technique id
-# and tactic name in the corpus must be a pinned-baseline string, so a v19
-# successor (T1685.005, "Defense Impairment", "Stealth", ...) entering ahead of
-# the migration fails loudly instead of drifting in. See
-# docs/classification-rubrics.md (ATT&CK baseline + correction guard).
+# Spectyr's corpus is PINNED to Enterprise ATT&CK v19.1 (migrated 2026-07-17 from
+# the pre-v19 baseline). The guard is a POSITIVE pin: every technique id and
+# tactic name in the corpus must be a pinned-baseline string, so a value from a
+# different ATT&CK version drifting in fails loudly. A future version bump is
+# again one deliberate migration (dataset-validated, maps + values together).
+# See docs/classification-rubrics.md (ATT&CK baseline).
 
-# v18.1 Enterprise tactic names (the pinned baseline). Every tactic string in
-# the corpus must be one of these. "Stealth" and "Defense Impairment" are v19
-# and are intentionally absent.
+# Enterprise ATT&CK v19.1 tactic names (the pinned baseline). Every tactic string
+# in the corpus must be one of these 15. v19 retired "Defense Evasion" and split
+# it into Stealth (TA0005) and Defense Impairment (TA0112).
 CANONICAL_TACTICS = frozenset({
     "Reconnaissance", "Resource Development", "Initial Access", "Execution",
-    "Persistence", "Privilege Escalation", "Defense Evasion", "Credential Access",
-    "Discovery", "Lateral Movement", "Collection", "Command and Control",
-    "Exfiltration", "Impact",
+    "Persistence", "Privilege Escalation", "Stealth", "Defense Impairment",
+    "Credential Access", "Discovery", "Lateral Movement", "Collection",
+    "Command and Control", "Exfiltration", "Impact",
 })
 
 # Pinned-baseline technique ids used in DETECTIONS mitre tags but not carried in
 # any answer key (so absent from CANONICAL_TECHNIQUE_NAMES). Each is a real
-# v18.1 technique; a new one is added deliberately, justified by a live
+# v19.1 technique; a new one is added deliberately, justified by the dataset/live
 # technique-page URL (the standing live-URL rule).
 PINNED_DETECTION_TECHNIQUES = frozenset({
     "T1218.011",  # System Binary Proxy Execution: Rundll32
     "T1490",      # Inhibit System Recovery
     "T1547.001",  # Boot or Logon Autostart Execution: Registry Run Keys
-    "T1036.005",  # Masquerading: Match Legitimate Name or Location (v18.1)
+    "T1036.005",  # Masquerading: Match Legitimate Resource Name or Location (v19.1)
     "T1566.002",  # Phishing: Spearphishing Link (also phishing_link's answer key;
                   # borrowed as a detection tag on phishing_1's credential POST)
     # 3d close-out: techniques FP / ambient detections RESEMBLE (mitre-leak fix).
@@ -514,11 +520,10 @@ PINNED_DETECTION_TECHNIQUES = frozenset({
 
 
 def test_corpus_strings_match_pinned_attack_baseline():
-    """Pinned-baseline guard (replaces the retracted nonexistent-string guard).
-    Every technique id and tactic name in the corpus must be a pinned v18.1
-    string, so no v19.1 successor drifts in ahead of the deliberate migration.
-    The log-clearing scenario keeps its pinned mapping (T1070.001 / Defense
-    Evasion) until that migration."""
+    """Pinned-baseline guard. Every technique id and tactic name in the corpus
+    must be a pinned Enterprise ATT&CK v19.1 string, so a value from a different
+    ATT&CK version drifts in loudly. The log-clearing scenario carries its v19.1
+    mapping (T1685.005 / Defense Impairment)."""
     catalog, reviews = _load_corpus()
     pinned_techs = set(CANONICAL_TECHNIQUE_NAMES) | set(PINNED_DETECTION_TECHNIQUES)
     for label, sc in catalog.items():
@@ -533,19 +538,19 @@ def test_corpus_strings_match_pinned_attack_baseline():
                 f"{label}: detection technique {m['id']!r} is not pinned "
                 f"(add to PINNED_DETECTION_TECHNIQUES with a live URL, or it is v19 drift)")
             assert m["tactic"] in CANONICAL_TACTICS, (
-                f"{label}: detection tactic {m['tactic']!r} is not a pinned v18.1 tactic")
+                f"{label}: detection tactic {m['tactic']!r} is not a pinned v19.1 tactic")
     for label, r in reviews.items():
         m = r.get("mitre")
         if not m:
             continue
         assert m["id"] in CANONICAL_TECHNIQUE_NAMES, f"{label}: review {m['id']} unpinned"
         assert m["tactic"] in CANONICAL_TACTICS, (
-            f"{label}: review tactic {m['tactic']!r} is not a pinned v18.1 tactic")
-    # the log-clearing scenario keeps its pinned mapping until the v19 migration
+            f"{label}: review tactic {m['tactic']!r} is not a pinned v19.1 tactic")
+    # the log-clearing scenario carries its v19.1 mapping (post-migration)
     lc = catalog["defense_evasion_log_clearing"]
-    assert lc["answer_key"]["techniques"] == ["T1070.001"], lc["answer_key"]["techniques"]
-    assert reviews["defense_evasion_log_clearing"]["mitre"]["id"] == "T1070.001"
-    assert reviews["defense_evasion_log_clearing"]["mitre"]["tactic"] == "Defense Evasion"
+    assert lc["answer_key"]["techniques"] == ["T1685.005"], lc["answer_key"]["techniques"]
+    assert reviews["defense_evasion_log_clearing"]["mitre"]["id"] == "T1685.005"
+    assert reviews["defense_evasion_log_clearing"]["mitre"]["tactic"] == "Defense Impairment"
 
 
 def test_log_clearing_has_1102_step():

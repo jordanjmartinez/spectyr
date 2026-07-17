@@ -143,5 +143,52 @@ CORRECTIONS += [
 ]
 
 
+# v19.1 ATT&CK migration (2026-07-17): T1562.001 -> T1685 and T1070.001 ->
+# T1685.005 (Disable or Modify Tools family), tactic Defense Evasion (retired in
+# v19) -> Defense Impairment. Validated against the official Enterprise ATT&CK
+# v19.1 STIX dataset (github.com/mitre/cti tag ATT&CK-v19.1; enterprise-attack
+# .json sha256 fc783039f17fba646f79448f1322996457c658a9474f6d14c3bc924a2cf1c97d).
+# The frozen v1 corpus keeps the v18.1 mapping; these carry the v2 triage_review.
+_V19_MIGRATION = [
+    ("defense_evasion", "mitre.id", "T1562.001", "T1685",
+     '    id: "T1562.001"', '    id: "T1685"'),
+    ("defense_evasion", "mitre.name", "Impair Defenses: Disable or Modify Tools",
+     "Disable or Modify Tools",
+     '    name: "Impair Defenses: Disable or Modify Tools"',
+     '    name: "Disable or Modify Tools"'),
+    ("defense_evasion", "mitre.tactic", "Defense Evasion", "Defense Impairment",
+     '    tactic: "Defense Evasion"', '    tactic: "Defense Impairment"'),
+    ("defense_evasion", "mitre.url",
+     "https://attack.mitre.org/techniques/T1562/001/",
+     "https://attack.mitre.org/techniques/T1685/",
+     '    url: "https://attack.mitre.org/techniques/T1562/001/"',
+     '    url: "https://attack.mitre.org/techniques/T1685/"'),
+    ("defense_evasion_log_clearing", "mitre.id", "T1070.001", "T1685.005",
+     '    id: "T1070.001"', '    id: "T1685.005"'),
+    ("defense_evasion_log_clearing", "mitre.name",
+     "Indicator Removal: Clear Windows Event Logs",
+     "Disable or Modify Tools: Clear Windows Event Logs",
+     '    name: "Indicator Removal: Clear Windows Event Logs"',
+     '    name: "Disable or Modify Tools: Clear Windows Event Logs"'),
+    ("defense_evasion_log_clearing", "mitre.tactic", "Defense Evasion",
+     "Defense Impairment",
+     '    tactic: "Defense Evasion"', '    tactic: "Defense Impairment"'),
+    ("defense_evasion_log_clearing", "mitre.url",
+     "https://attack.mitre.org/techniques/T1070/001/",
+     "https://attack.mitre.org/techniques/T1685/005/",
+     '    url: "https://attack.mitre.org/techniques/T1070/001/"',
+     '    url: "https://attack.mitre.org/techniques/T1685/005/"'),
+]
+CORRECTIONS += [
+    {"label": lbl, "kind": "triage", "field": fld, "v1": v1v, "v2": v2v,
+     "rendered_v1": v1v, "rendered_v2": v2v, "old_line": ol, "new_line": nl,
+     "reason": "v19.1 ATT&CK migration: Disable or Modify Tools family / "
+               "Defense Impairment tactic; dataset-validated (ATT&CK-v19.1 "
+               "STIX). Frozen v1 corpus keeps the v18.1 mapping.",
+     "approved": "v19 migration stage (approved 2026-07-17)"}
+    for lbl, fld, v1v, v2v, ol, nl in _V19_MIGRATION
+]
+
+
 def for_label(label):
     return [c for c in CORRECTIONS if c["label"] == label]

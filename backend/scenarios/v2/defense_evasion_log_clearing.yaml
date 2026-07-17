@@ -236,8 +236,8 @@ detections:
     severity: "high"
     triggers: ["s5"]
     mitre:
-      id: "T1070.001"
-      tactic: "Defense Evasion"
+      id: "T1685.005"
+      tactic: "Defense Impairment"
     description: "The Windows Security event log was cleared (1102). Clearing destroys forensic evidence and, absent a change record, indicates an attacker removing traces."
     disposition: "true_positive"
   - id: "det_wevtutil_exec"
@@ -246,8 +246,8 @@ detections:
     severity: "high"
     triggers: ["s4"]
     mitre:
-      id: "T1070.001"
-      tactic: "Defense Evasion"
+      id: "T1685.005"
+      tactic: "Defense Impairment"
     description: "wevtutil.exe was run to clear an event log (cl Security), the command that produced the 1102, launched interactively (cmd.exe parent) rather than by a maintenance task."
     disposition: "true_positive"
   - id: "det_maint_logclear_fp"
@@ -256,8 +256,8 @@ detections:
     severity: "medium"
     triggers: ["sup1"]
     mitre:
-      id: "T1070.001"
-      tactic: "Defense Evasion"
+      id: "T1685.005"
+      tactic: "Defense Impairment"
     description: "An event log was cleared, the evidence-destruction shape. It is a scheduled maintenance task archiving then clearing a non-Security operational log (wevtutil cl ... /bu:) under SYSTEM, with the cleared events saved to a backup file, not the attacker's unbacked-up Security-log clear."
     disposition: "false_positive"
 
@@ -267,15 +267,15 @@ answer_key:
     hosts: ["ws_victim"]
     accounts: ["victim"]
   root_cause: "s1"
-  techniques: ["T1070.001"]
+  techniques: ["T1685.005"]
   actions: []
 
 triage_review:
   mitre:
-    id: "T1070.001"
-    name: "Indicator Removal: Clear Windows Event Logs"
-    tactic: "Defense Evasion"
-    url: "https://attack.mitre.org/techniques/T1070/001/"
+    id: "T1685.005"
+    name: "Disable or Modify Tools: Clear Windows Event Logs"
+    tactic: "Defense Impairment"
+    url: "https://attack.mitre.org/techniques/T1685/005/"
   what_is_it:
     title: "Windows Event Log Clearing"
     description: "Attackers clear Windows event logs to destroy forensic evidence of their activity using built-in tools like wevtutil.exe. Clearing the Security log generates Event ID 1102, meaning the act of destroying evidence ironically creates its own detection artifact."

@@ -168,7 +168,7 @@ DETECTIONS = {
              "sigma_behavioral", "medium", ["s1"], "true_positive",
              "rundll32.exe launched by explorer with no DLL or entry-point "
              "argument, a loader pattern that preceded the beacon.",
-             mitre=("T1218.011", "Defense Evasion")),
+             mitre=("T1218.011", "Stealth")),
         _det("det_telemetry_beacon_fp",
              "Periodic HTTPS Connections to External Host",
              "sigma_behavioral", "high", ["sup1"], "false_positive",
@@ -207,7 +207,7 @@ DETECTIONS = {
              "sigma_behavioral", "critical", ["s2"], "true_positive",
              "Defender real-time protection was turned off (5007) outside a "
              "maintenance window, a common precursor to payload execution.",
-             mitre=("T1562.001", "Defense Evasion")),
+             mitre=("T1685", "Defense Impairment")),
         _det("det_pubfolder_masquerade",
              "Masquerading Binary Executed from Public Folder",
              "sigma_behavioral", "medium", ["s4"], "true_positive",
@@ -216,10 +216,10 @@ DETECTIONS = {
              "real-time protection was disabled, the payload the evasion "
              "cleared the way for.",
              # Tagged against the PINNED v18.1 baseline: T1036.005 "Match
-             # Legitimate Name or Location", Defense Evasion. Validated by the
+             # Legitimate Resource Name or Location" (v19.1), Stealth. Validated by the
              # pinned canonical map (PINNED_DETECTION_TECHNIQUES); the v19
              # migration re-verifies with a live URL.
-             mitre=("T1036.005", "Defense Evasion")),
+             mitre=("T1036.005", "Stealth")),
         _det("det_defender_policy_fp", "Windows Defender Policy Setting Modified",
              "sigma_behavioral", "high", ["sup1"], "false_positive",
              "A Windows Defender policy value was changed, the security-tool "
@@ -237,13 +237,13 @@ DETECTIONS = {
             "sigma_behavioral", "high", ["s5"], "true_positive",
             "The Windows Security event log was cleared (1102). Clearing destroys "
             "forensic evidence and, absent a change record, indicates an attacker "
-            "removing traces.", mitre=("T1070.001", "Defense Evasion")),
+            "removing traces.", mitre=("T1685.005", "Defense Impairment")),
         _det("det_wevtutil_exec", "Event Log Utility Executed to Clear a Log",
              "sigma_behavioral", "high", ["s4"], "true_positive",
              "wevtutil.exe was run to clear an event log (cl Security), the "
              "command that produced the 1102, launched interactively (cmd.exe "
              "parent) rather than by a maintenance task.",
-             mitre=("T1070.001", "Defense Evasion")),
+             mitre=("T1685.005", "Defense Impairment")),
         _det("det_maint_logclear_fp", "Event Log Cleared by Scheduled Process",
              "sigma_behavioral", "medium", ["sup1"], "false_positive",
              "An event log was cleared, the evidence-destruction shape. It is a "
@@ -579,12 +579,12 @@ DETECTIONS = {
 # tactic). Applied as a post-pass so the FP authoring above stays readable.
 FP_RESEMBLES = {
     "det_scanner_sweep": ("T1046", "Discovery"),
-    "det_deploy_staging_fp": ("T1036.005", "Defense Evasion"),
+    "det_deploy_staging_fp": ("T1036.005", "Stealth"),
     "det_telemetry_beacon_fp": ("T1071.001", "Command and Control"),
     "det_cloud_sync_fp": ("T1567.002", "Exfiltration"),
     "det_backup_archive_fp": ("T1560.001", "Collection"),
     "det_crashdump_fp": ("T1003.001", "Credential Access"),
-    "det_defender_policy_fp": ("T1562.001", "Defense Evasion"),
+    "det_defender_policy_fp": ("T1685", "Defense Impairment"),
     "det_dns_volume_fp": ("T1071.004", "Command and Control"),
     "det_cloud_upload_fp": ("T1567.002", "Exfiltration"),
     "det_privileged_lockout_fp": ("T1110.001", "Credential Access"),
@@ -592,7 +592,7 @@ FP_RESEMBLES = {
     "det_mass_egress_fp": ("T1567.002", "Exfiltration"),
     "det_benign_risky_signin_fp": ("T1078", "Initial Access"),
     "det_doc_download_fp": ("T1566.002", "Initial Access"),
-    "det_maint_logclear_fp": ("T1070.001", "Defense Evasion"),
+    "det_maint_logclear_fp": ("T1685.005", "Defense Impairment"),
     "det_fp_veeam": ("T1071.001", "Command and Control"),
     "det_veeam_bulk_egress": ("T1567.002", "Exfiltration"),
     "det_veeam_svc_persist": ("T1543.003", "Persistence"),
@@ -1517,6 +1517,13 @@ def build_answer_key(doc, tags, label):
             scope_accounts.append(u)
 
     mitre_id = doc["triage_review"].get("mitre", {}).get("id")
+    # answer_key.techniques derives from the triage MITRE id; apply the approved
+    # mitre.id triage correction (e.g. the v19 T1070.001 -> T1685.005 migration)
+    # so the answer key moves with the review, not the frozen v1 id.
+    for corr in scenario_corrections.for_label(label):
+        if corr.get("kind") == "triage" and corr.get("field") == "mitre.id" \
+                and mitre_id == corr["v1"]:
+            mitre_id = corr["v2"]
     return {
         "classification": doc["category"],
         "scope": {"hosts": scope_hosts, "accounts": scope_accounts},

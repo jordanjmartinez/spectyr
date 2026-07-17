@@ -99,7 +99,7 @@ All 15 answer_key technique IDs are current; none deprecated, revoked, or merged
 
 ## defense_evasion
 
-- classification: `Defense Evasion` | root_cause: `s1` | techniques: `['T1562.001']`
+- classification: `Defense Evasion` | root_cause: `s1` | techniques: `['T1685']`
 - scope.hosts: `['ws_victim']` | scope.accounts: `['victim']`
 - environment hosts: `ws_victim` (workstation)
 - environment accounts: `victim`
@@ -113,9 +113,17 @@ All 15 answer_key technique IDs are current; none deprecated, revoked, or merged
 | s5 | SetValue | Sysmon | `{victim.hostname}` | `ws_victim` | `victim` |
 | s6 | NetworkConnect | Sysmon | `{victim.hostname}` | `ws_victim` | `victim` |
 
+**CORRECTION (v19 migration stage (approved 2026-07-17)):** triage_review.mitre.id: `T1562.001` -> `T1685` (renders as `T1685`). v19.1 ATT&CK migration: Disable or Modify Tools family / Defense Impairment tactic; dataset-validated (ATT&CK-v19.1 STIX). Frozen v1 corpus keeps the v18.1 mapping.
+
+**CORRECTION (v19 migration stage (approved 2026-07-17)):** triage_review.mitre.name: `Impair Defenses: Disable or Modify Tools` -> `Disable or Modify Tools` (renders as `Disable or Modify Tools`). v19.1 ATT&CK migration: Disable or Modify Tools family / Defense Impairment tactic; dataset-validated (ATT&CK-v19.1 STIX). Frozen v1 corpus keeps the v18.1 mapping.
+
+**CORRECTION (v19 migration stage (approved 2026-07-17)):** triage_review.mitre.tactic: `Defense Evasion` -> `Defense Impairment` (renders as `Defense Impairment`). v19.1 ATT&CK migration: Disable or Modify Tools family / Defense Impairment tactic; dataset-validated (ATT&CK-v19.1 STIX). Frozen v1 corpus keeps the v18.1 mapping.
+
+**CORRECTION (v19 migration stage (approved 2026-07-17)):** triage_review.mitre.url: `https://attack.mitre.org/techniques/T1562/001/` -> `https://attack.mitre.org/techniques/T1685/` (renders as `https://attack.mitre.org/techniques/T1685/`). v19.1 ATT&CK migration: Disable or Modify Tools family / Defense Impairment tactic; dataset-validated (ATT&CK-v19.1 STIX). Frozen v1 corpus keeps the v18.1 mapping.
+
 ## defense_evasion_log_clearing
 
-- classification: `Defense Evasion` | root_cause: `s1` | techniques: `['T1070.001']`
+- classification: `Defense Evasion` | root_cause: `s1` | techniques: `['T1685.005']`
 - scope.hosts: `['ws_victim']` | scope.accounts: `['victim']`
 - environment hosts: `ws_victim` (workstation)
 - environment accounts: `victim`
@@ -128,6 +136,14 @@ All 15 answer_key technique IDs are current; none deprecated, revoked, or merged
 | s4 | ProcessCreate | Sysmon | `{victim.hostname}` | `ws_victim` | `victim` |
 | s5 *(trigger)* | 1102 | Windows Security | `{victim.hostname}` | `ws_victim` | `victim` |
 | s6 | ProcessCreate | Sysmon | `{victim.hostname}` | `ws_victim` | `victim` |
+
+**CORRECTION (v19 migration stage (approved 2026-07-17)):** triage_review.mitre.id: `T1070.001` -> `T1685.005` (renders as `T1685.005`). v19.1 ATT&CK migration: Disable or Modify Tools family / Defense Impairment tactic; dataset-validated (ATT&CK-v19.1 STIX). Frozen v1 corpus keeps the v18.1 mapping.
+
+**CORRECTION (v19 migration stage (approved 2026-07-17)):** triage_review.mitre.name: `Indicator Removal: Clear Windows Event Logs` -> `Disable or Modify Tools: Clear Windows Event Logs` (renders as `Disable or Modify Tools: Clear Windows Event Logs`). v19.1 ATT&CK migration: Disable or Modify Tools family / Defense Impairment tactic; dataset-validated (ATT&CK-v19.1 STIX). Frozen v1 corpus keeps the v18.1 mapping.
+
+**CORRECTION (v19 migration stage (approved 2026-07-17)):** triage_review.mitre.tactic: `Defense Evasion` -> `Defense Impairment` (renders as `Defense Impairment`). v19.1 ATT&CK migration: Disable or Modify Tools family / Defense Impairment tactic; dataset-validated (ATT&CK-v19.1 STIX). Frozen v1 corpus keeps the v18.1 mapping.
+
+**CORRECTION (v19 migration stage (approved 2026-07-17)):** triage_review.mitre.url: `https://attack.mitre.org/techniques/T1070/001/` -> `https://attack.mitre.org/techniques/T1685/005/` (renders as `https://attack.mitre.org/techniques/T1685/005/`). v19.1 ATT&CK migration: Disable or Modify Tools family / Defense Impairment tactic; dataset-validated (ATT&CK-v19.1 STIX). Frozen v1 corpus keeps the v18.1 mapping.
 
 ## false_positive_oauth
 

@@ -244,8 +244,8 @@ detections:
     severity: "critical"
     triggers: ["s2"]
     mitre:
-      id: "T1562.001"
-      tactic: "Defense Evasion"
+      id: "T1685"
+      tactic: "Defense Impairment"
     description: "Defender real-time protection was turned off (5007) outside a maintenance window, a common precursor to payload execution."
     disposition: "true_positive"
   - id: "det_pubfolder_masquerade"
@@ -255,7 +255,7 @@ detections:
     triggers: ["s4"]
     mitre:
       id: "T1036.005"
-      tactic: "Defense Evasion"
+      tactic: "Stealth"
     description: "A binary named to impersonate a Windows system process (svchost32.exe) launched from C:\\Users\\Public right after real-time protection was disabled, the payload the evasion cleared the way for."
     disposition: "true_positive"
   - id: "det_defender_policy_fp"
@@ -264,8 +264,8 @@ detections:
     severity: "high"
     triggers: ["sup1"]
     mitre:
-      id: "T1562.001"
-      tactic: "Defense Evasion"
+      id: "T1685"
+      tactic: "Defense Impairment"
     description: "A Windows Defender policy value was changed, the security-tool tampering shape. It is the endpoint management agent (dcagentservice.exe) applying a scheduled Defender configuration under the SYSTEM service context, not a user or attacker disabling protection."
     disposition: "false_positive"
 
@@ -275,15 +275,15 @@ answer_key:
     hosts: ["ws_victim"]
     accounts: ["victim"]
   root_cause: "s1"
-  techniques: ["T1562.001"]
+  techniques: ["T1685"]
   actions: []
 
 triage_review:
   mitre:
-    id: "T1562.001"
-    name: "Impair Defenses: Disable or Modify Tools"
-    tactic: "Defense Evasion"
-    url: "https://attack.mitre.org/techniques/T1562/001/"
+    id: "T1685"
+    name: "Disable or Modify Tools"
+    tactic: "Defense Impairment"
+    url: "https://attack.mitre.org/techniques/T1685/"
   what_is_it:
     title: "Disabling Security Tools"
     description: "Attackers disable or modify security tools like antivirus, EDR agents, or Windows Defender to avoid detection before carrying out their main objective, whether that is deploying malware, dumping credentials, or exfiltrating data."

@@ -236,7 +236,7 @@ detections:
     triggers: ["s1"]
     mitre:
       id: "T1218.011"
-      tactic: "Defense Evasion"
+      tactic: "Stealth"
     description: "rundll32.exe launched by explorer with no DLL or entry-point argument, a loader pattern that preceded the beacon."
     disposition: "true_positive"
   - id: "det_telemetry_beacon_fp"

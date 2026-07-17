@@ -83,7 +83,7 @@ def test_fp_and_off_radar_tactics():
 def test_axes_fixed_and_ordered():
     result = app.compute_attack_coverage([], REVIEWS)
     assert [t["tactic"] for t in result["tactics"]] == app.ENTERPRISE_TACTICS
-    assert result["total_tactics"] == 12
+    assert result["total_tactics"] == 13
     assert result["completed"] == 0
 
 

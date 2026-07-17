@@ -2647,14 +2647,17 @@ def get_current_level():
 
 
 
-# The 12 ATT&CK Enterprise tactics on the dashboard coverage radar, in kill
-# chain order. Reconnaissance and Resource Development sit outside the radar:
-# a completed scenario tagged with either counts toward completion stats but
-# lands on no axis (phishing_1 carries Resource Development today).
+# The 13 ATT&CK Enterprise v19.1 tactics on the dashboard coverage radar, in the
+# live-matrix order. v19 retired Defense Evasion, replacing it with Stealth
+# (TA0005) and Defense Impairment (TA0112). Reconnaissance and Resource
+# Development sit outside the radar: a completed scenario tagged with either
+# counts toward completion stats but lands on no axis (phishing_1 carries
+# Resource Development today).
 ENTERPRISE_TACTICS = [
     "Initial Access", "Execution", "Persistence", "Privilege Escalation",
-    "Defense Evasion", "Credential Access", "Discovery", "Lateral Movement",
-    "Collection", "Command and Control", "Exfiltration", "Impact",
+    "Stealth", "Defense Impairment", "Credential Access", "Discovery",
+    "Lateral Movement", "Collection", "Command and Control", "Exfiltration",
+    "Impact",
 ]
 
 
