@@ -237,6 +237,7 @@ supplemental_events:
     host: "scan"
     user: "svc_vulnscan"
     offset: -120
+    red_herring: true
     event_type: "ProcessCreate"
     source_type: "Sysmon"
     log_source: "Sysmon"
@@ -269,6 +270,7 @@ supplemental_events:
   - id: "sup2"
     host: "scan"
     offset: -118
+    red_herring: true
     event_type: "ALLOW"
     source_type: "Firewall"
     log_source: "Firewall"

@@ -270,10 +270,12 @@ DETECTIONS = {
 # offset is relative to the attack base time and may be negative.
 def _sup(id, host, offset, event_type, source_type, severity, hostname,
          message, key_value_pairs, source_ip=None, destination_ip=None,
-         user_account=None, log_source=None, user=None):
+         user_account=None, log_source=None, user=None, red_herring=False):
     d = {"id": id, "host": host, "offset": offset, "event_type": event_type,
          "source_type": source_type, "log_source": log_source or source_type,
          "severity": severity, "hostname": hostname}
+    if red_herring:
+        d["red_herring"] = True
     if source_ip:
         d["source_ip"] = source_ip
     if destination_ip:
@@ -289,12 +291,14 @@ def _sup(id, host, offset, event_type, source_type, severity, hostname,
 
 SUPPLEMENTAL_EVENTS = {
     "lateral_movement_1": [
-        # The vulnerability scanner's process on ACME-SEC01. Supporting
-        # telemetry (integrity + snapshot), not a detection trigger. Placed
-        # 120s before the attack: a distinct cluster, deliberately separated
-        # from the intrusion window. NOT a red herring.
+        # The vulnerability scanner's process on ACME-SEC01. Placed 120s before
+        # the attack. DECLARED red herring (Stage 2 review, amendment 1): it
+        # sits within the attack's plausible correlation window, so it is a
+        # deliberate distractor. The intended resolution is the dismissal
+        # evidence (ACME-SEC01 scanner role, svc_vulnscan service account,
+        # nessusd scanner process), not the timing.
         _sup("sup1", "scan", -120, "ProcessCreate", "Sysmon", "low",
-             "{infra.scan.hostname}", user="svc_vulnscan",
+             "{infra.scan.hostname}", user="svc_vulnscan", red_herring=True,
              source_ip="{infra.scan.ip}", user_account="ACME\\svc_vulnscan",
              message="Process created: nessusd.exe scheduled vulnerability scan",
              key_value_pairs={
@@ -320,9 +324,10 @@ SUPPLEMENTAL_EVENTS = {
                  "parent_user": "NT AUTHORITY\\SYSTEM",
              }),
         # The scanner's rapid connections across the segment, reported by the
-        # firewall (det_scanner_sweep triggers here). 118s before the attack.
+        # firewall (det_scanner_sweep triggers here). 118s before the attack;
+        # DECLARED red herring (within the correlation window).
         _sup("sup2", "scan", -118, "ALLOW", "Firewall", "medium",
-             "ACME-FW01", source_ip="{infra.scan.ip}",
+             "ACME-FW01", red_herring=True, source_ip="{infra.scan.ip}",
              destination_ip="{infra.file.ip}",
              message="Scheduled scan connections from {infra.scan.hostname} to "
                      "{infra.file.hostname} across service ports 22,80,443,445,3389",
@@ -692,6 +697,8 @@ def emit_supplemental(events, entities):
         if "user" in e:
             L.append(f"    user: {emit(e['user'])}")
         L.append(f"    offset: {json.dumps(e['offset'])}")
+        if e.get("red_herring"):
+            L.append("    red_herring: true")
         for k in ("event_type", "source_type", "log_source", "severity",
                   "hostname", "source_ip", "destination_ip", "user_account",
                   "message"):

@@ -51,6 +51,23 @@ The `wevtutil` command alone proves clearing occurred, NOT malicious intent.
 FP variants use `classification: false_positive` with `root_cause: null` (per
 the schema conditional in schema_v2.json).
 
+## Supplemental events: correlation-window red-herring rule
+
+(Stage 2 density pass, review amendment 1, 2026-07-16.)
+
+Any supplemental (authored benign) event whose timestamp falls within the
+attack's plausible correlation window MUST be declared a deliberate red
+herring (`red_herring: true` on the supplemental event) at narrative approval.
+Accidental correlation is prohibited: a benign event near the attack in time
+is either moved genuinely outside the window (hours away) or declared an
+intentional distractor whose resolution is the dismissal evidence (source host
+role, account type, process identity, group membership), never the timing.
+
+The lateral_movement_1 pilot's `sup1`/`sup2` (the scanner sweep at
+attack_base minus 118-120s) are declared red herrings: the analyst resolves
+them by recognizing the ACME-SEC01 scanner role and the svc_vulnscan service
+account, not by the offset. All 3c scaffolds follow this rule.
+
 ## Difficulty tier table
 
 Marked **final** for `defense_evasion_log_clearing`: medium (difficulty 2).

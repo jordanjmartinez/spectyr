@@ -282,7 +282,7 @@
       }
     },
     "supplemental_event": {
-      "$comment": "Same renderable shape as an attack step, tagged with a host, but its offset is relative to the attack base time and may be negative. No trigger field: supplemental events are not analyst entry points. No disposition/answer field ever.",
+      "$comment": "Same renderable shape as an attack step, tagged with a host, but its offset is relative to the attack base time and may be negative. No trigger field: supplemental events are not analyst entry points. No disposition/answer field ever. red_herring is a narrative declaration reviewed at approval; any supplemental event within the attack's plausible correlation window MUST set it true (see docs/classification-rubrics.md).",
       "type": "object",
       "required": ["id", "host", "offset", "event_type", "source_type", "severity", "message"],
       "additionalProperties": false,
@@ -291,6 +291,7 @@
         "host": { "$ref": "#/$defs/id" },
         "user": { "$ref": "#/$defs/id" },
         "offset": { "type": "number" },
+        "red_herring": { "type": "boolean" },
         "event_type": { "type": "string", "minLength": 1 },
         "source_type": { "type": "string", "minLength": 1 },
         "log_source": { "type": "string" },

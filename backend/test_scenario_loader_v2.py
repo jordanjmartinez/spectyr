@@ -324,6 +324,21 @@ def test_supplemental_events_have_unique_ids_vs_attack():
         assert len(sup_ids) == len(set(sup_ids)), f"{label}: dup supplemental ids"
 
 
+# Amendment 1 rule: a supplemental event within the attack's plausible
+# correlation window must be a declared red herring. 30 min each side.
+CORRELATION_WINDOW_S = 1800
+
+
+def test_in_window_supplemental_events_are_declared_red_herrings():
+    catalog, _ = _load_corpus()
+    for label, sc in catalog.items():
+        for sup in sc.get("supplemental_events", []):
+            if abs(sup["offset"]) <= CORRELATION_WINDOW_S:
+                assert sup.get("red_herring") is True, (
+                    f"{label}/{sup['id']}: offset {sup['offset']}s is within the "
+                    f"correlation window but not declared a red herring")
+
+
 def test_detection_triggers_on_supplemental():
     """The lateral_movement_1 coexisting FP triggers on a supplemental event."""
     catalog, _ = _load_corpus()

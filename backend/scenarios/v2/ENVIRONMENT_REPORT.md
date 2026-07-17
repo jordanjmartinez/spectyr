@@ -29,9 +29,13 @@ resolves it (resolution noted inline, entry kept for the record).
   telemetry merged into the session pool, referenceable by detections via
   `sup*` ids. lateral_movement_1 pilot carries `sup1` (nessusd ProcessCreate
   on ACME-SEC01, integrity-checked) and `sup2` (firewall rapid connections).
-  Timestamps authored at attack_base minus 118-120s: deliberately separated
-  from the intrusion window, **NOT a red herring**. Parity CLEAN (supplemental
-  events never touch the attack chain).
+  Timestamps authored at attack_base minus 118-120s. **DECLARED red herring**
+  (review amendment 1): within the attack's plausible correlation window, so
+  `red_herring: true` is set on both; resolution is the dismissal evidence
+  (ACME-SEC01 scanner role, svc_vulnscan service account, nessusd process),
+  not the timing. The correlation-window rule is in
+  docs/classification-rubrics.md. Parity CLEAN (supplemental events never
+  touch the attack chain).
 
 ### Recorded decisions
 
