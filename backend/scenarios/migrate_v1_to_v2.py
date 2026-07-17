@@ -115,12 +115,28 @@ DETECTIONS = {
         "Repeated TXT lookups to non-standard subdomains of a rarely seen "
         "parent domain, a common DNS tunneling and C2 pattern.",
         mitre=("T1071.004", "Command and Control"))],
-    "c2_http": [_det(
-        "det_beacon", "Periodic HTTPS Beacon to Uncategorized Domain",
-        "sigma_behavioral", "high", ["s3"], "true_positive",
-        "Regular-interval outbound HTTPS connections to a domain absent from "
-        "any allowlist, consistent with C2 beaconing.",
-        mitre=("T1071.001", "Command and Control"))],
+    # Density batch 1: 2 TP + 1 coexisting FP. The FP is benign Windows
+    # telemetry beaconing to a Microsoft endpoint (the ManageEngine cloud
+    # check-in domain is not documented, so per the ruling the fallback is a
+    # Microsoft telemetry domain; never an invented vendor domain).
+    "c2_http": [
+        _det("det_beacon", "Periodic HTTPS Beacon to Uncategorized Domain",
+             "sigma_behavioral", "high", ["s3"], "true_positive",
+             "Regular-interval outbound HTTPS connections to a domain absent "
+             "from any allowlist, consistent with C2 beaconing.",
+             mitre=("T1071.001", "Command and Control")),
+        _det("det_rundll_no_module", "rundll32 Executed Without a Module",
+             "sigma_behavioral", "medium", ["s1"], "true_positive",
+             "rundll32.exe launched by explorer with no DLL or entry-point "
+             "argument, a loader pattern that preceded the beacon.",
+             mitre=("T1218.011", "Defense Evasion")),
+        _det("det_telemetry_beacon_fp",
+             "Periodic HTTPS Connections to External Host",
+             "sigma_behavioral", "high", ["sup1"], "false_positive",
+             "Fixed-interval outbound HTTPS to an external host, the same "
+             "beacon shape as C2. It is Windows diagnostic telemetry to a "
+             "Microsoft endpoint: a categorized, allowlisted vendor domain, "
+             "not an uncategorized lookalike.")],
     "data_exfil_archive": [_det(
         "det_exfil_upload", "Outbound Transfer to Consumer File-Sharing Host",
         "sigma_behavioral", "high", ["s5"], "true_positive",
@@ -320,6 +336,30 @@ _MEEC_STAGE = "C:\\Program Files (x86)\\DesktopCentral_Agent\\staging\\EC_Patch_
 _MEEC_SIGNER = "ZOHO Corporation Private Limited"
 
 SUPPLEMENTAL_EVENTS = {
+    "c2_http": [
+        # Benign Windows telemetry beacon to a real Microsoft endpoint (fixed
+        # interval, reads like C2). In-window (attack_base minus 60s) ->
+        # DECLARED red herring; resolved by the destination's reputation
+        # (categorized Microsoft vendor domain), not timing.
+        _sup("sup1", "ws_victim", -60, "HTTP_CONNECT", "Proxy", "medium",
+             "{victim.hostname}", user="victim", red_herring=True,
+             source_ip="{victim.ip}", user_account="ACME\\{victim.username}",
+             message="CONNECT tunnel established to v10.events.data.microsoft.com:443",
+             key_value_pairs={
+                 "src_ip": "{victim.ip}",
+                 "dst_ip": "13.89.179.10",
+                 "src_user": "{victim.username}",
+                 "dvc": "{infra.proxy.hostname}",
+                 "url": "https://v10.events.data.microsoft.com/",
+                 "app": "ssl",
+                 "transport": "tcp",
+                 "dest_port": "443",
+                 "action": "allow",
+                 "http_method": "CONNECT",
+                 "url_category": "information-technology",
+                 "server_cert_subject": "CN=*.events.data.microsoft.com",
+             }),
+    ],
     "malware_usb": [
         # ManageEngine Endpoint Central deploying a patch: the agent service
         # stages an installer and runs it. Reads like malware staging (exec
@@ -408,9 +448,19 @@ SUPPLEMENTAL_EVENTS = {
 }
 
 
-# One-off external actors referenced by supplemental events (none for the
-# pilots; the scanner is a canonical internal actor).
-SUPPLEMENTAL_ENTITIES = {}
+# One-off external actors referenced by supplemental events. Real vendor
+# domains only (never invented). Registered so every domain in an event
+# resolves to a declared entity.
+SUPPLEMENTAL_ENTITIES = {
+    "c2_http": [
+        {"id": "sup_ms_telemetry", "type": "domain",
+         "value": "v10.events.data.microsoft.com",
+         "description": "Microsoft Windows diagnostic telemetry endpoint. "
+                        "Benign vendor domain; the fallback for a documented "
+                        "SaaS check-in since the ManageEngine cloud domain is "
+                        "not published."},
+    ],
+}
 
 # Canonical non-roster accounts to declare in a scenario's environment when its
 # supplemental events reference them (mirrors app.SERVICE_ACCOUNTS). id ->

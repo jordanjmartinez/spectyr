@@ -309,9 +309,14 @@ def test_registry_resolution_supplemental_hosts_and_accounts():
             if "user" in sup:
                 assert sup["user"] in env_account_ids, \
                     f"{label}: supplemental {sup['id']} user {sup['user']} unresolved"
-        # supplemental entities carry a resolvable value
+        # supplemental entities carry a value and are actually referenced by a
+        # supplemental event: no entity exists only in metadata (registry
+        # resolution, forward direction).
+        sup_blob = json.dumps(sups)
         for ent in sc.get("supplemental_entities", []):
             assert ent["value"], f"{label}: empty supplemental_entity value"
+            assert ent["value"] in sup_blob, \
+                f"{label}: supplemental_entity {ent['id']} value never referenced"
 
 
 def test_supplemental_events_have_unique_ids_vs_attack():
