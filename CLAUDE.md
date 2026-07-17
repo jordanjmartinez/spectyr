@@ -263,10 +263,10 @@ cd frontend && npm install && npm start
 Each scenario label should be unique across the whole catalog. If a category repeats, use different attack variants:
 - `malware_usb` vs `malware_ransomware`
 
-### MITRE ATT&CK baseline (pinned)
-- Baseline is **Enterprise ATT&CK v18.1**, verified live on attack.mitre.org 2026-07-16. All technique IDs/names and tactic names in the corpus are interpreted against this pin (see `docs/classification-rubrics.md`).
-- **Standing rule (any requester):** no ATT&CK technique or tactic change may enter the repo without a live `attack.mitre.org` URL for that specific technique page attached to the change request. Applies to new `DETECTIONS` mitre tags, answer-key techniques, and `CANONICAL_TECHNIQUE_NAMES`. Version upgrades are one deliberate migration commit (pin + name map + affected keys), never ambient drift.
-- `test_no_nonexistent_technique_strings` guards the discarded-draft strings `T1685.005` and "Defense Impairment" (neither exists); it must stay green.
+### MITRE ATT&CK baseline (pinned to pre-v19)
+- Corpus mappings are pinned to the **pre-v19 baseline (Enterprise ATT&CK v18.1 semantics)** — this is NOT the current live model. Current live ATT&CK is **v19.1 (2026-04-28)**; v19 split Defense Evasion into Stealth (TA0005) + Defense Impairment (TA0112) and merged `T1562`/`T1070.001` under `T1685`. A dedicated v19 migration is pending owner scheduling (recommended after Batch 4). See `docs/classification-rubrics.md`.
+- **Standing rule (any requester):** no ATT&CK technique or tactic change may enter the repo without a live `attack.mitre.org` URL for that specific technique page attached to the change request. Applies to new `DETECTIONS` mitre tags, answer-key techniques, and `CANONICAL_TECHNIQUE_NAMES`. Version upgrades are one deliberate migration commit (pin + maps + all affected keys re-verified + radar axes), never ambient drift.
+- `test_corpus_strings_match_pinned_attack_baseline` enforces the pin positively: every corpus technique ID / tactic name must be a pinned-baseline string, so a v19 successor (`T1685.005`, "Defense Impairment", "Stealth") drifting in ahead of the migration fails loudly. (It replaced an earlier guard that wrongly blacklisted `T1685.005`/"Defense Impairment" as nonexistent — retracted 2026-07-16; both are real v19.1 identifiers.)
 
 ### Deployment
 - Backend must run as a **single worker** (`gunicorn.conf.py` pins `workers = 1`, `threads = 8`); sessions and log-writer threads live in-process

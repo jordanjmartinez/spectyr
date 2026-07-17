@@ -129,14 +129,23 @@ resolves it (resolution noted inline, entry kept for the record).
   PAN-OS). Same treatment as ACME-FW01: present in the environment and in
   network events, never in the Endpoints list, no Windows telemetry. Its
   Windows noise profile entries were deleted.
-- **ATT&CK verification complete.** All 15 answer_key technique IDs verified
-  live against attack.mitre.org on 2026-07-16 (13 by fetch during the audit;
-  T1562.001 and T1070.001 by the reviewer). No deprecated, revoked, or merged
-  IDs. Display names updated where ATT&CK renamed: T1046 is now Network
-  Service Discovery (approved triage corrections in scenario_corrections.py;
-  the frozen v1 corpus keeps the old name). T1070.001 already carried the
-  current "Indicator Removal: Clear Windows Event Logs" title. The canonical
-  name map test in test_scenario_loader_v2.py fails loudly on future drift.
+- **ATT&CK verification (FU1) — STALE as of 2026-07-16.** The audit conclusion
+  "all 15 answer_key technique IDs current, no deprecated/revoked/merged IDs"
+  was performed against **cached pre-v19 pages** and is superseded. Current live
+  ATT&CK is **v19.1 (2026-04-28)**: at minimum `T1070.001` and `T1562.001` have
+  v19 successors (their content merged under `T1685` "Disable or Modify Tools";
+  Defense Evasion split into Stealth + Defense Impairment). The 15 IDs remain
+  valid under the **pinned v18.1 baseline** the corpus deliberately targets, but
+  are NOT "current." A dedicated v19 migration (re-verify every ID/name/tactic
+  against live v19 pages) is pending owner scheduling. Original audit note kept
+  below for provenance:
+  - _All 15 answer_key technique IDs verified live against attack.mitre.org on
+    2026-07-16 (13 by fetch during the audit; T1562.001 and T1070.001 by the
+    reviewer). Display names updated where ATT&CK renamed: T1046 is now Network
+    Service Discovery (approved triage corrections in scenario_corrections.py;
+    the frozen v1 corpus keeps the old name). T1070.001 already carried the
+    "Indicator Removal: Clear Windows Event Logs" title._ The canonical name map
+    test in test_scenario_loader_v2.py fails loudly on future drift.
 
 ### Recorded decisions (not open)
 
