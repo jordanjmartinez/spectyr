@@ -1008,3 +1008,241 @@ Open items for the owner:
 No implementation until approved. Each approved scenario lands one per
 commit (actions + actions_reviewed + traps together), gates per batch via
 the pre-commit hook. Batch 4 remains blocked until Batch 3 review.
+
+---
+
+# Batch 4 (SCAFFOLD, awaiting owner approval) - the final content batch
+
+Five scenarios. Statuses per ratified P2; identity per the P1 rubric.
+Every proposed required, acceptable, and trap target pre-validated
+against the reachability invariant (resolves, UI-reachable, executes,
+preserves scoring) across all five fixed seeds.
+
+Offline-host wrinkle: NOT used in the proposed scaffolds. FLAG (W1): this
+is the LAST content batch, so it is the last chance to exercise the
+wrinkle in real content (it is currently only unit-tested). If you want
+it exercised, I recommend declaring lateral_movement_2's file server
+offline: the already-proposed "isolate the file server" trap would then
+become a failed-precondition wrinkle (surfaced factually, score-neutral)
+instead of an active collateral. Otherwise the wrinkle stays
+corpus-unused. Owner decides.
+
+## 1. false_positive_robocopy (False Positive, difficulty 2)
+
+```yaml
+  actions_reviewed: true
+  actions: []
+  traps:
+    - action: "kill_process"
+      target: { host: "ws_victim", pid: 4812 }
+    - action: "disable_account"
+      target: { account: "victim" }
+    - action: "isolate_host"
+      target: { host: "ws_victim" }
+```
+
+Rationale: an authorized IT migration (a scheduled robocopy to OneDrive
+for Business under a service account; all three detections
+false_positive). Correct response is NO action: one graded unit of
+intentional inaction. Traps: kill the robocopy process 4812 (killing the
+legitimate migration), disable the victim account, isolate the
+workstation. UI reachability: kill 4812 (Processes row), disable victim
+(Threats via det_fp_robocopy), isolate ws (Overview). Ordering: none.
+Wrinkle: no. Expressibility: none. Expected end-state: nothing changed.
+
+## 2. false_positive_ssl_inspection (False Positive, difficulty 3)
+
+```yaml
+  actions_reviewed: true
+  actions: []
+  traps:
+    - action: "kill_process"
+      target: { host: "ws_victim", pid: 4492 }
+    - action: "disable_account"
+      target: { account: "victim" }
+    - action: "isolate_host"
+      target: { host: "ws_victim" }
+```
+
+Rationale: authorized SSL inspection (the corporate proxy CA breaking
+certificate pinning) that resembles C2 beaconing; all detections
+false_positive. Correct response is NO action. Traps: kill the Office
+process 4492 (the pinned-TLS client, s4 - killing a benign Office
+process), disable the victim account, isolate the workstation. UI
+reachability: kill 4492 (Processes row), disable victim (Threats via
+det_fp_pinned_tls), isolate ws (Overview). Ordering: none. Wrinkle: no.
+Expressibility: none. Expected end-state: nothing changed.
+
+## 3. insider_shadow_it (Insider Threat, difficulty 3)
+
+```yaml
+  actions_reviewed: true
+  actions:
+    - action: "disable_account"
+      status: "required"
+      target: { account: "victim" }
+    - action: "revoke_sessions"
+      status: "required"
+      target: { account: "victim" }
+    - action: "isolate_host"
+      status: "required"
+      target: { host: "ws_victim" }
+    - action: "kill_process"
+      status: "acceptable"
+      target: { host: "ws_victim", pid: 14320 }
+    - action: "force_password_reset"
+      status: "acceptable"
+      target: { account: "victim" }
+  traps:
+    - action: "isolate_host"
+      target: { host: "dns" }
+```
+
+Rationale (parallels insider_staging): an insider using an unapproved
+cloud-sync app (s1, pid 14320) to move and upload sensitive documents.
+Required: disable + revoke the victim account (the account holder is the
+threat; disable removes it from use, revoke evicts the active exfil
+session), isolate ws_victim (stop the upload). Acceptable: kill the
+shadow-IT app 14320 (the exfil vehicle, a user app), force_password_reset
+(offboarding hygiene, I2 - a reset cannot evict the legitimate owner). No
+delete: the shadow app image is not autorun-backed and the moved docs are
+FileCreate (FX1/FX2). Trap: isolate the DNS server (infra over-reaction);
+the victim account is on-list so it is not a trap.
+
+FLAG (S1): shadow-IT severity. I propose the insider_staging-parallel
+treatment (disable + revoke required). If you read shadow IT as negligent
+rather than deliberate exfil, disable could instead be ACCEPTABLE and
+only isolate + revoke required - a narrative-correctness call for you.
+
+Ordering: none. Wrinkle: no. Expressibility: none.
+UI reachability: disable/revoke/reset victim (Threats via
+det_shadow_app_exec / det_shadow_upload), isolate ws / dns (Overview),
+kill 14320 (Processes row) - all confirmed. Expected end-state: victim
+disabled + sessions revoked, ws_victim isolated, shadow app at discretion,
+DNS untouched.
+
+## 4. lateral_movement_2 (Lateral Movement / LSASS dumping, difficulty 3)
+
+```yaml
+  actions_reviewed: true
+  actions:
+    - id: "a_iso"
+      action: "isolate_host"
+      status: "required"
+      target: { host: "ws_victim" }
+    - action: "kill_process"
+      status: "required"
+      target: { host: "ws_victim", pid: 19840 }
+    - action: "kill_process"
+      status: "required"
+      target: { host: "ws_victim", pid: 21056 }
+    - action: "revoke_sessions"
+      status: "required"
+      target: { account: "victim" }
+    - id: "a_reset"
+      action: "force_password_reset"
+      status: "required"
+      target: { account: "victim" }
+      after: ["a_iso"]
+    - action: "disable_account"
+      status: "acceptable"
+      target: { account: "victim" }
+  traps:
+    - action: "isolate_host"
+      target: { host: "file" }
+    - action: "kill_process"
+      target: { host: "ws_victim", pid: 6180 }
+```
+
+Rationale: LSASS credential dumping into lateral movement. Required:
+isolate ws_victim (the compromised host running the dump tools), kill
+procdump 19840 (s1, the LSASS-access tool) and the mimikatz-class second
+tool 21056 (s4, from Temp) - both active malicious. The credentials were
+stolen (LSASS dump, s2) AND used (the s5 lateral 4624 on the file server
+with the victim's creds), so this is confirmed reusable-credential
+compromise: revoke_sessions + force_password_reset are REQUIRED (P1),
+with the reset AFTER isolation (containment-before-reset: an online
+foothold could re-dump or re-use a freshly reset credential).
+disable_account ACCEPTABLE. No delete (procdump/mimikatz images and the
+dump file are not autorun-backed).
+
+Traps: isolate the file server (the movement TARGET serving org shares,
+not compromised - collateral only while in effect), kill the benign
+WerFault crash reporter 6180 (sup1, the det_crashdump_fp false positive).
+
+Ordering: reset after isolate (the one genuine containment-before-reset
+in Batch 4). Wrinkle: no (unless W1 makes the file server offline).
+Expressibility: none.
+UI reachability: kill 19840 / 21056 / 6180 (Processes rows), isolate ws /
+file (Overview), revoke/reset victim (Threats via det_lsass /
+det_procdump_exec) - all confirmed. Expected end-state: ws_victim
+isolated, both dump tools gone, victim revoked + reset (after isolation),
+the file server and WerFault untouched.
+
+## 5. phishing_link (Phishing, difficulty 2)
+
+```yaml
+  actions_reviewed: true
+  actions:
+    - action: "isolate_host"
+      status: "required"
+      target: { host: "ws_victim" }
+    - action: "kill_process"
+      status: "required"
+      target: { host: "ws_victim", pid: 11284 }
+    - action: "delete_file"
+      status: "required"
+      target: { host: "ws_victim", path: "C:\\Users\\{victim.username}\\AppData\\Roaming\\InvoiceService.exe" }
+    - action: "kill_process"
+      status: "acceptable"
+      target: { host: "ws_victim", pid: 13056 }
+  traps:
+    - action: "disable_account"
+      target: { account: "victim" }
+    - action: "isolate_host"
+      target: { host: "dns" }
+```
+
+Rationale: a spearphishing link that downloaded and ran a payload
+(Invoice_2026-0127.exe, s3, pid 11284), which spawned powershell (s4,
+13056) and persisted by copying itself to
+AppData\Roaming\InvoiceService.exe and setting its Run key (s5). Required:
+isolate ws_victim (contain the compromised host), kill the payload 11284
+(active + persisted), delete InvoiceService.exe (the persisted copy is
+the Run-key autorun, so it is UI-reachable; the delete cascade clears the
+autorun row - persistence neutralized, exactly like defense_evasion's
+svchost32). Acceptable: kill the powershell 13056 (payload child, work
+likely done). No identity: the payload is malware delivery (host
+compromise), not credential theft - the account is not breached.
+
+Traps: disable the victim account (host compromise, not credential
+compromise - collateral), isolate the DNS server (infra over-reaction).
+
+Ordering: none. Wrinkle: no. Expressibility: none.
+UI reachability: kill 11284 / 13056 (Processes rows), isolate ws / dns
+(Overview), delete InvoiceService.exe (Autoruns row), disable victim
+(Threats via det_link_payload) - all confirmed. Expected end-state:
+ws_victim isolated, the payload 11284 gone, the InvoiceService.exe Run-key
+autorun row gone, powershell at discretion, account untouched.
+
+## Batch 4 summary for approval
+
+| Scenario | Required | Acceptable | Traps | Order | Wrinkle | Flag |
+|---|---|---|---|---|---|---|
+| false_positive_robocopy | none (inaction) | none | kill 4812, disable victim, isolate ws | none | no | - |
+| false_positive_ssl_inspection | none (inaction) | none | kill 4492, disable victim, isolate ws | none | no | - |
+| insider_shadow_it | disable + revoke + iso | kill 14320 + reset | isolate dns | none | no | S1 (shadow-IT severity) |
+| lateral_movement_2 | iso + kill 19840 + kill 21056 + revoke + reset | disable | isolate file, kill 6180 | reset after iso | no | W1 (wrinkle option) |
+| phishing_link | iso + kill 11284 + delete InvoiceService.exe | kill 13056 | disable victim, isolate dns | none | no | - |
+
+Open items for the owner:
+- S1: insider_shadow_it severity - disable required (proposed, insider
+  parallel) vs acceptable (if read as negligent shadow IT).
+- W1: whether to exercise the offline-host wrinkle in real content this
+  final batch (recommend lateral_movement_2's file server offline) or
+  leave it corpus-unused.
+
+On approval, one scenario per commit (actions + actions_reviewed + traps),
+gates per commit via the pre-commit hook. After Batch 4, the ledger
+reaches 19/20 (defense_evasion_log_clearing blocked pending Stage 3c.5),
+and I scaffold the Stage 3c.5 persistence-response increment for review.
