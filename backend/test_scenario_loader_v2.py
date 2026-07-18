@@ -172,7 +172,7 @@ def test_answer_key_invariants():
     for label, sc in catalog.items():
         ak = sc["answer_key"]
         assert ak["classification"] == sc["category"], label
-        assert ak["actions"] == [], label
+        # actions emptiness is owned by the 3c review ledger test above
         step_ids = {m["id"] for m in sc["attack_meta"]}
         if sc["category"] == "False Positive":
             assert ak["root_cause"] is None and ak["techniques"] == [], label
@@ -390,16 +390,27 @@ def test_rejects_action_order_violations():
     _expect_error(doc, "order cycle")
 
 
-def test_corpus_actions_still_empty_until_stage_3c():
-    """The unlock is grammar only: every scenario keeps actions: [] and
-    actions_reviewed unset until 3c authors and reviews them (one scenario
-    per commit, owner approval first)."""
+# The 3c review ledger: grown by exactly one label per approved scenario
+# commit (actions + actions_reviewed: true land together). The 3d close-out
+# gate asserts all 20 are here.
+REVIEWED_SCENARIOS = {
+    "malware_usb",
+}
+
+
+def test_corpus_review_ledger_matches_marker_state():
+    """actions_reviewed flips only through the 3c cadence: the marker state
+    in the corpus must match the ledger exactly, and unreviewed scenarios
+    must still carry empty action sets."""
     catalog, _ = _load_corpus()
     for label, sc in catalog.items():
-        assert sc["answer_key"]["actions"] == [], \
-            f"{label}: answer_key.actions authored before Stage 3c"
-        assert not sc["answer_key"].get("actions_reviewed", False), \
-            f"{label}: actions_reviewed flipped before its 3c commit"
+        ak = sc["answer_key"]
+        reviewed = bool(ak.get("actions_reviewed", False))
+        assert reviewed == (label in REVIEWED_SCENARIOS), \
+            f"{label}: actions_reviewed does not match the 3c review ledger"
+        if not reviewed:
+            assert ak["actions"] == [], \
+                f"{label}: unreviewed scenario carries authored actions"
 
 
 def test_rejects_authored_actions_without_reviewed_flag():
