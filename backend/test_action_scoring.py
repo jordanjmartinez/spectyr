@@ -366,10 +366,13 @@ def test_materialize_expected_actions_resolves_composites():
 def test_scenario_grading_record_carries_scope_and_flag():
     sc, resolved, env = _resolved_env("lateral_movement_1")
     rec = app.scenario_grading_record("scenario-t", sc, env)
-    assert rec["reviewed"] is False, "corpus is unreviewed until 3c"
+    assert rec["reviewed"] is True, "lateral_movement_1 was reviewed in batch 1"
     assert {h["hostname"] for h in env["hosts"]} == rec["hostnames"]
     assert ("acme", "svc_vulnscan") in rec["accounts"]
     assert ("acme", "nkhan") in rec["accounts"]
+    # a scenario outside the batch stays unreviewed
+    sc2, _, env2 = _resolved_env("c2_http")
+    assert app.scenario_grading_record("scenario-u", sc2, env2)["reviewed"] is False
 
 
 # --- achievability across the fixed seed set ------------------------------------

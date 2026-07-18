@@ -418,8 +418,10 @@ def test_corpus_review_ledger_matches_marker_state():
 
 def test_rejects_authored_actions_without_reviewed_flag():
     """Authored actions and the reviewed marker flip together: an authored
-    set without actions_reviewed: true is an inconsistent state."""
+    set without actions_reviewed: true is an inconsistent state. The
+    fixture clears the flag the real scenario now carries."""
     doc = _one_valid_doc()
+    doc["answer_key"].pop("actions_reviewed", None)
     doc["answer_key"]["actions"] = [
         {"action": "isolate_host", "status": "required",
          "target": {"host": "ws_victim"}}]
@@ -657,8 +659,11 @@ def test_rejects_account_with_unknown_host():
 
 def test_host_status_scenario_declared():
     """Stage 1 addendum note A: host status is authored (online/offline,
-    default online), never generated. Invalid values fail loudly."""
-    doc = _one_valid_doc()
+    default online), never generated. Invalid values fail loudly. Fixture
+    is a scenario with no required isolation (3c): an offline host is only
+    invalid when a required isolate targets it, which the achievability
+    suite covers separately."""
+    doc = _one_valid_doc("false_positive_veeam")
     doc["environment"]["hosts"][0]["status"] = "offline"
     v2.validate_scenario_v2(doc, _SCHEMA_V2, _SCHEMA_V1, "fixture.yaml")  # valid
     doc["environment"]["hosts"][0]["status"] = "sleeping"
