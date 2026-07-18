@@ -338,6 +338,55 @@ def test_achievability_applies_to_acceptable_actions_too():
     _expect_error(doc, "not an authored process")
 
 
+def test_accepts_well_formed_traps():
+    """A declared trap uses the composite action-target format, is off-list,
+    and resolves to authored sources."""
+    doc = _one_valid_doc()
+    doc["answer_key"]["actions_reviewed"] = True
+    doc["answer_key"]["actions"] = [
+        {"action": "isolate_host", "status": "required", "target": {"host": "ws_victim"}}]
+    doc["answer_key"]["traps"] = [
+        {"action": "isolate_host", "target": {"host": "scan"}},
+        {"action": "disable_account", "target": {"account": "svc_vulnscan"}},
+        {"action": "kill_process", "target": {"host": "scan", "pid": 4120}},
+    ]
+    v2.validate_scenario_v2(doc, _SCHEMA_V2, _SCHEMA_V1, "fixture.yaml")
+
+
+def test_rejects_trap_overlapping_an_action():
+    doc = _one_valid_doc()
+    doc["answer_key"]["actions_reviewed"] = True
+    doc["answer_key"]["actions"] = [
+        {"action": "isolate_host", "status": "required", "target": {"host": "ws_victim"}}]
+    doc["answer_key"]["traps"] = [
+        {"action": "isolate_host", "target": {"host": "ws_victim"}}]
+    _expect_error(doc, "overlaps a required or acceptable action")
+
+
+def test_rejects_trap_without_reviewed_flag():
+    # empty-action fixture so the traps-require-reviewed check is what fires
+    # (an authored-actions fixture would trip the actions check first)
+    doc = _one_valid_doc("false_positive_veeam")
+    doc["answer_key"].pop("actions_reviewed", None)
+    doc["answer_key"]["traps"] = [
+        {"action": "isolate_host", "target": {"host": "ws_victim"}}]
+    _expect_error(doc, "traps require actions_reviewed: true")
+
+
+def test_rejects_trap_with_unauthored_or_nonendpoint_target():
+    doc = _one_valid_doc()
+    doc["answer_key"]["actions_reviewed"] = True
+    doc["answer_key"]["actions"] = [
+        {"action": "isolate_host", "status": "required", "target": {"host": "ws_victim"}}]
+    doc["answer_key"]["traps"] = [
+        {"action": "kill_process", "target": {"host": "ws_victim", "pid": 4321}}]
+    _expect_error(doc, "not an authored process")
+    # a trap isolating the PAN-OS proxy is unachievable (non-endpoint)
+    doc["answer_key"]["traps"] = [
+        {"action": "isolate_host", "target": {"host": "fw_perimeter"}}]
+    _expect_error(doc, "never a managed endpoint")
+
+
 def test_rejects_action_with_wrong_target_shape():
     doc = _one_valid_doc()
     host = doc["environment"]["hosts"][0]["id"]

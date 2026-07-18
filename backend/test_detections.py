@@ -35,7 +35,7 @@ SEED = "test-session-det"
 FORBIDDEN = ("disposition", "scenario_id", "detection_key", "label",
              "category", "analyst_category", "category_correct", "flagged",
              "level", "level_name", "storyline", "alert_id", "answer_key",
-             "actions_reviewed")
+             "actions_reviewed", "traps")
 
 
 class _Forced(random.Random):

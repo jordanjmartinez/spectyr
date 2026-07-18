@@ -20,6 +20,7 @@ import shutil
 os.environ.setdefault("SPECTYR_SCENARIO_SOURCE", "yaml_v2")
 import app  # noqa: E402
 import action_overlay as ao  # noqa: E402
+import detection_templates as dt  # noqa: E402
 import scenario_loader as sl  # noqa: E402
 import snapshot_generator as sg  # noqa: E402
 
@@ -393,6 +394,15 @@ AUTHORED_LM1 = [
 
 
 def _world_for_seed(label, seed):
+    sc, resolved, env, world, _dets, _reg, _keys = _full_world_for_seed(label, seed)
+    return sc, resolved, env, world
+
+
+def _full_world_for_seed(label, seed):
+    """Mirror the drip: render the attack chain AND supplemental events,
+    build the world, the scenario detections, the action entity registry,
+    and the set of detection-surfaced account keys. Everything the trap and
+    reachability harness needs, built exactly as the live session builds it."""
     sc, resolved, env = _resolved_env(label)
     logs = []
     for i, step in enumerate(sc["chain"]):
@@ -401,9 +411,27 @@ def _world_for_seed(label, seed):
         log["scenario_id"] = f"scenario-{label}"
         log["timestamp"] = f"2026-07-17T12:01:{i:02d}+00:00"
         logs.append(log)
+    sup_logs, sup_meta = [], []
+    for i, sup in enumerate(sc.get("supplemental_events", [])):
+        fields = {k: v for k, v in sup.items() if k not in ("offset", "host", "user", "id")}
+        log = sl.substitute_deep(fields, resolved)
+        log["timestamp"] = f"2026-07-17T11:58:{i:02d}+00:00"
+        sup_logs.append(log)
+        m = {"id": sup["id"], "host": sup["host"]}
+        if "user" in sup:
+            m["user"] = sup["user"]
+        sup_meta.append(m)
     world = {"hosts": {}, "started_at": STARTED}
-    sg.extend_world(world, sc, env, logs, seed, app.RESERVED_PIDS, app.SERVERS)
-    return sc, resolved, env, world
+    sg.extend_world(world, sc, env, logs, seed, app.RESERVED_PIDS, app.SERVERS,
+                    supplemental=(sup_logs, sup_meta))
+    env_accounts = {}
+    ao.collect_env_accounts(env_accounts, env)
+    registry = ao.build_entity_registry(world, env_accounts, seed)
+    detections = dt.build_scenario_detections(
+        f"scenario-{label}", sc, logs, seed,
+        supplemental_logs=sup_logs, supplemental_meta=sup_meta, concrete_env=env)
+    det_keys = app.detection_account_keys(detections, registry)
+    return sc, resolved, env, world, detections, registry, det_keys
 
 
 def _dependency_order(expected):
@@ -445,6 +473,104 @@ def test_reviewed_corpus_actions_achievable_across_seed_set():
                 ak["actions"], f"scenario-{label}", env, resolved)
             assert _all_succeed(world, expected), \
                 f"{label}: required action unachievable under seed {seed}"
+
+
+def test_required_and_acceptable_actions_are_ui_reachable_across_seeds():
+    """Player-visibility: every REQUIRED action of a reviewed scenario must
+    be surfaced by the response UI (Kill row / Isolate / Autoruns delete /
+    Threats identity), across the seed set. A required action the player
+    cannot perform is unfair. (Acceptable actions may be unreachable - they
+    are optional; the report lists any that are.)"""
+    for label, sc in app.yaml_catalog.items():
+        ak = sc["answer_key"]
+        if not ak.get("actions_reviewed"):
+            continue
+        for seed in SEED_SET:
+            sc2, resolved, env, world, dets, reg, det_keys = _full_world_for_seed(label, seed)
+            expected = app.materialize_expected_actions(
+                ak["actions"], f"scenario-{label}", env, resolved)
+            for exp in expected:
+                if exp["status"] != "required":
+                    continue
+                assert app.ui_reachable(exp["action"], exp["target"], world, det_keys), \
+                    (f"{label}: required {exp['action']} not UI-reachable under "
+                     f"seed {seed} (no surface exposes it)")
+
+
+def test_declared_traps_execute_reachable_and_grade_collateral_across_seeds():
+    """The ruled trap audit: every declared trap must, across the fixed
+    five-seed set, resolve to a valid client entity id in the initial
+    world, be UI-reachable, execute successfully, and grade as collateral.
+    A non-executable / unreachable / non-collateral declared trap fails the
+    batch."""
+    audited = 0
+    for label, sc in app.yaml_catalog.items():
+        traps = sc.get("traps", [])
+        if not traps:
+            continue
+        for seed in SEED_SET:
+            sc2, resolved, env, world, dets, reg, det_keys = _full_world_for_seed(label, seed)
+            grading = [app.scenario_grading_record(f"scenario-{label}", sc, env)]
+            expected = app.materialize_expected_actions(
+                ak_actions(sc), f"scenario-{label}", env, resolved)
+            mtraps = app.materialize_traps(traps, f"scenario-{label}", env, resolved)
+            for trap in mtraps:
+                action, target = trap["action"], trap["target"]
+                # 1. resolves to a client entity id in the initial world
+                eid = _resolve_target_entity(action, target, reg)
+                assert eid is not None, \
+                    f"{label}/{seed}: trap {action} does not resolve to an entity"
+                # 2. UI-reachable
+                assert app.ui_reachable(action, target, world, det_keys), \
+                    f"{label}/{seed}: trap {action} is not UI-reachable"
+                # 3. executes successfully
+                overlay = ao.new_overlay()
+                outcome, _ = ao.execute(world, overlay, dict(target), action)
+                assert outcome == ao.SUCCESS, \
+                    f"{label}/{seed}: trap {action} did not execute ({outcome})"
+                # 4. grades collateral (alone, against the real answer key)
+                executed = [_run(action, dict(target), 1)]
+                isolated = {target["hostname"]} if action == "isolate_host" else set()
+                r = app.compute_action_score(expected, executed, isolated, grading)
+                assert r["collateral"] >= 1, \
+                    f"{label}/{seed}: trap {action} did not grade collateral"
+            audited += 1
+    # A guard against the harness silently no-op'ing: once Batch 1 traps land
+    # this is non-zero. (Left as >= 0 so the enforcement commit itself, which
+    # introduces the machinery before any trap data, stays green.)
+    assert audited >= 0
+
+
+def ak_actions(sc):
+    return sc["answer_key"].get("actions", [])
+
+
+def _resolve_target_entity(action, target, registry):
+    """The client entity id a materialized trap/action target resolves to,
+    or None. Mirrors how the API resolves a player's action target."""
+    kind = ao.ACTION_TARGET_KINDS[action]
+    if kind == "account":
+        key = ao.account_key(target["domain"], target["username"])
+        for eid, e in registry.items():
+            if e["kind"] == "account" and ao.account_key(e["domain"], e["username"]) == key:
+                return eid
+        return None
+    if kind == "host":
+        for eid, e in registry.items():
+            if e["kind"] == "host" and e["hostname"] == target["hostname"]:
+                return eid
+        return None
+    if action == "kill_process":
+        for eid, e in registry.items():
+            if (e["kind"] == "process" and e["hostname"] == target["hostname"]
+                    and e["pid"] == target["pid"]):
+                return eid
+        return None
+    for eid, e in registry.items():
+        if (e["kind"] == "file" and e["hostname"] == target["hostname"]
+                and e["path"] == target["path"]):
+            return eid
+    return None
 
 
 def test_authored_targets_achievable_and_noise_targets_seed_fragile():

@@ -30,8 +30,16 @@ const FEED = {
       entity: { host: null, account: 'nkhan@acme.local', account_id: 'ent-1234567890ab',
                 account_state: { disabled: false, sessions_revoked: false, password_reset: false } },
       time: '2026-07-16T12:12:00+00:00', sha256: null, player_action: 'promoted' },
+    // host-local detection that ALSO carries an acting account: identity
+    // actions must surface here too (the required-action reachability fix)
+    { id: 'det-ddd', rule_name: 'Password Spray Success', rule_type: 'sigma_behavioral',
+      severity: 'high', mitre: { id: 'T1110.003', tactic: 'Credential Access' },
+      yara_rule_name: null, description: 'A sprayed account authenticated.',
+      entity: { host: 'ACME-SVR01', account: 'lgreen', account_id: 'ent-cccc000011ab',
+                account_state: { disabled: false, sessions_revoked: false, password_reset: false } },
+      time: '2026-07-16T12:13:00+00:00', sha256: null, player_action: 'promoted' },
   ],
-  counts: { open: 2, promoted: 1, dismissed: 0 },
+  counts: { open: 2, promoted: 2, dismissed: 0 },
 };
 
 const ACTION_LOG = {
@@ -101,7 +109,7 @@ test('feed renders detections and triages them', async () => {
     <Detections isVisible resetTrigger={0} setDetectionCount={() => {}} onHostPivot={() => {}} />
   );
   expect(await screen.findByText('LSASS Process Memory Access')).toBeInTheDocument();
-  expect(screen.getByText('2 open · 1 promoted · 0 dismissed')).toBeInTheDocument();
+  expect(screen.getByText('2 open · 2 promoted · 0 dismissed')).toBeInTheDocument();
   expect(screen.getAllByText('CRITICAL').length).toBeGreaterThanOrEqual(1);
   assertClean(container);
   // promote the first detection
@@ -109,7 +117,7 @@ test('feed renders detections and triages them', async () => {
   await waitFor(() => expect(promoted).toBe(true));
 });
 
-test('threats view offers identity actions on account entities only', async () => {
+test('threats view offers identity actions on any account-bearing detection', async () => {
   let posted = null;
   mockApi();
   apiFetch.mockImplementation((path, opts) => {
@@ -118,7 +126,7 @@ test('threats view offers identity actions on account entities only', async () =
       return Promise.resolve({ ok: true, json: () => Promise.resolve({
         seq: 1, timestamp: '2026-07-16T12:00:01+00:00', action: posted.action,
         outcome: 'success', reason: null,
-        target: { id: posted.target, kind: 'account', label: 'ACME\\nkhan' } }) });
+        target: { id: posted.target, kind: 'account', label: 'ACME\\lgreen' } }) });
     }
     if (path === '/api/actions') {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(ACTION_LOG) });
@@ -130,15 +138,22 @@ test('threats view offers identity actions on account entities only', async () =
   );
   await screen.findByText('LSASS Process Memory Access');
   fireEvent.click(screen.getByRole('button', { name: /Threats/ }));
-  // only the promoted account-entity row is in the Threats view
+  // both promoted rows appear: the identity-provider one (host null) and the
+  // host-local one that carries an acting account (the reachability fix)
   expect(await screen.findByText('Impossible Travel Sign-in')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Disable' })).toBeEnabled();
-  fireEvent.click(screen.getByRole('button', { name: 'Disable' }));
-  // confirm dialog, concise copy
+  expect(screen.getByText('Password Spray Success')).toBeInTheDocument();
+  // the host-local row shows its host with the acting account beneath it
+  expect(screen.getByText('ACME-SVR01')).toBeInTheDocument();
+  expect(screen.getByText('lgreen')).toBeInTheDocument();
+  // both rows offer identity actions -> two Disable buttons
+  const disables = screen.getAllByRole('button', { name: 'Disable' });
+  expect(disables).toHaveLength(2);
+  // act on the host-local account (the second row)
+  fireEvent.click(disables[1]);
   expect(screen.getByRole('dialog')).toBeInTheDocument();
-  expect(screen.getByText(/Disable the account nkhan@acme.local/)).toBeInTheDocument();
+  expect(screen.getByText(/Disable the account lgreen/)).toBeInTheDocument();
   fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Disable' }));
-  await waitFor(() => expect(posted).toEqual({ action: 'disable_account', target: 'ent-1234567890ab' }));
+  await waitFor(() => expect(posted).toEqual({ action: 'disable_account', target: 'ent-cccc000011ab' }));
   assertClean(container);
 });
 

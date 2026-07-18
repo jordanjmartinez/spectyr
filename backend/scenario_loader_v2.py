@@ -253,6 +253,7 @@ def validate_scenario_v2(doc, schema_v2, v1_schema, filename):
         raise ScenarioError(
             f"{filename}: authored answer_key.actions require "
             f"actions_reviewed: true (the 3c review flips both together)")
+    _validate_answer_traps(ak, hosts, accounts, filename)
     if ak.get("actions_reviewed", False):
         _validate_action_achievability(doc, filename)
 
@@ -320,15 +321,13 @@ _ACTION_TARGET_FIELDS = {
 }
 
 
-def _pre_check_action_target_shapes(doc, filename):
-    """Author-facing target-shape errors, raised ahead of the schema (which
-    enforces the same shapes via per-action conditionals). Defensive on
-    structure: anything not yet dict/list-shaped falls through to the schema,
-    as do unknown action names (the enum message names the valid set)."""
-    ak = doc.get("answer_key")
-    if not isinstance(ak, dict) or not isinstance(ak.get("actions"), list):
+def _pre_check_target_shapes(entries, label, filename):
+    """Author-facing target-shape errors for a list of action/trap entries,
+    raised ahead of the schema (which enforces the same shapes via
+    per-action conditionals). Defensive on structure."""
+    if not isinstance(entries, list):
         return
-    for i, act in enumerate(ak["actions"]):
+    for i, act in enumerate(entries):
         if not isinstance(act, dict):
             continue
         name = act.get("action")
@@ -340,8 +339,28 @@ def _pre_check_action_target_shapes(doc, filename):
         extra = [f for f in tgt if f not in fields]
         if missing or extra:
             raise ScenarioError(
-                f"{filename}: answer_key.actions[{i}] ({name}): target takes "
+                f"{filename}: answer_key.{label}[{i}] ({name}): target takes "
                 f"exactly {list(fields)}; missing {missing}, extra {extra}")
+
+
+def _pre_check_action_target_shapes(doc, filename):
+    ak = doc.get("answer_key")
+    if not isinstance(ak, dict):
+        return
+    _pre_check_target_shapes(ak.get("actions"), "actions", filename)
+    _pre_check_target_shapes(ak.get("traps"), "traps", filename)
+
+
+def _target_key(action, target):
+    """A hashable (action, target) identity for overlap checks, matching the
+    scorer's composite match key."""
+    if action in ("disable_account", "revoke_sessions", "force_password_reset"):
+        return (action, target["account"])
+    if action == "isolate_host":
+        return (action, target["host"])
+    if action == "kill_process":
+        return (action, target["host"], target["pid"])
+    return (action, target["host"], action_overlay.norm_path(target["path"]))
 
 
 def _validate_answer_actions(actions, hosts, accounts, filename):
@@ -402,6 +421,46 @@ def _validate_answer_actions(actions, hosts, accounts, filename):
                     f"references {ref!r}, which is not a required action; "
                     f"credit cannot depend on optional actions")
 
+    _validate_answer_actions_no_cycles(actions, filename)
+
+
+def _validate_answer_traps(ak, hosts, accounts, filename):
+    """Referential + no-overlap rules for answer_key.traps. Achievability
+    (and the executable/reachable/collateral proof) is the fixed-seed
+    harness's job, run only for reviewed scenarios; here we enforce that a
+    declared trap resolves to the environment and does not overlap any
+    required or acceptable action (a trap is off-list by definition)."""
+    traps = ak.get("traps", [])
+    if not traps:
+        return
+    if not ak.get("actions_reviewed", False):
+        raise ScenarioError(
+            f"{filename}: answer_key.traps require actions_reviewed: true "
+            f"(traps are validated with the scenario's reviewed action set)")
+    action_keys = {_target_key(a["action"], a["target"]) for a in ak["actions"]}
+    seen = set()
+    for i, trap in enumerate(traps):
+        name, tgt = trap["action"], trap["target"]
+        if "host" in tgt and tgt["host"] not in hosts:
+            raise ScenarioError(
+                f"{filename}: answer_key.traps[{i}] ({name}): target host "
+                f"{tgt['host']!r} is not a declared environment host")
+        if "account" in tgt and tgt["account"] not in accounts:
+            raise ScenarioError(
+                f"{filename}: answer_key.traps[{i}] ({name}): target account "
+                f"{tgt['account']!r} is not a declared environment account")
+        key = _target_key(name, tgt)
+        if key in action_keys:
+            raise ScenarioError(
+                f"{filename}: answer_key.traps[{i}] ({name}): overlaps a "
+                f"required or acceptable action; a trap must be off-list")
+        if key in seen:
+            raise ScenarioError(
+                f"{filename}: answer_key.traps[{i}] ({name}): duplicate trap")
+        seen.add(key)
+
+
+def _validate_answer_actions_no_cycles(actions, filename):
     # No cycles in the order-sensitivity graph.
     edges = {a["id"]: list(a.get("after", [])) for a in actions if "id" in a}
     state = {}  # id -> 1 visiting, 2 done
@@ -490,37 +549,46 @@ def _validate_action_achievability(doc, filename):
     """
     env_hosts = {h["id"]: h for h in doc["environment"]["hosts"]}
     pids, paths = _authored_action_sources(doc)
+    ak = doc["answer_key"]
 
-    for i, act in enumerate(doc["answer_key"]["actions"]):
-        name = act["action"]
-        tgt = act["target"]
-        host = env_hosts.get(tgt.get("host")) if "host" in tgt else None
-        if host is not None:
-            if host["role"] in snapshot_generator.NON_ENDPOINT_ROLES:
+    def check(entries, label, isolate_offline_fatal):
+        for i, act in enumerate(entries):
+            name = act["action"]
+            tgt = act["target"]
+            where = f"answer_key.{label}[{i}] ({name})"
+            host = env_hosts.get(tgt.get("host")) if "host" in tgt else None
+            if host is not None:
+                if host["role"] in snapshot_generator.NON_ENDPOINT_ROLES:
+                    raise ScenarioError(
+                        f"{filename}: {where}: target host {host['id']!r} is a "
+                        f"{host['role']} (log source, never a managed "
+                        f"endpoint); the action is unachievable")
+                if (name == "isolate_host" and host.get("status") == "offline"
+                        and isolate_offline_fatal):
+                    raise ScenarioError(
+                        f"{filename}: {where}: host {host['id']!r} is declared "
+                        f"offline; isolation cannot succeed, so it can never be "
+                        f"a required action")
+            if name == "kill_process" and tgt["pid"] not in pids.get(tgt["host"], set()):
                 raise ScenarioError(
-                    f"{filename}: answer_key.actions[{i}] ({name}): target "
-                    f"host {host['id']!r} is a {host['role']} (log source, "
-                    f"never a managed endpoint); the action is unachievable")
-            if name == "isolate_host" and host.get("status") == "offline":
-                raise ScenarioError(
-                    f"{filename}: answer_key.actions[{i}] (isolate_host): "
-                    f"host {host['id']!r} is declared offline; isolation "
-                    f"cannot succeed, so it can never be a required action")
-        if name == "kill_process":
-            if tgt["pid"] not in pids.get(tgt["host"], set()):
-                raise ScenarioError(
-                    f"{filename}: answer_key.actions[{i}] (kill_process): "
-                    f"pid {tgt['pid']} on host {tgt['host']!r} is not an "
-                    f"authored process of this scenario (chain/supplemental); "
-                    f"seed-generated noise never qualifies")
-        if name == "delete_file":
-            if action_overlay.norm_path(tgt["path"]) not in paths.get(tgt["host"], set()):
-                raise ScenarioError(
-                    f"{filename}: answer_key.actions[{i}] (delete_file): "
-                    f"path {tgt['path']!r} on host {tgt['host']!r} is not an "
-                    f"authored deletable file of this scenario (Sysmon image/"
-                    f"parent_image or run-key autorun); seed-generated noise "
+                    f"{filename}: {where}: pid {tgt['pid']} on host "
+                    f"{tgt['host']!r} is not an authored process of this "
+                    f"scenario (chain/supplemental); seed-generated noise "
                     f"never qualifies")
+            if (name == "delete_file"
+                    and action_overlay.norm_path(tgt["path"]) not in paths.get(tgt["host"], set())):
+                raise ScenarioError(
+                    f"{filename}: {where}: path {tgt['path']!r} on host "
+                    f"{tgt['host']!r} is not an authored deletable file of this "
+                    f"scenario (Sysmon image/parent_image or run-key autorun); "
+                    f"seed-generated noise never qualifies")
+
+    # Required/acceptable actions: a required isolate on an offline host is
+    # fatal (it can never earn credit). Traps face the same authored-source
+    # bar; an offline-host isolate trap is left to the harness (it would fail
+    # precondition and thus not grade collateral, which the harness rejects).
+    check(ak["actions"], "actions", isolate_offline_fatal=True)
+    check(ak.get("traps", []), "traps", isolate_offline_fatal=False)
 
 
 def _catalog_entry_v2(doc):
@@ -547,6 +615,7 @@ def _catalog_entry_v2(doc):
         "detections": doc["detections"],
         "answer_key": doc["answer_key"],
         "attack_meta": attack_meta,
+        "traps": doc["answer_key"].get("traps", []),
     }
 
 

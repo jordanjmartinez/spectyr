@@ -152,6 +152,11 @@
         "actions_reviewed": {
           "$comment": "Stage 3c tri-state grading marker, SERVER-SIDE ONLY (never serialized; leak-guard tested). Absent/false = this scenario's response actions are not yet reviewed: it is excluded from action scoring entirely. True with actions = grade normally. True with actions: [] = intentional correct inaction: clean hands earn the credit, successful unnecessary actions are collateral. Each 3c scenario commit flips this to true; 3d gates on all 20 reviewed.",
           "type": "boolean"
+        },
+        "traps": {
+          "$comment": "Stage 3c designed collateral traps, SERVER-SIDE ONLY (never serialized). Illustrative, not exhaustive: undeclared successful actions still grade collateral under the normal rules. Each trap uses the normal composite action-target format, must not overlap any required or acceptable action, and the fixed-seed harness proves it resolves to a reachable client entity and grades as collateral.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/trap" }
         }
       }
     },
@@ -190,37 +195,24 @@
   },
   "$defs": {
     "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
-    "answer_action": {
-      "$comment": "One expected response action. The target is composite by action kind: isolate_host -> host; kill_process -> host+pid; delete_file -> host+path; identity actions -> account. `status` is deliberate authoring, no default: required = earns credit, omission is a miss; acceptable = defensible but nonessential, never credit, never collateral, excluded from the score denominator (an executed acceptable action is surfaced factually). `after` declares order sensitivity only where it matters, on required actions referencing required actions.",
+    "action_verb": {
+      "enum": [
+        "isolate_host", "kill_process", "delete_file",
+        "disable_account", "revoke_sessions", "force_password_reset"
+      ]
+    },
+    "action_target": {
       "type": "object",
-      "required": ["action", "target", "status"],
       "additionalProperties": false,
       "properties": {
-        "id": { "$ref": "#/$defs/id" },
-        "status": { "enum": ["required", "acceptable"] },
-        "action": {
-          "enum": [
-            "isolate_host", "kill_process", "delete_file",
-            "disable_account", "revoke_sessions", "force_password_reset"
-          ]
-        },
-        "target": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "host": { "$ref": "#/$defs/id" },
-            "pid": { "type": "integer", "minimum": 1 },
-            "path": { "type": "string", "minLength": 1 },
-            "account": { "$ref": "#/$defs/id" }
-          }
-        },
-        "after": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": { "$ref": "#/$defs/id" }
-        }
-      },
+        "host": { "$ref": "#/$defs/id" },
+        "pid": { "type": "integer", "minimum": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "account": { "$ref": "#/$defs/id" }
+      }
+    },
+    "action_target_conditionals": {
+      "$comment": "The composite-by-kind target rules shared by answer_key.actions and answer_key.traps: isolate_host -> host; kill_process -> host+pid; delete_file -> host+path; identity actions -> account.",
       "allOf": [
         {
           "if": { "properties": { "action": { "const": "isolate_host" } }, "required": ["action"] },
@@ -251,6 +243,36 @@
           } } }
         }
       ]
+    },
+    "answer_action": {
+      "$comment": "One expected response action. `status` is deliberate authoring, no default: required = earns credit, omission is a miss; acceptable = defensible but nonessential, never credit, never collateral, excluded from the score denominator (an executed acceptable action is surfaced factually). `after` declares order sensitivity only where it matters, on required actions referencing required actions.",
+      "type": "object",
+      "required": ["action", "target", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "status": { "enum": ["required", "acceptable"] },
+        "action": { "$ref": "#/$defs/action_verb" },
+        "target": { "$ref": "#/$defs/action_target" },
+        "after": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/id" }
+        }
+      },
+      "allOf": [ { "$ref": "#/$defs/action_target_conditionals" } ]
+    },
+    "trap": {
+      "$comment": "One designed collateral trap: the same composite action-target format, no status/id/after (a trap is off-list by definition and grades collateral). Server-side only.",
+      "type": "object",
+      "required": ["action", "target"],
+      "additionalProperties": false,
+      "properties": {
+        "action": { "$ref": "#/$defs/action_verb" },
+        "target": { "$ref": "#/$defs/action_target" }
+      },
+      "allOf": [ { "$ref": "#/$defs/action_target_conditionals" } ]
     },
     "detection": {
       "type": "object",

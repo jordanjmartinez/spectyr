@@ -293,7 +293,10 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot })
                   <td className="px-3 sm:px-4 py-3"><RuleTypeChip type={d.rule_type} /></td>
                   <td className="px-3 sm:px-4 py-3 font-mono whitespace-nowrap text-[#1a2332]">
                     {d.entity?.host || d.entity?.account || '-'}
-                    {view === 'threats' && !d.entity?.host && (
+                    {d.entity?.host && d.entity?.account && (
+                      <span className="block text-xs text-[#8b949e]">{d.entity.account}</span>
+                    )}
+                    {view === 'threats' && d.entity?.account_id && (
                       <IdentityStateChips state={d.entity?.account_state} />
                     )}
                   </td>
@@ -309,10 +312,13 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot })
                   </td>
                   {view === 'threats' && (
                     <td className="px-3 sm:px-4 py-3">
-                      {/* Identity actions bind to ACCOUNT entities only (the
-                          standing identity-entity rule): host-bearing rows
-                          respond from the endpoint page instead. */}
-                      {!d.entity?.host && d.entity?.account_id ? (
+                      {/* Identity actions target the account entity wherever a
+                          promoted detection resolves one (identity-provider
+                          detections carry only an account; host-local
+                          detections carry a host plus its acting account).
+                          The action always binds to the account, never the
+                          host. */}
+                      {d.entity?.account_id ? (
                         <div className="flex items-center gap-1.5">
                           <ActionButton
                             disabled={!!d.entity.account_state?.disabled}
@@ -335,7 +341,7 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot })
                         </div>
                       ) : (
                         <span className="text-xs text-[#8b949e]">
-                          {!d.entity?.host && d.entity?.account ? 'Unresolved account' : '-'}
+                          {d.entity?.account ? 'Unresolved account' : '-'}
                         </span>
                       )}
                     </td>

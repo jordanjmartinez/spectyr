@@ -2281,6 +2281,77 @@ def materialize_expected_actions(actions, scenario_id, concrete_env, resolved):
     return out
 
 
+def materialize_traps(traps, scenario_id, concrete_env, resolved):
+    """Resolve a scenario's declared traps to concrete composites at drip
+    time (server-side only; feeds the trap harness, never serialized).
+    Same resolution as materialize_expected_actions, minus status/after."""
+    concrete = scenario_loader.substitute_deep(copy.deepcopy(traps), resolved)
+    hosts_by_id = {h["id"]: h for h in concrete_env.get("hosts", [])}
+    accounts_by_id = {a["id"]: a for a in concrete_env.get("accounts", [])}
+    out = []
+    for trap in concrete:
+        tgt = trap["target"]
+        kind = action_overlay.ACTION_TARGET_KINDS[trap["action"]]
+        if kind == "account":
+            acct = accounts_by_id[tgt["account"]]
+            target = {"domain": acct["domain"], "username": acct["username"]}
+        else:
+            hostname = hosts_by_id[tgt["host"]]["hostname"]
+            target = {"hostname": hostname}
+            if "pid" in tgt:
+                target["pid"] = tgt["pid"]
+            if "path" in tgt:
+                target["path"] = action_overlay.norm_path(tgt["path"])
+        out.append({"scenario_id": scenario_id, "action": trap["action"],
+                    "target": target})
+    return out
+
+
+def detection_account_keys(detections, registry):
+    """The set of account keys that some scenario detection surfaces (via
+    its entity account), each resolved through the registry. An identity
+    response action is UI-reachable exactly when its account is in this set:
+    the Threats view offers identity actions on any promoted detection that
+    carries a resolvable account. Pure derivation."""
+    keys = set()
+    for d in detections:
+        acct = (d.get("entity") or {}).get("account")
+        if not acct:
+            continue
+        eid = action_overlay.resolve_account_key(acct, registry)
+        if eid:
+            e = registry[eid]
+            keys.add(action_overlay.account_key(e["domain"], e["username"]))
+    return keys
+
+
+def ui_reachable(action, target, world, det_account_keys):
+    """Whether the current response UI surfaces a control for this
+    (action, target). The action surfaces are: Kill on any live process
+    row; Isolate/Release on any managed endpoint; Delete only on Autoruns
+    image rows; identity actions on any promoted detection carrying the
+    account (Threats view). A trap or a required action that no surface
+    exposes is not player-executable. Pure predicate over the base world."""
+    if action in ("isolate_host", "release_host"):
+        return target["hostname"] in world.get("hosts", {})
+    if action == "kill_process":
+        snap = world.get("hosts", {}).get(target["hostname"])
+        return snap is not None and any(p["pid"] == target["pid"]
+                                        for p in snap["processes"])
+    if action == "delete_file":
+        snap = world.get("hosts", {}).get(target["hostname"])
+        if snap is None:
+            return False
+        autorun_images = {action_overlay.norm_path(
+            action_overlay.extract_image_path(a.get("command") or ""))
+            for a in snap["autoruns"]}
+        autorun_images.discard("")
+        return target["path"] in autorun_images
+    # identity actions
+    return action_overlay.account_key(
+        target["domain"], target["username"]) in det_account_keys
+
+
 def build_attack_chain_logs(session, scenario_entry, employee=None):
     """Build the list of attack logs for a scenario entry from the queue.
     Mutates scenario_entry in place to set scenario_id.
