@@ -291,7 +291,24 @@ answer_key:
     accounts: ["victim"]
   root_cause: "s1"
   techniques: ["T1071.004"]
-  actions: []
+  actions_reviewed: true
+  actions:
+    - action: "isolate_host"
+      status: "required"
+      target:
+        host: "ws_victim"
+    - action: "kill_process"
+      status: "required"
+      target:
+        host: "ws_victim"
+        pid: 17892
+  traps:
+    - action: "disable_account"
+      target:
+        account: "victim"
+    - action: "isolate_host"
+      target:
+        host: "dns"
 
 triage_review:
   mitre:

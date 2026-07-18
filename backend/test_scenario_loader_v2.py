@@ -478,6 +478,7 @@ REVIEWED_SCENARIOS = {
     "insider_staging",
     "false_positive_oauth",
     "brute_force_attack",
+    "c2_dns_tunnel",
 }
 
 
