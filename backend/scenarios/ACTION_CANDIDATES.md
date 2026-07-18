@@ -1246,3 +1246,98 @@ On approval, one scenario per commit (actions + actions_reviewed + traps),
 gates per commit via the pre-commit hook. After Batch 4, the ledger
 reaches 19/20 (defense_evasion_log_clearing blocked pending Stage 3c.5),
 and I scaffold the Stage 3c.5 persistence-response increment for review.
+
+
+## Stage 3c.5 re-scaffold: D1 + D2 (SCAFFOLD for owner approval)
+
+The `remove_persistence` engine increment has landed and passed the full
+gate battery. This scaffold proposes the two scenario answer-key changes
+the increment unblocks. **Nothing here is applied until approved**; on
+approval each scenario changes in its own commit, gates per commit, and
+the reviewed ledger flips to 20/20.
+
+Both proposals were pre-verified against the landed engine (read-only, no
+file changes): loader achievability, UI reachability, successful execution
+of every action, and trap-collateral grading, all across the fixed
+five-seed set. All checks passed.
+
+### D1 - `defense_evasion_log_clearing` (was blocked; flips to reviewed)
+
+Attack recap: WMI subscription persistence (s1 filter `WindowsUpdFilter` /
+s2 consumer `WindowsUpdConsumer` / s3 binding), then two malicious
+`wevtutil cl` log-clears (s4 pid 22480 Security, s6 pid 22544 Sysmon), and
+the s5 1102 Security-log-cleared event. A benign maintenance `wevtutil`
+with `/bu:` backup (sup1 pid 8820) is the authored red herring.
+
+```yaml
+  actions_reviewed: true
+  actions:
+    - { id: a_iso, action: isolate_host, status: required,
+        target: { host: ws_victim } }
+    - { id: a_persist, action: remove_persistence, status: required,
+        target: { host: ws_victim, persistence: "wmi:WindowsUpdConsumer" } }
+    - { action: kill_process, status: acceptable,
+        target: { host: ws_victim, pid: 22480 } }
+    - { action: kill_process, status: acceptable,
+        target: { host: ws_victim, pid: 22544 } }
+  traps:
+    - { action: kill_process, target: { host: ws_victim, pid: 8820 } }
+    - { action: disable_account, target: { account: victim } }
+```
+
+Rationale: isolating and killing the `wevtutil` processes is incomplete -
+the WMI subscription survives and can relaunch the payload, and until 3c.5
+no verb could remove it. `remove_persistence` on the correlated
+`WindowsUpdConsumer` subscription IS the completing containment step, so it
+is REQUIRED alongside isolation. Killing the two malicious `wevtutil`
+instances is defensible cleanup but nonessential (the log damage is done;
+the clears are one-shot), so ACCEPTABLE. Traps: killing the benign
+maintenance `wevtutil` 8820 (legitimate GPO log backup - collateral) and
+disabling the victim account (host compromise, not credential compromise -
+collateral). No ordering. The s5 1102 classification binding is UNTOUCHED.
+
+UI reachability confirmed: isolate (Overview), remove_persistence (the WMI
+row on the Autoruns persistence view), kill 22480 / 22544 / 8820
+(Processes rows), disable victim (Threats). Expected end-state: ws_victim
+isolated, the `WindowsUpdConsumer` WMI row gone (registration-only, so
+removal fully neutralizes it), the malicious `wevtutil` processes at
+discretion, account untouched.
+
+### D2 - `defense_evasion` (retroactive acceptable addition)
+
+defense_evasion's Run-key persistence (`WindowsServices` ->
+svchost32.exe, s5 event_id 13) is already neutralized by the REQUIRED
+`delete_file` of the payload. Now that `remove_persistence` can target Run
+keys, a player could neutralize the registration directly, which must not
+grade as collateral. So defense_evasion gains ONE ACCEPTABLE action; every
+existing action (required isolate, required kill 6104, required
+delete_file svchost32, acceptable kill 4812) and the disable_account trap
+are UNCHANGED.
+
+```yaml
+    # ... existing actions unchanged ...
+    - action: remove_persistence
+      status: acceptable
+      target:
+        host: ws_victim
+        persistence: "run_key:HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\WindowsServices"
+```
+
+Dual-flag interaction (the reason this is safe): the Run key is
+file-backed. `delete_file` (required) clears the file flag;
+`remove_persistence` (acceptable) clears the registration flag; the row
+survives until BOTH are cleared. So the required `delete_file` stays
+reachable no matter when the acceptable `remove_persistence` is taken, and
+vice versa - the GENERAL RULE holds by construction (verified both
+orders). The second event_id 13 in the chain writes a Defender-exclusion
+key under `HKLM\...\Windows Defender\Exclusions`, not `...\CurrentVersion\Run`,
+so it is NOT a Run-key persistence artifact and the selector resolves
+uniquely to `WindowsServices`.
+
+### Ledger + sequencing
+
+On approval: D1 in its own commit (flips `actions_reviewed: true`, ledger
+-> 20/20), D2 in its own commit; then the REVIEWED_SCENARIOS ledger test
+becomes all-20 and the blocked-exception is removed, restoring the 20/20
+review gate. After that, Stage 3d begins (composite report-card ruling
+with full-corpus distributions).
