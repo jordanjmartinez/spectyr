@@ -396,6 +396,7 @@ def test_rejects_action_order_violations():
 REVIEWED_SCENARIOS = {
     "malware_usb",
     "phishing_1",
+    "password_spray",
 }
 
 

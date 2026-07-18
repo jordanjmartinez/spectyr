@@ -104,6 +104,26 @@ attack_base minus 118-120s) are declared red herrings: the analyst resolves
 them by recognizing the ACME-SEC01 scanner role and the svc_vulnscan service
 account, not by the offset. All 3c scaffolds follow this rule.
 
+## Response-action rubric: the evidence-of-compromise threshold
+
+(3c Batch 1, N1 ruling, 2026-07-17.)
+
+For identity response actions, the graded distinction is:
+
+- **Attempted compromise may justify credential hygiene.** A precautionary
+  force_password_reset on an account that was targeted but never breached
+  (failure events only) is defensible: author it `acceptable`.
+- **Session revocation or account disablement requires evidence that the
+  account or its sessions were actually compromised.** Absent that
+  evidence, revoke_sessions and disable_account on targeted-only accounts
+  stay off-list and grade as collateral.
+
+The password_spray answer key is the canonical application: the five
+sprayed accounts (4625 failures only) carry acceptable hygiene resets,
+while any revoke or disable on them is collateral. The identical actions
+on lgreen are REQUIRED because the evidence exists there: the s6 4624
+success is an attacker logon with that account.
+
 ## Difficulty tier table
 
 Marked **final** for `defense_evasion_log_clearing`: medium (difficulty 2).
