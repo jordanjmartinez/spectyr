@@ -331,7 +331,52 @@ answer_key:
     accounts: ["victim"]
   root_cause: "s1"
   techniques: ["T1046"]
-  actions: []
+  actions_reviewed: true
+  actions:
+    - id: "a_iso"
+      action: "isolate_host"
+      status: "required"
+      target:
+        host: "ws_victim"
+    - action: "kill_process"
+      status: "required"
+      target:
+        host: "ws_victim"
+        pid: 8844
+    - action: "kill_process"
+      status: "required"
+      target:
+        host: "file"
+        pid: 2104
+    - action: "kill_process"
+      status: "acceptable"
+      target:
+        host: "file"
+        pid: 3312
+    - action: "kill_process"
+      status: "acceptable"
+      target:
+        host: "ws_victim"
+        pid: 6240
+    - action: "delete_file"
+      status: "acceptable"
+      target:
+        host: "ws_victim"
+        path: "C:\\Users\\{victim.username}\\Downloads\\nmap-7.95\\nmap.exe"
+    - action: "revoke_sessions"
+      status: "required"
+      target:
+        account: "victim"
+    - id: "a_reset"
+      action: "force_password_reset"
+      status: "required"
+      target:
+        account: "victim"
+      after: ["a_iso"]
+    - action: "disable_account"
+      status: "acceptable"
+      target:
+        account: "victim"
 
 triage_review:
   mitre:

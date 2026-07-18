@@ -397,6 +397,7 @@ REVIEWED_SCENARIOS = {
     "malware_usb",
     "phishing_1",
     "password_spray",
+    "lateral_movement_1",
 }
 
 
