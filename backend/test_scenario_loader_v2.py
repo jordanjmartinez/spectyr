@@ -481,6 +481,7 @@ REVIEWED_SCENARIOS = {
     "c2_dns_tunnel",
     "defense_evasion",
     "false_positive_pentest",
+    "false_positive_robocopy",
 }
 
 
