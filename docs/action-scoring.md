@@ -152,7 +152,42 @@ Classification keeps the headline grade. Response and Detections render
 as independent scored sections (`/api/analytics/action_score`,
 `/api/analytics/detection_score`); no composite yet.
 
-**Binding for the 3d close-out:** the 3d report MUST include action-score
-distributions from full-corpus scored runs and present 2-3 concrete
-composite weighting options with their letter-grade band interactions.
-The composite ruling is made at 3d; it may not be deferred a second time.
+## Stage 3d full-corpus response baselines (measured, 20 x 5 seeds)
+
+Deterministic action-score baselines, three strategies:
+
+| Strategy | micro | macro |
+|---|---|---|
+| Correct response | 100.0 | 100.0 |
+| Act on nothing | 13.3 | 30.0 |
+| Act on everything | 1.4 | 1.5 |
+
+Both naive strategies score strictly below correct on micro AND macro.
+Act-on-nothing scores 100 only on the six no-required scenarios (5 FP +
+brute_force_attack) and 0 on all 14 attack scenarios; act-on-everything is
+~0 everywhere (collateral dominates; FP scenarios forfeit the inaction
+unit). No attack scenario lets a naive strategy tie or beat correct. See
+docs/stage-3-final-report.md for the full run.
+
+## Composite headline-grade options (Stage 3d — owner ruling PENDING)
+
+Three sub-scores, each on the shared 10-point band, each A/100 for a
+correct player: Classification, Detection, Response. No-required scenarios
+contribute one inaction unit to Response (credited on clean hands); no
+dimension is dropped/renormalized in practice (corpus density guarantees
+all three are always present). Worked examples (C/D/R -> composite):
+
+| Run (C/D/R) | B 50/25/25 | C 40/30/30 | D 60/20/20 |
+|---|---|---|---|
+| 100/100/100 | 100 A | 100 A | 100 A |
+| 100/60/70 (weak triage) | 82.5 B | 79.0 C | 86.0 B |
+| 60/100/100 (wrong class) | 80.0 B | 84.0 B | 76.0 C |
+| 100/100/55 (over-responder) | 88.8 B | 86.5 B | 91.0 A |
+
+- D under-penalizes collateral (over-responder still A); B cushions a wrong
+  classification to B; C makes both failure modes cost a grade while
+  keeping classification the largest single weight.
+- **Recommendation: Option C (40/30/30)** (see the final report for the
+  reasoning). Until the owner rules, the UI keeps Option A side-by-side and
+  no composite is wired. This decision is made at 3d and is not deferred
+  again.

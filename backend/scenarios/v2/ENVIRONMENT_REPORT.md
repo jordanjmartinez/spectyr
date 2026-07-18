@@ -182,3 +182,14 @@ resolves it (resolution noted inline, entry kept for the record).
 - **Host status is scenario-declared** (schema v2 host `status`, default
   online). No generator may set it; only derived timestamps use the seed.
 - **spectyr-agent 1.0.0** is the agent identity constant on every endpoint.
+
+### Stage 3d close-out note (2026-07-18)
+
+Stage 3 (response actions) is content-complete and closed out for review;
+the endpoint environment is UNCHANGED by it. The immutable-base-world
+guarantee held throughout: response actions live entirely in the
+session-local overlay and never mutate the world or the event pool, so no
+environment value, flag, or open item in this ledger was touched by Stage
+3 (3a-3c, 3c.5, 3d). No new environment flags were opened. The persistence
+view (Autoruns) is a serialization of the same base world plus the overlay,
+not a new environment surface. See docs/stage-3-final-report.md.
