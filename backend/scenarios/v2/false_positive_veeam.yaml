@@ -236,6 +236,14 @@ answer_key:
   techniques: []
   actions_reviewed: true
   actions: []
+  traps:
+    - action: "kill_process"
+      target:
+        host: "ws_victim"
+        pid: 2916
+    - action: "isolate_host"
+      target:
+        host: "ws_victim"
 
 triage_review:
   what_is_it:

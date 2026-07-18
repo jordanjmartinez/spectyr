@@ -377,6 +377,17 @@ answer_key:
       status: "acceptable"
       target:
         account: "victim"
+  traps:
+    - action: "isolate_host"
+      target:
+        host: "scan"
+    - action: "kill_process"
+      target:
+        host: "scan"
+        pid: 4120
+    - action: "isolate_host"
+      target:
+        host: "file"
 
 triage_review:
   mitre:
