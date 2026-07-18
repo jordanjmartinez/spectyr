@@ -480,6 +480,7 @@ REVIEWED_SCENARIOS = {
     "brute_force_attack",
     "c2_dns_tunnel",
     "defense_evasion",
+    "false_positive_pentest",
 }
 
 
