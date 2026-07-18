@@ -449,6 +449,7 @@ REVIEWED_SCENARIOS = {
     "lateral_movement_1",
     "false_positive_veeam",
     "c2_http",
+    "malware_ransomware",
 }
 
 

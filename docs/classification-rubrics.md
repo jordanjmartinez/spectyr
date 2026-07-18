@@ -134,6 +134,21 @@ while any revoke or disable on them is collateral. The identical actions
 on lgreen are REQUIRED because the evidence exists there: the s6 4624
 success is an attacker logon with that account.
 
+## Response-action rubric: containment class doctrine (R1)
+
+(3c Batch 2, ransomware isolation ruling, 2026-07-17.)
+
+Isolation is class-based containment, not only a per-process reaction.
+For an actively compromised endpoint, isolation is a REQUIRED containment
+step independent of whether another action already halted the visible
+process. In ransomware specifically: killing the encryptor stops the
+running process, but the host is an actively compromised endpoint, so
+isolation is required containment (it prevents encryption from spreading
+to mapped drives and network shares, and forecloses any second-stage or
+C2 channel the single chain may not have surfaced). The
+malware_ransomware answer key applies this: isolate is required alongside
+killing the encryptor.
+
 ## Difficulty tier table
 
 Marked **final** for `defense_evasion_log_clearing`: medium (difficulty 2).
