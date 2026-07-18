@@ -271,7 +271,34 @@ answer_key:
     accounts: ["victim"]
   root_cause: "s1"
   techniques: ["T1566.002"]
-  actions: []
+  actions_reviewed: true
+  actions:
+    - action: "isolate_host"
+      status: "required"
+      target:
+        host: "ws_victim"
+    - action: "kill_process"
+      status: "required"
+      target:
+        host: "ws_victim"
+        pid: 11284
+    - action: "delete_file"
+      status: "required"
+      target:
+        host: "ws_victim"
+        path: "C:\\Users\\{victim.username}\\AppData\\Roaming\\InvoiceService.exe"
+    - action: "kill_process"
+      status: "acceptable"
+      target:
+        host: "ws_victim"
+        pid: 13056
+  traps:
+    - action: "disable_account"
+      target:
+        account: "victim"
+    - action: "isolate_host"
+      target:
+        host: "dns"
 
 triage_review:
   mitre:
