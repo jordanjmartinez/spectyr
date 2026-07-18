@@ -25,10 +25,22 @@ model; `test_action_scoring.py` proves it cell by cell.
   approved it as defensible, so it never triggers the clean-host
   end-state penalty. Isolation matching neither list is collateral only
   while still in effect.
-- **Kill / delete / identity grade on occurrence** from successful log
-  entries, matched on full composites: process = (host, PID), file =
-  (host, normalized path), account = (domain, username). The right PID or
-  path on the wrong host is a miss plus collateral, never credit.
+- **Kill / delete / identity / remove_persistence grade on occurrence**
+  from successful log entries, matched on full composites: process =
+  (host, PID), file = (host, normalized path), account = (domain,
+  username), persistence = the correlated artifact identity (host +
+  normalized namespace + filter path + consumer path for WMI; host +
+  normalized reg key + value name for a Run key). The right PID, path, or
+  persistence on the wrong host is a miss plus collateral, never credit.
+- **Persistence dual-flag state model.** A persistence artifact carries a
+  registration flag (removed by `remove_persistence`) and, when
+  file-backed, a file flag (cleared by `delete_file` of its payload). Its
+  Autoruns row survives until BOTH flags are neutralized (a
+  registration-only WMI subscription is neutralized by registration
+  alone). GENERAL RULE, enforced by this model: no acceptable action may
+  render a required action unreachable. Because the row survives on the
+  remaining flag, a required `delete_file` stays reachable after an
+  acceptable `remove_persistence` and vice versa, under either ordering.
 - **release_host is globally score-neutral.** Never credit, never
   collateral merely because it is absent from the answer key; it is
   absent from the answer-key grammar altogether. Its only scoring effect
@@ -114,6 +126,12 @@ required set against freshly built worlds across the fixed seed set
 - delete: (host, path) is an authored deletable file (Sysmon
   image/parent_image or run-key autorun)
 - identity: the account exists in the environment
+- remove_persistence: the selector (`wmi:<ConsumerName>` or
+  `run_key:<KeyPath\ValueName>`) resolves to an authored persistence
+  artifact of this scenario, correlated the same way materialization does.
+  A Run-key SetValue (Sysmon 13) or a COMPLETE WMI subscription (Sysmon
+  19/20/21) qualifies; an incomplete or ambiguous subscription, or a
+  seed-generated benign artifact, never does.
 - `after` orderings are satisfiable (reference + cycle checks guarantee a
   topological order)
 

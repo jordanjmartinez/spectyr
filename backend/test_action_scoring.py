@@ -503,7 +503,7 @@ def test_reviewed_corpus_actions_achievable_across_seed_set():
         for seed in SEED_SET:
             sc2, resolved, env, world = _world_for_seed(label, seed)
             expected = app.materialize_expected_actions(
-                ak["actions"], f"scenario-{label}", env, resolved)
+                ak["actions"], f"scenario-{label}", env, resolved, world=world)
             assert _all_succeed(world, expected), \
                 f"{label}: required action unachievable under seed {seed}"
 
@@ -523,7 +523,7 @@ def test_required_and_acceptable_actions_are_ui_reachable_across_seeds():
         for seed in SEED_SET:
             sc2, resolved, env, world, dets, reg, det_keys = _full_world_for_seed(label, seed)
             expected = app.materialize_expected_actions(
-                ak["actions"], f"scenario-{label}", env, resolved)
+                ak["actions"], f"scenario-{label}", env, resolved, world=world)
             for exp in expected:
                 assert app.ui_reachable(exp["action"], exp["target"], world, det_keys), \
                     (f"{label}: {exp['status']} {exp['action']} not UI-reachable "
@@ -545,8 +545,9 @@ def test_declared_traps_execute_reachable_and_grade_collateral_across_seeds():
             sc2, resolved, env, world, dets, reg, det_keys = _full_world_for_seed(label, seed)
             grading = [app.scenario_grading_record(f"scenario-{label}", sc, env)]
             expected = app.materialize_expected_actions(
-                ak_actions(sc), f"scenario-{label}", env, resolved)
-            mtraps = app.materialize_traps(traps, f"scenario-{label}", env, resolved)
+                ak_actions(sc), f"scenario-{label}", env, resolved, world=world)
+            mtraps = app.materialize_traps(traps, f"scenario-{label}", env, resolved,
+                                           world=world)
             for trap in mtraps:
                 action, target = trap["action"], trap["target"]
                 # 1. resolves to a client entity id in the initial world
@@ -597,6 +598,12 @@ def _resolve_target_entity(action, target, registry):
         for eid, e in registry.items():
             if (e["kind"] == "process" and e["hostname"] == target["hostname"]
                     and e["pid"] == target["pid"]):
+                return eid
+        return None
+    if action == "remove_persistence":
+        ident = tuple(target["identity"]) if target.get("identity") else None
+        for eid, e in registry.items():
+            if e["kind"] == "persistence" and tuple(e["identity"]) == ident:
                 return eid
         return None
     for eid, e in registry.items():

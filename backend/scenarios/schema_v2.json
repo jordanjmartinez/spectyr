@@ -198,7 +198,8 @@
     "action_verb": {
       "enum": [
         "isolate_host", "kill_process", "delete_file",
-        "disable_account", "revoke_sessions", "force_password_reset"
+        "disable_account", "revoke_sessions", "force_password_reset",
+        "remove_persistence"
       ]
     },
     "action_target": {
@@ -208,38 +209,46 @@
         "host": { "$ref": "#/$defs/id" },
         "pid": { "type": "integer", "minimum": 1 },
         "path": { "type": "string", "minLength": 1 },
-        "account": { "$ref": "#/$defs/id" }
+        "account": { "$ref": "#/$defs/id" },
+        "persistence": { "type": "string", "minLength": 1, "pattern": "^(wmi|run_key):.+$" }
       }
     },
     "action_target_conditionals": {
-      "$comment": "The composite-by-kind target rules shared by answer_key.actions and answer_key.traps: isolate_host -> host; kill_process -> host+pid; delete_file -> host+path; identity actions -> account.",
+      "$comment": "The composite-by-kind target rules shared by answer_key.actions and answer_key.traps: isolate_host -> host; kill_process -> host+pid; delete_file -> host+path; identity actions -> account; remove_persistence -> host+persistence.",
       "allOf": [
         {
           "if": { "properties": { "action": { "const": "isolate_host" } }, "required": ["action"] },
           "then": { "properties": { "target": {
             "required": ["host"],
-            "properties": { "pid": false, "path": false, "account": false }
+            "properties": { "pid": false, "path": false, "account": false, "persistence": false }
           } } }
         },
         {
           "if": { "properties": { "action": { "const": "kill_process" } }, "required": ["action"] },
           "then": { "properties": { "target": {
             "required": ["host", "pid"],
-            "properties": { "path": false, "account": false }
+            "properties": { "path": false, "account": false, "persistence": false }
           } } }
         },
         {
           "if": { "properties": { "action": { "const": "delete_file" } }, "required": ["action"] },
           "then": { "properties": { "target": {
             "required": ["host", "path"],
-            "properties": { "pid": false, "account": false }
+            "properties": { "pid": false, "account": false, "persistence": false }
           } } }
         },
         {
           "if": { "properties": { "action": { "enum": ["disable_account", "revoke_sessions", "force_password_reset"] } }, "required": ["action"] },
           "then": { "properties": { "target": {
             "required": ["account"],
-            "properties": { "host": false, "pid": false, "path": false }
+            "properties": { "host": false, "pid": false, "path": false, "persistence": false }
+          } } }
+        },
+        {
+          "if": { "properties": { "action": { "const": "remove_persistence" } }, "required": ["action"] },
+          "then": { "properties": { "target": {
+            "required": ["host", "persistence"],
+            "properties": { "pid": false, "path": false, "account": false }
           } } }
         }
       ]

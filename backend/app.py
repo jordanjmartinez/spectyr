@@ -15,6 +15,7 @@ import threading
 # current-state views render base+overlay while historical surfaces render
 # the base. Imported unconditionally so revert paths keep working.
 import action_overlay
+import persistence
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True, expose_headers=["X-Session-ID"], origins=[
@@ -2246,42 +2247,59 @@ class _ForcedChoice(random.Random):
         return self._forced
 
 
-def materialize_expected_actions(actions, scenario_id, concrete_env, resolved):
+def _materialize_target(action, tgt, hosts_by_id, accounts_by_id, world):
+    """Resolve one action target to its server-side composite. Persistence
+    targets resolve their authored selector to the correlated artifact's
+    identity against the materialized world (fail-closed: an unresolvable
+    selector carries identity None and can never match an execution, so a
+    required persistence action would grade as a miss)."""
+    kind = action_overlay.ACTION_TARGET_KINDS[action]
+    if kind == "account":
+        acct = accounts_by_id[tgt["account"]]
+        return {"domain": acct["domain"], "username": acct["username"]}
+    hostname = hosts_by_id[tgt["host"]]["hostname"]
+    target = {"hostname": hostname}
+    if "pid" in tgt:
+        target["pid"] = tgt["pid"]
+    if "path" in tgt:
+        target["path"] = action_overlay.norm_path(tgt["path"])
+    if "persistence" in tgt:
+        target["persistence"] = tgt["persistence"]
+        ident = None
+        snap = (world or {}).get("hosts", {}).get(hostname) if world else None
+        if snap is not None:
+            ident = persistence.resolve_selector(tgt["persistence"], snap["autoruns"])
+        target["identity"] = list(ident) if ident else None
+    return target
+
+
+def materialize_expected_actions(actions, scenario_id, concrete_env, resolved,
+                                 world=None):
     """Resolve one scenario's answer_key.actions to concrete composites at
     drip time (Stage 3b). Placeholders in targets substitute exactly like
     chain content; host/account ids resolve through the concrete
     environment; paths normalize with the same canonical form the overlay
-    uses. Server-side only: these composites never serialize."""
+    uses; persistence selectors resolve against the materialized world.
+    Server-side only: these composites never serialize."""
     concrete = scenario_loader.substitute_deep(copy.deepcopy(actions), resolved)
     hosts_by_id = {h["id"]: h for h in concrete_env.get("hosts", [])}
     accounts_by_id = {a["id"]: a for a in concrete_env.get("accounts", [])}
 
     out = []
     for act in concrete:
-        tgt = act["target"]
-        kind = action_overlay.ACTION_TARGET_KINDS[act["action"]]
-        if kind == "account":
-            acct = accounts_by_id[tgt["account"]]
-            target = {"domain": acct["domain"], "username": acct["username"]}
-        else:
-            hostname = hosts_by_id[tgt["host"]]["hostname"]
-            target = {"hostname": hostname}
-            if "pid" in tgt:
-                target["pid"] = tgt["pid"]
-            if "path" in tgt:
-                target["path"] = action_overlay.norm_path(tgt["path"])
         out.append({
             "scenario_id": scenario_id,
             "eid": act.get("id"),
             "action": act["action"],
             "status": act["status"],
-            "target": target,
+            "target": _materialize_target(
+                act["action"], act["target"], hosts_by_id, accounts_by_id, world),
             "after": list(act.get("after", [])),
         })
     return out
 
 
-def materialize_traps(traps, scenario_id, concrete_env, resolved):
+def materialize_traps(traps, scenario_id, concrete_env, resolved, world=None):
     """Resolve a scenario's declared traps to concrete composites at drip
     time (server-side only; feeds the trap harness, never serialized).
     Same resolution as materialize_expected_actions, minus status/after."""
@@ -2290,20 +2308,10 @@ def materialize_traps(traps, scenario_id, concrete_env, resolved):
     accounts_by_id = {a["id"]: a for a in concrete_env.get("accounts", [])}
     out = []
     for trap in concrete:
-        tgt = trap["target"]
-        kind = action_overlay.ACTION_TARGET_KINDS[trap["action"]]
-        if kind == "account":
-            acct = accounts_by_id[tgt["account"]]
-            target = {"domain": acct["domain"], "username": acct["username"]}
-        else:
-            hostname = hosts_by_id[tgt["host"]]["hostname"]
-            target = {"hostname": hostname}
-            if "pid" in tgt:
-                target["pid"] = tgt["pid"]
-            if "path" in tgt:
-                target["path"] = action_overlay.norm_path(tgt["path"])
         out.append({"scenario_id": scenario_id, "action": trap["action"],
-                    "target": target})
+                    "target": _materialize_target(
+                        trap["action"], trap["target"], hosts_by_id,
+                        accounts_by_id, world)})
     return out
 
 
@@ -2347,6 +2355,15 @@ def ui_reachable(action, target, world, det_account_keys):
             for a in snap["autoruns"]}
         autorun_images.discard("")
         return target["path"] in autorun_images
+    if action == "remove_persistence":
+        # Reachable exactly when the base world carries the persistence
+        # artifact (Remove control on the Autoruns persistence row).
+        snap = world.get("hosts", {}).get(target["hostname"])
+        if snap is None:
+            return False
+        ident = tuple(target["identity"]) if target.get("identity") else None
+        return ident is not None and any(
+            tuple(a.get("identity") or ()) == ident for a in snap["autoruns"])
     # identity actions
     return action_overlay.account_key(
         target["domain"], target["username"]) in det_account_keys
@@ -2481,7 +2498,8 @@ def build_attack_chain_logs(session, scenario_entry, employee=None):
                     session["expected_actions"].extend(
                         materialize_expected_actions(
                             entry["answer_key"].get("actions", []),
-                            scenario_id, concrete_env, resolved))
+                            scenario_id, concrete_env, resolved,
+                            world=session["world"]))
                     # Stage 3c: the scenario's grading record (tri-state
                     # marker + claimed target scope).
                     session["scenario_grading"].append(
@@ -3003,6 +3021,11 @@ def _action_target_key(action, target):
         return (target["hostname"], target["pid"])
     if action == "delete_file":
         return (target["hostname"], target["path"])
+    if action == "remove_persistence":
+        ident = target.get("identity")
+        if ident:
+            return tuple(ident)
+        return (target.get("hostname"), target.get("persistence"))
     return action_overlay.account_key(target["domain"], target["username"])
 
 

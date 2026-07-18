@@ -200,6 +200,37 @@ C2 channel the single chain may not have surfaced). The
 malware_ransomware answer key applies this: isolate is required alongside
 killing the encryptor.
 
+## Response-action rubric: persistence removal and the GENERAL RULE (Stage 3c.5)
+
+(3c.5 persistence-response increment, 2026-07-17.)
+
+`remove_persistence` neutralizes a persistence artifact as a first-class
+response: a WMI event subscription (Sysmon 19/20/21, correlated into one
+logical subscription) or a registry Run-key value. It is a real verb, never
+a stretched `delete_file`. A persistence artifact carries two flags:
+registration (cleared by `remove_persistence`) and, when file-backed, a
+file flag (cleared by `delete_file` of the payload). The Autoruns row is a
+persistence-artifact view and survives until BOTH flags are neutralized (a
+registration-only WMI subscription is neutralized by registration alone).
+
+**GENERAL RULE (invariant, enforced by the dual-flag model):** no
+acceptable action may render a required action unreachable. Because the
+row survives on whichever flag is still live, a required `delete_file`
+stays reachable after an acceptable `remove_persistence` on the same Run
+key, and vice versa, under either ordering. Authoring corollary: never
+declare an acceptable action whose effect would remove the only surface a
+required action is reached from.
+
+**Identity (never a display name).** A WMI subscription's identity is the
+correlated triple (host + normalized namespace + filter path + consumer
+path), never the consumer name alone; two subscriptions sharing a consumer
+name stay distinct and an ambiguous name fails closed. A Run-key identity
+is host + normalized key + value name, never the payload path; two values
+sharing a payload stay distinct. Answer keys REFERENCE an artifact by a
+selector (`wmi:<ConsumerName>` / `run_key:<KeyPath\ValueName>`) that
+resolves to the correlated identity; the identity itself is always
+derived server-side.
+
 ## Difficulty tier table
 
 Marked **final** for `defense_evasion_log_clearing`: medium (difficulty 2).

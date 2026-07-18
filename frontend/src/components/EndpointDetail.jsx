@@ -36,6 +36,39 @@ const SignerBadge = ({ signer, signed }) => (
   )
 );
 
+// Stage 3c.5: the Autoruns surface is a persistence-artifact view. WMI
+// subscriptions must read as a distinct mechanism, never as a registry
+// autorun, so every row carries its artifact type.
+const PERSIST_LABEL = { wmi_subscription: 'WMI subscription', run_key: 'Run key' };
+
+const PersistTypeBadge = ({ type }) => (
+  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-[#eef1f4] text-[#57606a] border border-[#d0d7de] whitespace-nowrap">
+    {PERSIST_LABEL[type] || 'Autorun'}
+  </span>
+);
+
+// Per-flag state (registration + file). A row only renders while at least
+// one flag is still live, so these badges show what remains to neutralize.
+const StateBadges = ({ row }) => {
+  const badges = [];
+  const removed = row.registration === 'removed';
+  badges.push(removed
+    ? { key: 'reg', text: 'Registration removed', cls: 'bg-[#eef1f4] text-[#8b949e] border-[#d0d7de]' }
+    : { key: 'reg', text: 'Registered', cls: 'bg-amber-50 text-amber-700 border-amber-200' });
+  if (row.file_state === 'present') {
+    badges.push({ key: 'file', text: 'File present', cls: 'bg-amber-50 text-amber-700 border-amber-200' });
+  } else if (row.file_state === 'deleted') {
+    badges.push({ key: 'file', text: 'File deleted', cls: 'bg-[#eef1f4] text-[#8b949e] border-[#d0d7de]' });
+  }
+  return (
+    <span className="inline-flex flex-wrap gap-1">
+      {badges.map(b => (
+        <span key={b.key} className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs border whitespace-nowrap ${b.cls}`}>{b.text}</span>
+      ))}
+    </span>
+  );
+};
+
 const TABS = [
   { key: 'overview', label: 'Overview', group: null },
   { key: 'processes', label: 'Processes', group: 'ENUMERATE' },
@@ -467,17 +500,62 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
 
         {tab === 'autoruns' && (
           <Card>
+            <div className="p-4 flex flex-wrap items-center gap-3">
+              <SectionLabel>Persistence artifacts</SectionLabel>
+              {actionNotice && <span className="text-xs text-[#57606a]">{actionNotice}</span>}
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="dark-thead"><tr><Th>Entry</Th><Th>Location</Th><Th>Image Path</Th><Th>Signer</Th></tr></thead>
+                <thead className="dark-thead"><tr>
+                  <Th>Entry</Th><Th>Type</Th><Th>Location</Th><Th>Command / Image</Th><Th>State</Th><Th>Action</Th>
+                </tr></thead>
                 <tbody>
-                  {snap.autoruns.length === 0 && <EmptyRow span={4} />}
+                  {snap.autoruns.length === 0 && <EmptyRow span={6} />}
                   {snap.autoruns.map((a, i) => (
-                    <tr key={i} className="border-b border-[#eef1f4] last:border-b-0 align-top">
+                    <tr key={a.persistence_entity_id || i} className="border-b border-[#eef1f4] last:border-b-0 align-top">
                       <td className="px-3 py-2 whitespace-nowrap">{a.name}</td>
+                      <td className="px-3 py-2"><PersistTypeBadge type={a.persist_type} /></td>
                       <td className="px-3 py-2 font-mono break-all min-w-[14rem]">{a.location}</td>
                       <td className="px-3 py-2 font-mono break-all min-w-[14rem]">{a.command}</td>
-                      <td className="px-3 py-2"><SignerBadge signer={a.signer} signed={!!a.signer} /></td>
+                      <td className="px-3 py-2">
+                        {a.persist_type
+                          ? <StateBadges row={a} />
+                          : <SignerBadge signer={a.signer} signed={!!a.signer} />}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <div className="flex flex-wrap gap-2">
+                          {a.persistence_entity_id && a.registration !== 'removed' && (
+                            <button
+                              type="button"
+                              onClick={() => setConfirm({
+                                title: 'Remove persistence',
+                                body: `Remove the ${PERSIST_LABEL[a.persist_type] || 'persistence'} "${a.name}" on ${snap.hostname}. The originating events stay in the log.`,
+                                confirmLabel: 'Remove',
+                                action: 'remove_persistence',
+                                target: a.persistence_entity_id,
+                              })}
+                              className="px-2.5 py-1 text-xs font-medium rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4]"
+                            >
+                              Remove Persistence
+                            </button>
+                          )}
+                          {a.file_entity_id && a.file_state === 'present' && (
+                            <button
+                              type="button"
+                              onClick={() => setConfirm({
+                                title: 'Delete file',
+                                body: `Delete the on-disk payload backing "${a.name}" on ${snap.hostname}. The event record is unchanged.`,
+                                confirmLabel: 'Delete',
+                                action: 'delete_file',
+                                target: a.file_entity_id,
+                              })}
+                              className="px-2.5 py-1 text-xs font-medium rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4]"
+                            >
+                              Delete File
+                            </button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

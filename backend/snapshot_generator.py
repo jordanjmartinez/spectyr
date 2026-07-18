@@ -45,9 +45,43 @@ import re
 import uuid
 from datetime import datetime, timedelta
 
+import action_overlay
 import noise_profiles
+import persistence
 
 RUN_KEY_RE = re.compile(r"\\CurrentVersion\\Run\\", re.IGNORECASE)
+
+
+def _annotate_run_key(host, row):
+    """Stamp a Run-key autorun row with the Stage 3c.5 persistence-artifact
+    fields (persist_type, file_path, identity), so the Autoruns surface is a
+    persistence-artifact view. The payload file backs the file flag."""
+    payload = action_overlay.norm_path(
+        action_overlay.extract_image_path(row.get("command", "") or "")) or None
+    art = persistence.run_key_artifact(
+        host, row.get("location", "") + "\\" + row.get("name", ""),
+        payload, row.get("command", ""))
+    row["persist_type"] = "run_key"
+    row["file_path"] = art["file_path"] if art else None
+    row["identity"] = list(art["identity"]) if art else None
+    row["id_parts"] = list(art["id_parts"]) if art else None
+    row.setdefault("registration", "active")
+    return row
+
+
+def _wmi_row(host, artifact):
+    """A WMI subscription artifact rendered as an Autoruns persistence row
+    (registration-only: no file flag)."""
+    return {
+        "location": artifact["location"], "name": artifact["entry"],
+        "command": artifact["command"], "signer": None,
+        "persist_type": "wmi_subscription", "file_path": None,
+        "namespace": artifact.get("namespace", ""),
+        "filter_query": artifact.get("filter_query", ""),
+        "identity": list(artifact["identity"]),
+        "id_parts": list(artifact["id_parts"]),
+        "registration": "active",
+    }
 
 AGENT_NAME = "spectyr-agent"
 AGENT_VERSION = "1.0.0"
@@ -283,6 +317,7 @@ def build_baseline(host, owner, session_seed, reserved_pids, servers,
     ]
     for a in autoruns:
         a.pop("_signer", None)
+        _annotate_run_key(hostname, a)
 
     # --- network: listeners + benign traffic, every row bound to a PID ---
     connections = []
@@ -400,6 +435,10 @@ def build_baseline(host, owner, session_seed, reserved_pids, servers,
         "autoruns": autoruns,
         "network": {"connections": connections, "dns": dns},
         "_scenario_ids": [], "_pid_locks": {},
+        # Stage 3c.5: raw Sysmon WMI events (19/20/21) accumulate here across
+        # drips; correlated into WMI persistence rows on the Autoruns surface
+        # by _correlate_wmi_persistence. Internal (public_view strips "_").
+        "_wmi_events": {"filters": [], "consumers": [], "bindings": []},
     }
 
 
@@ -534,10 +573,31 @@ def _merge_autorun(snapshot, log):
     if not RUN_KEY_RE.search(target):
         return
     location, _, name = target.rpartition("\\")
-    snapshot["autoruns"].append({
-        "location": location, "name": name,
-        "command": kvp.get("details", ""), "signer": None,
-    })
+    row = {"location": location, "name": name,
+           "command": kvp.get("details", ""), "signer": None}
+    _annotate_run_key(snapshot["hostname"], row)
+    snapshot["autoruns"].append(row)
+
+
+def _buffer_wmi(snapshot, kvp):
+    """Accumulate a Sysmon WMI event (19 filter / 20 consumer / 21 binding)
+    for later correlation. Idempotent per identical event."""
+    bucket = {"19": "filters", "20": "consumers", "21": "bindings"}.get(
+        str(kvp.get("event_id")))
+    if bucket and kvp not in snapshot["_wmi_events"][bucket]:
+        snapshot["_wmi_events"][bucket].append(dict(kvp))
+
+
+def _correlate_wmi_persistence(snapshot):
+    """Rebuild the WMI subscription rows on the Autoruns surface from the
+    accumulated buffer (idempotent: drops prior WMI rows first). Run-key
+    rows are untouched."""
+    snapshot["autoruns"] = [a for a in snapshot["autoruns"]
+                            if a.get("persist_type") != "wmi_subscription"]
+    buf = snapshot["_wmi_events"]
+    for art in persistence.correlate_wmi(snapshot["hostname"], buf["filters"],
+                                         buf["consumers"], buf["bindings"]):
+        snapshot["autoruns"].append(_wmi_row(snapshot["hostname"], art))
 
 
 def merge_events(snapshot, tagged_events, session_seed):
@@ -547,12 +607,15 @@ def merge_events(snapshot, tagged_events, session_seed):
         etype = log.get("event_type", "")
         source = log.get("source_type", "")
         kvp = log.get("key_value_pairs") or {}
-        if source == "Sysmon" and str(kvp.get("event_id")) == "1":
+        eid = str(kvp.get("event_id"))
+        if source == "Sysmon" and eid == "1":
             _merge_process_create(snapshot, log, session_seed)
-        elif source == "Sysmon" and str(kvp.get("event_id")) == "3":
+        elif source == "Sysmon" and eid == "3":
             _merge_network(snapshot, log, session_seed)
-        elif source == "Sysmon" and str(kvp.get("event_id")) == "13":
+        elif source == "Sysmon" and eid == "13":
             _merge_autorun(snapshot, log)
+        elif source == "Sysmon" and eid in ("19", "20", "21"):
+            _buffer_wmi(snapshot, kvp)
         elif source == "DNS" and etype == "QUERY":
             _merge_dns(snapshot, log)
         elif source == "Firewall" and etype == "ALLOW":
@@ -561,6 +624,7 @@ def merge_events(snapshot, tagged_events, session_seed):
             _merge_network(snapshot, log, session_seed)
         elif source == "Windows Security":
             _merge_logon(snapshot, log)
+    _correlate_wmi_persistence(snapshot)
 
 
 def _sort_merged(snapshot):

@@ -28,6 +28,8 @@ BACKEND_SUITES = [
     "test_action_scoring.py",
     "test_actions.py",
     "test_action_overlay.py",
+    "test_persistence.py",
+    "test_persistence_response.py",
     "test_snapshot_generator.py",
     "test_detections.py",
     "test_detection_scoring.py",

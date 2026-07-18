@@ -271,7 +271,13 @@ def test_isolation_severs_connections_keeps_listeners_and_release_restores():
 
 # --- delete file ---------------------------------------------------------------
 
-def test_delete_file_removes_autorun_row_not_processes():
+def test_delete_file_leaves_persistence_row_until_registration_removed():
+    """Dual-flag state model (Stage 3c.5): deleting a file-backed Run key's
+    payload clears the file flag but leaves the registration active, so the
+    persistence row survives (annotated file-deleted). Only when the
+    registration is ALSO removed does the row leave the live view. This is
+    what keeps a required delete_file reachable regardless of when an
+    acceptable remove_persistence is taken."""
     ws = _host("workstation", "ACME-WS12", "10.0.1.12")
     owner = {"username": "nkhan", "domain": "ACME"}
     snap = sg.build_baseline(ws, owner, SEED, RESERVED, SERVERS, STARTED)
@@ -279,15 +285,21 @@ def test_delete_file_removes_autorun_row_not_processes():
 
     target = next(a for a in snap["autoruns"] if "OneDrive" in a["name"])
     path = ao.norm_path(ao.extract_image_path(target["command"]))
+    ident = tuple(target["identity"])
 
     overlay = ao.new_overlay()
     overlay["deleted_files"].add(("ACME-WS12", path))
     view = _view(world, "ACME-WS12", overlay)
-
-    assert all(ao.norm_path(ao.extract_image_path(a["command"] or "")) != path
-               for a in view["autoruns"])
+    row = next((a for a in view["autoruns"] if a["name"] == target["name"]), None)
+    assert row is not None, "a file-only delete must not drop the persistence row"
+    assert row["registration"] == "active" and row["file_state"] == "deleted"
     # a running process keeps its in-memory image reference
     assert len(view["processes"]) == len(snap["processes"])
+
+    overlay["removed_persistence"].add(ident)
+    view2 = _view(world, "ACME-WS12", overlay)
+    assert all(a["name"] != target["name"] for a in view2["autoruns"]), \
+        "both flags cleared: the row must leave the live view"
     # base untouched
     assert any(a["name"] == target["name"] for a in snap["autoruns"])
 
@@ -419,16 +431,20 @@ def test_integrity_suite_holds_on_base_plus_overlay_corpus_wide():
             victims = sorted(p["pid"] for p in snap["processes"])[::4]
             overlay["killed"].update((hostname, pid) for pid in victims)
             overlay["isolated"].add(hostname)
+            # Neutralize every persistence artifact on both flags: delete the
+            # file AND remove the registration, so every row is fully cleared.
             for a in snap["autoruns"]:
                 np = ao.norm_path(ao.extract_image_path(a.get("command") or ""))
                 if np:
                     overlay["deleted_files"].add((hostname, np))
+                if a.get("identity"):
+                    overlay["removed_persistence"].add(tuple(a["identity"]))
             view = _view(world, hostname, overlay)
             _integrity(view, snap, overlay)
-            for a in view["autoruns"]:
-                np = ao.norm_path(ao.extract_image_path(a.get("command") or ""))
-                assert not np or (hostname, np) not in overlay["deleted_files"], \
-                    f"{label}/{hostname}: deleted path still in autoruns"
+            # Every persistence row must be gone: a live row would mean an
+            # artifact survived a full-neutralization barrage.
+            assert not view["autoruns"], \
+                f"{label}/{hostname}: persistence row survived full neutralization"
 
 
 def test_integrity_exception_rejects_unsanctioned_markers():
@@ -501,9 +517,10 @@ def test_registry_ids_uniform_unique_and_kind_opaque():
     assert reg, "registry is empty"
     for eid, entry in reg.items():
         assert ao.ENTITY_ID_RE.match(eid), f"id shape violation: {eid}"
-        assert entry["kind"] in ("host", "process", "file", "account")
+        assert entry["kind"] in ("host", "process", "file", "account", "persistence")
     kinds = {e["kind"] for e in reg.values()}
-    assert {"host", "process", "file", "account"} <= kinds
+    # every managed host carries benign Run keys, so persistence is present too
+    assert {"host", "process", "file", "account", "persistence"} <= kinds
 
 
 def test_registry_is_drip_order_independent():

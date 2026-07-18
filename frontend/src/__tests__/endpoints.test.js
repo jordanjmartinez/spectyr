@@ -83,7 +83,12 @@ const DETAIL_FIXTURE = {
   autoruns: [
     { location: 'HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run',
       name: 'WindowsUpdate', command: 'C:\\Users\\Public\\winupdate.exe', signer: null,
-      file_entity_id: 'ent-ffff11112222' },
+      persist_type: 'run_key', registration: 'active', file_state: 'present',
+      file_entity_id: 'ent-ffff11112222', persistence_entity_id: 'ent-1111ffff2222' },
+    { location: 'root\\CimV2:__FilterToConsumerBinding',
+      name: 'WindowsUpdConsumer', command: 'powershell.exe -enc AAAA', signer: null,
+      persist_type: 'wmi_subscription', registration: 'active', file_state: 'none',
+      file_entity_id: null, persistence_entity_id: 'ent-2222aaaa3333' },
   ],
   network: {
     connections: [
@@ -169,7 +174,15 @@ test('endpoint detail renders all tabs with clean copy and response actions', as
 
   fireEvent.click(screen.getByRole('button', { name: 'Autoruns' }));
   expect(await screen.findByText('WindowsUpdate')).toBeInTheDocument();
-  expect(screen.getByText('Unsigned')).toBeInTheDocument();
+  // persistence-artifact view: artifact-type labels so WMI never reads as a
+  // registry autorun, per-flag state, and the remove/delete controls
+  expect(screen.getByText('WMI subscription')).toBeInTheDocument();
+  expect(screen.getByText('Run key')).toBeInTheDocument();
+  expect(screen.getAllByText('Registered').length).toBe(2);
+  expect(screen.getByText('File present')).toBeInTheDocument();
+  expect(screen.getAllByRole('button', { name: 'Remove Persistence' })).toHaveLength(2);
+  // only the file-backed Run key offers Delete File
+  expect(screen.getAllByRole('button', { name: 'Delete File' })).toHaveLength(1);
   assertCleanCopy(container);
 
   fireEvent.click(screen.getByRole('button', { name: 'Services' }));
@@ -227,6 +240,36 @@ test('failed precondition surfaces the in-fiction reason', async () => {
     expect(container.textContent).toMatch(/isolation command could not be delivered/);
   });
   assertCleanCopy(container);
+});
+
+test('remove persistence flow: confirm dialog, POST, refetch drops the row', async () => {
+  let posted = null;
+  let removed = false;
+  apiFetch.mockImplementation((path, opts) => {
+    if (path === '/api/actions') {
+      posted = JSON.parse(opts.body);
+      removed = true;
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({
+        seq: 1, timestamp: '2026-07-16T12:00:01+00:00', action: 'remove_persistence',
+        outcome: 'success', reason: null,
+        target: { id: 'ent-2222aaaa3333', kind: 'persistence',
+                  label: "WMI subscription 'WindowsUpdConsumer' on ACME-WS12" },
+      }) });
+    }
+    // after removal the fully-neutralized WMI row leaves the live view
+    const autoruns = removed
+      ? DETAIL_FIXTURE.autoruns.filter(a => a.persist_type !== 'wmi_subscription')
+      : DETAIL_FIXTURE.autoruns;
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ ...DETAIL_FIXTURE, autoruns }) });
+  });
+  render(<EndpointDetail hostname="ACME-WS12" org={{ name: 'ACME Corp' }} onBack={() => {}} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Autoruns' }));
+  expect(await screen.findByText('WindowsUpdConsumer')).toBeInTheDocument();
+  fireEvent.click(screen.getAllByRole('button', { name: 'Remove Persistence' })[1]);
+  expect(screen.getByRole('dialog')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+  await waitFor(() => expect(posted).toEqual({ action: 'remove_persistence', target: 'ent-2222aaaa3333' }));
+  await waitFor(() => expect(screen.queryByText('WindowsUpdConsumer')).toBeNull());
 });
 
 test('unknown host shows the not-managed notice', async () => {

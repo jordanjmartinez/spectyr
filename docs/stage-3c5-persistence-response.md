@@ -1,4 +1,4 @@
-# Stage 3c.5: Persistence-Response Increment (SCAFFOLD for owner review)
+# Stage 3c.5: Persistence-Response Increment
 
 A dedicated engineering increment that adds exactly one response verb,
 `remove_persistence`, so a compromised host's persistence can be
@@ -7,7 +7,30 @@ neutralized as a first-class response action. It unblocks
 persistence that no current verb can remove) and restores the path to the
 20/20 review gate.
 
-Design-only. Nothing here is implemented until this scaffold is approved.
+## Status: IMPLEMENTED (engine increment), approved 2026-07-17
+
+The engine landed per the owner rulings, which SUPERSEDE two parts of the
+original scaffold below:
+
+- **Identity is the correlated triple, never the consumer name.** Section 1
+  and 3's "keyed by the consumer Name" is retired. WMI identity = host +
+  normalized namespace + filter path + consumer path (Sysmon 19/20/21
+  correlated into one subscription, fail-closed on incomplete/ambiguous);
+  Run-key identity = host + normalized key + value name. The consumer name
+  is display only. Answer keys reference an artifact by a selector
+  (`wmi:<ConsumerName>` / `run_key:<KeyPath\ValueName>`) that resolves to
+  the correlated identity server-side. See `persistence.py`.
+- **Dual-flag state model, not a single removal set.** Section 3's "the
+  live Autoruns view drops that persistence row" is refined: a row carries
+  a registration flag (cleared by `remove_persistence`) and, when
+  file-backed, a file flag (cleared by `delete_file`), and survives until
+  BOTH are neutralized. GENERAL RULE: no acceptable action may render a
+  required action unreachable. See `action_overlay.apply_overlay`.
+
+Scenario answer keys were NOT changed by this increment. D1/D2 below are
+authored in the post-approval re-scaffold, each stopped for owner approval.
+The rest of the scaffold (scope boundary, verb grammar, reachability,
+scoring, leak guards, run-key reuse) landed as written.
 
 ## Scope boundary (on the record)
 

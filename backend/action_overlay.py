@@ -117,6 +117,7 @@ def new_overlay():
         "isolated": set(),       # hostnames currently isolated
         "killed": set(),         # (hostname, pid)
         "deleted_files": set(),  # (hostname, norm_path)
+        "removed_persistence": set(),  # persistence identity tuple (registration flag)
         "accounts": {},          # (domain_l, user_l) -> identity state dict
         "log": [],               # every attempt, append-only (Stage 3a.2)
         "seq": 0,
@@ -176,6 +177,19 @@ def build_entity_registry(world, env_accounts, session_seed):
         for np in sorted(files):
             put("file", (hostname, np),
                 {"hostname": hostname, "path": np, "display": files[np]})
+
+        # Stage 3c.5: persistence artifacts (WMI subscriptions + Run keys).
+        # Keyed by the artifact's correlated identity tuple, never a display
+        # name; shape-uniform ent- id. file_path (if present) is the file-flag
+        # target the delete_file cascade shares.
+        for a in snap["autoruns"]:
+            ident = a.get("identity")
+            if not a.get("persist_type") or not ident:
+                continue
+            put("persistence", tuple(ident),
+                {"hostname": hostname, "persist_type": a["persist_type"],
+                 "entry": a.get("name", ""), "location": a.get("location", ""),
+                 "file_path": a.get("file_path"), "identity": tuple(ident)})
 
         for u in snap["users"]:
             dom, user = u.get("domain", ""), u["username"]
@@ -262,10 +276,31 @@ def apply_overlay(view, overlay):
         view["network"]["connections"] = [
             c for c in view["network"]["connections"] if c.get("state") == "LISTENING"]
 
-    if deleted:
-        view["autoruns"] = [
-            a for a in view["autoruns"]
-            if norm_path(extract_image_path(a.get("command") or "")) not in deleted]
+    # Persistence-artifact state model (Stage 3c.5): every autorun row is a
+    # persistence artifact carrying a registration flag and, if file-backed, a
+    # file flag. remove_persistence clears registration; delete_file clears the
+    # file. A row leaves the live view only when BOTH are neutralized (a
+    # registration-only WMI artifact is neutralized by registration alone).
+    # This is what keeps a required action reachable regardless of the order an
+    # acceptable one is taken (the row survives until fully cleared).
+    removed_persist = overlay["removed_persistence"]
+    live_autoruns = []
+    for a in view["autoruns"]:
+        if a.get("persist_type"):
+            ident = tuple(a["identity"]) if a.get("identity") else None
+            reg_removed = ident is not None and ident in removed_persist
+            fp = a.get("file_path")
+            file_backed = bool(fp)
+            file_deleted = file_backed and norm_path(fp) in deleted
+            if reg_removed and (file_deleted or not file_backed):
+                continue  # fully neutralized: drop from live view
+            a["registration"] = "removed" if reg_removed else "active"
+            a["file_state"] = ("deleted" if file_deleted
+                               else ("present" if file_backed else "none"))
+            live_autoruns.append(a)
+        elif norm_path(extract_image_path(a.get("command") or "")) not in deleted:
+            live_autoruns.append(a)  # legacy un-annotated row: image cascade
+    view["autoruns"] = live_autoruns
 
     for u in view["users"]:
         state = overlay["accounts"].get(account_key(u.get("domain"), u["username"]))
@@ -289,6 +324,7 @@ ACTION_TARGET_KINDS = {
     "disable_account": "account",
     "revoke_sessions": "account",
     "force_password_reset": "account",
+    "remove_persistence": "persistence",
 }
 
 SUCCESS = "success"
@@ -366,6 +402,21 @@ def execute(world, overlay, entry, action):
         overlay["deleted_files"].add((hostname, path))
         return SUCCESS, None
 
+    if action == "remove_persistence":
+        hostname = entry["hostname"]
+        if not entry.get("identity"):
+            return FAILED, "Persistence artifact not found on the endpoint."
+        ident = tuple(entry["identity"])
+        snap = world["hosts"].get(hostname)
+        present = snap is not None and any(
+            tuple(a.get("identity") or ()) == ident for a in snap["autoruns"])
+        if not present:
+            return FAILED, "Persistence artifact not found on the endpoint."
+        if ident in overlay["removed_persistence"]:
+            return NO_OP, "This persistence entry has already been removed."
+        overlay["removed_persistence"].add(ident)
+        return SUCCESS, None
+
     if action in _IDENTITY_ACTIONS:
         flag, already = _IDENTITY_ACTIONS[action]
         key = account_key(entry["domain"], entry["username"])
@@ -388,6 +439,10 @@ def target_label(entry):
         return f"{entry['name']} (PID {entry['pid']}) on {entry['hostname']}"
     if kind == "file":
         return f"{entry['display']} on {entry['hostname']}"
+    if kind == "persistence":
+        label = ("WMI subscription" if entry["persist_type"] == "wmi_subscription"
+                 else "Run key")
+        return f"{label} '{entry['entry']}' on {entry['hostname']}"
     return f"{entry['domain']}\\{entry['username']}"
 
 
@@ -466,6 +521,12 @@ def annotate_view(view, session_seed):
         image = extract_image_path(a.get("command") or "")
         np = norm_path(image)
         a["file_entity_id"] = entity_id(session_seed, "file", host, np) if np else None
+        # Persistence artifacts get a stable-key persistence id; the raw
+        # correlated identity is a server-side composite and never serializes.
+        ident = a.pop("identity", None)
+        a.pop("id_parts", None)
+        a["persistence_entity_id"] = (
+            entity_id(session_seed, "persistence", *ident) if ident else None)
     for u in view.get("users", []):
         dom, user = account_key(u.get("domain"), u["username"])
         u["entity_id"] = entity_id(session_seed, "account", dom, user)

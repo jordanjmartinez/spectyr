@@ -42,6 +42,7 @@ import yaml
 import jsonschema
 
 import action_overlay
+import persistence
 import scenario_loader as v1
 import snapshot_generator
 
@@ -318,6 +319,7 @@ _ACTION_TARGET_FIELDS = {
     "disable_account": ("account",),
     "revoke_sessions": ("account",),
     "force_password_reset": ("account",),
+    "remove_persistence": ("host", "persistence"),
 }
 
 
@@ -360,6 +362,8 @@ def _target_key(action, target):
         return (action, target["host"])
     if action == "kill_process":
         return (action, target["host"], target["pid"])
+    if action == "remove_persistence":
+        return (action, target["host"], persistence.parse_selector(target["persistence"]))
     return (action, target["host"], action_overlay.norm_path(target["path"]))
 
 
@@ -499,6 +503,10 @@ def _authored_action_sources(doc):
     implies post-substitution equality).
     """
     pids, paths = {}, {}
+    # Per host: authored persistence selectors, plus the WMI event buffers to
+    # correlate afterwards (same fail-closed correlation as materialization).
+    run_keys = {}                       # host -> set of ("run_key", (nkey, nvalue))
+    wmi = {}                            # host -> {"filters":[],"consumers":[],"bindings":[]}
 
     def add_pid(host, value):
         v = str(value or "")
@@ -509,6 +517,9 @@ def _authored_action_sources(doc):
         p = action_overlay.norm_path(value)
         if p:
             paths.setdefault(host, set()).add(p)
+
+    def wmi_buf(host):
+        return wmi.setdefault(host, {"filters": [], "consumers": [], "bindings": []})
 
     for step in list(doc["attack"]) + list(doc.get("supplemental_events", [])):
         host = step["host"]
@@ -531,7 +542,22 @@ def _authored_action_sources(doc):
             if _RUN_KEY_RE.search(kvp.get("target_object", "")):
                 add_path(host, action_overlay.extract_image_path(
                     kvp.get("details", "")))
-    return pids, paths
+                parts = persistence.split_run_key(kvp.get("target_object", ""))
+                if parts is not None:
+                    nkey, _value, nvalue = parts
+                    if nvalue:
+                        run_keys.setdefault(host, set()).add(("run_key", (nkey, nvalue)))
+        elif src == "Sysmon" and event_id in ("19", "20", "21"):
+            bucket = {"19": "filters", "20": "consumers", "21": "bindings"}[event_id]
+            wmi_buf(host)[bucket].append(kvp)
+
+    persist = {}                        # host -> set of canonical selectors
+    for host in set(run_keys) | set(wmi):
+        buf = wmi.get(host, {"filters": [], "consumers": [], "bindings": []})
+        persist[host] = persistence.authored_selectors(
+            host, buf["filters"], buf["consumers"], buf["bindings"],
+            {rk for (_k, rk) in run_keys.get(host, set())})
+    return pids, paths, persist
 
 
 def _validate_action_achievability(doc, filename):
@@ -548,7 +574,7 @@ def _validate_action_achievability(doc, filename):
     wrong target or a factually surfaced failed attempt.
     """
     env_hosts = {h["id"]: h for h in doc["environment"]["hosts"]}
-    pids, paths = _authored_action_sources(doc)
+    pids, paths, persist = _authored_action_sources(doc)
     ak = doc["answer_key"]
 
     def check(entries, label, isolate_offline_fatal):
@@ -582,6 +608,20 @@ def _validate_action_achievability(doc, filename):
                     f"{tgt['host']!r} is not an authored deletable file of this "
                     f"scenario (Sysmon image/parent_image or run-key autorun); "
                     f"seed-generated noise never qualifies")
+            if name == "remove_persistence":
+                parsed = persistence.parse_selector(tgt["persistence"])
+                if parsed is None:
+                    raise ScenarioError(
+                        f"{filename}: {where}: persistence selector "
+                        f"{tgt['persistence']!r} is malformed (expected "
+                        f"'wmi:<ConsumerName>' or 'run_key:<KeyPath\\ValueName>')")
+                if parsed not in persist.get(tgt["host"], set()):
+                    raise ScenarioError(
+                        f"{filename}: {where}: persistence {tgt['persistence']!r} on "
+                        f"host {tgt['host']!r} is not an authored persistence "
+                        f"artifact of this scenario (a run-key SetValue, or a "
+                        f"complete WMI 19/20/21 subscription); seed-generated "
+                        f"noise and incomplete/ambiguous subscriptions never qualify")
 
     # Required/acceptable actions: a required isolate on an offline host is
     # fatal (it can never earn credit). Traps face the same authored-source
