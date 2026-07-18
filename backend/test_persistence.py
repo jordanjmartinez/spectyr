@@ -111,6 +111,101 @@ def test_same_name_different_filter_are_distinct_subscriptions():
     assert arts[0]["identity"] != arts[1]["identity"]
 
 
+# --- binding-path redundancy proof (approved-identity reconciliation) ----------
+# The approved WMI identity was host + namespace + filter path + consumer path
+# + BINDING PATH. The implementation omits the binding path. These tests prove
+# it is redundant: the __FilterToConsumerBinding canonical path is a pure
+# function of its Consumer and Filter refs (the class's only [key] properties;
+# learn.microsoft.com/en-us/windows/win32/wmisdk/--filtertoconsumerbinding), so
+# adding it to the identity cannot split or merge any group.
+
+def _identity5(art):
+    """The approved 5-part identity: the 4-tuple plus the canonical binding
+    path composed from the same two refs."""
+    _host, _kind, _ns, filt_ref, cons_ref = art["identity"]
+    return tuple(art["identity"]) + (p.canonical_binding_path(cons_ref, filt_ref),)
+
+
+def test_binding_path_is_pure_function_of_consumer_and_filter_refs():
+    a = p.canonical_binding_path('CommandLineEventConsumer.Name="C"', '__EventFilter.Name="F"')
+    b = p.canonical_binding_path('commandlineeventconsumer . name = "C"', '__eventfilter.name="F"')
+    assert a == b, "normalization folds; the binding path is fixed by the two refs"
+    assert a != p.canonical_binding_path('CommandLineEventConsumer.Name="C2"', '__EventFilter.Name="F"')
+    assert a != p.canonical_binding_path('CommandLineEventConsumer.Name="C"', '__EventFilter.Name="F2"')
+    # same Name, different consumer CLASS => a different canonical path
+    assert a != p.canonical_binding_path('ActiveScriptEventConsumer.Name="C"', '__EventFilter.Name="F"')
+
+
+def test_two_distinct_complete_bindings_do_not_collapse():
+    arts = p.correlate_wmi(
+        "H1", [_filter("F1"), _filter("F2")],
+        [_consumer("C1"), _consumer("C2", dest="other")],
+        [_binding("C1", "F1"), _binding("C1", "F2"), _binding("C2", "F1")])
+    assert len(arts) == 3, "three distinct bindings must stay three entities"
+    id4 = {tuple(a["identity"]) for a in arts}
+    id5 = {_identity5(a) for a in arts}
+    assert len(id4) == 3 and len(id5) == 3, "no collapse under either identity"
+
+
+def test_duplicate_binding_dedups_under_both_identities():
+    arts = p.correlate_wmi("H1", [_filter("F1"), _filter("F1")],
+                           [_consumer("C1"), _consumer("C1")],
+                           [_binding("C1", "F1"), _binding("C1", "F1")])
+    assert len(arts) == 1
+    assert len({_identity5(a) for a in arts}) == 1, "5-tuple dedups identically"
+
+
+def test_conflicting_or_ambiguous_bindings_fail_closed():
+    # ambiguous consumer name (two distinct defs) -> no actionable entity
+    assert p.correlate_wmi("H1", [_filter("F1")],
+                           [_consumer("C1", dest="a"), _consumer("C1", dest="b")],
+                           [_binding("C1", "F1")]) == []
+    # incomplete (no binding) -> nothing correlates
+    assert p.correlate_wmi("H1", [_filter("F1")], [_consumer("C1")], []) == []
+
+
+def test_same_named_refs_distinct_where_canonical_paths_differ():
+    # consumer Name "C" but different CLASS: canonical paths differ, so the
+    # identities (and the binding paths) differ - the name alone never keys.
+    ns = r"root\cimv2"
+    cases = []
+    for cons in ('CommandLineEventConsumer.Name="C"', 'ActiveScriptEventConsumer.Name="C"'):
+        cr, fr = p.norm_wmi_path(cons), p.norm_wmi_path('__EventFilter.Name="F"')
+        four = ("H", "wmi_subscription", ns, fr, cr)
+        cases.append((four, four + (p.canonical_binding_path(cons, '__EventFilter.Name="F"'),)))
+    assert cases[0][0] != cases[1][0], "same-name/different-class must stay distinct (4-tuple)"
+    assert cases[0][1] != cases[1][1], "and under the 5-tuple"
+
+
+def test_binding_path_never_splits_or_merges_identity_groups():
+    """The partition proof, robust to delimiter chars: for arbitrary ref
+    pairs (including instance names containing a colon), identity4 equality
+    holds iff identity5 equality holds. Tuples never concatenate, so a colon
+    in one component cannot bleed into another."""
+    ns = r"root\cimv2"
+    refs = [
+        ('CommandLineEventConsumer.Name="C"', '__EventFilter.Name="F"'),
+        ('CommandLineEventConsumer.Name="C"', '__EventFilter.Name="F"'),   # duplicate
+        ('CommandLineEventConsumer.Name="C2"', '__EventFilter.Name="F"'),
+        ('CommandLineEventConsumer.Name="C"', '__EventFilter.Name="F2"'),
+        ('ActiveScriptEventConsumer.Name="C"', '__EventFilter.Name="F"'),
+        ('CommandLineEventConsumer.Name="a:b"', '__EventFilter.Name="c"'),
+        ('CommandLineEventConsumer.Name="a"', '__EventFilter.Name="b:c"'),
+    ]
+    id4, id5 = [], []
+    for cons, filt in refs:
+        cr, fr = p.norm_wmi_path(cons), p.norm_wmi_path(filt)
+        four = ("H", "wmi_subscription", ns, fr, cr)
+        id4.append(four)
+        id5.append(four + (p.canonical_binding_path(cons, filt),))
+    for i in range(len(refs)):
+        for j in range(len(refs)):
+            assert (id4[i] == id4[j]) == (id5[i] == id5[j]), \
+                f"binding path split or merged an identity group at {i},{j}"
+    # the colon-bearing pair must NOT collide with its shifted twin
+    assert id4[5] != id4[6] and id5[5] != id5[6]
+
+
 # --- run-key artifacts ---------------------------------------------------------
 
 def test_run_key_identity_is_key_plus_value_not_payload():

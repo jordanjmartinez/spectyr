@@ -12,14 +12,26 @@ persistence that no current verb can remove) and restores the path to the
 The engine landed per the owner rulings, which SUPERSEDE two parts of the
 original scaffold below:
 
-- **Identity is the correlated triple, never the consumer name.** Section 1
-  and 3's "keyed by the consumer Name" is retired. WMI identity = host +
-  normalized namespace + filter path + consumer path (Sysmon 19/20/21
-  correlated into one subscription, fail-closed on incomplete/ambiguous);
-  Run-key identity = host + normalized key + value name. The consumer name
-  is display only. Answer keys reference an artifact by a selector
-  (`wmi:<ConsumerName>` / `run_key:<KeyPath\ValueName>`) that resolves to
-  the correlated identity server-side. See `persistence.py`.
+- **Identity is the correlated subscription, never the consumer name.**
+  Section 1 and 3's "keyed by the consumer Name" is retired. WMI identity =
+  structured tuple (host + normalized namespace + filter path + consumer
+  path) (Sysmon 19/20/21 correlated into one subscription, fail-closed on
+  incomplete/ambiguous); Run-key identity = host + normalized key + value
+  name. The consumer name is display only. Answer keys reference an artifact
+  by a selector (`wmi:<ConsumerName>` / `run_key:<KeyPath\ValueName>`) that
+  resolves to the correlated identity server-side. See `persistence.py`.
+- **Binding-path deviation (flagged 2026-07-17, resolution 2).** The
+  approved identity named a fifth component, the binding path. It is OMITTED
+  as redundant, and this narrowing is recorded as a DEVIATION (not merely
+  described): the `__FilterToConsumerBinding` class keys only on its
+  `Consumer` + `Filter` references (both `[key]`; all other properties
+  non-key — learn.microsoft.com/en-us/windows/win32/wmisdk/--filtertoconsumerbinding),
+  so the canonical binding path is a pure function of the filter + consumer
+  paths already in the identity. `persistence.canonical_binding_path`
+  composes it; `test_persistence.py` proves the 4-tuple partitions bindings
+  identically to the 5-tuple (no split/merge, robust to delimiter chars),
+  duplicates dedup, and conflicting/ambiguous fail closed. Identities are
+  structured tuples with a length-prefixed id digest, never concatenation.
 - **Dual-flag state model, not a single removal set.** Section 3's "the
   live Autoruns view drops that persistence row" is refined: a row carries
   a registration flag (cleared by `remove_persistence`) and, when

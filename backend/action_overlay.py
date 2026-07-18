@@ -62,11 +62,24 @@ _EXE_PATH_RE = re.compile(r"[A-Za-z]:\\[^\"]*?\.exe", re.IGNORECASE)
 
 
 def _digest(*parts):
-    return hashlib.sha256(":".join(str(p) for p in parts).encode()).digest()
+    """Unambiguous stable-key digest. Each field is length-prefixed before
+    hashing (not raw-concatenated with a separator), so no two distinct
+    field tuples can ever produce the same key even when a field value
+    contains the delimiter that a naive join would use. Load-bearing for
+    composite keys whose components can contain arbitrary characters (e.g.
+    WMI object paths, file paths with a drive-letter colon)."""
+    h = hashlib.sha256()
+    for p in parts:
+        b = str(p).encode("utf-8")
+        h.update(len(b).to_bytes(8, "big"))
+        h.update(b)
+    return h.digest()
 
 
 def entity_id(session_seed, kind, *key_parts):
-    """Stable-key client entity id, shape-uniform across kinds (ent- + 12 hex)."""
+    """Stable-key client entity id, shape-uniform across kinds (ent- + 12 hex).
+    Derived from a length-prefixed encoding of (seed, kind, *key_parts), so a
+    persistence identity's WMI paths cannot collide by concatenation."""
     return "ent-" + _digest(session_seed, "entity", kind, *key_parts).hex()[:12]
 
 

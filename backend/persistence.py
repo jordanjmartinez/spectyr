@@ -8,9 +8,11 @@ action_overlay applies the dual-flag state model; the remove_persistence
 verb targets them.
 
 Design rules (3c.5 review):
-- WMI identity is the CORRELATED TRIPLE, never the consumer name alone:
-  host + normalized namespace + filter path + consumer path + binding
-  path. Consumer name is display only.
+- WMI identity is the CORRELATED subscription, never the consumer name
+  alone: a structured tuple
+      (host, "wmi_subscription", normalized namespace, filter path,
+       consumer path).
+  Consumer name is display only.
 - Run-key identity is host + normalized registry key + value name, never
   the image path alone; two values sharing a payload path stay distinct.
 - Normalize namespaces, object paths, registry keys, and value names
@@ -19,18 +21,36 @@ Design rules (3c.5 review):
   to ONE entity. Conflicting correlations FAIL CLOSED (no actionable
   entity), never produce multiple removable copies.
 - Incomplete or ambiguous triples are not actionable.
+- Identities are STRUCTURED TUPLES, never raw string concatenation. The
+  client entity id is derived through action_overlay.entity_id, which
+  length-prefixes every field before hashing, so two different path
+  combinations can never collapse to the same key.
+
+DEVIATION FROM APPROVED SPEC (flagged 2026-07-17, resolution 2):
+  The approved WMI identity was
+      host + namespace + filter path + consumer path + BINDING PATH.
+  This implementation OMITS the binding path because it is fully and
+  uniquely determined by the filter path and consumer path already in the
+  identity, so it is redundant. Justification: the __FilterToConsumerBinding
+  system class keys ONLY on its Consumer and Filter reference properties
+  (both carry the [key] qualifier; every other property - CreatorSID,
+  DeliveryQoS, MaintainSecurityContext, ... - is non-key), so a binding
+  instance's canonical object path is composed solely from those two
+  reference paths. Reference: __FilterToConsumerBinding class,
+  learn.microsoft.com/en-us/windows/win32/wmisdk/--filtertoconsumerbinding
+  (Consumer: __EventConsumer REF [Key]; Filter: __EventFilter REF [Key]).
+  `canonical_binding_path` composes it; `test_persistence.py` proves the
+  4-tuple identity partitions bindings identically to the approved 5-tuple.
+  This narrowing is recorded here as a DEVIATION, not merely described:
+  believed-equivalent narrowings of an approved spec are flagged as
+  deviations with their justification at the time they are made.
 """
-import hashlib
 import re
 
 _WS_RE = re.compile(r"\s+")
 # WMI reference: ClassName.Property="Value" (WMI object path to a named instance)
 _WMI_REF_RE = re.compile(r'^\s*([A-Za-z_][A-Za-z0-9_]*)\s*\.\s*'
                          r'([A-Za-z_][A-Za-z0-9_]*)\s*=\s*"(.*)"\s*$')
-
-
-def _digest(*parts):
-    return hashlib.sha256("\x1f".join(str(p) for p in parts).encode()).digest()
 
 
 def artifact_id_key(*parts):
@@ -83,6 +103,27 @@ def wmi_consumer_name(path):
     """Display name from a WMI consumer/filter object path, or None."""
     m = _WMI_REF_RE.match(str(path or ""))
     return m.group(3).strip() if m else None
+
+
+def canonical_binding_path(consumer_ref, filter_ref):
+    """The canonical object path of the __FilterToConsumerBinding instance
+    that binds `consumer_ref` to `filter_ref`, as a STRUCTURED tuple.
+
+    The __FilterToConsumerBinding system class keys ONLY on its Consumer and
+    Filter reference properties (both [key]; all other properties are
+    non-key), so a binding instance is uniquely identified by, and its
+    object path composed solely from, those two references. Reference:
+    learn.microsoft.com/en-us/windows/win32/wmisdk/--filtertoconsumerbinding
+
+    Consequence (proved in test_persistence.py): this value is a pure
+    function of the normalized (consumer path, filter path). Those two are
+    already in the WMI identity, so the binding path adds no distinguishing
+    information - the reason the identity omits it (a redundant component of
+    the approved 5-part spec). Returned as a tuple, never a concatenated
+    string, so it is unambiguous if ever compared."""
+    return ("__filtertoconsumerbinding",
+            ("consumer", norm_wmi_path(consumer_ref)),
+            ("filter", norm_wmi_path(filter_ref)))
 
 
 # --- authored selectors (answer-key references) --------------------------------
@@ -230,6 +271,11 @@ def correlate_wmi(host, filters, consumers, bindings):
         consumer = next(iter(cons_variants.values()))
         filt = next(iter(filt_variants.values()))
         namespace = norm_namespace(filt.get("event_namespace"))
+        # Structured identity tuple. The binding path is intentionally OMITTED:
+        # canonical_binding_path(cons_ref, filt_ref) is a pure function of these
+        # same two refs (the __FilterToConsumerBinding keys), so it partitions
+        # bindings identically - proved in test_persistence.py. See the module
+        # docstring's DEVIATION note.
         identity = (host, "wmi_subscription", namespace, filt_ref, cons_ref)
         artifact = {
             "persist_type": "wmi_subscription",

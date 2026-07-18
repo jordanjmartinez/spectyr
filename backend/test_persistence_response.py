@@ -174,6 +174,16 @@ def test_dual_flag_both_orders_keep_the_other_action_reachable():
 
 # --- entity ids, reachability, leak guard --------------------------------------
 
+def test_persistence_entity_ids_do_not_collide_on_colon_bearing_paths():
+    """Safeguard: the client id is a length-prefixed digest of a structured
+    field tuple, not a delimiter join, so two different WMI path combinations
+    that a ':'-join would have merged still get distinct entity ids."""
+    id1 = ao.entity_id(SEED, "persistence", "H", "wmi_subscription", r"root\cimv2", "a", "b:c")
+    id2 = ao.entity_id(SEED, "persistence", "H", "wmi_subscription", r"root\cimv2", "a:b", "c")
+    assert id1 != id2, "distinct field tuples must not collide"
+    assert ao.ENTITY_ID_RE.match(id1) and ao.ENTITY_ID_RE.match(id2)
+
+
 def test_persistence_ids_are_shape_uniform_and_resolve():
     world, snap = _world(extra_events=_wmi_events() + [_run_key_event()])
     reg = ao.build_entity_registry(world, {}, SEED)

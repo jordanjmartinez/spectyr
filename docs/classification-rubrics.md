@@ -222,7 +222,7 @@ declare an acceptable action whose effect would remove the only surface a
 required action is reached from.
 
 **Identity (never a display name).** A WMI subscription's identity is the
-correlated triple (host + normalized namespace + filter path + consumer
+structured tuple (host + normalized namespace + filter path + consumer
 path), never the consumer name alone; two subscriptions sharing a consumer
 name stay distinct and an ambiguous name fails closed. A Run-key identity
 is host + normalized key + value name, never the payload path; two values
@@ -230,6 +230,20 @@ sharing a payload stay distinct. Answer keys REFERENCE an artifact by a
 selector (`wmi:<ConsumerName>` / `run_key:<KeyPath\ValueName>`) that
 resolves to the correlated identity; the identity itself is always
 derived server-side.
+
+**Binding-path redundancy (reconciliation, 2026-07-17).** The approved WMI
+identity named a fifth component, the binding path; the implementation
+omits it as redundant and flags this as a deviation. Justification: the
+`__FilterToConsumerBinding` system class keys ONLY on its `Consumer` and
+`Filter` reference properties (both carry the `[key]` qualifier; every
+other property is non-key), so a binding's canonical object path is a pure
+function of the filter path and consumer path already in the identity.
+Reference: `__FilterToConsumerBinding` class,
+learn.microsoft.com/en-us/windows/win32/wmisdk/--filtertoconsumerbinding.
+`test_persistence.py` proves the 4-tuple identity partitions bindings
+identically to the approved 5-tuple. Identities are built from structured
+tuples with a length-prefixed id digest, never string concatenation, so
+distinct path combinations cannot collide.
 
 ## Difficulty tier table
 
