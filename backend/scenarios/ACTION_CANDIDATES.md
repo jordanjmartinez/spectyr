@@ -342,7 +342,7 @@ canonical backup actor; the 110/190 job events bracket the window.
 |---|---|---|---|---|
 | malware_usb | iso + 2 kills + 1 delete | 1 delete (USB file) | none | 2 |
 | phishing_1 | revoke + reset | disable | none | 1 |
-| password_spray | iso + revoke + reset (lgreen) | disable (lgreen) + 5 hygiene resets | reset after iso | 3 |
+| password_spray | iso + revoke + reset (lgreen) | disable (lgreen) + hygiene reset (dpark only) | reset after iso | 3 |
 | lateral_movement_1 | iso + 2 kills + revoke + reset | 2 kills + 1 delete + disable | reset after iso | 3 |
 | false_positive_veeam | none (inaction) | none | none | documented set |
 
@@ -645,3 +645,122 @@ No ordering declarations in Batch 2 (no required credential resets, so
 the isolate-before-reset class does not arise; P3 restraint honored). No
 implementation until this scaffold is approved. Batch 3 remains blocked
 until Batch 2 review.
+
+---
+
+# Reachability correction (3c Batch 2 review, 2026-07-17)
+
+The fixed-seed UI-reachability harness now validates EVERY required action,
+EVERY acceptable action, and EVERY declared trap (previously required
+actions only). An unreachable action must not appear in the answer key.
+Seven acceptable actions were unreachable and were removed:
+
+- password_spray: `force_password_reset` on mjohnson, bwilliams, achen,
+  jkim - no detection surfaces these sprayed-but-unbreached accounts, so
+  no Threats-view identity control exists for them. `dpark` is surfaced
+  (det_multi_account_failures on its 4625) and its acceptable reset is
+  KEPT and test-proven reachable.
+- malware_usb: `delete_file` E:\Payroll_2026.exe - a process-image file,
+  not an autorun; delete is surfaced only on Autoruns image rows.
+- malware_ransomware: `delete_file` on the Temp\svchost.exe encryptor -
+  process-image, same reason.
+- lateral_movement_1: `delete_file` on the nmap.exe image - same reason.
+
+No artificial detections were added to expose buttons. The rubric
+(docs/classification-rubrics.md) still explains that credential hygiene
+on the unsurfaced sprayed accounts, and removing the malware binaries,
+would be defensible in principle; they are simply not authored actions
+because no current UI surface exposes them (arbitrary-file deletion is
+FX2 backlog).
+
+[SCENARIOS] yaml_v2 source: 20 scenarios loaded
+# Declared Action + Trap Ledger (authored form, source-reviewable)
+
+Every entry names the exact action verb and authored composite target
+(environment host/account id, authored pid, or authored path) exactly as
+it appears in the scenario YAML. Every required, acceptable, and trap
+entry is validated UI-reachable + executable across the fixed five-seed
+set by test_action_scoring; traps additionally grade collateral.
+
+## malware_usb  (required 4, acceptable 0, traps 2)
+
+- REQUIRED  `isolate_host`  host=ws_victim
+- REQUIRED  `kill_process`  host=ws_victim pid=7412
+- REQUIRED  `kill_process`  host=ws_victim pid=8044
+- REQUIRED  `delete_file`  host=ws_victim path=C:\Users\Public\winupdate.exe
+- TRAP  `kill_process`  host=ws_victim pid=7340
+- TRAP  `disable_account`  account=victim
+
+## phishing_1  (required 2, acceptable 1, traps 1)
+
+- REQUIRED  `revoke_sessions`  account=victim
+- REQUIRED  `force_password_reset`  account=victim
+- ACCEPTABLE  `disable_account`  account=victim
+- TRAP  `isolate_host`  host=ws_victim
+
+## password_spray  (required 3, acceptable 2, traps 3)
+
+- REQUIRED  `isolate_host`  host=ws_victim
+- REQUIRED  `revoke_sessions`  account=lgreen
+- REQUIRED  `force_password_reset`  account=lgreen
+- ACCEPTABLE  `disable_account`  account=lgreen
+- ACCEPTABLE  `force_password_reset`  account=dpark
+- TRAP  `isolate_host`  host=dc
+- TRAP  `disable_account`  account=dpark
+- TRAP  `disable_account`  account=svc_backup
+
+## lateral_movement_1  (required 5, acceptable 3, traps 3)
+
+- REQUIRED  `isolate_host`  host=ws_victim
+- REQUIRED  `kill_process`  host=ws_victim pid=8844
+- REQUIRED  `kill_process`  host=file pid=2104
+- REQUIRED  `revoke_sessions`  account=victim
+- REQUIRED  `force_password_reset`  account=victim
+- ACCEPTABLE  `kill_process`  host=file pid=3312
+- ACCEPTABLE  `kill_process`  host=ws_victim pid=6240
+- ACCEPTABLE  `disable_account`  account=victim
+- TRAP  `isolate_host`  host=scan
+- TRAP  `kill_process`  host=scan pid=4120
+- TRAP  `isolate_host`  host=file
+
+## false_positive_veeam  (required 0, acceptable 0, traps 2)
+
+- TRAP  `kill_process`  host=ws_victim pid=2916
+- TRAP  `isolate_host`  host=ws_victim
+
+## c2_http  (required 2, acceptable 0, traps 2)
+
+- REQUIRED  `isolate_host`  host=ws_victim
+- REQUIRED  `kill_process`  host=ws_victim pid=5912
+- TRAP  `disable_account`  account=victim
+- TRAP  `isolate_host`  host=dns
+
+## malware_ransomware  (required 2, acceptable 1, traps 1)
+
+- REQUIRED  `isolate_host`  host=ws_victim
+- REQUIRED  `kill_process`  host=ws_victim pid=18204
+- ACCEPTABLE  `kill_process`  host=ws_victim pid=19301
+- TRAP  `disable_account`  account=victim
+
+## data_exfil_archive  (required 1, acceptable 1, traps 3)
+
+- REQUIRED  `isolate_host`  host=ws_victim
+- ACCEPTABLE  `kill_process`  host=ws_victim pid=15820
+- TRAP  `disable_account`  account=victim
+- TRAP  `isolate_host`  host=dns
+- TRAP  `kill_process`  host=ws_victim pid=6820
+
+## insider_staging  (required 3, acceptable 2, traps 1)
+
+- REQUIRED  `disable_account`  account=insider
+- REQUIRED  `revoke_sessions`  account=insider
+- REQUIRED  `isolate_host`  host=ws_victim
+- ACCEPTABLE  `kill_process`  host=ws_victim pid=7832
+- ACCEPTABLE  `force_password_reset`  account=insider
+- TRAP  `isolate_host`  host=file
+
+## false_positive_oauth  (required 0, acceptable 0, traps 2)
+
+- TRAP  `disable_account`  account=victim
+- TRAP  `isolate_host`  host=ws_victim
+

@@ -128,11 +128,24 @@ attacker controls.**
   as `acceptable`; session revocation or account disablement requires
   evidence that the account or its sessions were actually compromised.)
 
-The password_spray answer key is the canonical N1 application: the five
-sprayed accounts (4625 failures only) carry acceptable hygiene resets,
-while any revoke or disable on them is collateral. The identical actions
-on lgreen are REQUIRED because the evidence exists there: the s6 4624
+The password_spray answer key is the canonical N1 application: a sprayed
+account (4625 failures only) may carry an acceptable hygiene reset, while
+any revoke or disable on it is collateral. The identical actions on
+lgreen are REQUIRED because the evidence exists there: the s6 4624
 success is an attacker logon with that account.
+
+**Reachability constraint on the answer key (3c Batch 2 review ruling):**
+an action may be authored (required OR acceptable) only if a current UI
+surface actually exposes it; an unreachable action must not appear in the
+answer key. In password_spray, only `dpark` is surfaced (by
+det_multi_account_failures on its 4625), so only `dpark` carries the
+acceptable hygiene reset; the four sprayed accounts with no surfacing
+detection (mjohnson, bwilliams, achen, jkim) get none, even though the
+same hygiene would be defensible in principle. The rubric explains the
+principle; the answer key carries only the reachable action. (Related:
+arbitrary-file deletion of a process-image or FileCreate file has no UI
+affordance today - delete is surfaced only on Autoruns image rows - so
+such deletes are not authored as required or acceptable; FX2 backlog.)
 
 ## Response-action rubric: insider accounts and password reset (I2)
 

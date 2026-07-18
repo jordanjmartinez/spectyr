@@ -479,11 +479,13 @@ def test_reviewed_corpus_actions_achievable_across_seed_set():
 
 
 def test_required_and_acceptable_actions_are_ui_reachable_across_seeds():
-    """Player-visibility: every REQUIRED action of a reviewed scenario must
-    be surfaced by the response UI (Kill row / Isolate / Autoruns delete /
-    Threats identity), across the seed set. A required action the player
-    cannot perform is unfair. (Acceptable actions may be unreachable - they
-    are optional; the report lists any that are.)"""
+    """Player-visibility: EVERY answer-key action of a reviewed scenario,
+    required AND acceptable alike, must be surfaced by the response UI
+    (Kill row / Isolate / Autoruns delete / Threats identity), across the
+    seed set. An unreachable action must not appear in the answer key
+    (owner ruling, 3c Batch 2 review): a required one the player cannot
+    perform is unfair, and an acceptable one they cannot perform is a
+    phantom the report would misdescribe."""
     for label, sc in app.yaml_catalog.items():
         ak = sc["answer_key"]
         if not ak.get("actions_reviewed"):
@@ -493,11 +495,9 @@ def test_required_and_acceptable_actions_are_ui_reachable_across_seeds():
             expected = app.materialize_expected_actions(
                 ak["actions"], f"scenario-{label}", env, resolved)
             for exp in expected:
-                if exp["status"] != "required":
-                    continue
                 assert app.ui_reachable(exp["action"], exp["target"], world, det_keys), \
-                    (f"{label}: required {exp['action']} not UI-reachable under "
-                     f"seed {seed} (no surface exposes it)")
+                    (f"{label}: {exp['status']} {exp['action']} not UI-reachable "
+                     f"under seed {seed} (no surface exposes it)")
 
 
 def test_declared_traps_execute_reachable_and_grade_collateral_across_seeds():

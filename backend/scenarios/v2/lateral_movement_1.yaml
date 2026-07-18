@@ -358,11 +358,6 @@ answer_key:
       target:
         host: "ws_victim"
         pid: 6240
-    - action: "delete_file"
-      status: "acceptable"
-      target:
-        host: "ws_victim"
-        path: "C:\\Users\\{victim.username}\\Downloads\\nmap-7.95\\nmap.exe"
     - action: "revoke_sessions"
       status: "required"
       target:
