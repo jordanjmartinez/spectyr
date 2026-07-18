@@ -477,6 +477,7 @@ REVIEWED_SCENARIOS = {
     "data_exfil_archive",
     "insider_staging",
     "false_positive_oauth",
+    "brute_force_attack",
 }
 
 

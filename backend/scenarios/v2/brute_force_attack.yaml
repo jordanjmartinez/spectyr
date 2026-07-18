@@ -368,7 +368,28 @@ answer_key:
     accounts: ["victim"]
   root_cause: "s1"
   techniques: ["T1110.001"]
-  actions: []
+  # System-contained attack (owner ruling, 3c Batch 3): the account lockout
+  # (s5, 4740) already contained this failed external brute force. There is no
+  # breach (all 4625 failures, no 4624 success) and no vocabulary action for
+  # the true containment (blocking the external source IP), so there is NO
+  # required action. A precautionary password reset on the locked target is
+  # acceptable hygiene. Correct inaction is not exclusive to false positives.
+  actions_reviewed: true
+  actions:
+    - action: "force_password_reset"
+      status: "acceptable"
+      target:
+        account: "victim"
+  traps:
+    - action: "isolate_host"
+      target:
+        host: "dc"
+    - action: "disable_account"
+      target:
+        account: "victim"
+    - action: "disable_account"
+      target:
+        account: "svc_backup"
 
 triage_review:
   mitre:

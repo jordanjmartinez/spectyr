@@ -295,6 +295,36 @@ def test_shared_target_with_unreviewed_scenario_gets_benefit_of_doubt():
         "shared-host action must be ungraded; reviewed-only host counts"
 
 
+def test_brute_force_system_contained_scores_a_for_nothing_and_reset_only():
+    """3c Batch 3 owner ruling: brute_force_attack is a system-contained
+    attack (the lockout already contained a failed external brute force),
+    so it has NO required action and one acceptable hygiene reset. BOTH
+    doing nothing AND performing only the acceptable reset must score
+    A/100. Correct inaction is not exclusive to false-positive scenarios."""
+    sc, resolved, env = _resolved_env("brute_force_attack")
+    ak = sc["answer_key"]
+    assert ak.get("actions_reviewed") and not [
+        a for a in ak["actions"] if a["status"] == "required"], \
+        "brute_force must be reviewed with no required action"
+    exp = app.materialize_expected_actions(
+        ak["actions"], "scenario-bf", env, resolved)
+    grading = [app.scenario_grading_record("scenario-bf", sc, env)]
+
+    nothing = app.compute_action_score(exp, [], set(), grading)
+    nothing.pop("acceptable_seqs")
+    assert nothing["required"] == 1 and nothing["correct"] == 1
+    assert nothing["accuracy"] == 100.0 and nothing["grade"] == "A", nothing
+
+    reset = next(a for a in exp if a["action"] == "force_password_reset")
+    reset_only = app.compute_action_score(
+        exp, [_run("force_password_reset", dict(reset["target"]), 1)], set(), grading)
+    seqs = reset_only.pop("acceptable_seqs")
+    assert seqs == [1], "the reset must surface as an executed acceptable action"
+    assert reset_only["required"] == 1 and reset_only["correct"] == 1
+    assert reset_only["collateral"] == 0
+    assert reset_only["accuracy"] == 100.0 and reset_only["grade"] == "A", reset_only
+
+
 def test_reviewed_empty_set_is_intentional_correct_inaction():
     """The FP contract: clean hands earn the unit; a collateral hit in the
     scenario's scope costs both the collateral and the inaction credit."""

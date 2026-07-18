@@ -57,7 +57,20 @@ Server-side only; never serialized (leak-guard tested).
 |---|---|---|
 | absent / `false` | any | Not yet reviewed: the scenario is EXCLUDED from action scoring. It earns nothing, costs nothing, and targets it claims are out of grading scope. The Response section renders `-` until a reviewed scenario drips. |
 | `true` | has required actions | Graded normally. |
-| `true` | no required actions (`[]`, or acceptable-only) | Intentional correct inaction (the FP contract): the scenario contributes one graded unit, credited when no collateral lands in its scope; a hit costs both the collateral and the inaction credit. Executing an acceptable action never costs the unit. |
+| `true` | no required actions (`[]`, or acceptable-only) | Intentional correct inaction: the scenario contributes one graded unit, credited when no collateral lands in its scope; a hit costs both the collateral and the inaction credit. Executing an acceptable action never costs the unit. |
+
+**Correct inaction is not exclusive to false positives.** A reviewed
+ATTACK scenario may also have no required action when the environment
+already contained the attack and no vocabulary action remains. The
+canonical case is `brute_force_attack` (3c Batch 3): a failed external
+brute force that the account lockout (4740) already contained, with no
+breach and no expressible containment (blocking the source IP is out of
+vocabulary). Its correct response is investigation plus an optional
+acceptable hygiene reset on the locked account; both doing nothing and
+performing only that reset score A/100 (proven by
+test_brute_force_system_contained_scores_a_for_nothing_and_reset_only).
+The lesson is not to over-react (isolating the DC or disabling the
+account is collateral) to an attack the system already stopped.
 
 Collateral scoping while the corpus review is in flight: a successful
 unnecessary action is collateral only when its target is claimed by at
