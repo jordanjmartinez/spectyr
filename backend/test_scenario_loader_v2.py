@@ -264,22 +264,78 @@ def test_rejects_attack_without_technique():
 
 def test_accepts_well_formed_answer_actions():
     """Stage 3a unlock + 3c amendments: the action grammar validates
-    (composite targets, order sensitivity) when the set is reviewed and
-    every target is an authored artifact. Content authoring is still
-    Stage 3c; the corpus keeps actions: [] until then."""
+    (composite targets, deliberate required/acceptable statuses, order
+    sensitivity on required actions) when the set is reviewed and every
+    target is an authored artifact."""
     doc = _one_valid_doc()
     doc["answer_key"]["actions_reviewed"] = True
     doc["answer_key"]["actions"] = [
-        {"id": "a_isolate", "action": "isolate_host", "target": {"host": "ws_victim"}},
-        {"id": "a_kill", "action": "kill_process",
+        {"id": "a_isolate", "action": "isolate_host", "status": "required",
+         "target": {"host": "ws_victim"}},
+        {"id": "a_kill", "action": "kill_process", "status": "required",
          "target": {"host": "ws_victim", "pid": 8844}},
-        {"action": "delete_file",
+        {"action": "delete_file", "status": "acceptable",
          "target": {"host": "ws_victim",
                     "path": "C:\\Users\\{victim.username}\\Downloads\\nmap-7.95\\nmap.exe"}},
-        {"id": "a_reset", "action": "force_password_reset",
+        {"id": "a_reset", "action": "force_password_reset", "status": "required",
          "target": {"account": "victim"}, "after": ["a_isolate"]},
     ]
     v2.validate_scenario_v2(doc, _SCHEMA_V2, _SCHEMA_V1, "fixture.yaml")
+
+
+def test_rejects_action_without_status():
+    """Status is deliberate authoring: no default, schema-required."""
+    doc = _one_valid_doc()
+    doc["answer_key"]["actions_reviewed"] = True
+    doc["answer_key"]["actions"] = [
+        {"action": "isolate_host", "target": {"host": "ws_victim"}}]
+    _expect_error(doc, "schema v2 violation")
+
+
+def test_rejects_duplicate_and_cross_status_pairs():
+    doc = _one_valid_doc()
+    doc["answer_key"]["actions_reviewed"] = True
+    doc["answer_key"]["actions"] = [
+        {"action": "kill_process", "status": "required",
+         "target": {"host": "ws_victim", "pid": 8844}},
+        {"action": "kill_process", "status": "required",
+         "target": {"host": "ws_victim", "pid": 8844}},
+    ]
+    _expect_error(doc, "duplicate expected action")
+    doc["answer_key"]["actions"][1]["status"] = "acceptable"
+    _expect_error(doc, "declared under both statuses")
+
+
+def test_rejects_order_declarations_off_required_actions():
+    doc = _one_valid_doc()
+    doc["answer_key"]["actions_reviewed"] = True
+    # `after` on an acceptable action
+    doc["answer_key"]["actions"] = [
+        {"id": "a_iso", "action": "isolate_host", "status": "required",
+         "target": {"host": "ws_victim"}},
+        {"id": "a_kill", "action": "kill_process", "status": "acceptable",
+         "target": {"host": "ws_victim", "pid": 8844}, "after": ["a_iso"]},
+    ]
+    _expect_error(doc, "apply to required actions only")
+    # `after` referencing an acceptable action
+    doc["answer_key"]["actions"] = [
+        {"id": "a_iso", "action": "isolate_host", "status": "acceptable",
+         "target": {"host": "ws_victim"}},
+        {"id": "a_reset", "action": "force_password_reset", "status": "required",
+         "target": {"account": "victim"}, "after": ["a_iso"]},
+    ]
+    _expect_error(doc, "not a required action")
+
+
+def test_achievability_applies_to_acceptable_actions_too():
+    """Both statuses face the same achievability and seed-independence
+    bar: an unachievable ACCEPTABLE target is a hard error."""
+    doc = _one_valid_doc()
+    doc["answer_key"]["actions_reviewed"] = True
+    doc["answer_key"]["actions"] = [
+        {"action": "kill_process", "status": "acceptable",
+         "target": {"host": "ws_victim", "pid": 4321}}]
+    _expect_error(doc, "not an authored process")
 
 
 def test_rejects_action_with_wrong_target_shape():
@@ -287,14 +343,15 @@ def test_rejects_action_with_wrong_target_shape():
     host = doc["environment"]["hosts"][0]["id"]
     # isolate_host must not carry a pid; loader message is the actionable one
     doc["answer_key"]["actions"] = [
-        {"action": "isolate_host", "target": {"host": host, "pid": 4}}]
+        {"action": "isolate_host", "status": "required",
+         "target": {"host": host, "pid": 4}}]
     _expect_error(doc, "target takes exactly")
 
 
 def test_rejects_action_with_unknown_action_name():
     doc = _one_valid_doc()
     doc["answer_key"]["actions"] = [
-        {"action": "release_host",
+        {"action": "release_host", "status": "required",
          "target": {"host": doc["environment"]["hosts"][0]["id"]}}]
     # release_host is a rollback control, not an answer-key action
     _expect_error(doc, "schema v2 violation")
@@ -302,30 +359,34 @@ def test_rejects_action_with_unknown_action_name():
 
 def test_rejects_action_targeting_unknown_host_or_account():
     doc = _one_valid_doc()
+    doc["answer_key"]["actions_reviewed"] = True
     doc["answer_key"]["actions"] = [
-        {"action": "isolate_host", "target": {"host": "ghost"}}]
+        {"action": "isolate_host", "status": "required",
+         "target": {"host": "ghost"}}]
     _expect_error(doc, "not a declared environment host")
     doc["answer_key"]["actions"] = [
-        {"action": "disable_account", "target": {"account": "nobody"}}]
+        {"action": "disable_account", "status": "required",
+         "target": {"account": "nobody"}}]
     _expect_error(doc, "not a declared environment account")
 
 
 def test_rejects_action_order_violations():
     doc = _one_valid_doc()
+    doc["answer_key"]["actions_reviewed"] = True
     host = doc["environment"]["hosts"][0]["id"]
     doc["answer_key"]["actions"] = [
-        {"id": "a_one", "action": "isolate_host", "target": {"host": host},
-         "after": ["a_ghost"]}]
+        {"id": "a_one", "action": "isolate_host", "status": "required",
+         "target": {"host": host}, "after": ["a_ghost"]}]
     _expect_error(doc, "unknown action id")
     doc["answer_key"]["actions"] = [
-        {"id": "a_one", "action": "isolate_host", "target": {"host": host},
-         "after": ["a_one"]}]
+        {"id": "a_one", "action": "isolate_host", "status": "required",
+         "target": {"host": host}, "after": ["a_one"]}]
     _expect_error(doc, "references itself")
     doc["answer_key"]["actions"] = [
-        {"id": "a_one", "action": "isolate_host", "target": {"host": host},
-         "after": ["a_two"]},
-        {"id": "a_two", "action": "kill_process",
-         "target": {"host": host, "pid": 4756}, "after": ["a_one"]}]
+        {"id": "a_one", "action": "isolate_host", "status": "required",
+         "target": {"host": host}, "after": ["a_two"]},
+        {"id": "a_two", "action": "kill_process", "status": "required",
+         "target": {"host": host, "pid": 8844}, "after": ["a_one"]}]
     _expect_error(doc, "order cycle")
 
 
@@ -346,7 +407,8 @@ def test_rejects_authored_actions_without_reviewed_flag():
     set without actions_reviewed: true is an inconsistent state."""
     doc = _one_valid_doc()
     doc["answer_key"]["actions"] = [
-        {"action": "isolate_host", "target": {"host": "ws_victim"}}]
+        {"action": "isolate_host", "status": "required",
+         "target": {"host": "ws_victim"}}]
     _expect_error(doc, "require actions_reviewed: true")
 
 
@@ -364,13 +426,15 @@ def test_achievability_accepts_authored_targets():
     doc = _one_valid_doc()
     doc["answer_key"]["actions_reviewed"] = True
     doc["answer_key"]["actions"] = [
-        {"id": "a_iso", "action": "isolate_host", "target": {"host": "ws_victim"}},
-        {"action": "kill_process", "target": {"host": "ws_victim", "pid": 8844}},
-        {"action": "delete_file",
+        {"id": "a_iso", "action": "isolate_host", "status": "required",
+         "target": {"host": "ws_victim"}},
+        {"action": "kill_process", "status": "required",
+         "target": {"host": "ws_victim", "pid": 8844}},
+        {"action": "delete_file", "status": "acceptable",
          "target": {"host": "ws_victim",
                     "path": "C:\\Users\\{victim.username}\\Downloads\\nmap-7.95\\nmap.exe"}},
-        {"action": "disable_account", "target": {"account": "victim"},
-         "after": ["a_iso"]},
+        {"action": "disable_account", "status": "required",
+         "target": {"account": "victim"}, "after": ["a_iso"]},
     ]
     v2.validate_scenario_v2(doc, _SCHEMA_V2, _SCHEMA_V1, "fixture.yaml")
 
@@ -382,10 +446,11 @@ def test_achievability_rejects_unauthored_pid_and_path():
     doc = _one_valid_doc()
     doc["answer_key"]["actions_reviewed"] = True
     doc["answer_key"]["actions"] = [
-        {"action": "kill_process", "target": {"host": "ws_victim", "pid": 4321}}]
+        {"action": "kill_process", "status": "required",
+         "target": {"host": "ws_victim", "pid": 4321}}]
     _expect_error(doc, "not an authored process")
     doc["answer_key"]["actions"] = [
-        {"action": "delete_file",
+        {"action": "delete_file", "status": "required",
          "target": {"host": "ws_victim", "path": "C:\\Windows\\explorer.exe"}}]
     _expect_error(doc, "not an authored deletable file")
 
@@ -397,7 +462,8 @@ def test_achievability_rejects_offline_isolate_requirement():
     doc["environment"]["hosts"][0]["status"] = "offline"
     doc["answer_key"]["actions_reviewed"] = True
     doc["answer_key"]["actions"] = [
-        {"action": "isolate_host", "target": {"host": "ws_victim"}}]
+        {"action": "isolate_host", "status": "required",
+         "target": {"host": "ws_victim"}}]
     _expect_error(doc, "declared offline")
 
 
@@ -407,7 +473,8 @@ def test_achievability_rejects_non_endpoint_host_target():
     doc = _one_valid_doc()
     doc["answer_key"]["actions_reviewed"] = True
     doc["answer_key"]["actions"] = [
-        {"action": "isolate_host", "target": {"host": "fw_perimeter"}}]
+        {"action": "isolate_host", "status": "required",
+         "target": {"host": "fw_perimeter"}}]
     _expect_error(doc, "never a managed endpoint")
 
 

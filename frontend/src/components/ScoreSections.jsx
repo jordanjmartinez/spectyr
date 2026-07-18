@@ -60,6 +60,23 @@ const ScoreSections = ({ isVisible = true }) => {
   }, [isVisible, fetchScores]);
 
   const notExecuted = actScore?.not_executed;
+  const noEffect = actScore?.no_effect;
+  const acceptableTaken = actScore?.acceptable_taken;
+
+  const FactualBlock = ({ title, entries }) => (
+    <div className="border-t border-[#eef1f4] px-4 sm:px-6 py-4">
+      <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium mb-2">{title}</p>
+      <ul className="space-y-1.5">
+        {entries.map(e => (
+          <li key={e.seq} className="text-sm text-[#57606a]">
+            <span className="text-[#1a2332]">{ACTION_LABELS[e.action] || e.action}</span>
+            {' '}<span className="font-mono">{e.target?.label}</span>
+            {e.reason ? `: ${e.reason}` : ''}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -96,21 +113,17 @@ const ScoreSections = ({ isVisible = true }) => {
             </div>
             <GradeBlock grade={actScore?.grade} accuracy={actScore?.accuracy ?? 0} graded={actScore?.graded ?? 0} />
           </div>
+          {acceptableTaken?.count > 0 && (
+            <FactualBlock title={`Acceptable response (${acceptableTaken.count})`}
+                          entries={acceptableTaken.entries} />
+          )}
           {notExecuted?.count > 0 && (
-            <div className="border-t border-[#eef1f4] px-4 sm:px-6 py-4">
-              <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium mb-2">
-                Attempted, not executed ({notExecuted.count})
-              </p>
-              <ul className="space-y-1.5">
-                {notExecuted.entries.map(e => (
-                  <li key={e.seq} className="text-sm text-[#57606a]">
-                    <span className="text-[#1a2332]">{ACTION_LABELS[e.action] || e.action}</span>
-                    {' '}<span className="font-mono">{e.target?.label}</span>
-                    {e.reason ? `: ${e.reason}` : ''}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <FactualBlock title={`Attempted, not executed (${notExecuted.count})`}
+                          entries={notExecuted.entries} />
+          )}
+          {noEffect?.count > 0 && (
+            <FactualBlock title={`No effect, already in state (${noEffect.count})`}
+                          entries={noEffect.entries} />
           )}
         </Card>
       </div>

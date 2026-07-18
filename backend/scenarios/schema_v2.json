@@ -191,12 +191,13 @@
   "$defs": {
     "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
     "answer_action": {
-      "$comment": "One expected response action. The target is composite by action kind: isolate_host -> host; kill_process -> host+pid; delete_file -> host+path; identity actions -> account. `after` declares order sensitivity only where it matters (referenced action ids must exist in the same actions array).",
+      "$comment": "One expected response action. The target is composite by action kind: isolate_host -> host; kill_process -> host+pid; delete_file -> host+path; identity actions -> account. `status` is deliberate authoring, no default: required = earns credit, omission is a miss; acceptable = defensible but nonessential, never credit, never collateral, excluded from the score denominator (an executed acceptable action is surfaced factually). `after` declares order sensitivity only where it matters, on required actions referencing required actions.",
       "type": "object",
-      "required": ["action", "target"],
+      "required": ["action", "target", "status"],
       "additionalProperties": false,
       "properties": {
         "id": { "$ref": "#/$defs/id" },
+        "status": { "enum": ["required", "acceptable"] },
         "action": {
           "enum": [
             "isolate_host", "kill_process", "delete_file",

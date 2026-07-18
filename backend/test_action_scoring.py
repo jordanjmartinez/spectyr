@@ -44,9 +44,10 @@ def _grading(scenario="scenario-x", reviewed=True, hostnames=(WS, SVR),
             "hostnames": set(hostnames), "accounts": set(accounts)}
 
 
-def _exp(action, target, eid=None, after=None, scenario="scenario-x"):
+def _exp(action, target, eid=None, after=None, scenario="scenario-x",
+         status="required"):
     return {"scenario_id": scenario, "eid": eid, "action": action,
-            "target": target, "after": list(after or [])}
+            "status": status, "target": target, "after": list(after or [])}
 
 
 def _run(action, target, seq):
@@ -182,6 +183,79 @@ def test_replay_determinism_including_reversal_sequences():
     assert json.dumps(a, sort_keys=True) == json.dumps(b, sort_keys=True)
 
 
+# --- required vs acceptable (the Batch 1 correction) ---------------------------
+
+def test_acceptable_actions_neutral_and_excluded_from_denominator():
+    """Acceptable: no credit, never collateral, out of the denominator.
+    Omission never lowers the score; execution changes nothing but the
+    factual surfacing."""
+    expected = [
+        _exp("isolate_host", {"hostname": WS}),
+        _exp("kill_process", {"hostname": WS, "pid": 900},
+             status="acceptable"),
+    ]
+    kill = _run("kill_process", {"hostname": WS, "pid": 900,
+                                 "name": "shell.exe"}, 2)
+    iso = _run("isolate_host", {"hostname": WS}, 1)
+
+    executed_both = app.compute_action_score(expected, [iso, kill], {WS}, GRADING)
+    assert executed_both["required"] == 1 and executed_both["correct"] == 1
+    assert executed_both["collateral"] == 0 and executed_both["graded"] == 1
+    assert executed_both["accuracy"] == 100.0
+    assert executed_both["acceptable_seqs"] == [2]
+
+    omitted = app.compute_action_score(expected, [iso], {WS}, GRADING)
+    without_acceptable = app.compute_action_score(
+        [expected[0]], [iso], {WS}, GRADING)
+    omitted.pop("acceptable_seqs")
+    without_acceptable.pop("acceptable_seqs")
+    assert omitted == without_acceptable, \
+        "omitting an acceptable action must never change the score"
+
+
+def test_acceptable_isolation_end_state_neutral():
+    """An acceptable isolation is score-neutral whether it remains active
+    or was released: the author sanctioned it, so no clean-host end-state
+    penalty."""
+    expected = [_exp("isolate_host", {"hostname": SVR}, status="acceptable")]
+    executed = [_run("isolate_host", {"hostname": SVR}, 1)]
+    active = app.compute_action_score(expected, executed, {SVR}, GRADING)
+    released = app.compute_action_score(expected, executed, set(), GRADING)
+    assert active["collateral"] == 0 and released["collateral"] == 0
+    assert active["acceptable_seqs"] == released["acceptable_seqs"] == [1]
+    active.pop("acceptable_seqs"); released.pop("acceptable_seqs")
+    assert active == released
+
+
+def test_acceptable_only_scenario_grades_as_inaction_unit():
+    """A reviewed scenario with no REQUIRED actions is the inaction
+    contract even when acceptable actions exist; executing them never
+    costs the unit."""
+    expected = [_exp("kill_process", {"hostname": WS, "pid": 900},
+                     status="acceptable")]
+    idle = app.compute_action_score(expected, [], set(), GRADING)
+    assert idle["required"] == 1 and idle["correct"] == 1
+
+    acted = app.compute_action_score(
+        expected,
+        [_run("kill_process", {"hostname": WS, "pid": 900, "name": "x.exe"}, 1)],
+        set(), GRADING)
+    assert acted["required"] == 1 and acted["correct"] == 1
+    assert acted["collateral"] == 0 and acted["acceptable_seqs"] == [1]
+
+
+def test_unlisted_action_still_collateral_beside_acceptable():
+    """Only the exact acceptable composite is sanctioned; anything on
+    neither list stays collateral."""
+    expected = [_exp("kill_process", {"hostname": WS, "pid": 900},
+                     status="acceptable")]
+    r = app.compute_action_score(
+        expected,
+        [_run("kill_process", {"hostname": WS, "pid": 904, "name": "y.exe"}, 1)],
+        set(), GRADING)
+    assert r["collateral"] == 1 and r["acceptable_seqs"] == []
+
+
 # --- tri-state gate ------------------------------------------------------------
 
 def test_unreviewed_scenario_is_excluded_entirely():
@@ -268,16 +342,18 @@ def _resolved_env(label):
 def test_materialize_expected_actions_resolves_composites():
     sc, resolved, env = _resolved_env("lateral_movement_1")
     actions = [
-        {"id": "a_iso", "action": "isolate_host", "target": {"host": "ws_victim"}},
-        {"action": "delete_file",
+        {"id": "a_iso", "action": "isolate_host", "status": "required",
+         "target": {"host": "ws_victim"}},
+        {"action": "delete_file", "status": "acceptable",
          "target": {"host": "ws_victim",
                     "path": "C:\\Users\\{victim.username}\\Downloads\\nmap-7.95\\nmap.exe"}},
-        {"action": "disable_account", "target": {"account": "victim"},
-         "after": ["a_iso"]},
+        {"action": "disable_account", "status": "required",
+         "target": {"account": "victim"}, "after": ["a_iso"]},
     ]
     out = app.materialize_expected_actions(actions, "scenario-t", env, resolved)
     ws = next(h for h in env["hosts"] if h["id"] == "ws_victim")
     assert out[0]["target"] == {"hostname": ws["hostname"]}
+    assert [x["status"] for x in out] == ["required", "acceptable", "required"]
     path = out[1]["target"]["path"]
     assert path == ao.norm_path(path) and "{" not in path
     assert "nkhan" in path, "employee placeholder must substitute"
@@ -301,13 +377,15 @@ def test_scenario_grading_record_carries_scope_and_flag():
 SEED_SET = ["ach-seed-1", "ach-seed-2", "ach-seed-3", "ach-seed-4", "ach-seed-5"]
 
 AUTHORED_LM1 = [
-    {"id": "a_iso", "action": "isolate_host", "target": {"host": "ws_victim"}},
-    {"action": "kill_process", "target": {"host": "ws_victim", "pid": 8844}},
-    {"action": "delete_file",
+    {"id": "a_iso", "action": "isolate_host", "status": "required",
+     "target": {"host": "ws_victim"}},
+    {"action": "kill_process", "status": "required",
+     "target": {"host": "ws_victim", "pid": 8844}},
+    {"action": "delete_file", "status": "acceptable",
      "target": {"host": "ws_victim",
                 "path": "C:\\Users\\{victim.username}\\Downloads\\nmap-7.95\\nmap.exe"}},
-    {"action": "disable_account", "target": {"account": "victim"},
-     "after": ["a_iso"]},
+    {"action": "disable_account", "status": "required",
+     "target": {"account": "victim"}, "after": ["a_iso"]},
 ]
 
 
@@ -383,7 +461,7 @@ def test_authored_targets_achievable_and_noise_targets_seed_fragile():
     authored = {8844, 6240}
     noise_pid = next(p["pid"] for p in world0["hosts"][ws]["processes"]
                      if p["pid"] not in authored and p["pid"] > 4)
-    fragile = [{"action": "kill_process",
+    fragile = [{"action": "kill_process", "status": "required",
                 "target": {"host": "ws_victim", "pid": noise_pid}}]
     outcomes = []
     for seed in SEED_SET:
@@ -411,33 +489,52 @@ def _cleanup(sid, s):
 
 
 def test_score_endpoint_shape_surfacing_and_no_leak():
-    """Counts + grade + the factual not-executed record. Expected
-    composites and the reviewed marker never serialize; no_op attempts are
-    not surfaced (only failed_precondition)."""
+    """Counts + grade + the three factual blocks (failed attempts, no_op
+    repeats, executed acceptable actions). Expected composites, the status
+    field, and the reviewed marker never serialize; UNEXECUTED acceptable
+    targets never surface."""
     client, sid, s = _api_session()
     try:
         marker_path = "c:\\users\\public\\very_distinctive_payload_xyz.exe"
+        acc_marker = "c:\\tools\\unexecuted_acceptable_marker.exe"
         with s["io_lock"]:
+            # ACME-UNEX99 exists only in UNEXECUTED expectations: it must
+            # never serialize. ACME-WS77 appears in an executed acceptable
+            # action's log label: sanctioned disclosure after execution.
             s["expected_actions"] = [
-                _exp("delete_file", {"hostname": "ACME-WS77", "path": marker_path},
+                _exp("delete_file", {"hostname": "ACME-UNEX99", "path": marker_path},
                      scenario="scenario-m"),
-                _exp("isolate_host", {"hostname": "ACME-WS77"},
+                _exp("isolate_host", {"hostname": "ACME-UNEX99"},
                      scenario="scenario-m"),
+                # executed acceptable: surfaces factually after execution
+                _exp("kill_process", {"hostname": "ACME-WS77", "pid": 500},
+                     scenario="scenario-m", status="acceptable"),
+                # unexecuted acceptable: must never surface
+                _exp("delete_file", {"hostname": "ACME-UNEX99", "path": acc_marker},
+                     scenario="scenario-m", status="acceptable"),
             ]
             s["scenario_grading"] = [
-                _grading(scenario="scenario-m", hostnames={"ACME-WS77"},
-                         accounts=())]
+                _grading(scenario="scenario-m",
+                         hostnames={"ACME-WS77", "ACME-UNEX99"}, accounts=())]
+            s["entity_index"] = {
+                "ent-cccccccccccc": {"kind": "process", "hostname": "ACME-WS77",
+                                     "pid": 500, "name": "helper.exe"},
+            }
             s["overlay"]["log"] = [
-                {"seq": 1, "timestamp": STARTED, "action": "isolate_host",
+                {"seq": 1, "timestamp": STARTED, "action": "kill_process",
+                 "target": {"id": "ent-cccccccccccc", "kind": "process",
+                            "label": "helper.exe (PID 500) on ACME-WS77"},
+                 "outcome": "success", "reason": None},
+                {"seq": 2, "timestamp": STARTED, "action": "isolate_host",
                  "target": {"id": "ent-aaaaaaaaaaaa", "kind": "host",
                             "label": "ACME-OFF01"},
                  "outcome": "failed_precondition",
                  "reason": "Host is offline. The isolation command could not "
                            "be delivered to the endpoint agent."},
-                {"seq": 2, "timestamp": STARTED, "action": "isolate_host",
-                 "target": {"id": "ent-bbbbbbbbbbbb", "kind": "host",
-                            "label": "ACME-WS90"},
-                 "outcome": "no_op", "reason": "Host is already isolated."},
+                {"seq": 3, "timestamp": STARTED, "action": "disable_account",
+                 "target": {"id": "ent-bbbbbbbbbbbb", "kind": "account",
+                            "label": "ACME\\jdoe"},
+                 "outcome": "no_op", "reason": "Account is already disabled."},
             ]
         resp = client.get("/api/analytics/action_score",
                           headers={"X-Session-ID": sid})
@@ -445,17 +542,22 @@ def test_score_endpoint_shape_surfacing_and_no_leak():
         body = resp.get_json()
         assert set(body) == {"required", "correct", "missed", "collateral",
                              "order_violations", "graded", "accuracy", "grade",
-                             "not_executed"}
+                             "not_executed", "no_effect", "acceptable_taken"}
         assert body["required"] == 2 and body["missed"] == 2
         assert body["not_executed"]["count"] == 1
-        entry = body["not_executed"]["entries"][0]
-        assert entry["action"] == "isolate_host"
-        assert entry["outcome"] == "failed_precondition"
-        assert "offline" in entry["reason"]
+        assert "offline" in body["not_executed"]["entries"][0]["reason"]
+        assert body["no_effect"]["count"] == 1
+        assert body["no_effect"]["entries"][0]["outcome"] == "no_op"
+        assert body["acceptable_taken"]["count"] == 1
+        acc = body["acceptable_taken"]["entries"][0]
+        assert acc["action"] == "kill_process" and acc["seq"] == 1
+        # the executed acceptable action is not collateral
+        assert body["collateral"] == 0
         blob = json.dumps(body)
-        for needle in ("very_distinctive_payload_xyz", "ACME-WS77",
+        for needle in ("very_distinctive_payload_xyz",
+                       "unexecuted_acceptable_marker",
                        "answer_key", '"actions_reviewed"', '"reviewed"',
-                       '"expected"', "ACME-WS90"):
+                       '"expected"', '"status"', "ACME-UNEX99"):
             assert needle not in blob, f"score payload leaked {needle!r}"
     finally:
         _cleanup(sid, s)

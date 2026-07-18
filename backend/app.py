@@ -2274,6 +2274,7 @@ def materialize_expected_actions(actions, scenario_id, concrete_env, resolved):
             "scenario_id": scenario_id,
             "eid": act.get("id"),
             "action": act["action"],
+            "status": act["status"],
             "target": target,
             "after": list(act.get("after", [])),
         })
@@ -2958,35 +2959,55 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
     clock, no rng. Server-side only: expected composites and the reviewed
     marker never serialize.
 
-    The ruled grading model:
+    The ruled grading model (docs/action-scoring.md is the reference):
     - SUCCESSFUL actions only ever count; no_op and failed_precondition
-      are score-neutral (failed attempts are surfaced factually by the
-      route, outside this function).
+      are score-neutral (both are surfaced factually by the route,
+      outside this function).
+    - Status split (deliberate authoring, no default): REQUIRED actions
+      earn credit and their omission is a miss; ACCEPTABLE actions earn
+      no credit, are never collateral, and are excluded from the score
+      denominator entirely (omission never lowers the score; execution is
+      surfaced factually). Any successful action matching neither list is
+      collateral (scoped below).
     - Tri-state gate: a scenario with actions_reviewed false is excluded
       entirely: it earns nothing, costs nothing, and targets it claims are
-      out of grading scope. actions_reviewed true with expected actions
-      grades normally. actions_reviewed true with an empty set is
-      intentional correct inaction: the scenario contributes one graded
-      unit, credited when no collateral lands in its scope.
+      out of grading scope. actions_reviewed true with required actions
+      grades normally. actions_reviewed true with NO required actions
+      (empty set, or acceptable-only) is intentional correct inaction:
+      one graded unit, credited when no collateral lands in its scope
+      (acceptable executions never cost it).
     - Collateral scoping: a successful unnecessary action is collateral
       only when its target is claimed by at least one REVIEWED scenario
       and by NO unreviewed scenario (shared targets get the benefit of
       the doubt while the corpus review is in flight; the ambiguity
       vanishes at the 3d all-reviewed gate).
     - Isolation grades on END-STATE at scoring time: required containment
-      released before submission forfeits that credit (nothing stacked);
-      clean-host isolation is collateral only while still in effect.
+      released before submission forfeits that credit (nothing stacked).
+      An ACCEPTABLE isolation is score-neutral whether it remains active
+      or is later released (the author sanctioned it; no clean-host
+      penalty). Clean-host isolation matching neither list is collateral
+      only while still in effect.
     - Kill / delete / identity grade on OCCURRENCE from successful log
       entries, matched on full composites.
-    - release_host is a rollback control: never credit, never collateral.
-    - Order-sensitivity only where the answer key declares `after`,
+    - release_host is globally score-neutral: never credit, never
+      collateral merely for being absent from the answer key. Its only
+      scoring effect is indirect: releasing a host whose isolation is
+      required forfeits that end-state credit.
+    - Order-sensitivity only where the answer key declares `after` (on
+      required actions referencing required actions, loader-enforced),
       compared on FIRST successful occurrence (occurrence, not credit).
       An order-violated action is not credited and counts order_violations.
+
+    Returns the score dict plus acceptable_seqs (the first-success
+    sequence numbers of executed acceptable actions) for the route to
+    surface factually; the route pops it before serialization.
     """
     reviewed = [g for g in grading if g["reviewed"]]
     unreviewed = [g for g in grading if not g["reviewed"]]
     reviewed_ids = {g["scenario_id"] for g in reviewed}
     expected = [e for e in expected if e["scenario_id"] in reviewed_ids]
+    required_exp = [e for e in expected if e.get("status") == "required"]
+    acceptable_exp = [e for e in expected if e.get("status") == "acceptable"]
 
     def claims(g, action, target):
         if action in _IDENTITY_ACTION_NAMES:
@@ -3013,11 +3034,12 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
                          _action_target_key(exp["action"], exp["target"])))
         return hit[0] if hit else None
 
-    by_eid = {(x["scenario_id"], x["eid"]): x for x in expected if x.get("eid")}
+    by_eid = {(x["scenario_id"], x["eid"]): x for x in required_exp
+              if x.get("eid")}
 
-    required = len(expected)
+    required = len(required_exp)
     correct = missed = order_violations = 0
-    for exp in expected:
+    for exp in required_exp:
         seq = occurrence_seq(exp)
         if exp["action"] == "isolate_host":
             achieved = seq is not None and exp["target"]["hostname"] in isolated_hosts
@@ -3037,32 +3059,41 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
             if achieved and not order_ok:
                 order_violations += 1
 
-    expected_keys = {(x["action"], _action_target_key(x["action"], x["target"]))
-                     for x in expected}
+    required_keys = {(x["action"], _action_target_key(x["action"], x["target"]))
+                     for x in required_exp}
+    acceptable_keys = {(x["action"], _action_target_key(x["action"], x["target"]))
+                       for x in acceptable_exp}
+    acceptable_seqs = sorted(
+        seq for (action, key), (seq, target) in first.items()
+        if (action, key) in acceptable_keys)
+
     collateral_hits = []
     for (action, key), (seq, target) in first.items():
         if action == "isolate_host":
             continue  # isolation collateral is end-state, counted below
-        if (action, key) in expected_keys:
+        if (action, key) in required_keys or (action, key) in acceptable_keys:
             continue
         if in_grading_scope(action, target):
             collateral_hits.append((action, target))
-    required_iso = {x["target"]["hostname"] for x in expected
+    required_iso = {x["target"]["hostname"] for x in required_exp
                     if x["action"] == "isolate_host"}
+    acceptable_iso = {x["target"]["hostname"] for x in acceptable_exp
+                      if x["action"] == "isolate_host"}
     for hostname in sorted(isolated_hosts):
-        if hostname in required_iso:
+        if hostname in required_iso or hostname in acceptable_iso:
             continue
         target = {"hostname": hostname}
         if in_grading_scope("isolate_host", target):
             collateral_hits.append(("isolate_host", target))
 
-    # Intentional correct inaction: each reviewed scenario with no expected
-    # actions is one graded unit, credited only with clean hands in its
-    # scope. A shared-target collateral hit costs every claiming scenario
-    # its inaction credit (deterministic multi-attribution).
-    scenarios_with_expected = {e["scenario_id"] for e in expected}
+    # Intentional correct inaction: each reviewed scenario with no REQUIRED
+    # actions (empty, or acceptable-only) is one graded unit, credited only
+    # with clean hands in its scope. Acceptable executions never cost it; a
+    # shared-target collateral hit costs every claiming scenario its
+    # inaction credit (deterministic multi-attribution).
+    scenarios_with_required = {e["scenario_id"] for e in required_exp}
     for g in reviewed:
-        if g["scenario_id"] in scenarios_with_expected:
+        if g["scenario_id"] in scenarios_with_required:
             continue
         required += 1
         if any(claims(g, action, target) for action, target in collateral_hits):
@@ -3082,17 +3113,20 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
         "graded": graded,
         "accuracy": accuracy,
         "grade": _letter_grade(accuracy, graded),
+        "acceptable_seqs": acceptable_seqs,
     }
 
 
 @app.route('/api/analytics/action_score', methods=['GET'])
 def get_action_score():
-    """Response-action scoring v1: counts and grade, plus the factual
-    not-executed record (failed_precondition attempts: count + sanitized
-    entries, no editorial label; score-neutral by the standing rule).
-    Which targets were expected never serializes, and neither does the
-    actions_reviewed marker: the answer key cannot be reconstructed from
-    a score poll."""
+    """Response-action scoring v1: counts and grade, plus three factual
+    surfacing blocks (no editorial labels, all score-neutral by the
+    standing taxonomy): not_executed (failed_precondition attempts),
+    no_effect (no_op repeats), acceptable_taken (executed
+    author-sanctioned acceptable actions). Which targets were expected
+    never serializes, and neither do the status or actions_reviewed
+    markers: the answer key cannot be reconstructed from a score poll;
+    acceptable entries surface only AFTER the player executed them."""
     s = g.session
     with s["io_lock"]:
         overlay = s.get("overlay") or action_overlay.new_overlay()
@@ -3102,10 +3136,18 @@ def get_action_score():
             list(s.get("expected_actions", [])), executed,
             set(overlay.get("isolated", ())),
             list(s.get("scenario_grading", [])))
-        failed = [action_overlay.sanitize_action_entry(e)
-                  for e in overlay.get("log", [])
+        log = overlay.get("log", [])
+        acceptable_seqs = set(result.pop("acceptable_seqs"))
+        failed = [action_overlay.sanitize_action_entry(e) for e in log
                   if e["outcome"] == action_overlay.FAILED]
+        noop = [action_overlay.sanitize_action_entry(e) for e in log
+                if e["outcome"] == action_overlay.NO_OP]
+        acceptable = [action_overlay.sanitize_action_entry(e) for e in log
+                      if e["seq"] in acceptable_seqs]
     result["not_executed"] = {"count": len(failed), "entries": failed}
+    result["no_effect"] = {"count": len(noop), "entries": noop}
+    result["acceptable_taken"] = {"count": len(acceptable),
+                                  "entries": acceptable}
     return jsonify(result)
 
 

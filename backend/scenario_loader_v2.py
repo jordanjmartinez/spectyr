@@ -346,17 +346,35 @@ def _pre_check_action_target_shapes(doc, filename):
 
 def _validate_answer_actions(actions, hosts, accounts, filename):
     """Referential rules for answer-key actions (shapes are handled by the
-    schema and the pre-check above)."""
+    schema and the pre-check above): unique ids, unique (action, target)
+    pairs with no pair under both statuses, targets resolving to the
+    environment, and order declarations on required actions referencing
+    required actions only."""
     act_ids = [a["id"] for a in actions if "id" in a]
     dup = _dupes(act_ids)
     if dup:
         raise ScenarioError(
             f"{filename}: duplicate answer_key.actions id(s): {sorted(set(dup))}")
     known = set(act_ids)
+    status_by_id = {a["id"]: a.get("status") for a in actions if "id" in a}
 
+    seen_pairs = {}
     for i, act in enumerate(actions):
         name = act["action"]
         tgt = act["target"]
+        pair = (name, tuple(sorted(tgt.items())))
+        if pair in seen_pairs:
+            prev_status = seen_pairs[pair]
+            if prev_status != act.get("status"):
+                raise ScenarioError(
+                    f"{filename}: answer_key.actions[{i}] ({name}): the same "
+                    f"action-target pair is declared under both statuses "
+                    f"(required and acceptable)")
+            raise ScenarioError(
+                f"{filename}: answer_key.actions[{i}] ({name}): duplicate "
+                f"expected action for the same target")
+        seen_pairs[pair] = act.get("status")
+
         if "host" in tgt and tgt["host"] not in hosts:
             raise ScenarioError(
                 f"{filename}: answer_key.actions[{i}] ({name}): target host "
@@ -365,6 +383,10 @@ def _validate_answer_actions(actions, hosts, accounts, filename):
             raise ScenarioError(
                 f"{filename}: answer_key.actions[{i}] ({name}): target account "
                 f"{tgt['account']!r} is not a declared environment account")
+        if act.get("after") and act.get("status") != "required":
+            raise ScenarioError(
+                f"{filename}: answer_key.actions[{i}] ({name}): order "
+                f"declarations apply to required actions only")
         for ref in act.get("after", []):
             if ref not in known:
                 raise ScenarioError(
@@ -374,6 +396,11 @@ def _validate_answer_actions(actions, hosts, accounts, filename):
                 raise ScenarioError(
                     f"{filename}: answer_key.actions[{i}] ({name}): after "
                     f"references itself")
+            if status_by_id.get(ref) != "required":
+                raise ScenarioError(
+                    f"{filename}: answer_key.actions[{i}] ({name}): after "
+                    f"references {ref!r}, which is not a required action; "
+                    f"credit cannot depend on optional actions")
 
     # No cycles in the order-sensitivity graph.
     edges = {a["id"]: list(a.get("after", [])) for a in actions if "id" in a}

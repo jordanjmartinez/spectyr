@@ -27,12 +27,27 @@ const ACT_SCORE = {
       reason: 'Host is offline. The isolation command could not be delivered to the endpoint agent.',
       target: { id: 'ent-aaaa11112222', kind: 'host', label: 'ACME-OFF01' } }],
   },
+  no_effect: {
+    count: 1,
+    entries: [{ seq: 5, timestamp: '2026-07-17T12:00:05+00:00',
+      action: 'disable_account', outcome: 'no_op',
+      reason: 'Account is already disabled.',
+      target: { id: 'ent-cccc11112222', kind: 'account', label: 'ACME\\nkhan' } }],
+  },
+  acceptable_taken: {
+    count: 1,
+    entries: [{ seq: 2, timestamp: '2026-07-17T12:00:02+00:00',
+      action: 'kill_process', outcome: 'success', reason: null,
+      target: { id: 'ent-bbbb11112222', kind: 'process', label: 'cmd.exe (PID 6240) on ACME-WS12' } }],
+  },
 };
 
 const UNGRADED_ACT = {
   required: 0, correct: 0, missed: 0, collateral: 0, order_violations: 0,
   graded: 0, accuracy: 0.0, grade: '-',
   not_executed: { count: 0, entries: [] },
+  no_effect: { count: 0, entries: [] },
+  acceptable_taken: { count: 0, entries: [] },
 };
 
 const mockScores = (act) => {
@@ -54,10 +69,13 @@ test('renders both sections with grades, counts, and factual failed attempts', a
   expect(screen.getByText('85.7% accuracy')).toBeInTheDocument();
   expect(screen.getByText('collateral')).toBeInTheDocument();
   expect(screen.getByText('out of order')).toBeInTheDocument();
-  // failed attempts surfaced factually, no editorial label
+  // the three factual blocks, no editorial labels
   expect(screen.getByText('Attempted, not executed (1)')).toBeInTheDocument();
   expect(screen.getByText('ACME-OFF01')).toBeInTheDocument();
   expect(container.textContent).toMatch(/isolation command could not be delivered/);
+  expect(screen.getByText('Acceptable response (1)')).toBeInTheDocument();
+  expect(screen.getByText('cmd.exe (PID 6240) on ACME-WS12')).toBeInTheDocument();
+  expect(screen.getByText('No effect, already in state (1)')).toBeInTheDocument();
   expect(container.textContent).not.toMatch(/—/);
 });
 

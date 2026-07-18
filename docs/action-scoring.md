@@ -8,25 +8,46 @@ model; `test_action_scoring.py` proves it cell by cell.
 
 - **Successful actions only.** The scorer consumes successful log entries.
   Everything else is score-neutral by construction.
+- **Every answer-key action carries an explicit status** (`required` or
+  `acceptable`; no default, authoring is deliberate):
+  - `required`: earns credit; omission is a missing-action deduction.
+  - `acceptable`: defensible but nonessential. No positive credit, never
+    collateral, and excluded from the score denominator entirely, so
+    omitting it never lowers the score. If executed, it is surfaced in
+    the report as an acceptable response (factual wording, zero score
+    impact).
+  - Any successful action matching neither list is collateral.
 - **Isolation grades on end-state** at scoring time. Required containment
   released before submission forfeits that credit; the forfeiture is the
   whole cost (no stacked reversal penalty). Re-isolating before
-  submission restores it. Clean-host isolation is collateral only while
-  still in effect.
+  submission restores it. An ACCEPTABLE isolation is score-neutral
+  whether it remains active or is later released: the author explicitly
+  approved it as defensible, so it never triggers the clean-host
+  end-state penalty. Isolation matching neither list is collateral only
+  while still in effect.
 - **Kill / delete / identity grade on occurrence** from successful log
   entries, matched on full composites: process = (host, PID), file =
   (host, normalized path), account = (domain, username). The right PID or
   path on the wrong host is a miss plus collateral, never credit.
-- **release_host is a rollback control.** Never credit, never collateral,
-  absent from the answer-key grammar.
-- **Order sensitivity only where declared** (`after` in the answer key).
+- **release_host is globally score-neutral.** Never credit, never
+  collateral merely because it is absent from the answer key; it is
+  absent from the answer-key grammar altogether. Its only scoring effect
+  is indirect: releasing a host that must remain isolated forfeits the
+  required isolation credit.
+- **Order sensitivity only where declared** (`after` in the answer key,
+  on required actions referencing required actions; loader-enforced).
   Comparison uses FIRST successful occurrence sequence numbers:
   occurrence, not credit, so releasing containment later does not
   retroactively invalidate an action correctly taken under it. An
   order-violated action loses its credit and counts in
   `order_violations`.
-- **Accuracy** = correct / (required + collateral); letter grade on the
-  shared 10-point scale; `-` before anything is graded.
+- **Accuracy** = correct / (required + collateral); acceptable actions
+  never enter the denominator; letter grade on the shared 10-point
+  scale; `-` before anything is graded.
+- **Loader guarantees:** duplicate expected actions are rejected, as is
+  any action-target pair declared under both statuses. The status field
+  is server-side answer-key data and never serializes (planted-marker
+  leak test); unexecuted acceptable targets never surface.
 
 ## The tri-state grading marker (`answer_key.actions_reviewed`)
 
@@ -35,8 +56,8 @@ Server-side only; never serialized (leak-guard tested).
 | Marker | actions | Meaning |
 |---|---|---|
 | absent / `false` | any | Not yet reviewed: the scenario is EXCLUDED from action scoring. It earns nothing, costs nothing, and targets it claims are out of grading scope. The Response section renders `-` until a reviewed scenario drips. |
-| `true` | non-empty | Graded normally. |
-| `true` | `[]` | Intentional correct inaction (the FP contract): the scenario contributes one graded unit, credited when no collateral lands in its scope; a hit costs both the collateral and the inaction credit. |
+| `true` | has required actions | Graded normally. |
+| `true` | no required actions (`[]`, or acceptable-only) | Intentional correct inaction (the FP contract): the scenario contributes one graded unit, credited when no collateral lands in its scope; a hit costs both the collateral and the inaction credit. Executing an acceptable action never costs the unit. |
 
 Collateral scoping while the corpus review is in flight: a successful
 unnecessary action is collateral only when its target is claimed by at
@@ -54,16 +75,20 @@ unreviewed scenario remains.
 
 | Event | Fate |
 |---|---|
-| Successful required action | Credit (per the model above) |
-| Successful unnecessary action | Collateral penalty (any scenario, including FPs) |
+| Successful REQUIRED action | Credit (per the model above); omission is a miss |
+| Successful ACCEPTABLE action | Neutral; surfaced factually as an acceptable response; excluded from the denominator; never collateral |
+| Successful action on neither list | Collateral penalty (any scenario, including FPs) |
+| `release_host` success | Globally score-neutral; only indirect effect is forfeiting a required isolation's end-state credit |
 | `failed_precondition` attempt | Score-neutral; surfaced FACTUALLY in the report's Response section as attempted actions that did not execute (count + entries, no editorial label); full detail in the Response Log |
-| `no_op` repeat | Score-neutral, not surfaced in the report (the first success already carried whatever it earned or cost) |
+| `no_op` repeat | Score-neutral; surfaced FACTUALLY (count + entries; the first success already carried whatever it earned or cost) |
 | Malformed / foreign-session / stale / wrong-kind target | API rejection (identical 400 body; no cross-session existence leak), never logged, never scored |
+| Required actions | Must be achievable from the initial scenario state (validator-enforced, seed-independent); the same bar applies to acceptable actions |
 
 ## Achievability (validator-enforced, seed-independent)
 
-Every required answer-key action must be executable from the scenario's
-initial world state. Enforced, not advisory: a scenario with
+Every answer-key action, REQUIRED and ACCEPTABLE alike, must be
+executable from the scenario's initial world state and resolve only to
+authored sources. Enforced, not advisory: a scenario with
 `actions_reviewed: true` failing achievability is a hard validation error,
 same severity as a schema violation (`scenario_loader_v2.py`), and the
 runtime harness re-proves it by executing every reviewed scenario's
