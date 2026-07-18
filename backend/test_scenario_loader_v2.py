@@ -450,6 +450,7 @@ REVIEWED_SCENARIOS = {
     "false_positive_veeam",
     "c2_http",
     "malware_ransomware",
+    "data_exfil_archive",
 }
 
 
