@@ -297,6 +297,18 @@ answer_key:
       target:
         host: "ws_victim"
         pid: 4812
+    # Acceptable: the required delete_file of svchost32.exe already neutralizes
+    # this Run-key persistence (the payload is gone). Removing the Run-key
+    # registration directly is a defensible alternative path, so it is
+    # surfaced factually, never collateral. Dual-flag model: delete_file
+    # clears the file flag, remove_persistence clears the registration flag;
+    # the row survives until both, so either order stays executable and a
+    # redundant later action is a no-op with no score impact.
+    - action: "remove_persistence"
+      status: "acceptable"
+      target:
+        host: "ws_victim"
+        persistence: "run_key:HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run\\WindowsServices"
   traps:
     - action: "disable_account"
       target:
