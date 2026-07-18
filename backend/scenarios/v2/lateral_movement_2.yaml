@@ -308,7 +308,50 @@ answer_key:
     accounts: ["victim"]
   root_cause: "s1"
   techniques: ["T1003.001"]
-  actions: []
+  actions_reviewed: true
+  actions:
+    - id: "a_iso"
+      action: "isolate_host"
+      status: "required"
+      target:
+        host: "ws_victim"
+    - action: "kill_process"
+      status: "required"
+      target:
+        host: "ws_victim"
+        pid: 19840
+    - action: "kill_process"
+      status: "required"
+      target:
+        host: "ws_victim"
+        pid: 21056
+    - action: "revoke_sessions"
+      status: "required"
+      target:
+        account: "victim"
+    - id: "a_reset"
+      action: "force_password_reset"
+      status: "required"
+      target:
+        account: "victim"
+      after: ["a_iso"]
+    - action: "disable_account"
+      status: "acceptable"
+      target:
+        account: "victim"
+  # W1 (3c Batch 4 review): the file server stays online; isolate_host on it
+  # is kept as an executable collateral trap (the movement target, not
+  # compromised). The offline-host mechanic remains unit-tested and unused in
+  # authored content; a future trusted-actor-compromised scenario is the
+  # natural place to exercise it.
+  traps:
+    - action: "isolate_host"
+      target:
+        host: "file"
+    - action: "kill_process"
+      target:
+        host: "ws_victim"
+        pid: 6180
 
 triage_review:
   mitre:

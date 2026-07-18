@@ -57,3 +57,16 @@ byte-identical, via the `_SHAREPOINT_TENANT` constant in `migrate_v1_to_v2.py`).
 When org-prefix theming substitution lands, this tenant literal joins the
 `{org_prefix}` set so the `acme` prefix is substituted consistently (e.g.
 `{org_prefix}-my.sharepoint.com`) rather than hardcoded in four places.
+
+## Offline-host wrinkle: exercise in the trusted-actor-compromised scenario
+
+**Target: when the trusted-actor-compromised scenario is authored (backlog).**
+
+The offline-host isolation wrinkle (isolating a declared-offline host fails
+with an in-fiction agent-delivery error, surfaced factually and score-neutral)
+is implemented and unit-tested (test_actions.py, test_action_scoring.py) but is
+NOT used in any authored scenario (3c Batch 4 review ruling: do not alter a
+host's status merely to exercise the mechanic). The trusted-actor-compromised
+scenario is the natural place to exercise it in real content - e.g. a host the
+actor has already taken offline, where a reflexive isolate fails and teaches the
+offline-host lesson. Wire it there when that scenario is authored.

@@ -483,6 +483,7 @@ REVIEWED_SCENARIOS = {
     "false_positive_pentest",
     "false_positive_robocopy",
     "false_positive_ssl_inspection",
+    "lateral_movement_2",
 }
 
 
