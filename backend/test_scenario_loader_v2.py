@@ -398,6 +398,7 @@ REVIEWED_SCENARIOS = {
     "phishing_1",
     "password_spray",
     "lateral_movement_1",
+    "false_positive_veeam",
 }
 
 

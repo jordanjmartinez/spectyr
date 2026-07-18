@@ -234,6 +234,7 @@ answer_key:
     accounts: []
   root_cause: null
   techniques: []
+  actions_reviewed: true
   actions: []
 
 triage_review:
