@@ -74,11 +74,26 @@ def _corrected_v1_chain(label, chain):
         else:
             assert step.get(corr["field"]) == corr["v1"]
             step[corr["field"]] = corr["v2"]
+    for old, new in scenario_corrections.entity_renames(label):
+        chain = _rename_placeholders(chain, old, new)
     return chain
 
 
+def _rename_placeholders(obj, old, new):
+    """Recursively rewrite {old.X} -> {new.X} in every string in a structure."""
+    token = "{" + old + "."
+    repl = "{" + new + "."
+    if isinstance(obj, str):
+        return obj.replace(token, repl)
+    if isinstance(obj, list):
+        return [_rename_placeholders(v, old, new) for v in obj]
+    if isinstance(obj, dict):
+        return {k: _rename_placeholders(v, old, new) for k, v in obj.items()}
+    return obj
+
+
 def _corrected_v1_entities(label, entities):
-    """The v1 entities with the approved entity corrections applied."""
+    """The v1 entities with the approved entity corrections + renames applied."""
     entities = copy.deepcopy(entities)
     for corr in scenario_corrections.for_label(label):
         if corr["kind"] != "entity":
@@ -87,6 +102,9 @@ def _corrected_v1_entities(label, entities):
         assert spec.get(corr["field"]) == corr["v1"], (
             f"{label}: v1 no longer carries the correction precondition")
         spec[corr["field"]] = corr["v2"]
+    for old, new in scenario_corrections.entity_renames(label):
+        assert old in entities, f"{label}: rename precondition missing ({old})"
+        entities[new] = entities.pop(old)
     return entities
 
 
@@ -141,6 +159,12 @@ def test_corrections_present_in_v2():
             actual = node.get(leaf)
         elif corr["kind"] == "entity":
             actual = catalog[corr["label"]]["entities"][corr["entity"]].get(corr["field"])
+        elif corr["kind"] == "rename_entity":
+            entities = catalog[corr["label"]]["entities"]
+            assert corr["v2"] in entities and corr["v1"] not in entities, (
+                f"{corr['label']}: rename {corr['v1']}->{corr['v2']} not applied "
+                f"in v2 (keys: {sorted(entities)})")
+            continue
         else:
             step = catalog[corr["label"]]["chain"][corr["step"]]
             if corr["field"].startswith("kvp."):
@@ -451,6 +475,7 @@ REVIEWED_SCENARIOS = {
     "c2_http",
     "malware_ransomware",
     "data_exfil_archive",
+    "insider_staging",
 }
 
 

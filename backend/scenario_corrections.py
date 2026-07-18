@@ -190,5 +190,38 @@ CORRECTIONS += [
 ]
 
 
+# 3c Batch 2 review: insider_staging is an insider-threat scenario where the
+# account holder is the threat, not a victim. The employee/account entity is
+# renamed victim -> insider (internal id only; every {victim.X} placeholder
+# re-resolves as {insider.X} to the same substituted value, so rendered output
+# is byte-identical and parity_check_v2 stays CLEAN with no new rendered diff).
+CORRECTIONS += [
+    {
+        "label": "insider_staging",
+        "kind": "rename_entity",
+        "v1": "victim",
+        "v2": "insider",
+        "reason": (
+            "Insider-threat scenario: the account holder is the threat, not a "
+            "victim (I2 ruling). The employee/account entity id is renamed "
+            "victim -> insider; the ws_victim HOST id is unchanged. Internal "
+            "id only: placeholders re-resolve to the same values, rendered "
+            "logs byte-identical."
+        ),
+        "approved": "3c Batch 2 review (approved 2026-07-17)",
+    }
+]
+
+
 def for_label(label):
     return [c for c in CORRECTIONS if c["label"] == label]
+
+
+def entity_renames(label):
+    """(old_key, new_key) entity renames approved for a label. Applied by the
+    loader-parity test when projecting the frozen v1 corpus onto v2 for
+    comparison. (The v2 corpus is the hand-maintained source of truth from
+    Stage 2 on; the Stage-0 migrator is not re-run, so it does not emit this
+    rename any more than it emits the Stage 2 detections or Stage 3 actions.)"""
+    return [(c["v1"], c["v2"]) for c in CORRECTIONS
+            if c["label"] == label and c["kind"] == "rename_entity"]

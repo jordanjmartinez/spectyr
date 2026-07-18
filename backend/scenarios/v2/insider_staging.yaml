@@ -13,7 +13,7 @@ narrative:
   storyline: "A user account accessed a file share containing sensitive financial records outside of their normal role. A document was copied locally before an outbound connection was established to a personal cloud storage service. No transfer approval or business justification exists for this activity."
 
 entities:
-  victim:
+  insider:
     type: "employee"
   exfil_domain:
     type: "domain"
@@ -29,8 +29,8 @@ environment:
   hosts:
     - id: "ws_victim"
       role: "workstation"
-      hostname: "{victim.hostname}"
-      ip: "{victim.ip}"
+      hostname: "{insider.hostname}"
+      ip: "{insider.ip}"
       os: "Windows 11 Enterprise"
       desc: "User workstation"
     - id: "file"
@@ -46,8 +46,8 @@ environment:
       os: "PAN-OS"
       desc: "Proxy (PAN-OS VM-Series)"
   accounts:
-    - id: "victim"
-      username: "{victim.username}"
+    - id: "insider"
+      username: "{insider.username}"
       domain: "ACME"
       type: "user"
       host: "ws_victim"
@@ -55,14 +55,14 @@ environment:
 attack:
   - id: "s1"
     host: "file"
-    user: "victim"
+    user: "insider"
     offset: 0
     event_type: "4624"
     source_type: "Windows Security"
     log_source: "Windows Security"
     severity: "low"
     hostname: "{infra.file.hostname}"
-    source_ip: "{victim.ip}"
+    source_ip: "{insider.ip}"
     destination_ip: "{infra.file.ip}"
     message: "An account was successfully logged on."
     key_value_pairs:
@@ -74,14 +74,14 @@ attack:
       subject_account_domain: "-"
       subject_logon_id: "0x0"
       logon_type: "3"
-      account_name: "{victim.username}"
+      account_name: "{insider.username}"
       account_domain: "ACME"
       new_logon_logon_id: "0x9C4D82"
       logon_guid: "{00000000-0000-0000-0000-000000000000}"
       process_id: "0x0"
       process_name: "-"
-      workstation_name: "{victim.hostname}"
-      src_ip: "{victim.ip}"
+      workstation_name: "{insider.hostname}"
+      src_ip: "{insider.ip}"
       src_port: "50892"
       logon_process: "Kerberos"
       authentication_package: "Kerberos"
@@ -91,14 +91,14 @@ attack:
 
   - id: "s2"
     host: "file"
-    user: "victim"
+    user: "insider"
     offset: [30, 90]
     event_type: "5140"
     source_type: "Windows Security"
     log_source: "Windows Security"
     severity: "medium"
     hostname: "{infra.file.hostname}"
-    source_ip: "{victim.ip}"
+    source_ip: "{insider.ip}"
     destination_ip: "{infra.file.ip}"
     message: "A network share object was accessed."
     key_value_pairs:
@@ -106,11 +106,11 @@ attack:
       channel: "WinEventLog:Security"
       computer: "{infra.file.hostname}"
       subject_user_sid: "S-1-5-21-1547161642-1842894336-919524151-1105"
-      account_name: "{victim.username}"
+      account_name: "{insider.username}"
       account_domain: "ACME"
       subject_logon_id: "0x9C4D82"
       object_type: "File"
-      src_ip: "{victim.ip}"
+      src_ip: "{insider.ip}"
       src_port: "50892"
       share_name: "\\\\*\\Finance"
       share_local_path: "\\??\\C:\\Finance"
@@ -119,52 +119,52 @@ attack:
 
   - id: "s3"
     host: "ws_victim"
-    user: "victim"
+    user: "insider"
     offset: [5, 15]
     event_type: "FileCreate"
     source_type: "Sysmon"
     log_source: "Sysmon"
     severity: "medium"
-    hostname: "{victim.hostname}"
-    source_ip: "{victim.ip}"
-    user_account: "ACME\\{victim.username}"
+    hostname: "{insider.hostname}"
+    source_ip: "{insider.ip}"
+    user_account: "ACME\\{insider.username}"
     message: "File created: Q4_2025_Earnings_Draft.xlsx"
     key_value_pairs:
       event_id: 11
       channel: "Microsoft-Windows-Sysmon/Operational"
-      computer: "{victim.hostname}"
+      computer: "{insider.hostname}"
       rule_name: ""
       process_id: "4412"
       image: "C:\\Windows\\explorer.exe"
-      target_filename: "C:\\Users\\{victim.username}\\Desktop\\Project_Archive\\Q4_2025_Earnings_Draft.xlsx"
-      user: "{victim.user_domain}"
+      target_filename: "C:\\Users\\{insider.username}\\Desktop\\Project_Archive\\Q4_2025_Earnings_Draft.xlsx"
+      user: "{insider.user_domain}"
 
   - id: "s4"
     host: "ws_victim"
-    user: "victim"
+    user: "insider"
     offset: [2, 5]
     event_type: "NetworkConnect"
     source_type: "Sysmon"
     log_source: "Sysmon"
     severity: "medium"
-    hostname: "{victim.hostname}"
-    source_ip: "{victim.ip}"
+    hostname: "{insider.hostname}"
+    source_ip: "{insider.ip}"
     destination_ip: "{exfil_ip.ip}"
-    user_account: "ACME\\{victim.username}"
+    user_account: "ACME\\{insider.username}"
     message: "Outbound connection to {exfil_domain.value} initiated by chrome.exe"
     key_value_pairs:
       event_id: 3
       channel: "Microsoft-Windows-Sysmon/Operational"
-      computer: "{victim.hostname}"
+      computer: "{insider.hostname}"
       rule_name: ""
       process_id: "7832"
       image: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
-      user: "{victim.user_domain}"
+      user: "{insider.user_domain}"
       protocol: "tcp"
       initiated: true
       source_is_ipv6: false
-      source_ip: "{victim.ip}"
-      source_hostname: "{victim.hostname}"
+      source_ip: "{insider.ip}"
+      source_hostname: "{insider.hostname}"
       source_port_name: ""
       destination_is_ipv6: false
       destination_ip: "{exfil_ip.ip}"
@@ -174,22 +174,22 @@ attack:
 
   - id: "s5"
     host: "ws_victim"
-    user: "victim"
+    user: "insider"
     offset: [5, 15]
     trigger: true
     event_type: "HTTP_CONNECT"
     source_type: "Proxy"
     log_source: "Proxy"
     severity: "high"
-    hostname: "{victim.hostname}"
-    source_ip: "{victim.ip}"
+    hostname: "{insider.hostname}"
+    source_ip: "{insider.ip}"
     destination_ip: "{exfil_ip.ip}"
-    user_account: "ACME\\{victim.username}"
+    user_account: "ACME\\{insider.username}"
     message: "CONNECT tunnel established to {exfil_domain.value} on port 443"
     key_value_pairs:
-      src_ip: "{victim.ip}"
+      src_ip: "{insider.ip}"
       dst_ip: "{exfil_ip.ip}"
-      src_user: "{victim.user_domain}"
+      src_user: "{insider.user_domain}"
       dvc: "{infra.proxy.hostname}"
       url: "{exfil_domain.value}:443"
       app: "web-browsing"
@@ -203,23 +203,23 @@ noise: {}
 supplemental_events:
   - id: "sup1"
     host: "ws_victim"
-    user: "victim"
+    user: "insider"
     offset: -85
     red_herring: true
     event_type: "190"
     source_type: "Veeam"
     log_source: "Veeam"
     severity: "low"
-    hostname: "{victim.hostname}"
-    source_ip: "{victim.ip}"
+    hostname: "{insider.hostname}"
+    source_ip: "{insider.ip}"
     message: "Veeam Agent backup job completed: 1.75 GB to ACME-VEEAM01"
     key_value_pairs:
-      host: "{victim.hostname}"
-      src_ip: "{victim.ip}"
+      host: "{insider.hostname}"
+      src_ip: "{insider.ip}"
       event_log: "Veeam Agent"
       event_id: "190"
       event_level: "Information"
-      job_name: "{victim.hostname} Nightly Backup"
+      job_name: "{insider.hostname} Nightly Backup"
       status: "Success"
       bytes_backed_up: "1879048192"
       bytes_backed_up_human: "1.75 GB"
@@ -266,10 +266,36 @@ answer_key:
   classification: "Insider Threat"
   scope:
     hosts: ["file", "ws_victim"]
-    accounts: ["victim"]
+    accounts: ["insider"]
   root_cause: "s1"
   techniques: ["T1074.001"]
-  actions: []
+  actions_reviewed: true
+  actions:
+    - action: "disable_account"
+      status: "required"
+      target:
+        account: "insider"
+    - action: "revoke_sessions"
+      status: "required"
+      target:
+        account: "insider"
+    - action: "isolate_host"
+      status: "required"
+      target:
+        host: "ws_victim"
+    - action: "kill_process"
+      status: "acceptable"
+      target:
+        host: "ws_victim"
+        pid: 7832
+    - action: "force_password_reset"
+      status: "acceptable"
+      target:
+        account: "insider"
+  traps:
+    - action: "isolate_host"
+      target:
+        host: "file"
 
 triage_review:
   mitre:

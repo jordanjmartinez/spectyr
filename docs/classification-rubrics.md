@@ -134,6 +134,21 @@ while any revoke or disable on them is collateral. The identical actions
 on lgreen are REQUIRED because the evidence exists there: the s6 4624
 success is an attacker logon with that account.
 
+## Response-action rubric: insider accounts and password reset (I2)
+
+(3c Batch 2, insider_staging ruling, 2026-07-17.)
+
+For an insider actor operating with their own legitimate credentials, the
+eviction is disable_account (remove the account from use), and
+revoke_sessions evicts the active malicious session. A
+force_password_reset cannot evict an account's legitimate owner: the
+insider knows and owns the credential, so resetting it is nonessential
+offboarding hygiene, not evidence-driven eviction. Author it acceptable,
+never required, and never treat it as the eviction. The insider_staging
+answer key applies this: disable and revoke are required, reset is
+acceptable. (In this scenario the account holder is the threat, not a
+victim; the account entity is named `insider` accordingly.)
+
 ## Response-action rubric: containment class doctrine (R1)
 
 (3c Batch 2, ransomware isolation ruling, 2026-07-17.)
