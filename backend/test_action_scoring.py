@@ -401,12 +401,11 @@ def test_scenario_grading_record_carries_scope_and_flag():
     assert {h["hostname"] for h in env["hosts"]} == rec["hostnames"]
     assert ("acme", "svc_vulnscan") in rec["accounts"]
     assert ("acme", "nkhan") in rec["accounts"]
-    # a not-yet-reviewed scenario stays reviewed=False (pick one dynamically
-    # so the fixture survives later batches reviewing any given label)
-    unreviewed = next(l for l, s in app.yaml_catalog.items()
-                      if not s["answer_key"].get("actions_reviewed"))
-    sc2, _, env2 = _resolved_env(unreviewed)
-    assert app.scenario_grading_record("scenario-u", sc2, env2)["reviewed"] is False
+    # A not-yet-reviewed scenario stays reviewed=False. The corpus is now
+    # fully reviewed (20/20), so synthesize the unreviewed marker state
+    # rather than searching for a corpus member that no longer exists.
+    unrev_entry = {"answer_key": {"actions_reviewed": False, "actions": []}}
+    assert app.scenario_grading_record("scenario-u", unrev_entry, env)["reviewed"] is False
 
 
 # --- achievability across the fixed seed set ------------------------------------

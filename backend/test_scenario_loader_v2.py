@@ -486,6 +486,7 @@ REVIEWED_SCENARIOS = {
     "lateral_movement_2",
     "phishing_link",
     "insider_shadow_it",
+    "defense_evasion_log_clearing",
 }
 
 

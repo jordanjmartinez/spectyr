@@ -268,7 +268,47 @@ answer_key:
     accounts: ["victim"]
   root_cause: "s1"
   techniques: ["T1685.005"]
-  actions: []
+  actions_reviewed: true
+  actions:
+    # Required: contain the endpoint and remove the active WMI subscription
+    # persistence. Isolating and killing the wevtutil processes alone is
+    # incomplete - the subscription survives and can relaunch the payload;
+    # remove_persistence on the correlated WindowsUpdConsumer subscription is
+    # the completing containment step (registration-only, so removal fully
+    # neutralizes it).
+    - action: "isolate_host"
+      status: "required"
+      target:
+        host: "ws_victim"
+    - action: "remove_persistence"
+      status: "required"
+      target:
+        host: "ws_victim"
+        persistence: "wmi:WindowsUpdConsumer"
+    # Acceptable: killing the two malicious wevtutil instances is defensible
+    # cleanup but nonessential (the clears are one-shot; the log damage is
+    # done).
+    - action: "kill_process"
+      status: "acceptable"
+      target:
+        host: "ws_victim"
+        pid: 22480
+    - action: "kill_process"
+      status: "acceptable"
+      target:
+        host: "ws_victim"
+        pid: 22544
+  traps:
+    # Killing the benign maintenance wevtutil (legitimate GPO log backup) and
+    # disabling the account (host compromise, not credential compromise) are
+    # collateral.
+    - action: "kill_process"
+      target:
+        host: "ws_victim"
+        pid: 8820
+    - action: "disable_account"
+      target:
+        account: "victim"
 
 triage_review:
   mitre:
