@@ -764,3 +764,247 @@ set by test_action_scoring; traps additionally grade collateral.
 - TRAP  `disable_account`  account=victim
 - TRAP  `isolate_host`  host=ws_victim
 
+
+---
+
+# Batch 3 (SCAFFOLD, awaiting owner approval)
+
+Five scenarios. Statuses per ratified P2; identity per the P1 rubric.
+Every proposed required, acceptable, and trap target is checked against
+the ratified structural reachability invariant (resolves to an authored
+entity across all fixed seeds; available through a real current UI
+control; executable from the initial world; preserves its intended
+scoring result). Reachability proves availability only; narrative
+correctness is the owner's call.
+
+Offline-host wrinkle: NOT used in any Batch 3 scenario (reserved).
+
+## Cross-scenario expressibility flags
+
+- **EX-BF (brute_force_attack, BLOCKING):** see scenario 1. The correct
+  containment for an external failed brute force is blocking the source
+  IP, which the seven-verb vocabulary cannot express. Scenario blocked
+  pending an owner resolution; not authored until resolved.
+- **EX-RECON (defense_evasion, defense_evasion_log_clearing,
+  non-blocking near-miss):** the vocabulary has no "re-enable a disabled
+  security control" (defense_evasion, re-enable Defender) or "remove a
+  persistence subscription" (log_clearing, remove the WMI event consumer)
+  action. These are recovery/remediation, not containment; isolate + kill
+  + delete fully contain both scenarios, so the answer keys are complete
+  without them. Flagged so the recurring gap (the vocabulary covers
+  process/host/file/account containment, not control-reconfiguration or
+  subscription-removal) is on record before a future scenario needs it as
+  a required response.
+
+## 1. brute_force_attack (Brute Force, difficulty 1) - EXPRESSIBILITY BLOCKED
+
+Evidence: s1-s4 are 4625 failures against the victim account on the DC
+from an EXTERNAL source; s5 is a 4740 lockout. There is NO 4624 success:
+the account was targeted and locked out, never breached.
+
+Vocabulary analysis (why this is blocked):
+- isolate_host: no internal compromised host. The DC is the target and
+  sensor; the source is external. Isolating the DC is collateral.
+- kill_process / delete_file: nothing runs or was dropped on our hosts
+  (remote authentication attempts only).
+- identity: the account was not breached (all failures + lockout), so
+  disable and revoke are collateral; force_password_reset is at most
+  acceptable hygiene (targeting without compromise, per P1).
+
+The correct primary containment - block the external source IP at the
+perimeter - is not expressible in the seven-verb vocabulary. Per the
+expressibility rule the scenario is BLOCKED and not marked
+actions_reviewed until the owner resolves it. Options:
+
+- (a) Accept required-empty (RECOMMENDED). The account lockout already
+  contained the failed attack; the correct response is investigation plus
+  an optional precautionary force_password_reset (acceptable hygiene).
+  Author as reviewed with NO required action (the system-contained-attack
+  inaction case), acceptable reset on the victim, traps = over-reactions.
+  Lesson: do not over-react to a brute force the lockout already
+  contained. Needs owner blessing that an attack scenario may correctly
+  grade as inaction.
+- (b) Extend the vocabulary with a block-source-ip / block-indicator
+  action (separate reviewed schema + engineering change); then required =
+  block the external source.
+- (c) Reshape the evidence so the brute force succeeds (add a 4624),
+  making the victim breached and reset + revoke required - but this
+  changes the scenario's nature and contradicts the "locked out" story.
+
+Contingent shape under option (a): ACCEPTABLE force_password_reset victim
+(reachable: victim surfaced by det_bruteforce_burst / det_lockout).
+TRAPS isolate_host dc (the target/sensor), disable_account victim (not
+breached), disable_account svc_backup (the privileged-lockout FP account,
+surfaced by det_privileged_lockout_fp). Expected end-state: nothing
+disruptive done; the lockout stands; optional reset. UI reachability: all
+contingent targets confirmed reachable. NOT AUTHORED pending the ruling.
+
+## 2. c2_dns_tunnel (Command & Control, difficulty 3)
+
+```yaml
+  actions_reviewed: true
+  actions:
+    - action: "isolate_host"
+      status: "required"
+      target: { host: "ws_victim" }
+    - action: "kill_process"
+      status: "required"
+      target: { host: "ws_victim", pid: 17892 }
+  traps:
+    - action: "disable_account"
+      target: { account: "victim" }
+    - action: "isolate_host"
+      target: { host: "dns" }
+```
+
+Rationale: parallels c2_http. isolate ws_victim REQUIRED (sever the DNS
+tunnel C2). kill 17892 (synchost.exe, s1, the DNS-tunnel loader) REQUIRED
+(active malicious process). No delete (the loader image is not
+autorun-backed, so not reachable, per FX2). No identity (host compromise,
+no credential evidence). Traps: disable the victim account (surfaced by
+det_dns_loader_exec; host is compromised, not the credential), isolate
+the DNS server (infra, not the endpoint).
+
+Ordering: none. Offline wrinkle: no. Expressibility: none.
+UI reachability: kill 17892 (Processes row), isolate ws_victim / dns
+(Overview), disable victim (Threats via det_dns_loader_exec) - all
+confirmed across seeds. Expected end-state: ws_victim isolated, synchost
+17892 gone (its DNS/network rows drop), DNS server and account untouched.
+
+## 3. defense_evasion (Defense Evasion / Stealth, difficulty 2)
+
+```yaml
+  actions_reviewed: true
+  actions:
+    - action: "isolate_host"
+      status: "required"
+      target: { host: "ws_victim" }
+    - action: "kill_process"
+      status: "required"
+      target: { host: "ws_victim", pid: 6104 }
+    - action: "delete_file"
+      status: "required"
+      target: { host: "ws_victim", path: "C:\\Users\\Public\\svchost32.exe" }
+    - action: "kill_process"
+      status: "acceptable"
+      target: { host: "ws_victim", pid: 4812 }
+  traps:
+    - action: "disable_account"
+      target: { account: "victim" }
+```
+
+Rationale: isolate ws_victim REQUIRED (the implant beacons, s6). kill
+6104 REQUIRED (svchost32.exe, s4/s5/s6 - the persistent, beaconing
+implant). delete C:\Users\Public\svchost32.exe REQUIRED - a Public-folder
+implant AND an autorun (s5 sets its Run key), so it is autorun-backed and
+UI-reachable; deleting it also clears the Run-key autorun row (cascade).
+kill 4812 (the powershell LOLBin that disabled Defender and dropped the
+payload, s1/s3) ACCEPTABLE - its work is done by response time; killing
+the instance if still present is defensible.
+
+No identity: the activity ran with no interactive user (malware, not
+credential compromise). Trap: disable the victim account (off-list,
+collateral). EX-RECON near-miss: re-enabling Defender (disabled at s2) is
+not expressible; it is recovery, not containment, and the isolate + kill
++ delete set fully contains the threat.
+
+Ordering: none. Offline wrinkle: no.
+UI reachability: kill 6104 / 4812 (Processes rows), isolate (Overview),
+delete svchost32.exe (Autoruns row), disable victim (Threats via
+det_pubfolder_masquerade) - all confirmed. Expected end-state: ws_victim
+isolated, svchost32 6104 gone, the svchost32 Run-key autorun row gone,
+powershell 4812 at discretion, account untouched.
+
+## 4. defense_evasion_log_clearing (Defense Evasion, difficulty 2)
+
+The existing s5 classification binding (the 1102 log-clear event,
+det_log_cleared true_positive) is UNTOUCHED; only answer_key.actions and
+traps are added.
+
+```yaml
+  actions_reviewed: true
+  actions:
+    - action: "isolate_host"
+      status: "required"
+      target: { host: "ws_victim" }
+    - action: "kill_process"
+      status: "acceptable"
+      target: { host: "ws_victim", pid: 22480 }
+    - action: "kill_process"
+      status: "acceptable"
+      target: { host: "ws_victim", pid: 22544 }
+  traps:
+    - action: "kill_process"
+      target: { host: "ws_victim", pid: 8820 }
+    - action: "disable_account"
+      target: { account: "victim" }
+```
+
+Rationale: isolate ws_victim REQUIRED (contain the compromised host). The
+two wevtutil.exe instances (22480 s4, 22544 s6) that cleared the logs are
+transient LOLBins whose work is done by response time; killing them if
+present is defensible cleanup, ACCEPTABLE. No delete (log clearing drops
+no payload; wevtutil is a system binary). No identity (no credential
+compromise).
+
+EX-RECON near-miss: removing the WMI persistence (s1-s3 event
+filter/consumer/binding) is not expressible (no subscription-removal
+action); it is remediation and isolation contains the network side, so
+the answer key is complete without it, though the host is not fully
+cleaned by response actions alone (a real-world reimage step) - flagged.
+
+Traps: kill 8820 (the BENIGN maintenance-window wevtutil, sup1, the
+det_maint_logclear_fp false positive - a designed distinction between the
+malicious and benign log clears), disable the victim account (off-list).
+
+Ordering: none. Offline wrinkle: no.
+UI reachability: kill 22480 / 22544 / 8820 (Processes rows), isolate
+(Overview), disable victim (Threats via det_log_cleared) - all confirmed.
+Expected end-state: ws_victim isolated, the malicious wevtutil instances
+at discretion, the benign 8820 and the account untouched.
+
+## 5. false_positive_pentest (False Positive, difficulty 1)
+
+```yaml
+  actions_reviewed: true
+  actions: []
+  traps:
+    - action: "disable_account"
+      target: { account: "victim" }
+    - action: "isolate_host"
+      target: { host: "ws_victim" }
+```
+
+Rationale: an authorized KnowBe4 phishing simulation - the reported
+password-reset email and lookalike-domain visit are a sanctioned pentest
+(all three detections false_positive). Correct response is NO action: one
+graded unit of intentional inaction. Traps: disable the victim account
+and isolate the workstation, the identity and host over-reactions the
+scenario is built to test (both collateral, both costing the inaction
+unit).
+
+Ordering: none. Offline wrinkle: no. Expressibility: none.
+UI reachability: disable victim (Threats via det_fp_pentest), isolate
+ws_victim (Overview) - confirmed. Expected end-state: nothing changed;
+the inaction unit credited.
+
+## Batch 3 summary for approval
+
+| Scenario | Required | Acceptable | Traps | Order | Wrinkle | Flag |
+|---|---|---|---|---|---|---|
+| brute_force_attack | BLOCKED | - | - | - | no | EX-BF (blocking) |
+| c2_dns_tunnel | iso + kill 17892 | none | disable victim, isolate dns | none | no | - |
+| defense_evasion | iso + kill 6104 + delete svchost32 | kill 4812 | disable victim | none | no | EX-RECON |
+| defense_evasion_log_clearing | iso | kill 22480 + 22544 | kill 8820, disable victim | none | no | EX-RECON |
+| false_positive_pentest | none (inaction) | none | disable victim, isolate ws | none | no | - |
+
+Open items for the owner:
+- EX-BF: resolve brute_force_attack (recommend option (a): required-empty
+  + acceptable hygiene reset). NOT authored until ruled.
+- EX-RECON: acknowledge the non-blocking vocabulary near-miss (no
+  security-control-reconfiguration or persistence-removal verb); the two
+  defense-evasion answer keys are complete without it.
+
+No implementation until approved. Each approved scenario lands one per
+commit (actions + actions_reviewed + traps together), gates per batch via
+the pre-commit hook. Batch 4 remains blocked until Batch 3 review.
