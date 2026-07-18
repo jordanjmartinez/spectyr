@@ -13,7 +13,7 @@ narrative:
   storyline: "A workstation launched an application not on the approved software list. Shortly after, multiple sensitive documents were moved into a folder associated with the application, and the proxy logged an upload to an external cloud storage provider. The employee has not submitted a software installation request."
 
 entities:
-  victim:
+  employee:
     type: "employee"
   cloud_domain:
     type: "domain"
@@ -29,8 +29,8 @@ environment:
   hosts:
     - id: "ws_victim"
       role: "workstation"
-      hostname: "{victim.hostname}"
-      ip: "{victim.ip}"
+      hostname: "{employee.hostname}"
+      ip: "{employee.ip}"
       os: "Windows 11 Enterprise"
       desc: "User workstation"
     - id: "dns"
@@ -46,8 +46,8 @@ environment:
       os: "PAN-OS"
       desc: "Proxy (PAN-OS VM-Series)"
   accounts:
-    - id: "victim"
-      username: "{victim.username}"
+    - id: "employee"
+      username: "{employee.username}"
       domain: "ACME"
       type: "user"
       host: "ws_victim"
@@ -55,81 +55,81 @@ environment:
 attack:
   - id: "s1"
     host: "ws_victim"
-    user: "victim"
+    user: "employee"
     offset: 0
     event_type: "ProcessCreate"
     source_type: "Sysmon"
     log_source: "Sysmon"
     severity: "low"
-    hostname: "{victim.hostname}"
-    source_ip: "{victim.ip}"
-    user_account: "ACME\\{victim.username}"
+    hostname: "{employee.hostname}"
+    source_ip: "{employee.ip}"
+    user_account: "ACME\\{employee.username}"
     message: "Process created: Dropbox.exe"
     key_value_pairs:
       event_id: 1
       channel: "Microsoft-Windows-Sysmon/Operational"
-      computer: "{victim.hostname}"
+      computer: "{employee.hostname}"
       rule_name: ""
       process_id: "14320"
-      image: "C:\\Users\\{victim.username}\\AppData\\Roaming\\Dropbox\\bin\\Dropbox.exe"
+      image: "C:\\Users\\{employee.username}\\AppData\\Roaming\\Dropbox\\bin\\Dropbox.exe"
       file_version: "198.4.7431"
       description: "Dropbox"
       product: "Dropbox"
       company: "Dropbox, Inc."
       original_file_name: "Dropbox.exe"
-      command_line: "\"C:\\Users\\{victim.username}\\AppData\\Roaming\\Dropbox\\bin\\Dropbox.exe\" /systemstartup"
-      current_directory: "C:\\Users\\{victim.username}\\AppData\\Roaming\\Dropbox\\bin\\"
-      user: "{victim.user_domain}"
+      command_line: "\"C:\\Users\\{employee.username}\\AppData\\Roaming\\Dropbox\\bin\\Dropbox.exe\" /systemstartup"
+      current_directory: "C:\\Users\\{employee.username}\\AppData\\Roaming\\Dropbox\\bin\\"
+      user: "{employee.user_domain}"
       terminal_session_id: "1"
       integrity_level: "Medium"
       parent_process_id: "3456"
       parent_image: "C:\\Windows\\explorer.exe"
       parent_command_line: "C:\\Windows\\explorer.exe"
-      parent_user: "{victim.user_domain}"
+      parent_user: "{employee.user_domain}"
 
   - id: "s2"
     host: "ws_victim"
-    user: "victim"
+    user: "employee"
     offset: [10, 30]
     event_type: "FileCreate"
     source_type: "Sysmon"
     log_source: "Sysmon"
     severity: "medium"
-    hostname: "{victim.hostname}"
-    source_ip: "{victim.ip}"
-    user_account: "ACME\\{victim.username}"
+    hostname: "{employee.hostname}"
+    source_ip: "{employee.ip}"
+    user_account: "ACME\\{employee.username}"
     message: "File created: ACME_Client_NDA_2026.pdf"
     key_value_pairs:
       event_id: 11
       channel: "Microsoft-Windows-Sysmon/Operational"
-      computer: "{victim.hostname}"
+      computer: "{employee.hostname}"
       rule_name: ""
       process_id: "4892"
       image: "C:\\Windows\\explorer.exe"
-      target_filename: "C:\\Users\\{victim.username}\\AppData\\Roaming\\CloudSync\\Work Documents\\ACME_Client_NDA_2026.pdf"
-      user: "{victim.user_domain}"
+      target_filename: "C:\\Users\\{employee.username}\\AppData\\Roaming\\CloudSync\\Work Documents\\ACME_Client_NDA_2026.pdf"
+      user: "{employee.user_domain}"
 
   - id: "s3"
     host: "ws_victim"
-    user: "victim"
+    user: "employee"
     offset: [2, 5]
     event_type: "FileCreate"
     source_type: "Sysmon"
     log_source: "Sysmon"
     severity: "medium"
-    hostname: "{victim.hostname}"
-    source_ip: "{victim.ip}"
-    user_account: "ACME\\{victim.username}"
+    hostname: "{employee.hostname}"
+    source_ip: "{employee.ip}"
+    user_account: "ACME\\{employee.username}"
     message: "File created: ACME_Vendor_Contracts_2026.pdf"
     key_value_pairs:
       event_id: 11
       channel: "Microsoft-Windows-Sysmon/Operational"
-      computer: "{victim.hostname}"
+      computer: "{employee.hostname}"
       rule_name: ""
       process_id: "4892"
       image: "C:\\Windows\\explorer.exe"
-      target_filename: "C:\\Users\\{victim.username}\\AppData\\Roaming\\CloudSync\\Work Documents\\ACME_Vendor_Contracts_2026.pdf"
-      user: "{victim.user_domain}"
+      target_filename: "C:\\Users\\{employee.username}\\AppData\\Roaming\\CloudSync\\Work Documents\\ACME_Vendor_Contracts_2026.pdf"
+      user: "{employee.user_domain}"
 
   - id: "s4"
     host: "ws_victim"
@@ -139,11 +139,11 @@ attack:
     log_source: "DNS"
     severity: "medium"
     hostname: "{infra.dns.hostname}"
-    source_ip: "{victim.ip}"
+    source_ip: "{employee.ip}"
     destination_ip: "{infra.dns.ip}"
     message: "DNS query received for {cloud_domain.value}."
     key_value_pairs:
-      src_ip: "{victim.ip}"
+      src_ip: "{employee.ip}"
       dst_ip: "{infra.dns.ip}"
       src_port: "55201"
       dest_port: "53"
@@ -156,22 +156,22 @@ attack:
 
   - id: "s5"
     host: "ws_victim"
-    user: "victim"
+    user: "employee"
     offset: [5, 15]
     trigger: true
     event_type: "HTTP_POST"
     source_type: "Proxy"
     log_source: "Proxy"
     severity: "high"
-    hostname: "{victim.hostname}"
-    source_ip: "{victim.ip}"
+    hostname: "{employee.hostname}"
+    source_ip: "{employee.ip}"
     destination_ip: "{cloud_ip.ip}"
-    user_account: "ACME\\{victim.username}"
+    user_account: "ACME\\{employee.username}"
     message: "POST request to {cloud_domain.value}/upload returned 200 OK."
     key_value_pairs:
-      src_ip: "{victim.ip}"
+      src_ip: "{employee.ip}"
       dst_ip: "{cloud_ip.ip}"
-      src_user: "{victim.user_domain}"
+      src_user: "{employee.user_domain}"
       dvc: "{infra.proxy.hostname}"
       url: "{cloud_domain.value}/upload"
       app: "web-browsing"
@@ -187,21 +187,21 @@ noise: {}
 supplemental_events:
   - id: "sup1"
     host: "ws_victim"
-    user: "victim"
+    user: "employee"
     offset: -70
     red_herring: true
     event_type: "FileSyncUploadedFull"
     source_type: "Proxy"
     log_source: "Proxy"
     severity: "low"
-    hostname: "{victim.hostname}"
-    source_ip: "{victim.ip}"
-    user_account: "ACME\\{victim.username}"
+    hostname: "{employee.hostname}"
+    source_ip: "{employee.ip}"
+    user_account: "ACME\\{employee.username}"
     message: "OneDrive sync upload to acme-my.sharepoint.com"
     key_value_pairs:
-      src_ip: "{victim.ip}"
+      src_ip: "{employee.ip}"
       dst_ip: "52.96.128.144"
-      src_user: "{victim.user_domain}"
+      src_user: "{employee.user_domain}"
       dvc: "{infra.proxy.hostname}"
       url: "acme-my.sharepoint.com"
       app: "microsoft-onedrive"
@@ -210,7 +210,7 @@ supplemental_events:
       action: "allow"
       http_method: "PUT"
       user_agent: "Microsoft SkyDriveSync/24.001.0107.0003 OneDrive-Windows/23.234.1121.0003"
-      site_url: "https://acme-my.sharepoint.com/personal/{victim.username}_acme_com"
+      site_url: "https://acme-my.sharepoint.com/personal/{employee.username}_acme_com"
       file_count: "312"
       bytes_uploaded: "486539264"
 
@@ -256,10 +256,42 @@ answer_key:
   classification: "Insider Threat"
   scope:
     hosts: ["ws_victim"]
-    accounts: ["victim"]
+    accounts: ["employee"]
   root_cause: "s1"
   techniques: ["T1567.002"]
-  actions: []
+  # S1 ruling (3c Batch 4): shadow-IT use alone does not prove deliberate
+  # malicious insider intent, so account disablement is NOT required here (only
+  # when intentional exfiltration / policy evasion / access removal is
+  # established). Contrast insider_staging, where deliberate exfiltration is
+  # established and disable_account is required. Same category, same
+  # account-owner-is-the-actor structure, different evidence, different response.
+  actions_reviewed: true
+  actions:
+    - action: "isolate_host"
+      status: "required"
+      target:
+        host: "ws_victim"
+    - action: "revoke_sessions"
+      status: "required"
+      target:
+        account: "employee"
+    - action: "disable_account"
+      status: "acceptable"
+      target:
+        account: "employee"
+    - action: "kill_process"
+      status: "acceptable"
+      target:
+        host: "ws_victim"
+        pid: 14320
+    - action: "force_password_reset"
+      status: "acceptable"
+      target:
+        account: "employee"
+  traps:
+    - action: "isolate_host"
+      target:
+        host: "dns"
 
 triage_review:
   mitre:

@@ -209,7 +209,21 @@ CORRECTIONS += [
             "logs byte-identical."
         ),
         "approved": "3c Batch 2 review (approved 2026-07-17)",
-    }
+    },
+    {
+        "label": "insider_shadow_it",
+        "kind": "rename_entity",
+        "v1": "victim",
+        "v2": "employee",
+        "reason": (
+            "Shadow-IT scenario (S1 ruling): the account holder is the actor "
+            "but malicious intent is NOT established, so 'victim' is wrong; the "
+            "account entity id is renamed victim -> employee (neutral). The "
+            "ws_victim HOST id is unchanged. Internal id only: placeholders "
+            "re-resolve to the same values, rendered logs byte-identical."
+        ),
+        "approved": "3c Batch 4 review (approved 2026-07-17)",
+    },
 ]
 
 

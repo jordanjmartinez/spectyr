@@ -485,6 +485,7 @@ REVIEWED_SCENARIOS = {
     "false_positive_ssl_inspection",
     "lateral_movement_2",
     "phishing_link",
+    "insider_shadow_it",
 }
 
 

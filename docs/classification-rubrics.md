@@ -147,6 +147,29 @@ arbitrary-file deletion of a process-image or FileCreate file has no UI
 affordance today - delete is surfaced only on Autoruns image rows - so
 such deletes are not authored as required or acceptable; FX2 backlog.)
 
+## Response-action rubric: insider disable requires established intent (S1)
+
+(3c Batch 4, insider_shadow_it ruling, 2026-07-17.)
+
+Same category, same account-owner-is-the-actor structure, different
+evidence, different required response. `disable_account` on the actor's
+own account is required only when the evidence establishes intentional
+exfiltration, policy evasion, or a need to remove the employee's access.
+Shadow-IT use alone (an unapproved tool) does not prove deliberate
+malicious intent. The intended contrast pair:
+
+- **insider_staging**: deliberate exfiltration is established (a user
+  accessed a sensitive share outside their role, staged a copy, and
+  exfiltrated it), so disable_account is REQUIRED.
+- **insider_shadow_it**: unsanctioned tool use is established, but
+  malicious intent is not, so disable_account is ACCEPTABLE - only
+  isolate_host and revoke_sessions are required (contain the endpoint,
+  evict the active session), and disable / reset / kill-the-app are
+  defensible options.
+
+(In insider_shadow_it the account holder is the actor but not proven
+malicious, so the account entity is named `employee`, not `insider`.)
+
 ## Response-action rubric: insider accounts and password reset (I2)
 
 (3c Batch 2, insider_staging ruling, 2026-07-17.)
