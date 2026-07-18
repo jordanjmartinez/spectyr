@@ -1,12 +1,24 @@
 # Response-Action Answer Keys: Scaffolds for Owner Review (Stage 3c)
 
-Re-scaffold under the required/acceptable scoring schema (supersedes the
-prior Batch 1 scaffold). Cadence: this scaffold STOPS for owner approval,
-then implementation is one scenario per commit (each commit lands the
-actions and `actions_reviewed: true` together), full gates per batch.
-Scoring semantics: docs/action-scoring.md. Every proposed target,
-required and acceptable alike, is verified against the achievability rule
-(authored sources only; seed-independent).
+Cadence: each batch scaffold STOPS for owner approval, then
+implementation is one scenario per commit (each commit lands the actions
+and `actions_reviewed: true` together), full gates per batch via the
+canonical gate runner. Scoring semantics: docs/action-scoring.md.
+Identity-action statuses follow the ratified P1 rubric
+(docs/classification-rubrics.md). Every proposed target, required and
+acceptable alike, is verified against the achievability rule (authored
+sources only; seed-independent).
+
+**Expressibility check (ruled at the Batch 1 review, binding for
+Batches 2-4):** if a scenario implies a correct response outside the
+seven-action vocabulary (for example revoking an OAuth application
+grant), the scaffold must flag it explicitly. The owner chooses one of
+two resolutions: reshape the scenario evidence so the correct response
+is expressible, or extend the action vocabulary through a separate
+reviewed schema and engineering change. Never stretch an existing
+action's meaning to cover a different response. A scenario with an
+unresolved expressibility issue remains blocked from implementation and
+must not be marked `actions_reviewed`.
 
 Statuses are deliberate: REQUIRED earns credit and its omission is a
 miss; ACCEPTABLE is defensible-but-nonessential (no credit, never
@@ -14,7 +26,19 @@ collateral, out of the denominator, surfaced factually if executed);
 anything on neither list is collateral. Designed traps are collateral by
 construction: they appear on neither list.
 
-## Batch principles for ratification (full text)
+---
+
+# Batch 1 (IMPLEMENTED, review passed 2026-07-17)
+
+Commits f8a9f85 (malware_usb), aad3964 (phishing_1), 66962a2
+(password_spray + N1 rubric), de6a891 (lateral_movement_1, fix-forward
+41b98f2), a554b1a (false_positive_veeam). P2, P3, P4 ratified as
+written below; P1 ratified with refinement, recorded in
+docs/classification-rubrics.md (the response must evict what the
+evidence shows the attacker controls). The scenario sections below are
+the approved record.
+
+## Batch principles (ratified; P1 superseded by the refined rubric text)
 
 - **P1 (revised): justified-minimum identity response.** Identity
   scenarios require only the justified minimum the scenario's evidence

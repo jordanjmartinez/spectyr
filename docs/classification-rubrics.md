@@ -104,21 +104,31 @@ attack_base minus 118-120s) are declared red herrings: the analyst resolves
 them by recognizing the ACME-SEC01 scanner role and the svc_vulnscan service
 account, not by the offset. All 3c scaffolds follow this rule.
 
-## Response-action rubric: the evidence-of-compromise threshold
+## Response-action rubric: identity actions (P1, ratified with refinement)
 
-(3c Batch 1, N1 ruling, 2026-07-17.)
+(3c Batch 1 review, final, 2026-07-17. Supersedes the earlier P1 text;
+the N1 threshold below is unchanged.)
 
-For identity response actions, the graded distinction is:
+**Unifying test: the response must evict what the evidence shows the
+attacker controls.**
 
-- **Attempted compromise may justify credential hygiene.** A precautionary
-  force_password_reset on an account that was targeted but never breached
-  (failure events only) is defensible: author it `acceptable`.
-- **Session revocation or account disablement requires evidence that the
-  account or its sessions were actually compromised.** Absent that
-  evidence, revoke_sessions and disable_account on targeted-only accounts
-  stay off-list and grade as collateral.
+- **Confirmed password or reusable-credential compromise:**
+  force_password_reset AND revoke_sessions are required (the attacker
+  holds the credential and may hold sessions; both must be evicted).
+- **Session or token compromise without evidence that the password was
+  exposed:** revoke_sessions is required; force_password_reset may be
+  acceptable as credential hygiene.
+- **disable_account is required only when the evidence justifies removing
+  the account from use** (for example an insider actor, or an account
+  whose continued operation is itself the threat). Otherwise it is
+  acceptable or collateral according to the evidence.
+- **Targeting without compromise may justify credential hygiene.**
+  Disruptive account action is collateral. (The N1 threshold, unchanged:
+  attempted compromise may justify a precautionary force_password_reset
+  as `acceptable`; session revocation or account disablement requires
+  evidence that the account or its sessions were actually compromised.)
 
-The password_spray answer key is the canonical application: the five
+The password_spray answer key is the canonical N1 application: the five
 sprayed accounts (4625 failures only) carry acceptable hygiene resets,
 while any revoke or disable on them is collateral. The identical actions
 on lgreen are REQUIRED because the evidence exists there: the s6 4624

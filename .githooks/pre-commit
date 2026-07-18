@@ -1,0 +1,24 @@
+#!/bin/sh
+# Never-land-red enforcement (ruled at the 3c Batch 1 review).
+# Runs the canonical gate runner scoped to what the staged changes touch;
+# any failed suite aborts the commit. Docs-only commits skip the gates.
+# Installed via: git config core.hooksPath .githooks
+
+staged=$(git diff --cached --name-only)
+backend=0
+frontend=0
+for f in $staged; do
+  case "$f" in
+    backend/*) backend=1 ;;
+    frontend/src/*|frontend/package.json) frontend=1 ;;
+  esac
+done
+
+if [ "$backend" = 1 ] && [ "$frontend" = 1 ]; then
+  exec python backend/run_gates.py --all
+elif [ "$backend" = 1 ]; then
+  exec python backend/run_gates.py
+elif [ "$frontend" = 1 ]; then
+  exec python backend/run_gates.py --frontend
+fi
+exit 0
