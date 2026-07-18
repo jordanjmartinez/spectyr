@@ -215,7 +215,20 @@ answer_key:
     accounts: ["victim"]
   root_cause: "s1"
   techniques: ["T1583.001"]
-  actions: []
+  actions_reviewed: true
+  actions:
+    - action: "revoke_sessions"
+      status: "required"
+      target:
+        account: "victim"
+    - action: "force_password_reset"
+      status: "required"
+      target:
+        account: "victim"
+    - action: "disable_account"
+      status: "acceptable"
+      target:
+        account: "victim"
 
 triage_review:
   mitre:

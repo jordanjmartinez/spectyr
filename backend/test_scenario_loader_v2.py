@@ -395,6 +395,7 @@ def test_rejects_action_order_violations():
 # gate asserts all 20 are here.
 REVIEWED_SCENARIOS = {
     "malware_usb",
+    "phishing_1",
 }
 
 
