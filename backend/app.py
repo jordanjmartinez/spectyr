@@ -2956,6 +2956,51 @@ def _letter_grade(accuracy, graded):
             'C' if accuracy >= 70 else 'D' if accuracy >= 60 else 'F')
 
 
+# Stage 3d headline composite (owner ruling 2026-07-18): fixed 40/30/30 over
+# classification / detection dispositions / response actions. Never
+# renormalized between scenarios.
+COMPOSITE_WEIGHTS = (("classification", 0.40), ("detection", 0.30), ("response", 0.30))
+
+
+def _component_score(correct, graded):
+    """One composite component from a (correct, graded) pair. `raw` is the
+    UNROUNDED accuracy the composite is computed from; `accuracy` is the
+    rounded value for display; None graded => not yet graded."""
+    raw = (correct / graded * 100) if graded else None
+    return {
+        "raw": raw,
+        "accuracy": round(raw, 1) if raw is not None else None,
+        "grade": _letter_grade(round(raw, 1), graded) if graded else "-",
+        "graded": graded,
+    }
+
+
+def compute_composite_grade(classification, detection, response):
+    """The 40/30/30 headline composite (Stage 3d). Each argument is a
+    (correct, graded) pair. The composite is the weighted mean of the
+    component UNROUNDED accuracies; only the final composite is rounded (to
+    one decimal, the shared display convention) before its letter grade.
+    Weights are fixed and NEVER renormalized. The composite is graded only
+    when all three components have graded units; until then it is '-'. Pure
+    function: deterministic replay yields an identical composite.
+    """
+    comps = {"classification": _component_score(*classification),
+             "detection": _component_score(*detection),
+             "response": _component_score(*response)}
+    for name, w in COMPOSITE_WEIGHTS:
+        comps[name]["weight"] = int(round(w * 100))
+    weights = {name: int(round(w * 100)) for name, w in COMPOSITE_WEIGHTS}
+    public = {name: {k: v for k, v in comps[name].items() if k != "raw"}
+              for name in comps}
+    if any(comps[name]["raw"] is None for name, _ in COMPOSITE_WEIGHTS):
+        return {"accuracy": None, "grade": "-", "weights": weights,
+                "components": public}
+    raw = sum(w * comps[name]["raw"] for name, w in COMPOSITE_WEIGHTS)
+    accuracy = round(raw, 1)
+    return {"accuracy": accuracy, "grade": _letter_grade(accuracy, 1),
+            "weights": weights, "components": public}
+
+
 # Disposition scoring: correct = promote a true positive, dismiss a false
 # positive, dismiss a benign_expected. Wrong = the inverse. Open detections
 # are pending, excluded from the grade.
@@ -3353,12 +3398,33 @@ def get_analyst_report_card():
         avg_time_to_resolve_tp_seconds = int(sum(tp_times) / len(tp_times)) if tp_times else None
         avg_time_to_resolve_fp_seconds = int(sum(fp_times) / len(fp_times)) if fp_times else None
 
+        # Stage 3d: the 40/30/30 headline composite. Detection + response
+        # components are read from the same deterministic scorers the
+        # standalone endpoints use, under the lock; the composite is computed
+        # from their UNROUNDED accuracies (compute_composite_grade). It is the
+        # headline grade; classification/detection/response still render as
+        # their own sections, so no weak component hides behind it.
+        with s["io_lock"]:
+            det = compute_detection_score(list(s.get("detections", [])))
+            overlay = s.get("overlay") or action_overlay.new_overlay()
+            executed = action_overlay.successful_executions(
+                overlay, s.get("entity_index", {}))
+            resp = compute_action_score(
+                list(s.get("expected_actions", [])), executed,
+                set(overlay.get("isolated", ())),
+                list(s.get("scenario_grading", [])))
+        composite = compute_composite_grade(
+            (total_correct, total_classifications),
+            (det["correct"], det["graded"]),
+            (resp["correct"], resp["graded"]))
+
         return jsonify({
             "threats_caught": correct_threat_identified,
             "wrong_category": wrong_category,
             "total_actions": total_classifications,
             "accuracy": classification_accuracy,
             "grade": grade,
+            "composite": composite,
             "fp_identified": fp_identified,
             "fp_missed": fp_missed,
             "avg_time_to_resolve_seconds": avg_time_to_resolve_seconds,

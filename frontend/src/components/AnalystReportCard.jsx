@@ -11,41 +11,46 @@ const formatDuration = (seconds) => {
   return rem === 0 ? `${h}h` : `${h}h ${rem}m`;
 };
 
-// Bare content (heading + counts table) — Analytics wraps this and GradeCard
-// together in one container. Overall Grade is intentionally omitted here since
-// the Grade panel sits right beside it.
+// The composite BREAKDOWN beside the headline grade (Stage 3d): the three
+// weighted components and Mean Time to Resolve. The detailed Classification,
+// Detections, and Response sections render below (ScoreSections); this is the
+// transparent 40/30/30 make-up of the headline, never a substitute for them.
+const cellGrade = (comp) => {
+  if (!comp || comp.accuracy == null) return '-';
+  return `${comp.grade} · ${comp.accuracy}%`;
+};
+
 const AnalystReportCard = ({ report }) => {
   if (report?.error) {
     return <div className="text-red-600">Error loading report.</div>;
   }
 
-  const threatsCorrect = report?.threats_caught || 0;
-  const threatsMissed = report?.wrong_category || 0;
-  const threatsTotal = threatsCorrect + threatsMissed;
-  const fpCorrect = report?.fp_identified || 0;
-  const fpMissed = report?.fp_missed || 0;
-  const fpTotal = fpCorrect + fpMissed;
+  const comps = report?.composite?.components || {};
+  const rows = [
+    ['Classification', comps.classification],
+    ['Detection dispositions', comps.detection],
+    ['Response actions', comps.response],
+  ];
 
   return (
     <div className="h-full">
       <table className="w-full text-xs sm:text-base">
         <colgroup>
           <col />
-          <col className="w-20" />
+          <col className="w-28" />
         </colgroup>
         <tbody className="text-[#1a2332]">
-          <tr>
-            <td className="py-3 text-[#57606a]">True Positives</td>
-            <td className="py-3 text-center">
-              <span className="text-[#1a2332] font-semibold">{threatsCorrect}/{threatsTotal}</span>
-            </td>
-          </tr>
-          <tr className="border-t border-[#e2e6ea]">
-            <td className="py-3 text-[#57606a]">False Positives</td>
-            <td className="py-3 text-center">
-              <span className="text-[#1a2332] font-semibold">{fpCorrect}/{fpTotal}</span>
-            </td>
-          </tr>
+          {rows.map(([label, comp], i) => (
+            <tr key={label} className={i > 0 ? 'border-t border-[#e2e6ea]' : ''}>
+              <td className="py-3 text-[#57606a]">
+                {label}
+                <span className="ml-2 text-[11px] text-[#8b949e]">{comp?.weight ?? ''}%</span>
+              </td>
+              <td className="py-3 text-center">
+                <span className="text-[#1a2332] font-semibold">{cellGrade(comp)}</span>
+              </td>
+            </tr>
+          ))}
           <tr className="border-t border-[#e2e6ea]">
             <td className="py-3 text-[#57606a]">Mean Time to Resolve</td>
             <td className="py-3 text-center">

@@ -78,19 +78,21 @@ const MttrDot = (props) => {
   );
 };
 
-// Grade: a donut of correct vs missed with the letter grade in the center.
+// Grade: the Stage 3d headline COMPOSITE (40/30/30) as a gauge ring filled
+// to the composite accuracy, letter in the center. The per-component
+// breakdown sits beside it and the detailed sections below, so no weak
+// component hides behind the headline.
 export const GradeCard = ({ report }) => {
-  const hasData = report && report.total_actions > 0;
-  const correct = hasData ? (report.threats_caught + report.fp_identified) : 0;
-  const missed = hasData ? (report.wrong_category + report.fp_missed) : 0;
-  const total = correct + missed;
-  const grade = report?.grade || '-';
+  const composite = report?.composite;
+  const grade = composite?.grade || '-';
+  const acc = composite?.accuracy;
+  const graded = acc != null;
 
-  const pieData = total === 0
-    ? [{ name: 'Empty', value: 1 }]
+  const pieData = !graded
+    ? [{ name: 'Empty', value: 1, color: '#e5e7eb' }]
     : [
-        ...(correct > 0 ? [{ name: 'Correct', value: correct, color: '#6fa868' }] : []),
-        ...(missed > 0 ? [{ name: 'Missed', value: missed, color: '#b26666' }] : []),
+        { name: 'Composite', value: acc, color: '#6fa868' },
+        ...(acc < 100 ? [{ name: 'None', value: 100 - acc, color: '#e5e7eb' }] : []),
       ];
 
   return (
@@ -109,18 +111,18 @@ export const GradeCard = ({ report }) => {
                   dataKey="value"
                   stroke="#ffffff" strokeWidth={2}
                 >
-                  {total === 0
-                    ? [<Cell key="empty" fill="#e5e7eb" />]
-                    : pieData.map((seg, i) => <Cell key={i} fill={seg.color} />)}
+                  {pieData.map((seg, i) => <Cell key={i} fill={seg.color} />)}
                 </Pie>
                 <Tooltip content={<PieTooltip />} wrapperStyle={{ zIndex: 20, outline: 'none', border: 'none' }} />
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <span className="text-6xl sm:text-8xl font-bold text-[#1a2332]">{grade}</span>
+              {graded && <span className="mt-1 text-sm text-[#6e7781]">{acc}%</span>}
             </div>
           </div>
         </div>
+        <p className="text-[11px] uppercase tracking-wider text-[#6e7781] text-center">Composite grade · 40 / 30 / 30</p>
         <p className="text-sm text-[#57606a] text-center min-h-[1.25rem]">{GRADE_MESSAGES[grade] || ' '}</p>
       </div>
     </div>

@@ -75,9 +75,10 @@ const Analytics = ({ onReset, analystName, setAnalyticsCount, isVisible = true }
       </div>
       {isVisible && <MttrCard report={report} />}
 
-      {/* Option A (3b checkpoint ruling): Detections and Response as
-          independent scored sections; classification keeps the headline. */}
-      <ScoreSections isVisible={isVisible} />
+      {/* Stage 3d composite ruling: the composite is the headline (GradeCard);
+          Classification, Detections, and Response render as independent scored
+          sections beneath it. */}
+      <ScoreSections isVisible={isVisible} report={report} />
 
       {/* Action History / Mistake Review */}
       <ActionHistory history={actionHistory} />

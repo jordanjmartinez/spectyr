@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '../api';
 
-// Option A (ruled at the 3b checkpoint): classification keeps the headline
-// grade; Detections and Response render as independent scored sections.
-// The Response card also surfaces failed attempts factually (count +
-// entries, no editorial label); score-neutral by the standing rule.
+// Stage 3d composite ruling: the 40/30/30 composite is the headline grade
+// (rendered by GradeCard); Classification, Detections, and Response render
+// here as independent scored sections beneath it, each showing its own
+// details, misses, collateral, acceptable actions, and failed attempts, so
+// no weak component hides behind the composite. The Response card surfaces
+// failed/no-op attempts factually (count + entries), score-neutral.
 
 const ACTION_LABELS = {
   isolate_host: 'Isolate Host',
@@ -41,7 +43,7 @@ const StatRow = ({ items }) => (
   </div>
 );
 
-const ScoreSections = ({ isVisible = true }) => {
+const ScoreSections = ({ isVisible = true, report = null }) => {
   const [detScore, setDetScore] = useState(null);
   const [actScore, setActScore] = useState(null);
 
@@ -78,8 +80,32 @@ const ScoreSections = ({ isVisible = true }) => {
     </div>
   );
 
+  const clsComp = report?.composite?.components?.classification;
+  const clsThreats = report?.threats_caught ?? 0;
+  const clsWrong = report?.wrong_category ?? 0;
+  const clsFpCaught = report?.fp_identified ?? 0;
+  const clsFpMissed = report?.fp_missed ?? 0;
+
   return (
     <div className="space-y-6">
+      <div>
+        <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">Classification</h2>
+        <Card>
+          <div className="p-4 sm:p-6 flex items-start justify-between gap-4">
+            <div className="space-y-2">
+              <p className="text-sm text-[#57606a]">Threat vs false-positive calls and attack category.</p>
+              <StatRow items={[
+                ['threats caught', clsThreats],
+                ['wrong category', clsWrong],
+                ['FP caught', clsFpCaught],
+                ['FP missed', clsFpMissed],
+              ]} />
+            </div>
+            <GradeBlock grade={clsComp?.grade} accuracy={clsComp?.accuracy ?? 0} graded={clsComp?.graded ?? 0} />
+          </div>
+        </Card>
+      </div>
+
       <div>
         <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">Detections</h2>
         <Card>

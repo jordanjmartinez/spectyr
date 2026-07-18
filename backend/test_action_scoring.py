@@ -731,6 +731,77 @@ def test_score_endpoint_shape_surfacing_and_no_leak():
         _cleanup(sid, s)
 
 
+# --- Stage 3d headline composite (40/30/30) -----------------------------------
+
+def _composite(cls, det, resp):
+    return app.compute_composite_grade(cls, det, resp)
+
+
+def test_composite_exact_ruled_cases():
+    """The exact cases from the Stage 3d ruling. Components are (correct,
+    graded) pairs producing the stated accuracies; the composite uses the
+    UNROUNDED component accuracies and rounds only the final value."""
+    # 100 / 100 / 100 = 100 A
+    r = _composite((1, 1), (1, 1), (1, 1))
+    assert (r["accuracy"], r["grade"]) == (100.0, "A")
+    # 100 / 60 / 70 = 79 C
+    r = _composite((1, 1), (3, 5), (7, 10))
+    assert (r["accuracy"], r["grade"]) == (79.0, "C")
+    # 60 / 100 / 100 = 84 B
+    r = _composite((3, 5), (1, 1), (1, 1))
+    assert (r["accuracy"], r["grade"]) == (84.0, "B")
+    # 100 / 100 / 55 = 86.5 B
+    r = _composite((1, 1), (1, 1), (11, 20))
+    assert (r["accuracy"], r["grade"]) == (86.5, "B")
+    # 100 / 66.7 / 6.2 (unrounded 66.667 / 6.25) = 61.9 D
+    r = _composite((1, 1), (2, 3), (1, 16))
+    assert (r["accuracy"], r["grade"]) == (61.9, "D")
+    # the components carry ROUNDED display values while the composite came
+    # from the raw ratios (61.875 -> 61.9), proving unrounded inputs
+    assert r["components"]["detection"]["accuracy"] == 66.7
+    assert r["components"]["response"]["accuracy"] == 6.2
+
+
+def test_composite_weights_fixed_and_never_renormalized():
+    r = _composite((1, 1), (1, 1), (1, 1))
+    assert r["weights"] == {"classification": 40, "detection": 30, "response": 30}
+    # a mid-range blend uses the fixed weights, not a renormalized subset
+    r = _composite((1, 1), (0, 1), (0, 1))  # 100 / 0 / 0
+    assert r["accuracy"] == 40.0 and r["grade"] == "F"
+
+
+def test_composite_is_dash_until_all_three_graded():
+    # nothing classified yet -> classification ungraded -> composite '-'
+    r = _composite((0, 0), (1, 1), (1, 1))
+    assert r["accuracy"] is None and r["grade"] == "-"
+    assert r["components"]["classification"]["grade"] == "-"
+    assert r["components"]["detection"]["grade"] == "A"  # section still shows
+
+
+def test_composite_reflects_response_inaction_and_collateral():
+    """A reviewed no-required scenario still yields a meaningful Response
+    component: correct inaction credits it, a collateral action reduces it."""
+    grading = [_grading(scenario="scenario-fp", hostnames={WS}, accounts=())]
+    grading[0]["accounts"] = set()
+    # correct inaction: reviewed, no required actions, no executions
+    r_inaction = app.compute_action_score([], [], set(), grading)
+    assert r_inaction["correct"] == 1 and r_inaction["graded"] == 1
+    comp_clean = _composite((1, 1), (1, 1),
+                            (r_inaction["correct"], r_inaction["graded"]))
+    assert comp_clean["grade"] == "A"
+    # a collateral action in that scope forfeits the inaction unit
+    executed = [_run("kill_process", {"hostname": WS, "pid": 999, "name": "x.exe"}, 1)]
+    r_coll = app.compute_action_score([], executed, set(), grading)
+    assert r_coll["correct"] == 0 and r_coll["collateral"] == 1
+    comp_coll = _composite((1, 1), (1, 1), (r_coll["correct"], r_coll["graded"]))
+    assert comp_coll["accuracy"] < comp_clean["accuracy"]
+
+
+def test_composite_deterministic_replay_identical():
+    args = ((3, 4), (5, 9), (2, 7))
+    assert _composite(*args) == _composite(*args)
+
+
 if __name__ == "__main__":
     fns = [fn for name, fn in sorted(globals().items()) if name.startswith("test_")]
     for fn in fns:
