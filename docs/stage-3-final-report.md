@@ -8,8 +8,8 @@ verb, or scenario content was changed in the close-out** — it is
 verification, baselines, the composite decision, and documentation.
 
 Status at close: reviewed-scenario ledger **20/20**; full gate battery green
-(backend + frontend); the composite headline-grade decision is presented in
-§5 for the owner to rule (Option A side-by-side stays in the UI until then).
+(backend + frontend); the composite headline-grade decision was **ruled at
+the 3d checkpoint — Option C (40/30/30) — and is wired** (§5).
 
 ---
 
@@ -166,7 +166,16 @@ macro. Behavior:
   correct-inaction scenarios, which is by design (there, inaction *is* the
   correct response).
 
-## 5. Composite headline-grade decision (owner ruling required)
+## 5. Composite headline-grade decision — RULED: Option C (40/30/30), wired
+
+The owner ruled **Option C (40/30/30)** at the 3d checkpoint; it is wired
+as the headline (`compute_composite_grade`, `report_card.composite`; the UI
+ring is the composite, with Classification / Detections / Response as
+component sections beneath). Computed from the UNROUNDED component
+accuracies, rounded only at the end, weights fixed and never renormalized,
+'-' until all three components are graded. Verified live in Chrome
+(composite F/42.7% for classification A/100 + detection F/0 + response
+F/9.1, exactly 0.40*100 + 0.30*0 + 0.30*9.09). The options weighed:
 
 Three independent sub-scores exist, each on the shared 10-point band
 (A≥90 B≥80 C≥70 D≥60 F<60) and each A/100 for a correct player across the
@@ -315,6 +324,8 @@ generalize to the compromised-trusted-actor case.
 
 ---
 
-*Prepared at the Stage 3d checkpoint. Stage 3d is not closed and the
-visual-polish phase has not begun; both await this report passing owner
-review and the composite ruling.*
+*Stage 3d close-out complete: the composite ruling (Option C, 40/30/30) is
+made and wired, this report and the docs are updated, and the full gate
+battery is green. Stage 3 is closed. The visual-polish phase has NOT begun
+and is out of scope until separately authorized. Next phase: Stage 4
+(multi-host scenarios + the LCQL-style query bar).*

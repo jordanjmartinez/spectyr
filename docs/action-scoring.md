@@ -146,11 +146,23 @@ factually surfaced failed attempt. It can never carry required-action
 credit (the validator rejects a required isolate on a declared-offline
 host).
 
-## Report-card presentation (Option A, ruled at the 3b checkpoint)
+## Report-card presentation (Stage 3d ruling: 40/30/30 composite headline)
 
-Classification keeps the headline grade. Response and Detections render
-as independent scored sections (`/api/analytics/action_score`,
-`/api/analytics/detection_score`); no composite yet.
+The headline grade is a fixed composite: **40% classification + 30%
+detection dispositions + 30% response actions** (owner ruling 2026-07-18,
+Option C). `compute_composite_grade` combines the three components from
+their UNROUNDED accuracies and rounds only the final composite (one
+decimal); weights are fixed and never renormalized; the composite is '-'
+until all three components have graded units. It is served on
+`/api/analytics/report_card` as `composite` and is the headline ring in the
+UI. Classification, Detections, and Response each still render as their own
+scored section beneath the headline (with full details, misses, collateral,
+acceptable actions, and failed attempts), so no weak component hides behind
+the composite. Superseded the interim Option A side-by-side (3b checkpoint).
+
+Verified exact cases (unrounded components): 100/100/100 = 100 A;
+100/60/70 = 79 C; 60/100/100 = 84 B; 100/100/55 = 86.5 B;
+100/66.7/6.2 = 61.9 D.
 
 ## Stage 3d full-corpus response baselines (measured, 20 x 5 seeds)
 
@@ -169,7 +181,11 @@ brute_force_attack) and 0 on all 14 attack scenarios; act-on-everything is
 unit). No attack scenario lets a naive strategy tie or beat correct. See
 docs/stage-3-final-report.md for the full run.
 
-## Composite headline-grade options (Stage 3d — owner ruling PENDING)
+## Composite headline-grade options (Stage 3d — RULED: Option C, wired)
+
+The options below were presented at the 3d checkpoint; the owner ruled
+**Option C (40/30/30)**, now wired (see the section above). Kept for the
+record of the trade-offs weighed.
 
 Three sub-scores, each on the shared 10-point band, each A/100 for a
 correct player: Classification, Detection, Response. No-required scenarios
@@ -187,7 +203,5 @@ all three are always present). Worked examples (C/D/R -> composite):
 - D under-penalizes collateral (over-responder still A); B cushions a wrong
   classification to B; C makes both failure modes cost a grade while
   keeping classification the largest single weight.
-- **Recommendation: Option C (40/30/30)** (see the final report for the
-  reasoning). Until the owner rules, the UI keeps Option A side-by-side and
-  no composite is wired. This decision is made at 3d and is not deferred
-  again.
+- **RULED: Option C (40/30/30)**, adopted and wired 2026-07-18. The
+  decision was made at 3d and is not deferred again.
