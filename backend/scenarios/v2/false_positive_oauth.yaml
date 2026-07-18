@@ -190,7 +190,15 @@ answer_key:
     accounts: ["victim"]
   root_cause: null
   techniques: []
+  actions_reviewed: true
   actions: []
+  traps:
+    - action: "disable_account"
+      target:
+        account: "victim"
+    - action: "isolate_host"
+      target:
+        host: "ws_victim"
 
 triage_review:
   what_is_it:

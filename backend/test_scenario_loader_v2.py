@@ -476,6 +476,7 @@ REVIEWED_SCENARIOS = {
     "malware_ransomware",
     "data_exfil_archive",
     "insider_staging",
+    "false_positive_oauth",
 }
 
 
