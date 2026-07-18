@@ -1,234 +1,276 @@
 # Response-Action Answer Keys: Scaffolds for Owner Review (Stage 3c)
 
-Cadence per the 3c ruling: scaffold a batch of 5 with rationale, STOP for
-owner approval, then implement one scenario per commit (each commit flips
-its scenario to `actions_reviewed: true`), full gates per batch. Scoring
-semantics: docs/action-scoring.md. Every proposed target is verified
-against the achievability rule (authored sources only; seed-independent).
+Re-scaffold under the required/acceptable scoring schema (supersedes the
+prior Batch 1 scaffold). Cadence: this scaffold STOPS for owner approval,
+then implementation is one scenario per commit (each commit lands the
+actions and `actions_reviewed: true` together), full gates per batch.
+Scoring semantics: docs/action-scoring.md. Every proposed target,
+required and acceptable alike, is verified against the achievability rule
+(authored sources only; seed-independent).
 
-Legend per scenario: proposed `actions:` YAML, rationale per action,
-declared orderings (only where the sequence genuinely matters), designed
-collateral traps with their dismissal evidence (red-herring discipline),
-expected end-state.
+Statuses are deliberate: REQUIRED earns credit and its omission is a
+miss; ACCEPTABLE is defensible-but-nonessential (no credit, never
+collateral, out of the denominator, surfaced factually if executed);
+anything on neither list is collateral. Designed traps are collateral by
+construction: they appear on neither list.
 
-## Batch-level principles proposed for ratification
+## Batch principles for ratification (full text)
 
-- **P1. Breached-account contract.** An account the attacker successfully
-  used (a success event under attacker control) requires all three
-  identity actions: disable_account, revoke_sessions,
-  force_password_reset. Targeted-but-not-breached accounts (failures
-  only) are trap targets. This keeps identity grading uniform: no
-  defensible identity action on a breached account is ever collateral.
-- **P2. Authored-attack-pid completeness.** Every authored
-  malicious-lineage PID on a scoped host appears in the required set, so
-  killing any attack process is never collateral. Boundary cases (a
-  user's own shell that launched the tool) are flagged per scenario
-  rather than silently decided. If the owner prefers a leaner required
-  set, the alternative is accepting collateral on defensible kills or
-  ruling a neutral tier (grammar change, not proposed here).
-- **P3. Ordering restraint.** `after` only for the
-  containment-before-credential-reset class, where an online attack
-  source could re-capture or re-use credentials reset too early. Two
+- **P1 (revised): justified-minimum identity response.** Identity
+  scenarios require only the justified minimum the scenario's evidence
+  supports. For a stolen-credential victim that minimum is
+  force_password_reset + revoke_sessions (evict the credential, evict
+  the sessions); disable_account is typically ACCEPTABLE unless the
+  scenario justifies benching the account. Disruptive action requires
+  evidence of compromise; precautionary credential hygiene is
+  defensible. Accounts that were targeted but never breached are never
+  required targets; hygiene on them may be acceptable, disruption on
+  them is collateral.
+- **P2 (replacement, ruled).** REQUIRED: active malicious processes and
+  the actions necessary to stop ongoing execution or compromise.
+  ACCEPTABLE: defensible but nonessential containment and cleanup.
+  COLLATERAL: benign or unrelated targets, and everything on neither
+  list. Designed traps remain collateral by construction (they appear on
+  neither list).
+- **P3: ordering restraint.** `after` only where the sequence genuinely
+  matters (the containment-before-credential-reset class: an online
+  attack source could re-capture or re-use credentials reset too early),
+  declared on required actions referencing required actions. Two
   declarations in this batch, both that class.
-- **P4. Offline-host wrinkle.** Not used in Batch 1. Reserved for a later
-  batch (max 1-2 corpus-wide, non-required only, per the amendment).
+- **P4: offline-host wrinkle.** Not used in Batch 1. Reserved for a
+  later batch (max 1-2 corpus-wide; non-required only: a
+  tempting-but-wrong containment target or a surfaced failed attempt;
+  the validator rejects required credit on it).
 
 ---
 
 ## 1. malware_usb (Malware, difficulty 1) - canonical endpoint response
 
-Proposed answer key:
-
 ```yaml
   actions_reviewed: true
   actions:
     - id: "a_iso"
       action: "isolate_host"
+      status: "required"
       target: { host: "ws_victim" }
     - action: "kill_process"
+      status: "required"
       target: { host: "ws_victim", pid: 7412 }
     - action: "kill_process"
+      status: "required"
       target: { host: "ws_victim", pid: 8044 }
     - action: "delete_file"
+      status: "required"
       target: { host: "ws_victim", path: "C:\\Users\\Public\\winupdate.exe" }
     - action: "delete_file"
+      status: "acceptable"
       target: { host: "ws_victim", path: "E:\\Payroll_2026.exe" }
 ```
 
 Rationale:
-- isolate ws_victim: live C2 channel (s5: winupdate.exe to 185.141.62.11:443).
-  End-state graded; releasing before submission forfeits.
-- kill 7412 (E:\Payroll_2026.exe, s2): the dropper, running from removable
-  media, visible in the process list with a removable-media path.
-- kill 8044 (C:\Users\Public\winupdate.exe, s4/s5): the implant holding
-  the C2 connection and the Run-key persistence.
-- delete C:\Users\Public\winupdate.exe (authored: s4 run-key details, s5
-  image): removes the persisted payload; the WindowsUpdate autorun row
-  leaves the live view.
-- delete E:\Payroll_2026.exe (authored: s2 image). OPEN QUESTION O1:
-  recommended INCLUDED (thoroughness; the infection vector is still on a
-  mounted drive). Alternative: exclude, accepting that a player deleting
-  it takes collateral on a malicious file, which the model cannot excuse
-  once the scenario is reviewed. Owner decides.
+- isolate ws_victim REQUIRED: live C2 channel (s5: winupdate.exe to
+  185.141.62.11:443); stopping ongoing compromise. End-state graded.
+- kill 7412 and 8044 REQUIRED (P2: active malicious processes; both are
+  live payload PIDs, the dropper and the implant).
+- delete C:\Users\Public\winupdate.exe REQUIRED per the re-ruling
+  (installed implant; authored via s4 run-key details and s5 image);
+  removing it also clears the WindowsUpdate autorun row.
+- delete E:\Payroll_2026.exe ACCEPTABLE per the re-ruling: the scenario
+  does not establish that the media remains mounted or that its deletion
+  is essential (s1 records insertion; no event makes the file an ongoing
+  mechanism once 7412 is dead). Defensible cleanup, so executing it
+  surfaces as an acceptable response, never collateral.
 
-No ordering declared (P3: kills and deletes are host-local; isolation
-order does not genuinely matter here). No identity actions: no
-identity-provider events; credentials were not taken (P1 does not fire).
+No ordering (P3: kills and deletes are host-local; sequence does not
+genuinely matter). No identity actions (no identity-provider events; no
+credential theft in evidence, P1 does not fire).
 
-Designed traps (collateral, dismissal evidence documented):
-- T1: the Endpoint Central staged installer (sup1: pid 7340, or its
-  parent dcagentservice.exe 3180, or deleting
-  EC_Patch_KB5039211.exe). Dismissal: ZOHO-signed installer, signed
-  deployment-agent parent, matching FP detection det_deploy_staging_fp,
-  established corpus actor.
+Designed traps (neither list, collateral by construction):
+- T1: the Endpoint Central staged installer (sup1: pid 7340, its parent
+  dcagentservice.exe 3180, or deleting EC_Patch_KB5039211.exe).
+  Dismissal: ZOHO-signed installer, signed deployment-agent parent,
+  matching FP detection det_deploy_staging_fp, established corpus actor.
 - T2: ambient benign processes surfaced by the host's benign_expected
-  detections (updaters, backup agent). Killing any is collateral.
+  detections (updaters, backup agent).
 
-Expected end-state: ws_victim isolated; PIDs 7412 and 8044 absent from
-live Processes; the WindowsUpdate autorun row gone; no account changes.
+Expected end-state: ws_victim isolated; 7412 and 8044 absent from live
+Processes; the WindowsUpdate autorun row gone; account untouched;
+E:\Payroll_2026.exe deleted or not with zero score difference.
 
 ---
 
 ## 2. phishing_1 (Phishing, difficulty 1) - identity-first response
 
-Proposed answer key:
-
 ```yaml
   actions_reviewed: true
   actions:
-    - action: "disable_account"
-      target: { account: "victim" }
     - action: "revoke_sessions"
+      status: "required"
       target: { account: "victim" }
     - action: "force_password_reset"
+      status: "required"
+      target: { account: "victim" }
+    - action: "disable_account"
+      status: "acceptable"
       target: { account: "victim" }
 ```
 
-Rationale (P1, breached account): s3 is a successful attacker sign-in
-(Shanghai, single-factor, high risk) with harvested credentials. The
-compromise lives in the ACCOUNT: disable benches it, revoke kills the
+Rationale (P1 justified minimum for a stolen-credential victim): s3 is a
+successful attacker sign-in with harvested credentials; revoke evicts the
 attacker's session and tokens, reset evicts the stolen credential.
-Identity actions bind to the account entity in the Threats view per the
-standing identity-entity rule.
+disable ACCEPTABLE: benching the account is defensible mid-incident but
+not the scenario-justified minimum (single-account compromise with the
+credential and sessions already evicted). Identity actions bind to the
+account entity in the Threats view per the standing identity-entity rule.
 
-No ordering declared (P3): there is no internal attack source to contain
-first; the revoke/reset gap is symmetric, and both are required, so
-sequence does not genuinely matter. Deliberately NOT the after class.
+No ordering (P3: no internal attack source to contain first; both
+required actions are immediate and symmetric).
 
 Designed trap (the marquee of this scenario):
 - T1: isolate_host ws_victim. Host-think instead of identity-think. The
-  workstation only rendered a credential-harvest page: the chain has zero
-  endpoint execution or file events, and both TP detections are
-  network/identity layer. Isolation is collateral only if still in effect
-  at submission, so a player who realizes the mistake can release and pay
-  only the lesson.
+  workstation only rendered a credential-harvest page: zero endpoint
+  execution or file events; both TP detections are network and identity
+  layer. Collateral only while still in effect at submission, so
+  realizing the mistake and releasing costs only the lesson.
 
-Expected end-state: victim account disabled, sessions revoked, password
-reset; no host isolated; no processes killed; no files deleted.
+Expected end-state: victim sessions revoked and password reset (disabled
+or not with zero score difference); no host isolated; no processes
+killed; no files deleted.
 
 ---
 
 ## 3. password_spray (Brute Force, difficulty 3) - containment before reset
 
-Proposed answer key:
-
 ```yaml
   actions_reviewed: true
   actions:
     - id: "a_iso"
       action: "isolate_host"
+      status: "required"
       target: { host: "ws_victim" }
-    - action: "disable_account"
-      target: { account: "lgreen" }
     - action: "revoke_sessions"
+      status: "required"
       target: { account: "lgreen" }
     - id: "a_reset"
       action: "force_password_reset"
+      status: "required"
       target: { account: "lgreen" }
       after: ["a_iso"]
+    - action: "disable_account"
+      status: "acceptable"
+      target: { account: "lgreen" }
+    - action: "force_password_reset"
+      status: "acceptable"
+      target: { account: "dpark" }
+    - action: "force_password_reset"
+      status: "acceptable"
+      target: { account: "mjohnson" }
+    - action: "force_password_reset"
+      status: "acceptable"
+      target: { account: "bwilliams" }
+    - action: "force_password_reset"
+      status: "acceptable"
+      target: { account: "achen" }
+    - action: "force_password_reset"
+      status: "acceptable"
+      target: { account: "jkim" }
 ```
 
 Rationale:
-- isolate ws_victim: every 4625 and the s6 success carry the
-  workstation's source IP and name; the spray operates FROM this internal
-  host. Containing the source is the incident's first lever.
-- lgreen (P1, breached: s6 is the one successful logon): all three
-  identity actions.
-- DECLARED ORDERING (P3, the ruled isolate-before-reset class): a_reset
-  after a_iso. Resetting lgreen while the spray host is still on-network
-  lets the operator re-capture or immediately re-spray the fresh
-  credential; containment must precede eradication. Only the reset
-  carries `after` (disable and revoke are not credential material).
+- isolate ws_victim REQUIRED: every 4625 and the s6 success carry this
+  workstation's source IP and name; the spray operates FROM it; stopping
+  ongoing compromise (P2).
+- lgreen (breached, s6 success): revoke + reset REQUIRED, disable
+  ACCEPTABLE, per the re-ruling and P1.
+- DECLARED ORDERING (P3, the ruled class): a_reset after a_iso.
+  Resetting lgreen while the spray host is on-network lets the operator
+  re-capture or re-spray the fresh credential.
+- The five sprayed-but-never-breached accounts: force_password_reset
+  ACCEPTABLE each (precautionary credential hygiene, defensible);
+  disable on them is deliberately on NEITHER list: the designed trap.
+  Rubric principle, stated for the triage review: disruptive action
+  requires evidence of compromise; precautionary credential hygiene is
+  defensible. Their evidence is 4625 failures only.
+- NOTE N1 for the owner: revoke_sessions on the five sprayed accounts is
+  also on neither list, so it grades as collateral. Consistent with the
+  rubric (session revocation is disruptive without evidence of
+  compromise), but flagged since reasonable analysts differ; say the
+  word and it becomes acceptable per account.
 
 Designed traps:
-- T1: disabling or resetting the five sprayed-but-FAILED accounts (dpark,
-  mjohnson, bwilliams, achen, jkim). They were targeted, not breached:
-  every event for them is a 4625 failure. Five separate collateral
-  opportunities; locking out five employees is the classic
-  over-response.
-- T2: svc_backup (sup1/sup2 on the backup server). Dismissal: the
-  stale-scheduled-task-credential FP (det_svc_stale_creds_fp), Backup
-  Operators context; disabling or resetting it breaks the backup chain.
-- T3: isolate dc. Big-hammer containment: the DC is the authentication
-  target and reporting sensor, not compromised; isolating it takes down
-  org-wide auth. All malicious activity originates from ws_victim.
+- T1: disable_account on dpark, mjohnson, bwilliams, achen, or jkim.
+  Targeted, not breached; locking out five employees is the classic
+  over-response. Five separate collateral opportunities.
+- T2: svc_backup (sup1/sup2 stale-scheduled-task-credential FP,
+  det_svc_stale_creds_fp): any identity action on it breaks the backup
+  chain; Backup Operators context.
+- T3: isolate dc. The DC is the authentication target and sensor, not
+  compromised; isolating it takes down org-wide auth.
 
-Expected end-state: ws_victim isolated; lgreen disabled + revoked + reset
-with the reset sequenced after isolation; the five sprayed accounts,
-svc_backup, and the DC untouched.
+Expected end-state: ws_victim isolated; lgreen revoked + reset (reset
+after isolation; disabled or not, zero difference); sprayed accounts
+reset-or-not with zero difference, never disabled; svc_backup and the DC
+untouched.
 
 ---
 
 ## 4. lateral_movement_1 (Lateral Movement, difficulty 2) - two-host response
 
-Proposed answer key:
-
 ```yaml
   actions_reviewed: true
   actions:
     - id: "a_iso"
       action: "isolate_host"
+      status: "required"
       target: { host: "ws_victim" }
     - action: "kill_process"
+      status: "required"
       target: { host: "ws_victim", pid: 8844 }
-    - action: "delete_file"
-      target: { host: "ws_victim", path: "C:\\Users\\{victim.username}\\Downloads\\nmap-7.95\\nmap.exe" }
     - action: "kill_process"
+      status: "required"
       target: { host: "file", pid: 2104 }
     - action: "kill_process"
+      status: "acceptable"
       target: { host: "file", pid: 3312 }
-    - action: "disable_account"
-      target: { account: "victim" }
+    - action: "kill_process"
+      status: "acceptable"
+      target: { host: "ws_victim", pid: 6240 }
+    - action: "delete_file"
+      status: "acceptable"
+      target: { host: "ws_victim", path: "C:\\Users\\{victim.username}\\Downloads\\nmap-7.95\\nmap.exe" }
     - action: "revoke_sessions"
+      status: "required"
       target: { account: "victim" }
     - id: "a_reset"
       action: "force_password_reset"
+      status: "required"
       target: { account: "victim" }
       after: ["a_iso"]
+    - action: "disable_account"
+      status: "acceptable"
+      target: { account: "victim" }
 ```
 
 Rationale:
-- isolate ws_victim: recon origin (nmap sweep, firewall DENY/ALLOW trail)
-  and the source of the lateral logon.
-- kill 8844 (nmap.exe, s1): the staged recon tool, still running.
-- delete the nmap image (authored: s1 image; placeholder path substitutes
-  like chain content): removes the staged tool from the Downloads path.
-- kill 2104 and 3312 on the file server (s6 parent cmd.exe and net.exe):
-  the attacker's session shell and its enumeration child on the second
-  host (P2: authored malicious-lineage pids on a scoped host are
-  required, never collateral).
-- victim account (P1, breached: s5 is a successful lateral 4624 with the
-  victim's credentials from the compromised host): all three identity
-  actions; a_reset after a_iso, same genuine class as password_spray
-  (the foothold host could re-use a fresh credential while online).
-
-FLAG F1 (boundary case for P2): pid 6240, the ws-side cmd.exe that
-launched nmap, is authored (s1 parent) but is the interactive user
-shell. Options: (a) add kill (ws_victim, 6240) for lineage completeness,
-(b) leave it out and accept that killing it is collateral, (c) rule a
-neutral tier. Recommended: (a), one more required kill; the shell that
-launched the tool is part of the malicious session either way. Owner
-decides.
+- isolate ws_victim REQUIRED: recon origin and lateral-movement source;
+  stopping ongoing compromise.
+- kill 8844 (nmap.exe, s1) REQUIRED: the active malicious payload (P2).
+- kill 2104 (file-server cmd.exe, s6 parent) REQUIRED: the attacker's
+  session shell on the second host, an active control mechanism (P2).
+- kill 3312 (net.exe, s6) ACCEPTABLE per the justified-minimum test: a
+  transient enumeration child whose work is done; killing it is
+  defensible cleanup, not necessary to stop ongoing compromise.
+- kill 6240 (ws-side launching shell, s1 parent) ACCEPTABLE per the
+  re-ruling: it launched the tool but is not itself an active execution
+  or control mechanism once the host is isolated and 8844 is dead.
+- delete nmap.exe ACCEPTABLE per the justified-minimum test, stated:
+  deletion is not necessary to stop ongoing execution (the process kill
+  and isolation do that); removing the staged tool is defensible
+  cleanup. Authored via s1 image; placeholder substitutes like chain
+  content.
+- victim (stolen-credential use in the s5 lateral 4624): revoke + reset
+  REQUIRED, disable ACCEPTABLE (P1); a_reset after a_iso, the same
+  genuine containment-before-reset class as password_spray.
 
 Designed traps:
 - T1: the scanner. Isolating ACME-SEC01, disabling svc_vulnscan, or
@@ -236,69 +278,53 @@ Designed traps:
   service account with the Scanning Service Accounts group, verified
   Tenable identity, matching FP detection det_scanner_sweep.
 - T2: deleting C:\Windows\System32\net.exe or C:\Windows\System32\cmd.exe
-  on the file server (both authored images, so both deletable). The
-  PROCESSES were malicious; the FILES are native OS binaries. Deleting
-  them is collateral with real in-fiction damage.
-- T3: isolate file (the file server). Defensible-looking but wrong-cost:
-  the file server is the movement TARGET and serves org shares; the
-  required response is killing the session, not cutting the org off its
-  storage. Collateral only while still in effect at submission.
+  on either host (authored images, so deletable and in scope). The
+  PROCESSES were malicious; the FILES are native OS binaries.
+- T3: isolate file (the file server): the movement TARGET serving org
+  shares; the response is killing the session, not cutting the org off
+  its storage. Collateral only while still in effect.
 
-Expected end-state: ws_victim isolated; 8844, 2104, 3312 killed (6240
-per F1 ruling); nmap.exe gone from Downloads; victim disabled + revoked +
-reset (after isolation); scanner, svc_vulnscan, file server connectivity,
-and system binaries untouched.
+Expected end-state: ws_victim isolated; 8844 and 2104 dead (3312, 6240,
+and the nmap file at the player's discretion with zero score
+difference); victim revoked + reset after isolation; scanner,
+svc_vulnscan, file-server connectivity, and system binaries untouched.
 
 ---
 
 ## 5. false_positive_veeam (False Positive) - the inaction contract
 
-Proposed answer key:
+APPROVED UNCHANGED by the re-ruling:
 
 ```yaml
   actions_reviewed: true
   actions: []
 ```
 
-Rationale: routine Veeam endpoint-backup behavior (job start 110, agent
-manager spawn, service beacon to the backup server, bulk egress during
-the window, job finish 190). Correct response is NO action:
-`actions_reviewed: true` with an empty set makes the scenario one graded
-unit of intentional inaction. Clean hands earn the credit; any successful
-action in its scope is collateral AND costs the credit.
-
-Documented temptations (all become collateral automatically):
-- kill Veeam.EndPoint.Service.exe (s3: 2916) or Veeam.Agent.Manager.exe
-  (s2: 3844); delete either authored Veeam binary path.
-- isolate ws_victim or backup_server mid-backup-window.
-Dismissal evidence: all three detections carry false_positive
-dispositions; signed Veeam images; the established canonical backup
-actor; 110/190 job events bracket the exact window the egress happened
-in.
-
-Expected end-state: nothing changed; the Response section shows the
-inaction unit credited.
+Routine Veeam endpoint-backup behavior (job start 110, agent manager
+spawn, service beacon, bulk egress in the backup window, job finish
+190). One graded unit of intentional inaction; clean hands earn it; any
+successful action in scope is collateral AND costs the unit. Documented
+temptations: killing Veeam.EndPoint.Service.exe (2916) or
+Veeam.Agent.Manager.exe (3844), deleting either authored Veeam binary,
+isolating ws_victim or backup_server mid-window. Dismissal: all three
+detections carry false_positive dispositions; signed Veeam images;
+canonical backup actor; the 110/190 job events bracket the window.
 
 ---
 
 ## Batch 1 summary for approval
 
-| Scenario | Required actions | Declared `after` | Traps documented |
-|---|---|---|---|
-| malware_usb | 5 (1 iso, 2 kill, 2 delete; O1 open) | none | 2 |
-| phishing_1 | 3 (identity only) | none | 1 |
-| password_spray | 4 (1 iso, 3 identity) | reset after iso | 3 |
-| lateral_movement_1 | 8 (1 iso, 3 kill, 1 delete, 3 identity; F1 open) | reset after iso | 3 |
-| false_positive_veeam | 0 (inaction contract) | none | documented set |
+| Scenario | Required | Acceptable | `after` | Traps |
+|---|---|---|---|---|
+| malware_usb | iso + 2 kills + 1 delete | 1 delete (USB file) | none | 2 |
+| phishing_1 | revoke + reset | disable | none | 1 |
+| password_spray | iso + revoke + reset (lgreen) | disable (lgreen) + 5 hygiene resets | reset after iso | 3 |
+| lateral_movement_1 | iso + 2 kills + revoke + reset | 2 kills + 1 delete + disable | reset after iso | 3 |
+| false_positive_veeam | none (inaction) | none | none | documented set |
 
-Open items for the owner at this STOP:
-- O1 (malware_usb): include delete of E:\Payroll_2026.exe in the required
-  set? Recommended yes.
-- F1 (lateral_movement_1): require kill of the ws-side launching shell
-  pid 6240? Recommended yes.
-- P1/P2/P3 batch principles: ratify, amend, or replace. P2 in particular
-  decides whether any defensible kill can ever be collateral.
+Open item: N1 (revoke_sessions on the five sprayed accounts currently
+grades collateral; flag if it should be acceptable instead).
 
-No implementation until this scaffold is approved. Each approved scenario
-lands as its own commit (actions + actions_reviewed: true together),
-gates after the batch.
+No implementation until this scaffold is approved. Each approved
+scenario lands as its own commit (actions + actions_reviewed: true
+together), gates after the batch.
