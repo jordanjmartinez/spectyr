@@ -464,8 +464,8 @@ def test_rejects_action_order_violations():
 
 
 # The 3c review ledger: grown by exactly one label per approved scenario
-# commit (actions + actions_reviewed: true land together). The 3d close-out
-# gate asserts all 20 are here.
+# commit (actions + actions_reviewed: true land together). As of Stage 3c.5
+# it holds all 20 scenarios; the ENFORCED all-20 gate below keeps it there.
 REVIEWED_SCENARIOS = {
     "malware_usb",
     "phishing_1",
@@ -503,6 +503,21 @@ def test_corpus_review_ledger_matches_marker_state():
         if not reviewed:
             assert ak["actions"] == [], \
                 f"{label}: unreviewed scenario carries authored actions"
+
+
+def test_all_twenty_scenarios_reviewed_gate():
+    """The 20/20 reviewed-scenarios gate, restored and ENFORCED at Stage 3c.5
+    close (defense_evasion_log_clearing was the last, unblocked by the
+    remove_persistence increment). Every scenario in the corpus must be
+    reviewed; the ledger must cover all 20 with no stragglers. A new scenario
+    added later is reviewed-and-authored or this gate goes red."""
+    catalog, _ = _load_corpus()
+    assert len(catalog) == 20, f"expected 20 scenarios, found {len(catalog)}"
+    assert REVIEWED_SCENARIOS == set(catalog), \
+        "the 20/20 gate: the review ledger must be exactly the corpus"
+    unreviewed = [l for l, sc in catalog.items()
+                  if not sc["answer_key"].get("actions_reviewed")]
+    assert not unreviewed, f"unreviewed scenarios remain: {sorted(unreviewed)}"
 
 
 def test_rejects_authored_actions_without_reviewed_flag():
