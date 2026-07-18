@@ -371,8 +371,11 @@ def test_scenario_grading_record_carries_scope_and_flag():
     assert {h["hostname"] for h in env["hosts"]} == rec["hostnames"]
     assert ("acme", "svc_vulnscan") in rec["accounts"]
     assert ("acme", "nkhan") in rec["accounts"]
-    # a scenario outside the batch stays unreviewed
-    sc2, _, env2 = _resolved_env("c2_http")
+    # a not-yet-reviewed scenario stays reviewed=False (pick one dynamically
+    # so the fixture survives later batches reviewing any given label)
+    unreviewed = next(l for l, s in app.yaml_catalog.items()
+                      if not s["answer_key"].get("actions_reviewed"))
+    sc2, _, env2 = _resolved_env(unreviewed)
     assert app.scenario_grading_record("scenario-u", sc2, env2)["reviewed"] is False
 
 

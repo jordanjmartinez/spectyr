@@ -448,6 +448,7 @@ REVIEWED_SCENARIOS = {
     "password_spray",
     "lateral_movement_1",
     "false_positive_veeam",
+    "c2_http",
 }
 
 
