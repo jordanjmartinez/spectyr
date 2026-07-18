@@ -346,9 +346,302 @@ canonical backup actor; the 110/190 job events bracket the window.
 | lateral_movement_1 | iso + 2 kills + revoke + reset | 2 kills + 1 delete + disable | reset after iso | 3 |
 | false_positive_veeam | none (inaction) | none | none | documented set |
 
-Open item: N1 (revoke_sessions on the five sprayed accounts currently
-grades collateral; flag if it should be acceptable instead).
+N1 ruled: revoke and disable on the sprayed-never-breached accounts stay
+collateral; hygiene reset acceptable. Recorded in the P1 rubric.
 
-No implementation until this scaffold is approved. Each approved
-scenario lands as its own commit (actions + actions_reviewed: true
-together), gates after the batch.
+---
+
+# Batch 2 (SCAFFOLD, awaiting owner approval)
+
+Next five scenarios. Statuses per the ratified P2 (required = active
+malicious processes + actions necessary to stop ongoing
+execution/compromise; acceptable = defensible nonessential
+containment/cleanup; collateral = neither list). Identity per the P1
+rubric (evict what the evidence shows the attacker controls). Every
+target achievability-checked (authored sources, seed-independent).
+
+## Cross-batch flags surfaced by this batch (owner decisions)
+
+- **FX1 - FileCreate'd data files are not deletable in the world model.**
+  data_exfil_archive and insider_staging both create a staging archive
+  via Sysmon FileCreate (event_id 11). The Stage 1-3 world model only
+  materializes deletable files from process images and run-key autoruns
+  (snapshot_generator + action_overlay `_host_file_set`), so a
+  `delete_file` on the archive is unachievable (the validator would
+  reject it; the overlay could not execute it). This is a world-model
+  limitation, not a vocabulary gap. Archive deletion is remediation
+  cleanup, not containment: both scenarios have a complete containment
+  answer key without it. RECOMMENDED: accept (author no archive delete;
+  the required sets do not need it). Alternatives per the expressibility
+  rule: reshape (make the archive a process/autorun artifact - not
+  natural) or extend (materialize FileCreate targets as a deletable
+  surface - a reviewed engineering change). Not blocking: no required
+  action depends on it.
+
+- **FX2 - delete_file is UI-reachable only from Autoruns rows.** The
+  response UI offers Kill on process rows, Isolate/Release on the host,
+  identity actions on Threats accounts, and Delete only on autorun image
+  rows. A delete on a process-image file (not an autorun) is API-valid
+  but has no button. No Batch 2 scenario has an autorun-backed malicious
+  file, so no Batch 2 required action is an unreachable delete. Batch 2
+  therefore proposes ZERO required deletes; any delete is acceptable at
+  most. Flag for a future engineering pass IF a later batch needs a
+  required delete on a non-autorun file. (Batch 1's one required delete,
+  winupdate.exe, is autorun-backed and UI-reachable; malware_usb's
+  acceptable E:\ delete and lateral_movement_1's acceptable nmap delete
+  are process-image, API-only - acceptable, so reachability is moot.)
+
+- **FX3 - OAuth-grant revocation is out of vocabulary (near-miss, not
+  triggered).** false_positive_oauth is the BENIGN token-cycle scenario,
+  so its correct response is inaction and nothing is unexpressible. But a
+  future MALICIOUS illicit-consent / OAuth-grant-abuse scenario would
+  imply "revoke the application's grant," which the seven-action
+  vocabulary cannot express. Flagged now so the choice (reshape vs.
+  extend vocabulary) is made deliberately before such a scenario is
+  scaffolded, never by stretching disable_account.
+
+## 6. c2_http (Command & Control, difficulty 2) - fileless C2
+
+```yaml
+  actions_reviewed: true
+  actions:
+    - action: "isolate_host"
+      status: "required"
+      target: { host: "ws_victim" }
+    - action: "kill_process"
+      status: "required"
+      target: { host: "ws_victim", pid: 5912 }
+```
+
+Rationale:
+- isolate ws_victim REQUIRED: severs the active HTTPS C2 channel (s3/s5
+  beacons to the non-allowlisted domain).
+- kill 5912 (rundll32.exe, s1) REQUIRED: rundll32 launched with no module
+  (the fileless C2 loader, det_rundll_no_module); the active malicious
+  process holding the beacon. Its parent is explorer.exe (3456, the user
+  shell) - not a target (same class as the launching shells left
+  acceptable/off-list elsewhere; here simply omitted).
+
+No delete (fileless: no dropped payload file). No identity actions: the
+host runs the implant, but no chain event shows credential or session
+compromise, so identity is off-list (see T1).
+
+No ordering (host-local containment; sequence does not matter).
+
+Designed traps:
+- T1: disable/revoke/reset the victim account. Host compromise, not
+  credential compromise: nothing in the chain shows the account or its
+  sessions were taken. Disruptive account action is collateral (P1); even
+  a precautionary reset is collateral here (no targeting-of-credentials
+  evidence at all).
+- T2: isolate the DNS or proxy device (both in the environment as log
+  sources / infra). The proxy is a PAN-OS non-endpoint (isolate would
+  fail-precondition and surface factually); isolating the DNS server is
+  collateral (infra, not the compromised host).
+
+Expected end-state: ws_victim isolated; rundll32 5912 gone from live
+Processes (its beacon connections drop with it); account and infra
+untouched.
+
+## 7. malware_ransomware (Malware, difficulty 1) - active encryption
+
+```yaml
+  actions_reviewed: true
+  actions:
+    - action: "isolate_host"
+      status: "required"
+      target: { host: "ws_victim" }
+    - action: "kill_process"
+      status: "required"
+      target: { host: "ws_victim", pid: 18204 }
+    - action: "kill_process"
+      status: "acceptable"
+      target: { host: "ws_victim", pid: 19301 }
+    - action: "delete_file"
+      status: "acceptable"
+      target: { host: "ws_victim", path: "C:\\Users\\{victim.username}\\AppData\\Local\\Temp\\svchost.exe" }
+```
+
+Rationale:
+- kill 18204 (Temp\svchost.exe, s1) REQUIRED: the encryptor, actively
+  mass-encrypting (s5 critical det_mass_encrypt); stopping it stops the
+  ongoing damage (P2).
+- isolate ws_victim REQUIRED (FLAG R1): canonical ransomware containment
+  - prevent encryption spread to mapped drives and network shares. This
+  chain shows no network events, so a strict reading of P2 ("necessary to
+  stop ONGOING compromise") could make isolation ACCEPTABLE instead,
+  since killing 18204 halts the local encryption. Recommended REQUIRED
+  (you cannot know it will not reach shares, and isolate-first is the
+  ransomware playbook), but flagged for the owner.
+- kill 19301 (vssadmin.exe, s2) ACCEPTABLE: the shadow-copy deletion
+  LOLBin; a transient child that has already run by response time.
+  Defensible to kill if still present, not necessary.
+- delete Temp\svchost.exe ACCEPTABLE: removing the malware binary is
+  defensible cleanup, not containment (the kill stops execution). It is a
+  process image (deletable, achievable) but NOT autorun-backed, so it is
+  API-only per FX2 - acceptable, so unreachability is moot.
+
+No identity actions: local malware, no credential/session evidence.
+No ordering.
+
+Designed traps:
+- T1: disable/revoke/reset the victim account (no credential compromise;
+  the malware ran in the user's session but did not steal creds).
+- T2: killing or deleting benign processes surfaced by the host's ambient
+  benign detections.
+- T3: deleting the victim's encrypted documents or the ransom note (both
+  FileCreate'd, so not deletable anyway per FX1 - a non-trap by
+  construction, but named so the triage review can warn against it).
+
+Expected end-state: ws_victim isolated; encryptor 18204 gone (vssadmin
+and the binary at discretion); account untouched.
+
+## 8. data_exfil_archive (Data Exfiltration, difficulty 2) - exfil in progress
+
+```yaml
+  actions_reviewed: true
+  actions:
+    - action: "isolate_host"
+      status: "required"
+      target: { host: "ws_victim" }
+    - action: "kill_process"
+      status: "acceptable"
+      target: { host: "ws_victim", pid: 15820 }
+```
+
+Rationale:
+- isolate ws_victim REQUIRED: the exfil upload is an in-progress
+  proxy-tunneled HTTP_CONNECT (s5) with no process-level kill target, so
+  ISOLATION is the only lever that stops the ongoing exfiltration (P2).
+  A deliberate teaching point, not an expressibility gap: isolate covers
+  it.
+- kill 15820 (7z.exe, s1) ACCEPTABLE: the archiver already produced the
+  archive (s2) by upload time; killing it is defensible but does not stop
+  the upload. Authored (s1 image), achievable.
+
+No delete: the staged archive is FileCreate'd (FX1, unachievable); the
+7z binary is a legitimate tool (deleting it is collateral, T2). No
+identity: no auth events in the chain, no credential evidence. No
+ordering.
+
+Designed traps:
+- T1: disable/revoke/reset the victim account. Classified Data
+  Exfiltration with no authentication events: nothing shows credential
+  compromise, so all identity action is collateral.
+- T2: deleting C:\Program Files\7-Zip\7z.exe (authored image, in scope):
+  destroying a legitimate installed tool.
+- T3: killing the benign backup 7z (sup2: pid 6820, det_backup_archive_fp)
+  or treating the cloud-sync FP (sup1, det_cloud_sync_fp) as hostile.
+
+Expected end-state: ws_victim isolated (exfil severed); 7z 15820 at
+discretion; account, the 7z binary, and the benign backup untouched.
+
+## 9. insider_staging (Insider Threat, difficulty 3) - the account is the threat
+
+```yaml
+  actions_reviewed: true
+  actions:
+    - action: "disable_account"
+      status: "required"
+      target: { account: "victim" }
+    - action: "revoke_sessions"
+      status: "required"
+      target: { account: "victim" }
+    - action: "isolate_host"
+      status: "required"
+      target: { host: "ws_victim" }
+    - action: "kill_process"
+      status: "acceptable"
+      target: { host: "ws_victim", pid: 7832 }
+```
+
+Rationale (the canonical P1 insider case):
+- disable_account victim REQUIRED: the insider actor is operating with
+  their own legitimate credentials; the evidence justifies removing the
+  account from use (P1: disable required for an insider actor). This is
+  the primary response.
+- revoke_sessions victim REQUIRED: the active session is the one
+  performing the exfil (s4/s5); it is a compromised-in-use session that
+  must be evicted (P1: session compromise -> revoke required).
+- isolate ws_victim REQUIRED: stops the in-progress cloud upload (s5),
+  same proxy-tunneled no-kill-target shape as data_exfil.
+- kill 7832 (chrome.exe, s4) ACCEPTABLE (FLAG I1): chrome is the exfil
+  vehicle but a legitimate browser; isolation already severs the upload,
+  so killing it is defensible containment of the channel, not necessary.
+  Flagged because reasonable analysts differ on killing a user's browser.
+
+- force_password_reset victim is deliberately OFF-LIST -> collateral
+  (FLAG I2): there is no stolen password to evict (the insider owns the
+  credential and authenticated legitimately). Resetting it evicts nothing
+  the attacker controls; per the P1 unifying test it is not defensible
+  hygiene here. Recommended COLLATERAL (the clean insider-vs-credential-
+  compromise distinction), but flagged since one could argue it is
+  acceptable account-decommissioning hygiene.
+
+No ordering: disable, revoke, and isolate are all immediate containment
+with no credential-reset re-capture risk (no required reset), so P3
+declares nothing.
+
+Designed traps:
+- T1: force_password_reset victim (I2 above).
+- T2: any action on the file server (s1/s2: the victim logged in and
+  read the share). The file server is the data SOURCE, not compromised;
+  isolating it cuts the org off its storage, and there is no process or
+  account on it to action.
+- T3: treating the benign bulk-egress FP (sup1: Veeam 190,
+  det_mass_egress_fp) as the insider's exfil.
+
+Expected end-state: victim disabled and sessions revoked; ws_victim
+isolated (upload severed); chrome at discretion; the file server,
+victim's password state, and the backup egress untouched.
+
+## 10. false_positive_oauth (False Positive, difficulty 3) - benign token cycle
+
+APPROVED SHAPE: the inaction contract.
+
+```yaml
+  actions_reviewed: true
+  actions: []
+```
+
+Rationale: Entra flagged anomalous token activity (Dublin vs. Miami), but
+the chain is a benign non-interactive M365 OAuth refresh-token cycle from
+a compliant device (both detections carry false_positive dispositions).
+Correct response is NO action: one graded unit of intentional inaction.
+This is the hardest inaction scenario in the batch precisely because it
+LOOKS like account takeover - the whole exercise is resisting the
+identity-action reflex.
+
+Designed traps (all collateral, all costing the inaction unit):
+- disable / revoke / reset the victim account: the identity-action reflex
+  the scenario is built to test. Benign token cycle, no compromise.
+- isolate ws_victim: host-think against a benign identity event.
+
+Expressibility: none (inaction is fully expressible). Note FX3: a
+malicious sibling scenario would need OAuth-grant revocation, out of
+vocabulary - not this benign one.
+
+Expected end-state: nothing changed; the Response section credits the
+inaction unit.
+
+## Batch 2 summary for approval
+
+| Scenario | Required | Acceptable | `after` | Traps | Flags |
+|---|---|---|---|---|---|
+| c2_http | iso + kill rundll32 | none | none | 2 | - |
+| malware_ransomware | iso + kill encryptor | kill vssadmin + delete encryptor | none | 3 | R1 (iso required vs acceptable) |
+| data_exfil_archive | iso | kill 7z | none | 3 | FX1 |
+| insider_staging | disable + revoke + iso | kill chrome | none | 3 | I1 (kill chrome), I2 (reset collateral), FX1 |
+| false_positive_oauth | none (inaction) | none | none | 2 | FX3 (near-miss) |
+
+Open items for the owner at this STOP:
+- R1: ransomware isolate REQUIRED (recommended) vs ACCEPTABLE.
+- I1: insider kill-chrome ACCEPTABLE (recommended) vs off-list.
+- I2: insider force_password_reset COLLATERAL (recommended) vs ACCEPTABLE.
+- FX1/FX2/FX3: the modeling/vocabulary flags above (FX1 recommend accept;
+  FX2 no Batch 2 impact; FX3 decide before any malicious-OAuth scenario).
+
+No ordering declarations in Batch 2 (no required credential resets, so
+the isolate-before-reset class does not arise; P3 restraint honored). No
+implementation until this scaffold is approved. Batch 3 remains blocked
+until Batch 2 review.
