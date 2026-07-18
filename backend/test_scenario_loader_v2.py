@@ -479,6 +479,7 @@ REVIEWED_SCENARIOS = {
     "false_positive_oauth",
     "brute_force_attack",
     "c2_dns_tunnel",
+    "defense_evasion",
 }
 
 

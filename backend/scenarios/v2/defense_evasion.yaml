@@ -276,7 +276,31 @@ answer_key:
     accounts: ["victim"]
   root_cause: "s1"
   techniques: ["T1685"]
-  actions: []
+  actions_reviewed: true
+  actions:
+    - action: "isolate_host"
+      status: "required"
+      target:
+        host: "ws_victim"
+    - action: "kill_process"
+      status: "required"
+      target:
+        host: "ws_victim"
+        pid: 6104
+    - action: "delete_file"
+      status: "required"
+      target:
+        host: "ws_victim"
+        path: "C:\\Users\\Public\\svchost32.exe"
+    - action: "kill_process"
+      status: "acceptable"
+      target:
+        host: "ws_victim"
+        pid: 4812
+  traps:
+    - action: "disable_account"
+      target:
+        account: "victim"
 
 triage_review:
   mitre:
