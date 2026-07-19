@@ -58,6 +58,32 @@ When org-prefix theming substitution lands, this tenant literal joins the
 `{org_prefix}` set so the `acme` prefix is substituted consistently (e.g.
 `{org_prefix}-my.sharepoint.com`) rather than hardcoded in four places.
 
+## Stage 3.9B non-blocking notes (owner-directed 2026-07-19)
+
+**Target: as noted per item.**
+
+Three non-blocking notes recorded at the 3.9A close / 3.9B authorization:
+
+1. **Session-scoped immutability.** Submission records (and all grading state)
+   are in-memory only, cleared on `reset-simulator` and discarded on process
+   restart. Acceptable now. If any future mode wants persistent history or
+   leaderboards, persistence becomes an explicit design item at that time (it is
+   not implied by anything shipped).
+2. **Blind-verification mode.** Future blind end-to-end verifications should run
+   in a non-Guided mode where possible, so blindness is *structural* (Check
+   Answer unavailable) rather than merely behavioral.
+3. **Classification category validation.** `_valid_classification` currently
+   accepts any non-empty category for a `threat` verdict; it should validate the
+   category against the known category list. Low priority.
+
+Also recorded (Stage 3.9B / C2): the dormant `inputs.classification.report`
+field on the submission record (an undisclosed 3.9A addition, now unused since
+the Submit note input was removed) is left in place for 3.9B and its cleanup is
+deferred to a **separately reviewed migration outside 3.9B** (removing it would
+be a submission-record schema change). Process rule now in effect: implementation
+reports disclose every submission-record field and endpoint added, however
+incidental.
+
 ## Offline-host wrinkle: exercise in the trusted-actor-compromised scenario
 
 **Target: when the trusted-actor-compromised scenario is authored (backlog).**
