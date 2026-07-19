@@ -40,7 +40,7 @@ const PhaseStrip = ({ sealed, triage, related, ready }) => {
 
 const Incidents = ({
   isVisible, resetTrigger, onHardcoreFailure, onReset, gameMode = 'training',
-  activeIncidentId, onSelectIncident, onNavigate, setGroupedAlertCount,
+  activeIncidentId, onSelectIncident, onNavigate, setGroupedAlertCount, onPracticeAnother,
 }) => {
   const [data, setData] = useState({ active: [], completed: [], queue_length: 0, resolved_count: 0 });
   const [view, setView] = useState('active');    // 'active' | 'ready' | 'completed'
@@ -51,13 +51,17 @@ const Incidents = ({
 
   const [showClassifier, setShowClassifier] = useState(false);
   const [showCategory, setShowCategory] = useState(false);
-  const [pendingSubmit, setPendingSubmit] = useState(null);
+  const [pendingSubmit, setPendingSubmit] = useState(null);  // {..., action: 'submit' | 'check'}
   const [submitBusy, setSubmitBusy] = useState(false);
+  const [checkResult, setCheckResult] = useState(null);      // Guided Check Answer feedback
+  const [checkBusy, setCheckBusy] = useState(false);
+  const [practiceWarn, setPracticeWarn] = useState(false);   // Practice Another reset warning
   const [notice, setNotice] = useState('');
   const [review, setReview] = useState(null);     // {incidentId, title, grading, assisted, triage}
   const noticeTimer = useRef(null);
 
   const selectedId = activeIncidentId;
+  const isGuided = gameMode === 'guided' || gameMode === 'training';
   const flash = (m) => { setNotice(m); if (noticeTimer.current) clearTimeout(noticeTimer.current); noticeTimer.current = setTimeout(() => setNotice(''), 4500); };
 
   const fetchList = useCallback(() => {
@@ -104,8 +108,32 @@ const Incidents = ({
     if (!selected || selected.state !== 'in_progress') return;
     if (!selected.sealed) { flash('Incident telemetry is still loading.'); return; }
     if (!selected.ready) { const n = selected.open_detections ?? 0; flash(`${n} detection${n === 1 ? '' : 's'} still need review.`); return; }
-    setPendingSubmit({ incident_id: selected.incident_id, title: selected.title });
+    setPendingSubmit({ incident_id: selected.incident_id, title: selected.title, action: 'submit' });
     setShowClassifier(true);
+  };
+
+  // Check Answer (Guided only): pick a classification and reveal ONLY whether it
+  // is correct, without submitting; permanently marks the incident Assisted. It
+  // never reveals detection, response, or composite grading (server-enforced).
+  const beginCheck = () => {
+    if (!isGuided || !selected || selected.state !== 'in_progress' || !selected.sealed) return;
+    setPendingSubmit({ incident_id: selected.incident_id, title: selected.title, action: 'check' });
+    setShowClassifier(true);
+  };
+
+  const doCheck = async (p) => {
+    setCheckBusy(true);
+    try {
+      const res = await apiFetch(`/api/incidents/${p.incident_id}/check-answer`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ verdict: p.verdict, category: p.category }),
+      });
+      const b = await res.json().catch(() => ({}));
+      setPendingSubmit(null);
+      if (res.ok) { setCheckResult({ correct: !!b.correct }); fetchList(); }
+      else { flash(b.error || 'Check Answer is available in Guided mode only.'); }
+    } catch { flash('Could not check the answer.'); }
+    finally { setCheckBusy(false); }
   };
 
   const doSubmit = async () => {
@@ -234,16 +262,24 @@ const Incidents = ({
                 {selected.state === 'submitted' ? (
                   <button onClick={() => openReview(selected.incident_id)}
                     className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#1a2332] hover:bg-[#eef1f4]">View Post-Incident Review</button>
-                ) : selected.sealed && selected.ready ? (
-                  <button onClick={beginSubmit}
-                    className="px-3 py-1.5 text-sm rounded-md bg-[#101218] text-white hover:bg-[#1e2330]">Submit</button>
                 ) : (
                   <>
-                    <button onClick={() => { onSelectIncident?.(selected.incident_id); onNavigate?.('detections'); }}
-                      className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#1a2332] hover:bg-[#eef1f4]">Triage detections</button>
-                    <span className="text-xs text-[#8b949e]">
-                      {!selected.sealed ? 'Incident telemetry is still loading.' : `${selected.open_detections} detections still need review.`}
-                    </span>
+                    {selected.sealed && selected.ready ? (
+                      <button onClick={beginSubmit}
+                        className="px-3 py-1.5 text-sm rounded-md bg-[#101218] text-white hover:bg-[#1e2330]">Submit</button>
+                    ) : (
+                      <>
+                        <button onClick={() => { onSelectIncident?.(selected.incident_id); onNavigate?.('detections'); }}
+                          className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#1a2332] hover:bg-[#eef1f4]">Triage detections</button>
+                        <span className="text-xs text-[#8b949e]">
+                          {!selected.sealed ? 'Incident telemetry is still loading.' : `${selected.open_detections} detections still need review.`}
+                        </span>
+                      </>
+                    )}
+                    {isGuided && selected.sealed && (
+                      <button onClick={beginCheck}
+                        className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4]">Check Answer</button>
+                    )}
                   </>
                 )}
               </div>
@@ -252,22 +288,32 @@ const Incidents = ({
         </div>
       </div>
 
-      {/* Submit lifecycle (note-free per A1/C2) */}
+      {/* Submit / Check-Answer classifier flow (note-free per A1/C2). Both Submit
+          and Guided Check Answer share the verdict/category pickers; the pending
+          action routes the completed classification to submit or check. */}
       {showClassifier && pendingSubmit && (
         <ClassificationSelector isHardcore={gameMode === 'hardcore'}
           onSelect={(id) => {
             setShowClassifier(false);
-            if (id === 'false_positive') { setPendingSubmit(p => ({ ...p, verdict: 'false_positive', category: 'False Positive' })); }
-            else { setPendingSubmit(p => ({ ...p, verdict: 'threat' })); setShowCategory(true); }
+            if (id === 'false_positive') {
+              const p = { ...pendingSubmit, verdict: 'false_positive', category: 'False Positive' };
+              setPendingSubmit(p);
+              if (p.action === 'check') doCheck(p);
+            } else { setPendingSubmit(p => ({ ...p, verdict: 'threat' })); setShowCategory(true); }
           }}
           onCancel={() => { setShowClassifier(false); setPendingSubmit(null); }} />
       )}
       {showCategory && pendingSubmit && (
         <CategorySelector isHardcore={gameMode === 'hardcore'} scenarioInfo={pendingSubmit}
-          onSelect={(cid, clabel) => { setShowCategory(false); setPendingSubmit(p => ({ ...p, category: clabel })); }}
+          onSelect={(cid, clabel) => {
+            setShowCategory(false);
+            const p = { ...pendingSubmit, category: clabel };
+            setPendingSubmit(p);
+            if (p.action === 'check') doCheck(p);
+          }}
           onCancel={() => { setShowCategory(false); setPendingSubmit(null); }} />
       )}
-      {pendingSubmit && pendingSubmit.verdict && !showClassifier && !showCategory && (
+      {pendingSubmit && pendingSubmit.action === 'submit' && pendingSubmit.verdict && !showClassifier && !showCategory && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
           <div className="bg-white rounded-xl border border-[#e2e6ea] shadow-xl w-full max-w-md overflow-hidden">
             <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
@@ -279,6 +325,26 @@ const Incidents = ({
                   className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4] disabled:opacity-60">Cancel</button>
                 <button type="button" onClick={doSubmit} disabled={submitBusy}
                   className="px-3 py-1.5 text-sm rounded-md bg-[#101218] text-white hover:bg-[#1a2332] disabled:opacity-60">{submitBusy ? 'Submitting…' : 'Submit Incident'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Guided Check Answer result: classification correctness ONLY */}
+      {checkResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
+          <div className="bg-white rounded-xl border border-[#e2e6ea] shadow-xl w-full max-w-md overflow-hidden">
+            <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
+            <div className="p-5">
+              <p className="text-[11px] uppercase tracking-wider text-[#6e7781]">Check Answer</p>
+              <h3 className="text-base font-semibold mt-0.5" style={{ color: checkResult.correct ? '#6fa868' : '#b45858' }}>
+                {checkResult.correct ? 'Classification correct' : 'Not the right classification'}
+              </h3>
+              <p className="mt-2 text-sm text-[#57606a]">This reveals the classification only; detection and response are graded when you submit. This incident is now marked <span className="font-medium text-[#1a2332]">Assisted</span>.</p>
+              <div className="mt-5 flex justify-end">
+                <button type="button" onClick={() => setCheckResult(null)}
+                  className="px-3 py-1.5 text-sm rounded-md bg-[#101218] text-white hover:bg-[#1e2330]">Close</button>
               </div>
             </div>
           </div>
@@ -314,8 +380,31 @@ const Incidents = ({
                 <p className="text-sm text-[#57606a] mt-1 break-words">{review.triage.what_is_it.description}</p>
               </div>
             )}
-            <div className="mt-5 flex justify-end">
+            <div className="mt-5 flex justify-end gap-2">
+              {isGuided && onPracticeAnother && (
+                <button onClick={() => setPracticeWarn(true)}
+                  className="px-4 py-2 text-sm rounded-md border border-[#d0d7de] text-[#1a2332] hover:bg-[#eef1f4]">Practice Another</button>
+              )}
               <button onClick={() => setReview(null)} className="px-4 py-2 text-sm rounded-md bg-[#101218] text-white hover:bg-[#1e2330]">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Practice Another (Guided): explicit reset warning before clearing the run */}
+      {practiceWarn && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
+          <div className="bg-white rounded-xl border border-[#e2e6ea] shadow-xl w-full max-w-md overflow-hidden">
+            <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
+            <div className="p-5">
+              <h3 className="text-base font-semibold text-[#1a2332]">Practice another scenario?</h3>
+              <p className="mt-2 text-sm text-[#57606a]">This clears the current Guided run: its submitted incident record, your Session Performance, and this Post-Incident Review. The simulation resets and returns to the scenario picker.</p>
+              <div className="mt-5 flex justify-end gap-2">
+                <button type="button" onClick={() => setPracticeWarn(false)}
+                  className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4]">Cancel</button>
+                <button type="button" onClick={() => { setPracticeWarn(false); setReview(null); onPracticeAnother?.(); }}
+                  className="px-3 py-1.5 text-sm rounded-md bg-[#101218] text-white hover:bg-[#1e2330]">Clear and pick another</button>
+              </div>
             </div>
           </div>
         </div>

@@ -185,6 +185,15 @@ const Dashboard = () => {
     }
   };
 
+  // Guided Practice Another: clear the current run (reset-simulator wipes
+  // submissions + world) and return to the answer-neutral picker. The warning is
+  // shown in the Incidents Review before this runs.
+  const handlePracticeAnother = async () => {
+    await handleResetSimulator();
+    setActiveIncidentId(null);
+    setShowDifficultyModal(true);
+  };
+
   const tabs = [
     { key: 'dashboard', label: 'Dashboard', count: 0,
       icon: 'M4 5a1 1 0 011-1h5a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM14 13a1 1 0 011-1h4a1 1 0 011 1v6a1 1 0 01-1 1h-4a1 1 0 01-1-1v-6zM4 15a1 1 0 011-1h5a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4z' },
@@ -320,6 +329,7 @@ const Dashboard = () => {
             onSelectIncident={setActiveIncidentId}
             onNavigate={setView}
             setGroupedAlertCount={setGroupedAlertCount}
+            onPracticeAnother={handlePracticeAnother}
           />
         </div>
 

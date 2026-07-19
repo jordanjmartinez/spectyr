@@ -6,7 +6,7 @@
  * Both neutral readiness messages are reachable; no POST fires on render.
  */
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import Incidents from '../components/Incidents';
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
@@ -25,10 +25,14 @@ const INCIDENTS = {
   ],
 };
 const scopeFor = (id) => ({ incident_id: id, sealed: true, hosts: ['ACME-WS10'], accounts: ['ACME\\u'], detection_ids: ['d1'], triage: { total: 3, triaged: 0 } });
+const GRADE = { grade: 'A', accuracy: 100 };
 const routeJson = (path) => {
   if (path === '/api/incidents') return INCIDENTS;
   if (path === '/api/actions') return [];
   if (path.endsWith('/scope')) return scopeFor(path.split('/')[3]);
+  if (path.endsWith('/score')) return { state: 'submitted', assisted: false, grading: { classification: GRADE, detection: GRADE, response: GRADE, composite: GRADE } };
+  if (path.endsWith('/triage-review')) return { what_is_it: { title: 'What', description: 'Why' } };
+  if (path.endsWith('/check-answer')) return { correct: true, assisted: true };
   return {};
 };
 beforeEach(() => {
@@ -84,4 +88,27 @@ test('issues no state-changing (POST) call on render', async () => {
   await waitFor(() => expect(apiFetch).toHaveBeenCalledWith('/api/incidents'));
   const posts = apiFetch.mock.calls.filter(([, o]) => o && o.method && o.method !== 'GET');
   expect(posts).toHaveLength(0);
+});
+
+test('Check Answer is offered in Guided on a sealed incident, and hidden in Hardcore', async () => {
+  const g = render(<Incidents gameMode="training" activeIncidentId="INC-2000" />);   // guided, sealed
+  expect(await g.findByText('Check Answer')).toBeInTheDocument();
+  g.unmount();
+  render(<Incidents gameMode="hardcore" activeIncidentId="INC-2000" />);
+  await screen.findByText('brief B');
+  expect(screen.queryByText('Check Answer')).toBeNull();
+});
+
+test('Practice Another (Guided) warns, cancels back, and calls back on confirm', async () => {
+  const onPracticeAnother = jest.fn();
+  render(<Incidents gameMode="training" activeIncidentId="INC-3000" onPracticeAnother={onPracticeAnother} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'View Post-Incident Review' }));
+  fireEvent.click(await screen.findByText('Practice Another'));
+  expect(screen.getByText(/clears the current Guided run/)).toBeInTheDocument();
+  fireEvent.click(screen.getByText('Cancel'));                       // cancel keeps the review
+  expect(screen.queryByText(/clears the current Guided run/)).toBeNull();
+  expect(onPracticeAnother).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByText('Practice Another'));
+  fireEvent.click(screen.getByText('Clear and pick another'));       // confirm
+  expect(onPracticeAnother).toHaveBeenCalled();
 });
