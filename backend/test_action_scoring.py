@@ -576,6 +576,53 @@ def test_declared_traps_execute_reachable_and_grade_collateral_across_seeds():
     assert audited >= 0
 
 
+def test_actions_ui_reachable_within_incident_scope_across_seeds():
+    """Stage 3.9B / B3 + C1: while an incident's scope is active, EVERY required,
+    acceptable, AND declared-trap target must be reachable within the incident's
+    OBSERVABLE presentation scope, across the fixed five-seed set:
+    - host / process / file / persistence targets: the target host must be an
+      observable participant of the incident (an event-participant managed host,
+      mirroring _incident_observable_scope, or a tagged-detection host) -> the
+      scoped Endpoints view surfaces it;
+    - identity targets: the account must be a detection-surfaced account of THIS
+      incident (its own det_keys) -> the scoped Threats view surfaces it.
+    Answer-key data (expected actions, traps) is used ONLY in this test, never in
+    the presentation scope; a gap here is fixed in telemetry/content, never by
+    injecting answer-key targets into the scope."""
+    IDENTITY = ("disable_account", "revoke_sessions", "force_password_reset")
+    checked = 0
+    for label, sc in app.yaml_catalog.items():
+        ak = sc["answer_key"]
+        if not ak.get("actions_reviewed"):
+            continue
+        for seed in SEED_SET:
+            sc2, resolved, env, world, dets, reg, det_keys = _full_world_for_seed(label, seed)
+            # observable scope hosts: event-participant managed hosts + tagged-
+            # detection hosts (the same derivation _incident_observable_scope uses).
+            obs_hosts = set(world["hosts"].keys())
+            for d in dets:
+                h = (d.get("entity") or {}).get("host")
+                if h:
+                    obs_hosts.add(h)
+            targets = list(app.materialize_expected_actions(
+                ak.get("actions", []), f"scenario-{label}", env, resolved, world=world))
+            targets += list(app.materialize_traps(
+                sc.get("traps", []), f"scenario-{label}", env, resolved, world=world))
+            for t in targets:
+                action, target = t["action"], t["target"]
+                if action in IDENTITY:
+                    assert app.ui_reachable(action, target, world, det_keys), \
+                        (f"{label}/{seed}: identity {action} not reachable within "
+                         f"the incident scope")
+                else:
+                    host = target.get("hostname") or target.get("host")
+                    assert host in obs_hosts, \
+                        (f"{label}/{seed}: {action} target host {host!r} is not in "
+                         f"the incident's observable scope {sorted(obs_hosts)}")
+                checked += 1
+    assert checked > 0, "no reviewed action/trap targets were checked"
+
+
 def ak_actions(sc):
     return sc["answer_key"].get("actions", [])
 
@@ -659,15 +706,29 @@ def _cleanup(sid, s):
 
 
 def test_score_endpoint_shape_surfacing_and_no_leak():
-    """Counts + grade + the three factual blocks (failed attempts, no_op
-    repeats, executed acceptable actions). Expected composites, the status
-    field, and the reviewed marker never serialize; UNEXECUTED acceptable
-    targets never surface."""
+    """Stage 3.9A: the action_score route is submission-gated, so the response
+    section (counts + grade + the three factual blocks) surfaces only AFTER the
+    incident is submitted. Expected composites, the status field, and the
+    reviewed marker never serialize; UNEXECUTED acceptable targets never
+    surface; the in_progress payload discloses no grading at all."""
     client, sid, s = _api_session()
     try:
         marker_path = "c:\\users\\public\\very_distinctive_payload_xyz.exe"
         acc_marker = "c:\\tools\\unexecuted_acceptable_marker.exe"
+        INC = "INC-7700"
         with s["io_lock"]:
+            app._write_ndjson_unlocked(s["paths"]["generated_logs"], [
+                {"id": "e1", "timestamp": STARTED, "scenario_id": "scenario-m",
+                 "label": "malware_usb", "category": "Malware", "alert_id": INC,
+                 "level": 1, "level_name": "M", "status": "active",
+                 "chain_complete": True, "severity": "high",
+                 "message": "seed", "source_type": "Sysmon"}])
+            s["incident_index"] = {INC: "scenario-m"}
+            s["alert_queue"] = [{"scenario_id": "scenario-m", "incident_id": INC,
+                                 "queue_position": 1, "ticket_title": "M",
+                                 "injected_at": STARTED, "chain_complete_at": STARTED,
+                                 "scenario_label": "malware_usb"}]
+            s["queue_length"] = 1
             # ACME-UNEX99 exists only in UNEXECUTED expectations: it must
             # never serialize. ACME-WS77 appears in an executed acceptable
             # action's log label: sanctioned disclosure after execution.
@@ -685,10 +746,14 @@ def test_score_endpoint_shape_surfacing_and_no_leak():
             ]
             s["scenario_grading"] = [
                 _grading(scenario="scenario-m",
-                         hostnames={"ACME-WS77", "ACME-UNEX99"}, accounts=())]
+                         hostnames={"ACME-WS77", "ACME-UNEX99", "ACME-OFF01"},
+                         accounts={("acme", "jdoe")})]
             s["entity_index"] = {
                 "ent-cccccccccccc": {"kind": "process", "hostname": "ACME-WS77",
                                      "pid": 500, "name": "helper.exe"},
+                "ent-aaaaaaaaaaaa": {"kind": "host", "hostname": "ACME-OFF01"},
+                "ent-bbbbbbbbbbbb": {"kind": "account", "domain": "ACME",
+                                     "username": "jdoe"},
             }
             s["overlay"]["log"] = [
                 {"seq": 1, "timestamp": STARTED, "action": "kill_process",
@@ -706,10 +771,21 @@ def test_score_endpoint_shape_surfacing_and_no_leak():
                             "label": "ACME\\jdoe"},
                  "outcome": "no_op", "reason": "Account is already disabled."},
             ]
-        resp = client.get("/api/analytics/action_score",
-                          headers={"X-Session-ID": sid})
+            s["overlay"]["seq"] = 3
+
+        hdr = {"X-Session-ID": sid}
+        # BEFORE submit: gated, no grading disclosed
+        pre = client.get("/api/analytics/action_score", headers=hdr).get_json()
+        assert pre["state"] == "in_progress" and "grading" not in pre
+
+        client.post(f"/api/incidents/{INC}/submit", headers=hdr,
+                    json={"verdict": "threat", "category": "Malware"})
+
+        resp = client.get("/api/analytics/action_score", headers=hdr)
         assert resp.status_code == 200
-        body = resp.get_json()
+        env = resp.get_json()
+        assert env["state"] == "submitted"
+        body = env["grading"]
         assert set(body) == {"required", "correct", "missed", "collateral",
                              "order_violations", "graded", "accuracy", "grade",
                              "not_executed", "no_effect", "acceptable_taken"}
@@ -723,7 +799,7 @@ def test_score_endpoint_shape_surfacing_and_no_leak():
         assert acc["action"] == "kill_process" and acc["seq"] == 1
         # the executed acceptable action is not collateral
         assert body["collateral"] == 0
-        blob = json.dumps(body)
+        blob = json.dumps(env)
         for needle in ("very_distinctive_payload_xyz",
                        "unexecuted_acceptable_marker",
                        "answer_key", '"actions_reviewed"', '"reviewed"',
