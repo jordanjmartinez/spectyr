@@ -50,37 +50,67 @@ const Analytics = ({ onReset, analystName, setAnalyticsCount, isVisible = true }
     }
   }, [actionHistory, setAnalyticsCount]);
 
+  // Stage 3.9A submission gate: report_card serves a discriminated shape. Until
+  // an incident is submitted it is {state: in_progress, progress}, carrying
+  // observable activity only, no grades. Grading (and every field the cards
+  // read) exists ONLY under report.grading, once at least one incident is
+  // submitted. Flatten that grading into the shape the cards expect, or null.
+  const submitted = report?.state === 'submitted';
+  const grading = submitted ? report.grading : null;
+  const cardReport = grading ? {
+    ...grading,
+    grade: grading.composite?.grade || '-',
+    threats_caught: grading.classification?.threats_caught ?? 0,
+    wrong_category: grading.classification?.wrong_category ?? 0,
+    fp_identified: grading.classification?.fp_identified ?? 0,
+    fp_missed: grading.classification?.fp_missed ?? 0,
+  } : (report?.error ? report : null);
+  const progress = report?.state === 'in_progress' ? report.progress : null;
+
   return (
     <div className="space-y-6">
       {/* Campaign Progress - Full Width */}
-      <CampaignProgress levelData={levelData} report={report} onReset={onReset} analystName={analystName} />
+      <CampaignProgress levelData={levelData} report={cardReport} onReset={onReset} analystName={analystName} />
 
       {/* "Report Card" heading sits outside the container (like the other
           section headings); the container keeps stats + grade, Grade heading removed */}
       <div>
         <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">Report Card</h2>
-        <div className="rounded-2xl" style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
-          <div className="grid grid-cols-1 md:grid-cols-2">
-            <div className="p-4 sm:p-6 border-b md:border-b-0 md:border-r border-[#e2e6ea]">
-              <AnalystReportCard report={report} />
-            </div>
-            <div className="p-4 sm:p-6">
-              {/* Recharts holders render only while the tab is visible: a
-                  hidden (display:none) chart measures 0 and floods the
-                  console, starving layout for the charts that are visible. */}
-              {isVisible && <GradeCard report={report} />}
+        {progress ? (
+          <div className="rounded-2xl p-4 sm:p-6" style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+            <p className="text-sm text-[#57606a]">
+              Grading appears once you submit an incident. Investigate the queue, triage detections, take response actions, then submit each incident to lock in your call and see how it scored.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#57606a]">
+              <span><span className="font-medium text-[#1a2332]">{progress.submitted ?? 0}</span> submitted</span>
+              <span><span className="font-medium text-[#1a2332]">{progress.detections_triaged ?? 0}</span> detections triaged</span>
+              <span><span className="font-medium text-[#1a2332]">{progress.actions_executed ?? 0}</span> actions taken</span>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="rounded-2xl" style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+            <div className="grid grid-cols-1 md:grid-cols-2">
+              <div className="p-4 sm:p-6 border-b md:border-b-0 md:border-r border-[#e2e6ea]">
+                <AnalystReportCard report={cardReport} />
+              </div>
+              <div className="p-4 sm:p-6">
+                {/* Recharts holders render only while the tab is visible: a
+                    hidden (display:none) chart measures 0 and floods the
+                    console, starving layout for the charts that are visible. */}
+                {isVisible && <GradeCard report={cardReport} />}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-      {isVisible && <MttrCard report={report} />}
+      {isVisible && !progress && <MttrCard report={cardReport} />}
 
       {/* Stage 3d composite ruling: the composite is the headline (GradeCard);
           Classification, Detections, and Response render as independent scored
-          sections beneath it. */}
-      <ScoreSections isVisible={isVisible} report={report} />
+          sections beneath it. Submission-gated: only shown once graded. */}
+      {!progress && <ScoreSections isVisible={isVisible} report={cardReport} />}
 
-      {/* Action History / Mistake Review */}
+      {/* Action History / Mistake Review (populated post-submission only) */}
       <ActionHistory history={actionHistory} />
     </div>
   );
