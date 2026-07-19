@@ -7,6 +7,7 @@ import random
 import time
 import copy
 import shutil
+import hashlib
 from datetime import datetime, timezone, timedelta
 import threading
 
@@ -3642,6 +3643,77 @@ def list_incidents():
     return jsonify({"active": active, "completed": completed,
                     "queue_length": s.get("queue_length", 0),
                     "resolved_count": s.get("resolved_count", 0)})
+
+
+# --- Guided catalog (Stage 3.9B Step 3) ------------------------------------
+# The answer-neutral scenario picker for Guided mode. Serializes ONLY opaque
+# handles + player-visible symptom wording (the same ticket_title/storyline the
+# in-game briefing reads, from CAMPAIGN_LEVELS, so picker == briefing). The
+# internal scenario label, category, answer key, and every grading signal never
+# serialize; catalog_id is an opaque salted digest that resolves server-side to
+# exactly one scenario. Permanent leak guard: test_guided_catalog.py.
+
+_GUIDED_CATALOG_SALT = "spectyr-guided-catalog-v1"
+_CATALOG_SEV_RANK = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+_CATALOG_SEV_NAME = {1: "Low", 2: "Medium", 3: "High", 4: "Critical"}
+
+
+def _catalog_id_for(label):
+    """Opaque, stable catalog id for a scenario label: a salted digest, never a
+    client-invertible transform of the label; resolved only server-side."""
+    return "cat-" + hashlib.sha256(
+        (_GUIDED_CATALOG_SALT + "|" + label).encode("utf-8")).hexdigest()[:12]
+
+
+def _guided_catalog_scenarios():
+    """(label, ticket_title, storyline) for every catalog scenario, from
+    CAMPAIGN_LEVELS (the same shared source the in-game briefing reads)."""
+    out = []
+    for level_config in CAMPAIGN_LEVELS:
+        for _category, scenario in level_config["scenarios"].items():
+            out.append((scenario["scenario_label"],
+                        scenario["ticket_title"], scenario["storyline"]))
+    return out
+
+
+def _catalog_severity(label):
+    """Deterministic headline severity: max severity across the scenario's
+    authored events (attack chain + supplemental), matching what the incident
+    surfaces at runtime, computed statically so the picker needs no session."""
+    sc = yaml_catalog.get(label, {})
+    rank = 0
+    for step in list(sc.get("chain", [])) + list(sc.get("supplemental_events", [])):
+        rank = max(rank, _CATALOG_SEV_RANK.get(
+            str(step.get("severity", "medium")).lower(), 2))
+    return _CATALOG_SEV_NAME.get(rank or 2, "Medium")
+
+
+def _resolve_catalog_id(catalog_id):
+    """Resolve an opaque catalog id to its internal scenario label, or None.
+    Server-side only; the mapping never serializes to the client."""
+    if not catalog_id:
+        return None
+    for label, _t, _s in _guided_catalog_scenarios():
+        if _catalog_id_for(label) == catalog_id:
+            return label
+    return None
+
+
+@app.route('/api/guided-catalog', methods=['GET'])
+def guided_catalog():
+    """Answer-neutral Guided picker payload (Stage 3.9B Step 3). Opaque handles
+    + symptom wording only; difficulty is null this stage (no rubric authored).
+    Order is by opaque catalog_id, so list position never correlates with
+    category. Whitelist + language guard: test_guided_catalog.py."""
+    catalog = [{
+        "catalog_id": _catalog_id_for(label),
+        "title": title,
+        "severity": _catalog_severity(label),
+        "description": storyline,
+        "difficulty": None,
+    } for label, title, storyline in _guided_catalog_scenarios()]
+    catalog.sort(key=lambda e: e["catalog_id"])
+    return jsonify({"catalog": catalog, "random_available": True})
 
 
 @app.route('/api/incidents/<incident_id>/scope', methods=['GET'])

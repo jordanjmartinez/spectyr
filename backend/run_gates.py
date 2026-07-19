@@ -28,6 +28,7 @@ BACKEND_SUITES = [
     "test_action_scoring.py",
     "test_submission_gate.py",
     "test_incident_scope.py",
+    "test_guided_catalog.py",
     "test_actions.py",
     "test_action_overlay.py",
     "test_persistence.py",
