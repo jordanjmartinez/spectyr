@@ -66,3 +66,16 @@ test('issues no state-changing (POST) call on render', async () => {
   const posts = apiFetch.mock.calls.filter(([, o]) => o && o.method && o.method !== 'GET');
   expect(posts).toHaveLength(0);
 });
+
+test('SOC Queue band shows the mode label and the queue denominator', async () => {
+  render(<IncidentDashboard gameMode="analyst" />);
+  await screen.findByText('SOC Queue');
+  expect(screen.getByText(/of 10 resolved/)).toBeInTheDocument();   // N of 10
+});
+
+test('Guided band uses independent-run language, not a queue denominator', async () => {
+  render(<IncidentDashboard gameMode="guided" />);   // resolved_count 1 in the mock
+  await screen.findByText('Guided');
+  expect(screen.getByText('Run completed')).toBeInTheDocument();
+  expect(screen.queryByText(/of 10 resolved/)).toBeNull();
+});

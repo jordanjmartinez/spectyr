@@ -13,6 +13,9 @@ const gradeColor = (g) => (!g || g === '-') ? '#8b949e' : g === 'F' ? '#b45858' 
 const CARD = { background: '#fff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' };
 const fmtTime = (iso) => { try { return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
 
+// Stage 3.9B Step 3 mode labels. "training" is the legacy Guided alias.
+const MODE_LABEL = { training: 'Guided', guided: 'Guided', analyst: 'SOC Queue', hardcore: 'Hardcore' };
+
 const Metric = ({ label, value, accent }) => (
   <div className="rounded-xl p-4" style={CARD}>
     <p className="text-2xl font-semibold" style={{ color: accent || '#1a2332' }}>{value}</p>
@@ -47,6 +50,7 @@ const IncidentDashboard = ({
 
   const sessionGrade = session?.state === 'submitted' ? session.grading?.composite : null;
   const queueLength = data.queue_length || 0;
+  const isGuided = gameMode === 'guided' || gameMode === 'training';
   const criticalActive = data.active.filter(c => c.severity === 'Critical').length;
   const sev = stats?.severity_breakdown || {};
   const online = (env || []).filter(e => e.status === 'online').length;
@@ -61,10 +65,12 @@ const IncidentDashboard = ({
       <div className="rounded-2xl p-4 sm:p-5" style={CARD}>
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <span className="text-xs uppercase tracking-wider text-[#6e7781] font-medium">{gameMode}</span>
+            <span className="text-xs uppercase tracking-wider text-[#6e7781] font-medium">{MODE_LABEL[gameMode] || gameMode}</span>
             {analystName && <span className="text-sm text-[#1a2332] font-medium">{analystName}</span>}
             <span className="text-sm text-[#57606a]">
-              <span className="font-medium text-[#1a2332]">{data.resolved_count}</span> of {queueLength} resolved
+              {isGuided
+                ? (data.resolved_count > 0 ? 'Run completed' : '1 incident in this run')
+                : <><span className="font-medium text-[#1a2332]">{data.resolved_count}</span> of {queueLength} resolved</>}
             </span>
           </div>
           <div className="flex items-center gap-4">

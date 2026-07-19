@@ -113,14 +113,15 @@ const Dashboard = () => {
     }
   };
 
-  const handleDifficultySelect = async (mode, name) => {
+  const handleDifficultySelect = async (mode, name, catalogId) => {
     setShowDifficultyModal(false);
     setAnalystName(name);
     try {
       await apiFetch('/api/start-simulator', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ game_mode: mode, analyst_name: name })
+        // Guided carries an opaque catalog_id (or "random"); other modes omit it.
+        body: JSON.stringify({ game_mode: mode, analyst_name: name, ...(catalogId ? { catalog_id: catalogId } : {}) })
       });
     } catch (err) {
       console.error(err);
