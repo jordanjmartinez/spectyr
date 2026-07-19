@@ -338,7 +338,9 @@ def test_reviewed_empty_set_is_intentional_correct_inaction():
                    set(), grading)
     assert acted["required"] == 1 and acted["correct"] == 0
     assert acted["missed"] == 1 and acted["collateral"] == 1
-    assert acted["graded"] == 2 and acted["accuracy"] == 0.0
+    # collateral is a penalty, not a denominator unit; graded stays the
+    # inaction unit and the inaction-collateral exception zeroes the score
+    assert acted["graded"] == 1 and acted["accuracy"] == 0.0
 
 
 def test_expected_actions_only_count_for_reviewed_scenarios():
@@ -731,74 +733,142 @@ def test_score_endpoint_shape_surfacing_and_no_leak():
         _cleanup(sid, s)
 
 
+# --- Stage 3d collateral pricing (owner ruling 2026-07-19) --------------------
+
+def test_collateral_costs_fixed_20_uniform_across_required_set_size():
+    """The same mistake prices uniformly: one collateral costs exactly 20
+    points whether the scenario has a 1-action or a 4-action required set."""
+    small = _score([_exp("isolate_host", {"hostname": WS})],
+                   [_run("isolate_host", {"hostname": WS}, 1),
+                    _run("kill_process", {"hostname": WS, "pid": 900, "name": "x.exe"}, 2)],
+                   {WS})
+    assert small["correct"] == 1 and small["collateral"] == 1
+    assert small["accuracy"] == 80.0  # base 100 - 20
+    large = _score(EXPECTED_FULL, EXECUTED_FULL + [
+        _run("kill_process", {"hostname": WS, "pid": 900, "name": "x.exe"}, 5)], {WS})
+    assert large["correct"] == 4 and large["collateral"] == 1
+    assert large["accuracy"] == 80.0  # base 100 - 20, independent of set size
+
+
+def test_collateral_penalty_floors_at_zero():
+    executed = [_run("isolate_host", {"hostname": WS}, 1)] + [
+        _run("kill_process", {"hostname": WS, "pid": 900 + i, "name": f"x{i}.exe"}, 2 + i)
+        for i in range(6)]
+    r = _score([_exp("isolate_host", {"hostname": WS})], executed, {WS})
+    assert r["collateral"] == 6 and r["accuracy"] == 0.0  # max(0, 100 - 120)
+
+
+def test_missing_required_graded_proportionally_then_penalized():
+    executed = EXECUTED_FULL[:2] + [
+        _run("kill_process", {"hostname": WS, "pid": 900, "name": "x.exe"}, 5)]
+    r = _score(EXPECTED_FULL, executed, {WS})
+    assert r["correct"] == 2 and r["collateral"] == 1
+    assert r["accuracy"] == 30.0 and r["grade"] == "F"  # (2/4*100) - 20
+
+
+def test_inaction_scenario_zeroes_on_any_collateral():
+    grading = [_grading()]  # reviewed, no required actions
+    assert app.compute_action_score([], [], set(), grading)["accuracy"] == 100.0
+    one = app.compute_action_score(
+        [], [_run("kill_process", {"hostname": WS, "pid": 900, "name": "x.exe"}, 1)],
+        set(), grading)
+    assert one["accuracy"] == 0.0 and one["inaction_collateral"] is True
+
+
+def test_inaction_collateral_zeroes_session_even_with_handled_attacks():
+    """Strict inaction contract: a collateral in an inaction scenario's scope
+    zeroes the Response score even when a co-dripped attack was handled."""
+    gA = _grading(scenario="scenario-a", hostnames={WS}, accounts=())
+    gB = _grading(scenario="scenario-b", hostnames={SVR}, accounts=())
+    expected = [_exp("isolate_host", {"hostname": WS}, scenario="scenario-a")]
+    executed = [_run("isolate_host", {"hostname": WS}, 1),
+                _run("kill_process", {"hostname": SVR, "pid": 900, "name": "x.exe"}, 2)]
+    r = app.compute_action_score(expected, executed, {WS}, [gA, gB])
+    assert r["inaction_collateral"] is True and r["accuracy"] == 0.0
+
+
+def test_acceptable_and_neutral_outcomes_do_not_price_as_collateral():
+    """Acceptable actions never subtract; only successful collateral does."""
+    expected = [_exp("isolate_host", {"hostname": WS}),
+                _exp("kill_process", {"hostname": WS, "pid": 900}, status="acceptable")]
+    executed = [_run("isolate_host", {"hostname": WS}, 1),
+                _run("kill_process", {"hostname": WS, "pid": 900, "name": "x.exe"}, 2)]
+    r = _score(expected, executed, {WS})
+    assert r["collateral"] == 0 and r["accuracy"] == 100.0  # acceptable, no penalty
+
+
 # --- Stage 3d headline composite (40/30/30) -----------------------------------
 
 def _composite(cls, det, resp):
+    """Each argument is an (unrounded accuracy, graded) pair, or (None, 0)."""
     return app.compute_composite_grade(cls, det, resp)
 
 
 def test_composite_exact_ruled_cases():
-    """The exact cases from the Stage 3d ruling. Components are (correct,
-    graded) pairs producing the stated accuracies; the composite uses the
-    UNROUNDED component accuracies and rounds only the final value."""
+    """The exact cases from the Stage 3d ruling. Components are (unrounded
+    accuracy, graded) pairs; the composite uses the UNROUNDED accuracies and
+    rounds only the final value."""
     # 100 / 100 / 100 = 100 A
-    r = _composite((1, 1), (1, 1), (1, 1))
-    assert (r["accuracy"], r["grade"]) == (100.0, "A")
+    assert _composite((100.0, 1), (100.0, 1), (100.0, 1))["accuracy"] == 100.0
+    assert _composite((100.0, 1), (100.0, 1), (100.0, 1))["grade"] == "A"
     # 100 / 60 / 70 = 79 C
-    r = _composite((1, 1), (3, 5), (7, 10))
+    r = _composite((100.0, 1), (60.0, 1), (70.0, 1))
     assert (r["accuracy"], r["grade"]) == (79.0, "C")
     # 60 / 100 / 100 = 84 B
-    r = _composite((3, 5), (1, 1), (1, 1))
+    r = _composite((60.0, 1), (100.0, 1), (100.0, 1))
     assert (r["accuracy"], r["grade"]) == (84.0, "B")
     # 100 / 100 / 55 = 86.5 B
-    r = _composite((1, 1), (1, 1), (11, 20))
+    r = _composite((100.0, 1), (100.0, 1), (55.0, 1))
     assert (r["accuracy"], r["grade"]) == (86.5, "B")
     # 100 / 66.7 / 6.2 (unrounded 66.667 / 6.25) = 61.9 D
-    r = _composite((1, 1), (2, 3), (1, 16))
+    r = _composite((100.0, 1), (200 / 3, 1), (6.25, 1))
     assert (r["accuracy"], r["grade"]) == (61.9, "D")
-    # the components carry ROUNDED display values while the composite came
-    # from the raw ratios (61.875 -> 61.9), proving unrounded inputs
+    # components carry ROUNDED display values while the composite came from
+    # the raw unrounded inputs (61.875 -> 61.9)
     assert r["components"]["detection"]["accuracy"] == 66.7
     assert r["components"]["response"]["accuracy"] == 6.2
 
 
 def test_composite_weights_fixed_and_never_renormalized():
-    r = _composite((1, 1), (1, 1), (1, 1))
+    r = _composite((100.0, 1), (100.0, 1), (100.0, 1))
     assert r["weights"] == {"classification": 40, "detection": 30, "response": 30}
     # a mid-range blend uses the fixed weights, not a renormalized subset
-    r = _composite((1, 1), (0, 1), (0, 1))  # 100 / 0 / 0
+    r = _composite((100.0, 1), (0.0, 1), (0.0, 1))  # 100 / 0 / 0
     assert r["accuracy"] == 40.0 and r["grade"] == "F"
 
 
 def test_composite_is_dash_until_all_three_graded():
     # nothing classified yet -> classification ungraded -> composite '-'
-    r = _composite((0, 0), (1, 1), (1, 1))
+    r = _composite((None, 0), (100.0, 1), (100.0, 1))
     assert r["accuracy"] is None and r["grade"] == "-"
     assert r["components"]["classification"]["grade"] == "-"
     assert r["components"]["detection"]["grade"] == "A"  # section still shows
 
 
-def test_composite_reflects_response_inaction_and_collateral():
-    """A reviewed no-required scenario still yields a meaningful Response
-    component: correct inaction credits it, a collateral action reduces it."""
+def test_composite_response_component_uses_penalized_accuracy():
+    """The Response component feeds its PENALIZED accuracy into the composite
+    (collateral pricing), not a plain correct/graded ratio. A clean inaction
+    scenario is 100; a collateral in its scope zeroes the Response component
+    and drags the composite down by its full 30% weight."""
     grading = [_grading(scenario="scenario-fp", hostnames={WS}, accounts=())]
     grading[0]["accounts"] = set()
-    # correct inaction: reviewed, no required actions, no executions
     r_inaction = app.compute_action_score([], [], set(), grading)
-    assert r_inaction["correct"] == 1 and r_inaction["graded"] == 1
-    comp_clean = _composite((1, 1), (1, 1),
-                            (r_inaction["correct"], r_inaction["graded"]))
-    assert comp_clean["grade"] == "A"
-    # a collateral action in that scope forfeits the inaction unit
+    assert r_inaction["accuracy"] == 100.0 and r_inaction["accuracy_raw"] == 100.0
+    comp_clean = _composite((100.0, 1), (100.0, 1),
+                            (r_inaction["accuracy_raw"], r_inaction["graded"]))
+    assert comp_clean["grade"] == "A" and comp_clean["accuracy"] == 100.0
+    # a collateral action in the inaction scope zeroes the Response component
     executed = [_run("kill_process", {"hostname": WS, "pid": 999, "name": "x.exe"}, 1)]
     r_coll = app.compute_action_score([], executed, set(), grading)
-    assert r_coll["correct"] == 0 and r_coll["collateral"] == 1
-    comp_coll = _composite((1, 1), (1, 1), (r_coll["correct"], r_coll["graded"]))
-    assert comp_coll["accuracy"] < comp_clean["accuracy"]
+    assert r_coll["accuracy_raw"] == 0.0 and r_coll["inaction_collateral"] is True
+    comp_coll = _composite((100.0, 1), (100.0, 1),
+                           (r_coll["accuracy_raw"], r_coll["graded"]))
+    # composite = 0.4*100 + 0.3*100 + 0.3*0 = 70.0 (C), down from 100
+    assert comp_coll["accuracy"] == 70.0 and comp_coll["grade"] == "C"
 
 
 def test_composite_deterministic_replay_identical():
-    args = ((3, 4), (5, 9), (2, 7))
+    args = ((75.0, 4), (55.6, 9), (28.6, 7))
     assert _composite(*args) == _composite(*args)
 
 

@@ -2962,11 +2962,13 @@ def _letter_grade(accuracy, graded):
 COMPOSITE_WEIGHTS = (("classification", 0.40), ("detection", 0.30), ("response", 0.30))
 
 
-def _component_score(correct, graded):
-    """One composite component from a (correct, graded) pair. `raw` is the
-    UNROUNDED accuracy the composite is computed from; `accuracy` is the
-    rounded value for display; None graded => not yet graded."""
-    raw = (correct / graded * 100) if graded else None
+def _component_score(accuracy_raw, graded):
+    """One composite component from an (unrounded accuracy, graded) pair.
+    `raw` is the UNROUNDED accuracy the composite is computed from (the
+    caller supplies it directly, since the response accuracy is penalized
+    rather than a plain correct/graded ratio); `accuracy` is the rounded
+    value for display; None graded => not yet graded."""
+    raw = accuracy_raw if graded else None
     return {
         "raw": raw,
         "accuracy": round(raw, 1) if raw is not None else None,
@@ -2976,10 +2978,10 @@ def _component_score(correct, graded):
 
 
 def compute_composite_grade(classification, detection, response):
-    """The 40/30/30 headline composite (Stage 3d). Each argument is a
-    (correct, graded) pair. The composite is the weighted mean of the
-    component UNROUNDED accuracies; only the final composite is rounded (to
-    one decimal, the shared display convention) before its letter grade.
+    """The 40/30/30 headline composite (Stage 3d). Each argument is an
+    (unrounded accuracy, graded) pair. The composite is the weighted mean of
+    the component UNROUNDED accuracies; only the final composite is rounded
+    (to one decimal, the shared display convention) before its letter grade.
     Weights are fixed and NEVER renormalized. The composite is graded only
     when all three components have graded units; until then it is '-'. Pure
     function: deterministic replay yields an identical composite.
@@ -3241,8 +3243,25 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
             correct += 1
 
     collateral = len(collateral_hits)
-    graded = required + collateral
-    accuracy = round(correct / graded * 100, 1) if graded else 0.0
+    # Stage 3d collateral pricing (owner ruling 2026-07-19): required credit is
+    # PROPORTIONAL to the required set (required credit earned / total required
+    # credit; isolation end-state and declared ordering are already folded into
+    # `correct`). Each successful collateral subtracts a FIXED 20 points
+    # (absolute, independent of the required-set size), floored at 0. A
+    # collateral in ANY reviewed no-required (inaction-correct) scenario's scope
+    # zeroes the Response score entirely (the strict inaction contract). Credit
+    # is proportional to the job; harm is absolute. `required`/`correct` fold in
+    # the weight-1 inaction units, so a single scenario reduces to the
+    # per-scenario formula and a multi-scenario session pools proportionally.
+    inaction_scenarios = [g for g in reviewed
+                          if g["scenario_id"] not in scenarios_with_required]
+    inaction_collateral = any(
+        any(claims(g, action, target) for g in inaction_scenarios)
+        for action, target in collateral_hits)
+    graded = required  # R + I: the proportional denominator (collateral is a penalty, not a unit)
+    base = (correct / graded * 100) if graded else 0.0
+    accuracy_raw = 0.0 if inaction_collateral else max(0.0, base - 20.0 * collateral)
+    accuracy = round(accuracy_raw, 1)
     return {
         "required": required,
         "correct": correct,
@@ -3251,6 +3270,8 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
         "order_violations": order_violations,
         "graded": graded,
         "accuracy": accuracy,
+        "accuracy_raw": accuracy_raw if graded else None,
+        "inaction_collateral": inaction_collateral,
         "grade": _letter_grade(accuracy, graded),
         "acceptable_seqs": acceptable_seqs,
     }
@@ -3277,6 +3298,8 @@ def get_action_score():
             list(s.get("scenario_grading", [])))
         log = overlay.get("log", [])
         acceptable_seqs = set(result.pop("acceptable_seqs"))
+        result.pop("accuracy_raw", None)          # internal: composite input only
+        result.pop("inaction_collateral", None)   # internal: scoring detail
         failed = [action_overlay.sanitize_action_entry(e) for e in log
                   if e["outcome"] == action_overlay.FAILED]
         noop = [action_overlay.sanitize_action_entry(e) for e in log
@@ -3413,10 +3436,15 @@ def get_analyst_report_card():
                 list(s.get("expected_actions", [])), executed,
                 set(overlay.get("isolated", ())),
                 list(s.get("scenario_grading", [])))
+        # Component UNROUNDED accuracies: classification + detection are plain
+        # correct/graded ratios; response is its penalized accuracy (collateral
+        # pricing), NOT correct/graded.
+        cls_raw = (total_correct / total_classifications * 100) if total_classifications else None
+        det_raw = (det["correct"] / det["graded"] * 100) if det["graded"] else None
         composite = compute_composite_grade(
-            (total_correct, total_classifications),
-            (det["correct"], det["graded"]),
-            (resp["correct"], resp["graded"]))
+            (cls_raw, total_classifications),
+            (det_raw, det["graded"]),
+            (resp["accuracy_raw"], resp["graded"]))
 
         return jsonify({
             "threats_caught": correct_threat_identified,
