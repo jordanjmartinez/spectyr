@@ -89,8 +89,10 @@ brute_force_attack, whose lockout contained the attack).
 
 ## 3. Chrome end-to-end verification
 
-Fresh backend (current code) + frontend, Training mode, one live session
-(queue of 10). Covered ≥3 complete workflows across the required types:
+Fresh backend (current code) + frontend, Training mode. **Four** complete
+workflows across the required types (the first three in one session; the
+defense_evasion_log_clearing WMI workflow in a later session, after the
+composite + collateral-pricing changes landed):
 
 - **Host-malware (malware_usb)** — investigated the SIEM feed and the
   Endpoints/Autoruns persistence view; promoted the "Executable Launched
@@ -111,6 +113,23 @@ Fresh backend (current code) + frontend, Training mode, one live session
   response actions (inaction credited).
 - Also completed defense_evasion (Defense Evasion, T1685 in the live
   triage — the v19.1 mapping).
+- **WMI persistence (defense_evasion_log_clearing)** — the fourth workflow,
+  the WMI-subscription case. On the victim host's Autoruns (persistence-
+  artifact view), the **WMI subscription** row `WindowsUpdConsumer` rendered
+  distinctly from Run keys: TYPE "WMI subscription", location
+  `root\CimV2:__FilterToConsumerBinding`, the encoded-powershell command,
+  STATE **"Registered" only** (no file flag), and **"Remove Persistence"
+  the only action** (no Delete File). Executed `remove_persistence` → the
+  row **disappeared entirely** (registration-only artifact fully
+  neutralized by registration removal alone), and `isolate_host` (badge
+  flipped to Isolated). Verified **historical Sysmon 19/20/21 preserved**:
+  a SIEM search still returned WmiEventFilter / WmiEventConsumer /
+  WmiEventConsumerToFilter after the removal (response changed the present,
+  not the record). Classified Defense Evasion (correct, T1685.005 "Clear
+  Windows Event Logs"). The composite headline **F / 44.7% matched the
+  backend exactly** (0.40×33.3 + 0.30×78.6 + 0.30×26.1), with the Response
+  component (26.1%) reflecting the collateral pricing. Zero steady-state
+  console errors.
 
 Checklist results:
 - **Zero console errors** across the whole session.
@@ -140,42 +159,81 @@ Checklist results:
 
 ## 4. Full-corpus response baselines (20 scenarios × 5 seeds)
 
-Deterministic action-score baselines for three strategies:
+**Strategy definitions** (each scenario scored in isolation for macro; the
+whole corpus pooled per seed for micro):
+- **Correct response** — execute exactly the required actions of each
+  scenario (with the required isolation left in effect); inaction on the
+  no-required scenarios.
+- **Act on nothing** — execute no response actions anywhere.
+- **Act on everything** — execute every applicable action on every entity
+  in every scenario's world (isolate every host, kill every process, delete
+  every file, run all three identity actions on every account, remove every
+  persistence artifact).
 
-| Strategy | micro | macro |
+Results, before and after the collateral-pricing ruling:
+
+| Strategy | pre-ruling micro / macro | post-ruling micro / macro |
 |---|---|---|
-| Correct response | 100.0 | 100.0 |
-| Act on nothing | 13.3 | 30.0 |
-| Act on everything | 1.4 | 1.5 |
+| Correct response | 100.0 / 100.0 | 100.0 / 100.0 |
+| Act on nothing | 13.3 / 30.0 | 13.3 / 30.0 |
+| Act on everything | 1.4 / 1.5 | 0.0 / 0.0 |
 
-Both naive strategies score strictly below correct response on micro **and**
-macro. Behavior:
+Both naive strategies score strictly below correct on micro **and** macro
+under both scorers.
 
 - **Correct** = A/100 on every scenario (attack: required executed; FP:
   inaction unit credited).
-- **Act-on-nothing** scores 100 only on the 6 no-required scenarios (5 FP +
-  brute_force_attack) and 0 on all 14 attack scenarios; macro 30.0 = 6/20,
-  micro 13.3 (attack scenarios carry more graded units, so pooling weights
-  them). This is the **false-positive inaction behavior**: doing nothing is
-  correct exactly on the correct-inaction scenarios and nowhere else.
-- **Act-on-everything** ≈ 0 everywhere (1–4% on attacks from the couple of
-  required hits drowned in ~50 collateral entities; 0 on FP scenarios
-  because collateral forfeits the inaction unit).
+- **Act-on-nothing** is UNCHANGED by the ruling (it takes no collateral, so
+  the pricing never bites): 100 on the 6 no-required scenarios (5 FP +
+  brute_force_attack), 0 on all 14 attack scenarios; macro exactly 30.0 =
+  6/20, micro 13.3 (pooling weights the attack scenarios by their required
+  count). This is the **false-positive inaction behavior**: doing nothing is
+  correct exactly on the correct-inaction scenarios and nowhere else. The
+  regression check (macro == 30.0) confirms inaction behavior is untouched.
+- **Act-on-everything** drops from ~1.5 to **0** under pricing: each attack
+  scenario's base credit is buried by ~50 collateral × 20 points (floored
+  at 0), and every FP scenario is zeroed by the inaction-scope collateral.
+- **Per-scenario single-collateral cost** (the same-mistake-prices-uniformly
+  check): exactly **20.0 on every one of the 14 attack scenarios** —
+  independent of required-set size, from the small 1-required scenarios to
+  the 5-required lateral_movement chains — and **100.0 (zeroed) on every one
+  of the 6 inaction scenarios**. Under the pre-ruling denominator model the
+  same mistake cost anywhere from ~17 to ~50 points depending on set size;
+  it is now uniform.
 - **Outliers**: no attack scenario lets a naive strategy tie or beat
   correct. The only ties are act-on-nothing == correct on the six
   correct-inaction scenarios, which is by design (there, inaction *is* the
   correct response).
 
-## 5. Composite headline-grade decision — RULED: Option C (40/30/30), wired
+## 5. Rulings — composite grade and collateral pricing (both owner-approved)
+
+### Collateral pricing — RULED: fixed −20 with the inaction exception
+
+The owner ruled (2026-07-19) the Response scoring model, wired in
+`compute_action_score`: **required credit is proportional to the required
+set; collateral harm is absolute.** For a scenario with required actions,
+`base = required credit earned / total required credit × 100` (isolation
+end-state and declared ordering folded into earned credit), then
+`final = max(0, base − 20 × successful_collateral_count)`. For a reviewed
+no-required (inaction-correct) scenario, clean hands = 100 and any
+successful collateral in scope = 0 (the strict inaction contract). One
+collateral costs a flat 20 points regardless of the required-set size —
+verified uniform across all 14 attack scenarios (§4). Acceptable,
+`failed_precondition`, and `no_op` stay neutral. The composite's Response
+component uses this penalized accuracy (not correct/graded).
+
+### Composite headline grade — RULED: Option C (40/30/30), wired
 
 The owner ruled **Option C (40/30/30)** at the 3d checkpoint; it is wired
 as the headline (`compute_composite_grade`, `report_card.composite`; the UI
 ring is the composite, with Classification / Detections / Response as
 component sections beneath). Computed from the UNROUNDED component
 accuracies, rounded only at the end, weights fixed and never renormalized,
-'-' until all three components are graded. Verified live in Chrome
-(composite F/42.7% for classification A/100 + detection F/0 + response
-F/9.1, exactly 0.40*100 + 0.30*0 + 0.30*9.09). The options weighed:
+'-' until all three components are graded. Verified live in Chrome twice:
+composite F/42.7% (classification A/100 + detection F/0 + response F/9.1 =
+0.40×100 + 0.30×0 + 0.30×9.09) in the first session, and F/44.7%
+(33.3 / 78.6 / 26.1) in the log_clearing session under collateral pricing —
+UI equal to backend both times. The options weighed:
 
 Three independent sub-scores exist, each on the shared 10-point band
 (A≥90 B≥80 C≥70 D≥60 F<60) and each A/100 for a correct player across the

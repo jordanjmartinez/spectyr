@@ -53,9 +53,26 @@ model; `test_action_scoring.py` proves it cell by cell.
   retroactively invalidate an action correctly taken under it. An
   order-violated action loses its credit and counts in
   `order_violations`.
-- **Accuracy** = correct / (required + collateral); acceptable actions
-  never enter the denominator; letter grade on the shared 10-point
-  scale; `-` before anything is graded.
+- **Accuracy — collateral pricing (owner ruling 2026-07-19).** Required
+  credit is PROPORTIONAL to the required set; collateral harm is ABSOLUTE.
+  "Credit is proportional to the job; harm is absolute."
+  - For a scenario with one or more required actions:
+    `base = required credit earned / total required credit * 100`
+    (isolation end-state and declared `after` ordering are folded into the
+    earned credit), then
+    `final = max(0, base - 20 * successful_collateral_count)`.
+    So one collateral costs a flat 20 points regardless of the required-set
+    size (a `20/20`-priced mistake), never diluted by the denominator.
+  - For a reviewed scenario with zero required actions (inaction-correct:
+    the five FP scenarios and brute_force_attack): clean hands = 100; any
+    successful collateral in its scope = 0 (the strict inaction contract,
+    retained deliberately).
+  - `required`/`correct` fold in the weight-1 inaction units, so a single
+    scenario reduces to the per-scenario formula above and a multi-scenario
+    session pools proportionally; `graded` is the proportional denominator
+    (required + inaction units), NOT required + collateral. Acceptable,
+    `failed_precondition`, and `no_op` stay neutral. Letter grade on the
+    shared 10-point scale; `-` before anything is graded.
 - **Loader guarantees:** duplicate expected actions are rejected, as is
   any action-target pair declared under both statuses. The status field
   is server-side answer-key data and never serializes (planted-marker
@@ -166,20 +183,24 @@ Verified exact cases (unrounded components): 100/100/100 = 100 A;
 
 ## Stage 3d full-corpus response baselines (measured, 20 x 5 seeds)
 
-Deterministic action-score baselines, three strategies:
+Deterministic action-score baselines, three strategies, before and after
+the collateral-pricing ruling:
 
-| Strategy | micro | macro |
+| Strategy | pre-ruling micro/macro | post-ruling micro/macro |
 |---|---|---|
-| Correct response | 100.0 | 100.0 |
-| Act on nothing | 13.3 | 30.0 |
-| Act on everything | 1.4 | 1.5 |
+| Correct response | 100.0 / 100.0 | 100.0 / 100.0 |
+| Act on nothing | 13.3 / 30.0 | 13.3 / 30.0 |
+| Act on everything | 1.4 / 1.5 | 0.0 / 0.0 |
 
-Both naive strategies score strictly below correct on micro AND macro.
-Act-on-nothing scores 100 only on the six no-required scenarios (5 FP +
-brute_force_attack) and 0 on all 14 attack scenarios; act-on-everything is
-~0 everywhere (collateral dominates; FP scenarios forfeit the inaction
-unit). No attack scenario lets a naive strategy tie or beat correct. See
-docs/stage-3-final-report.md for the full run.
+Both naive strategies score strictly below correct on micro AND macro under
+both scorers. Act-on-nothing is unchanged (no collateral, so the pricing
+never bites) and reproduces macro exactly 30.0 (100 on the six no-required
+scenarios, 0 on the 14 attack scenarios). Act-on-everything drops to 0
+under pricing (collateral penalties plus the inaction-scope zeroing). The
+per-scenario single-collateral cost is now UNIFORM: exactly 20 points on
+every attack scenario (independent of required-set size) and 100 (zeroed)
+on every inaction scenario. See docs/stage-3-final-report.md for the full
+run.
 
 ## Composite headline-grade options (Stage 3d — RULED: Option C, wired)
 
