@@ -5,8 +5,9 @@ import CategorySelector from './CategorySelector';
 
 // Stage 3.9B: the Incidents operational workspace ("what do I need to work?").
 // Search + Active / Ready / Completed views, stable incident rows, and a
-// selected-incident detail (briefing + phase strip) with the SINGLE home for the
-// graded Submit / Resume controls (D2/D7). This retires the legacy Alerts ticket
+// selected-incident detail (briefing, phase strip, related hosts and accounts,
+// Related response activity) with the SINGLE home for the graded Submit / Resume
+// controls (D2/D7). This retires the legacy Alerts ticket
 // table and the global Notable Events queue (D3/D4): the player-facing object is
 // the incident. Raw underlying events stay in SIEM (D4, unchanged).
 
@@ -43,6 +44,9 @@ const Incidents = ({
   const [data, setData] = useState({ active: [], completed: [], queue_length: 0, resolved_count: 0 });
   const [view, setView] = useState('active');    // 'active' | 'ready' | 'completed'
   const [search, setSearch] = useState('');
+  const [scope, setScope] = useState(null);       // selected incident /scope
+  const [related, setRelated] = useState(0);      // Related response activity count
+  const [relatedList, setRelatedList] = useState([]);
 
   const [showClassifier, setShowClassifier] = useState(false);
   const [showCategory, setShowCategory] = useState(false);
@@ -62,6 +66,23 @@ const Incidents = ({
   }, [setGroupedAlertCount]);
 
   useEffect(() => { fetchList(); const iv = setInterval(fetchList, 3000); return () => clearInterval(iv); }, [fetchList]);
+
+  // Selected incident scope + Related response activity.
+  const fetchScope = useCallback(() => {
+    if (!selectedId) { setScope(null); setRelated(0); setRelatedList([]); return; }
+    apiFetch(`/api/incidents/${selectedId}/scope`).then(r => r.json()).then(async (sc) => {
+      setScope(sc);
+      const log = await apiFetch('/api/actions').then(r => r.json()).catch(() => []);
+      const entries = Array.isArray(log) ? log : (log.entries || []);
+      const hosts = new Set(sc.hosts || []); const accts = new Set(sc.accounts || []);
+      const rel = entries.filter(e => e.outcome === 'success' && e.target?.label && (
+        [...hosts].some(h => e.target.label.includes(h)) || [...accts].some(a => e.target.label.includes(a))
+      ));
+      setRelated(rel.length); setRelatedList(rel);
+    }).catch(() => {});
+  }, [selectedId]);
+
+  useEffect(() => { fetchScope(); const iv = setInterval(fetchScope, 3000); return () => clearInterval(iv); }, [fetchScope]);
 
   const all = [...data.active.map(c => ({ ...c })), ...data.completed.map(c => ({ ...c }))];
   const q = search.trim().toLowerCase();
@@ -170,8 +191,26 @@ const Incidents = ({
 
               <div className="pt-2 border-t border-[#eef1f4]">
                 <PhaseStrip sealed={selected.state === 'submitted' ? true : selected.sealed}
-                  triage={selected.triage} related={0} ready={selected.ready} />
+                  triage={selected.triage} related={related} ready={selected.ready} />
               </div>
+
+              {/* Related hosts / accounts (observable scope) */}
+              {scope && (scope.hosts?.length || scope.accounts?.length) ? (
+                <div className="text-xs text-[#57606a] space-y-1">
+                  {scope.hosts?.length ? <p><span className="text-[#8b949e]">Related hosts:</span> {scope.hosts.join(', ')}</p> : null}
+                  {scope.accounts?.length ? <p><span className="text-[#8b949e]">Related accounts:</span> {scope.accounts.join(', ')}</p> : null}
+                </div>
+              ) : null}
+
+              {/* Related response activity (C5, non-exclusive) */}
+              {relatedList.length > 0 && (
+                <div className="text-xs text-[#57606a]">
+                  <p className="text-[#8b949e] mb-1">Related response activity ({related})</p>
+                  <ul className="space-y-0.5">
+                    {relatedList.slice(0, 5).map(e => <li key={e.seq}>{e.action} · <span className="font-mono">{e.target?.label}</span></li>)}
+                  </ul>
+                </div>
+              )}
 
               {/* Graded controls (single home, D7) */}
               <div className="pt-3 border-t border-[#eef1f4] flex items-center gap-2 flex-wrap">

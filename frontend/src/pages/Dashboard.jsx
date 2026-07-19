@@ -281,6 +281,21 @@ const Dashboard = () => {
 
       {/* Light content */}
       <main className="flex-1 min-w-0 p-4 sm:p-6 overflow-x-hidden">
+        {/* Stage 3.9B incident context bar: persistent while an incident is
+            focused, on every tab. Purely presentational; "Session-wide" clears
+            it and never mutates state. */}
+        {activeIncidentId && view !== 'dashboard' && (
+          <div className="mb-4 flex items-center justify-between rounded-lg border border-[#16436b]/30 bg-[#16436b]/5 px-3 py-2">
+            <span className="text-sm text-[#1a2332]">
+              Focused on incident <span className="log-mono text-[#16436b] font-medium">{activeIncidentId}</span>
+            </span>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setView('dashboard')} className="text-xs text-[#16436b] hover:underline">Open Dashboard</button>
+              <button onClick={() => setActiveIncidentId(null)} className="text-xs px-2 py-1 rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4]">Session-wide</button>
+            </div>
+          </div>
+        )}
+
         <div className={view === "dashboard" ? "block" : "hidden"}>
           <IncidentDashboard
             gameMode={gameMode}
@@ -312,11 +327,11 @@ const Dashboard = () => {
         </div>
 
         <div className={view === "detections" ? "block" : "hidden"}>
-          <Detections isVisible={view === "detections"} resetTrigger={resetTrigger} setDetectionCount={setDetectionCount} onHostPivot={handleHostPivot} />
+          <Detections isVisible={view === "detections"} resetTrigger={resetTrigger} setDetectionCount={setDetectionCount} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} />
         </div>
 
         <div className={view === "endpoints" ? "block" : "hidden"}>
-          <Endpoints isVisible={view === "endpoints"} resetTrigger={resetTrigger} setEndpointCount={setEndpointCount} pivotHost={pivotHost} />
+          <Endpoints isVisible={view === "endpoints"} resetTrigger={resetTrigger} setEndpointCount={setEndpointCount} pivotHost={pivotHost} activeIncidentId={activeIncidentId} />
         </div>
 
         <div className={view === "analytics" ? "block" : "hidden"}>
