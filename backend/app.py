@@ -3138,10 +3138,12 @@ def _incident_report_card(s, scenario_id, grading_rec, payload, all_logs):
     }
 
 
-# Guided mode (currently "training") is the ONLY mode that may use Check
-# Answer. Allow-list, never deny-list: every other mode (Hardcore, Analyst, and
-# any future SOC Queue mode) is rejected by default. May be renamed in 3.9B.
-GUIDED_MODES = {"training"}
+# Guided mode is the ONLY mode that may use Check Answer. Allow-list, never
+# deny-list: every other mode (SOC Queue / analyst, Hardcore) is rejected by
+# default. Stage 3.9B Step 3 adds "guided" as the canonical Guided mode the UI
+# selects; "training" is retained as the legacy alias so the frozen 3.9A
+# submission-gate test is untouched.
+GUIDED_MODES = {"training", "guided"}
 
 
 def _incident_roster_sealed(s, scenario_id):
@@ -3714,6 +3716,38 @@ def guided_catalog():
     } for label, title, storyline in _guided_catalog_scenarios()]
     catalog.sort(key=lambda e: e["catalog_id"])
     return jsonify({"catalog": catalog, "random_available": True})
+
+
+def build_guided_queue(catalog_id):
+    """Guided intake (Stage 3.9B Step 3): a queue of EXACTLY ONE scenario,
+    selected by opaque catalog_id or the sentinel "random". Same entry shape as
+    build_alert_queue (queue_position 1; scenario_id/injected/sealed/resolved
+    start None), so the drip, sealing, and readiness path is identical. Returns
+    None if the catalog_id does not resolve, so the caller rejects the intake
+    without building a session (no partial state, no answer-key exposure)."""
+    if catalog_id == "random":
+        label = random.choice([lbl for lbl, _t, _s in _guided_catalog_scenarios()])
+    else:
+        label = _resolve_catalog_id(catalog_id)
+        if label is None:
+            return None
+    for level_config in CAMPAIGN_LEVELS:
+        for category, scenario in level_config["scenarios"].items():
+            if scenario["scenario_label"] == label:
+                return [{
+                    "scenario_label": label,
+                    "category": category,
+                    "ticket_title": scenario["ticket_title"],
+                    "storyline": scenario["storyline"],
+                    "is_fp": category == "False Positive",
+                    "source_level": level_config["level"],
+                    "queue_position": 1,
+                    "scenario_id": None,
+                    "injected_at": None,
+                    "chain_complete_at": None,
+                    "resolved_at": None,
+                }]
+    return None
 
 
 @app.route('/api/incidents/<incident_id>/scope', methods=['GET'])
@@ -4604,15 +4638,29 @@ def start_simulator():
     s = g.session
 
     data = request.json or {}
-    s["game_mode"] = data.get("game_mode", "training")
+    mode = data.get("game_mode", "training")
+
+    # Build the alert queue. Guided (Stage 3.9B Step 3) is a single chosen
+    # scenario (opaque catalog_id or "random"); every other mode drips the
+    # sampled 10-scenario queue. Validate BEFORE mutating session state, so an
+    # unknown catalog_id is a clean 400 that starts nothing. The per-incident
+    # drip, chain_complete_at sealing, and readiness are identical across modes.
+    if mode == "guided":
+        alert_queue = build_guided_queue(data.get("catalog_id"))
+        if alert_queue is None:
+            return jsonify({"error": "Unknown scenario"}), 400
+    else:
+        alert_queue = build_alert_queue(n=10, fp_min=1, fp_max=2)
+
+    s["game_mode"] = mode
     s["analyst_name"] = data.get("analyst_name")
 
     print(f"\n[GAME MODE] Starting in {s['game_mode'].upper()} mode (session {s['id'][:8]})", flush=True)
     if s["analyst_name"]:
         print(f"[ANALYST] {s['analyst_name']}", flush=True)
 
-    # Build a fresh alert queue for the session
-    s["alert_queue"] = build_alert_queue(n=10, fp_min=1, fp_max=2)
+    # Fresh alert queue for the session (built + validated above)
+    s["alert_queue"] = alert_queue
     s["queue_length"] = len(s["alert_queue"])
     s["resolved_count"] = 0
     s["injected_count"] = 0

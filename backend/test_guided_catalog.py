@@ -164,6 +164,86 @@ def test_picker_wording_equals_incident_briefing_source():
         assert e["description"] == sc["storyline"], f"description diverged for {e['catalog_id']}"
 
 
+# --- Guided intake boundary (Stage 3.9B Step 3, commit 3/6) -----------------
+# A Guided start builds EXACTLY ONE incident from the opaque catalog_id (or
+# "random"); the incident's opaque INC id is a separate id space stamped only at
+# creation (drip), never the catalog_id; the answer key never serializes through
+# the intake response.
+
+def _client_session():
+    c = app.app.test_client()
+    sid = c.get("/api/health").headers["X-Session-ID"]
+    return c, sid, app.sessions[sid]
+
+
+def _cleanup(sid):
+    # Pause + pop so the daemon drip thread exits on its next loop. Do NOT delete
+    # the session dir out from under a mid-write thread; the boot-time sweep
+    # clears orphaned dirs (each gate file re-imports app, which sweeps).
+    s = app.sessions.get(sid)
+    if s:
+        s["paused"] = True
+    app.sessions.pop(sid, None)
+
+
+def test_build_guided_queue_is_exactly_one_chosen_scenario():
+    e = _payload()["catalog"][7]
+    q = app.build_guided_queue(e["catalog_id"])
+    assert isinstance(q, list) and len(q) == 1, "guided queue must be one scenario"
+    entry = q[0]
+    assert entry["scenario_label"] == app._resolve_catalog_id(e["catalog_id"])
+    assert entry["queue_position"] == 1
+    assert entry["scenario_id"] is None
+    # no incident id at intake; the opaque INC-#### is stamped later at drip
+    assert "incident_id" not in entry and "alert_id" not in entry
+    for forbidden in ("answer_key", "disposition", "classification", "verdict",
+                      "techniques", "actions", "root_cause", "correct"):
+        assert forbidden not in entry, f"intake entry leaked {forbidden}"
+
+
+def test_build_guided_queue_random_and_reject():
+    assert len(app.build_guided_queue("random")) == 1
+    assert app.build_guided_queue("cat-deadbeef0000") is None
+    assert app.build_guided_queue("not-a-catalog-id") is None
+    assert app.build_guided_queue(None) is None
+
+
+def test_guided_start_creates_one_incident_and_leaks_no_answer_key():
+    e = _payload()["catalog"][3]
+    label = app._resolve_catalog_id(e["catalog_id"])
+    c, sid, s = _client_session()
+    try:
+        r = c.post("/api/start-simulator", headers={"X-Session-ID": sid},
+                   json={"game_mode": "guided", "catalog_id": e["catalog_id"],
+                         "analyst_name": "T"})
+        assert r.status_code == 200, r.status_code
+        assert set(r.get_json().keys()) <= {"message", "game_mode"}, r.get_json()
+        assert s["queue_length"] == 1 and len(s["alert_queue"]) == 1
+        assert s["alert_queue"][0]["scenario_label"] == label
+        assert s["game_mode"] == "guided"
+    finally:
+        _cleanup(sid)
+
+
+def test_guided_start_unknown_catalog_id_is_400_and_starts_nothing():
+    c, sid, s = _client_session()
+    try:
+        before = s.get("queue_length")
+        r = c.post("/api/start-simulator", headers={"X-Session-ID": sid},
+                   json={"game_mode": "guided", "catalog_id": "cat-000000000000"})
+        assert r.status_code == 400
+        assert s.get("queue_length") == before      # session untouched
+        assert not s.get("alert_queue")              # no queue built
+    finally:
+        _cleanup(sid)
+
+
+def test_inc_and_catalog_ids_are_disjoint_id_spaces():
+    for e in _payload()["catalog"]:
+        assert e["catalog_id"].startswith("cat-")
+        assert not e["catalog_id"].startswith("INC-")  # INC-#### is the incident id space
+
+
 TESTS = [v for k, v in sorted(globals().items())
          if k.startswith("test_") and callable(v)]
 
