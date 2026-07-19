@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { apiFetch } from '../api';
 import Siem from '../components/Siem';
-import GroupedAlerts from '../components/GroupedAlerts';
+import Incidents from '../components/Incidents';
+import IncidentDashboard from '../components/IncidentDashboard';
 import Analytics from '../components/Analytics';
 import Reports from '../components/Reports';
 import Endpoints from '../components/Endpoints';
@@ -16,17 +17,23 @@ const Dashboard = () => {
   const [groupedAlertCount, setGroupedAlertCount] = useState(0);
   const [reportCount, setReportCount] = useState(0);
   const [analyticsCount, setAnalyticsCount] = useState(0);
-  const [view, setView] = useState("siem");
+  const [view, setView] = useState("dashboard");
+  // Stage 3.9B: the active-incident context (opaque INC id). Pure UI state, never
+  // a server mutation; scopes the incident-aware tabs when set, session-wide when
+  // null. Selecting/switching never mutates world/scoring/readiness/submission.
+  const [activeIncidentId, setActiveIncidentId] = useState(null);
   const [resetTrigger, setResetTrigger] = useState(0);
   const [showResetModal, setShowResetModal] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [showSimulateModal, setShowSimulateModal] = useState(false);
   const [showDifficultyModal, setShowDifficultyModal] = useState(false);
+  const [practiceAnother, setPracticeAnother] = useState(false); // opens picker at the Guided catalog
   const [existingLogCount, setExistingLogCount] = useState(0);
   const [showFailureModal, setShowFailureModal] = useState(false);
   const [failureCategory, setFailureCategory] = useState(null);
   const [failureType, setFailureType] = useState(null); // 'timeout' or 'wrong_answer'
   const [analystName, setAnalystName] = useState(null);
+  const [gameMode, setGameMode] = useState('training');
   const [incidentBadge, setIncidentBadge] = useState(0);
   const [pivotQuery, setPivotQuery] = useState(null);
   const [simActive, setSimActive] = useState(false);
@@ -51,12 +58,13 @@ const Dashboard = () => {
     const handleKeyDown = (e) => {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
       switch (e.key) {
-        case '1': setView('grouped'); setIncidentBadge(0); break;
-        case '2': setView('siem'); break;
-        case '3': setView('detections'); break;
-        case '4': setView('endpoints'); break;
-        case '5': setView('analytics'); break;
-        case '6': setView('reports'); break;
+        case '1': setView('dashboard'); break;
+        case '2': setView('grouped'); setIncidentBadge(0); break;
+        case '3': setView('siem'); break;
+        case '4': setView('detections'); break;
+        case '5': setView('endpoints'); break;
+        case '6': setView('analytics'); break;
+        case '7': setView('reports'); break;
         default: break;
       }
     };
@@ -72,6 +80,7 @@ const Dashboard = () => {
         .then(res => res.json())
         .then(data => {
           setSimActive(!!data.analyst_name);
+          if (data.game_mode) setGameMode(data.game_mode);
           const injected = data.injected_count ?? 0;
           if (injected > lastInjectedRef.current) {
             const delta = injected - lastInjectedRef.current;
@@ -105,14 +114,16 @@ const Dashboard = () => {
     }
   };
 
-  const handleDifficultySelect = async (mode, name) => {
+  const handleDifficultySelect = async (mode, name, catalogId) => {
     setShowDifficultyModal(false);
+    setPracticeAnother(false);
     setAnalystName(name);
     try {
       await apiFetch('/api/start-simulator', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ game_mode: mode, analyst_name: name })
+        // Guided carries an opaque catalog_id (or "random"); other modes omit it.
+        body: JSON.stringify({ game_mode: mode, analyst_name: name, ...(catalogId ? { catalog_id: catalogId } : {}) })
       });
     } catch (err) {
       console.error(err);
@@ -176,8 +187,20 @@ const Dashboard = () => {
     }
   };
 
+  // Guided Practice Another: clear the current run (reset-simulator wipes
+  // submissions + world) and return to the answer-neutral picker. The warning is
+  // shown in the Incidents Review before this runs.
+  const handlePracticeAnother = async () => {
+    await handleResetSimulator();
+    setActiveIncidentId(null);
+    setPracticeAnother(true);       // open the picker straight at the Guided catalog
+    setShowDifficultyModal(true);
+  };
+
   const tabs = [
-    { key: 'grouped', label: 'Alerts', count: groupedAlertCount,
+    { key: 'dashboard', label: 'Dashboard', count: 0,
+      icon: 'M4 5a1 1 0 011-1h5a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM14 13a1 1 0 011-1h4a1 1 0 011 1v6a1 1 0 01-1 1h-4a1 1 0 01-1-1v-6zM4 15a1 1 0 011-1h5a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4z' },
+    { key: 'grouped', label: 'Incidents', count: groupedAlertCount,
       icon: 'M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z' },
     { key: 'siem', label: 'SIEM', count: alertCount,
       icon: 'M4 6h16M4 10h16M4 14h16M4 18h16' },
@@ -271,8 +294,46 @@ const Dashboard = () => {
 
       {/* Light content */}
       <main className="flex-1 min-w-0 p-4 sm:p-6 overflow-x-hidden">
+        {/* Stage 3.9B incident context bar: persistent while an incident is
+            focused, on every tab. Purely presentational; "Session-wide" clears
+            it and never mutates state. */}
+        {activeIncidentId && view !== 'dashboard' && (
+          <div className="mb-4 flex items-center justify-between rounded-lg border border-[#16436b]/30 bg-[#16436b]/5 px-3 py-2">
+            <span className="text-sm text-[#1a2332]">
+              Focused on incident <span className="log-mono text-[#16436b] font-medium">{activeIncidentId}</span>
+            </span>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setView('dashboard')} className="text-xs text-[#16436b] hover:underline">Open Dashboard</button>
+              <button onClick={() => setActiveIncidentId(null)} className="text-xs px-2 py-1 rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4]">Session-wide</button>
+            </div>
+          </div>
+        )}
+
+        <div className={view === "dashboard" ? "block" : "hidden"}>
+          <IncidentDashboard
+            gameMode={gameMode}
+            analystName={analystName}
+            activeIncidentId={activeIncidentId}
+            onSelectIncident={setActiveIncidentId}
+            onNavigate={setView}
+            onReset={() => setShowResetModal(true)}
+            isVisible={view === "dashboard"}
+          />
+        </div>
+
         <div className={view === "grouped" ? "block" : "hidden"}>
-          <GroupedAlerts resetTrigger={resetTrigger} onHardcoreFailure={handleHardcoreFailure} onReset={() => { handleResetSimulator(); setView("siem"); }} isVisible={view === "grouped"} setGroupedAlertCount={setGroupedAlertCount} onPivot={handlePivot} onHostPivot={handleHostPivot} />
+          <Incidents
+            isVisible={view === "grouped"}
+            resetTrigger={resetTrigger}
+            onHardcoreFailure={handleHardcoreFailure}
+            onReset={() => setShowResetModal(true)}
+            gameMode={gameMode}
+            activeIncidentId={activeIncidentId}
+            onSelectIncident={setActiveIncidentId}
+            onNavigate={setView}
+            setGroupedAlertCount={setGroupedAlertCount}
+            onPracticeAnother={handlePracticeAnother}
+          />
         </div>
 
         <div className={view === "siem" ? "block" : "hidden"}>
@@ -280,11 +341,11 @@ const Dashboard = () => {
         </div>
 
         <div className={view === "detections" ? "block" : "hidden"}>
-          <Detections isVisible={view === "detections"} resetTrigger={resetTrigger} setDetectionCount={setDetectionCount} onHostPivot={handleHostPivot} />
+          <Detections isVisible={view === "detections"} resetTrigger={resetTrigger} setDetectionCount={setDetectionCount} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} />
         </div>
 
         <div className={view === "endpoints" ? "block" : "hidden"}>
-          <Endpoints isVisible={view === "endpoints"} resetTrigger={resetTrigger} setEndpointCount={setEndpointCount} pivotHost={pivotHost} />
+          <Endpoints isVisible={view === "endpoints"} resetTrigger={resetTrigger} setEndpointCount={setEndpointCount} pivotHost={pivotHost} activeIncidentId={activeIncidentId} />
         </div>
 
         <div className={view === "analytics" ? "block" : "hidden"}>
@@ -387,7 +448,9 @@ const Dashboard = () => {
       {showDifficultyModal && (
         <DifficultySelector
           onSelect={handleDifficultySelect}
-          onCancel={() => setShowDifficultyModal(false)}
+          onCancel={() => { setShowDifficultyModal(false); setPracticeAnother(false); }}
+          initialStep={practiceAnother ? 'catalog' : 'mode'}
+          initialName={practiceAnother ? (analystName || '') : ''}
         />
       )}
 

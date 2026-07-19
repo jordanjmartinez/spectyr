@@ -51,12 +51,18 @@ const COLUMNS = [
   { key: 'isolation', label: 'Isolation' },
 ];
 
-const Endpoints = ({ isVisible, resetTrigger, setEndpointCount, pivotHost }) => {
+const Endpoints = ({ isVisible, resetTrigger, setEndpointCount, pivotHost,
+                     activeIncidentId = null }) => {
   const [org, setOrg] = useState({});
   const [rows, setRows] = useState([]);
   const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState({ key: 'hostname', dir: 'asc' });
+  // Stage 3.9B active-incident scope: the observable participant hosts of the
+  // active incident (from /scope). Never locks the tab; a Session-wide toggle
+  // switches back. Read-only.
+  const [scopeHosts, setScopeHosts] = useState(null);
+  const [scoped, setScoped] = useState(true);
 
   const fetchList = useCallback(() => {
     apiFetch('/api/endpoints')
@@ -83,10 +89,22 @@ const Endpoints = ({ isVisible, resetTrigger, setEndpointCount, pivotHost }) => 
 
   useEffect(() => { setSelected(null); }, [resetTrigger]);
 
+  useEffect(() => {
+    if (!activeIncidentId) { setScopeHosts(null); return; }
+    let cancelled = false;
+    apiFetch(`/api/incidents/${activeIncidentId}/scope`)
+      .then(res => res.json())
+      .then(data => { if (!cancelled) setScopeHosts(new Set(data.hosts || [])); })
+      .catch(() => { if (!cancelled) setScopeHosts(null); });
+    return () => { cancelled = true; };
+  }, [activeIncidentId, resetTrigger]);
+
   const q = search.trim().toLowerCase();
+  const scopeActive = !!(activeIncidentId && scoped && scopeHosts);
   const filtered = rows.filter(r =>
-    !q || r.hostname.toLowerCase().includes(q) || r.ip.includes(q)
-      || r.external_ip.includes(q) || r.os.toLowerCase().includes(q)
+    (!scopeActive || scopeHosts.has(r.hostname)) &&
+    (!q || r.hostname.toLowerCase().includes(q) || r.ip.includes(q)
+      || r.external_ip.includes(q) || r.os.toLowerCase().includes(q))
   );
   const online = filtered.filter(r => r.status === 'online').length;
 
@@ -115,6 +133,27 @@ const Endpoints = ({ isVisible, resetTrigger, setEndpointCount, pivotHost }) => 
 
   return (
     <div>
+      {/* Stage 3.9B: active-incident scope toggle (never locks the tab). */}
+      {activeIncidentId && (
+        <div className="mb-3 flex items-center justify-between rounded-lg border border-[#d0d7de] bg-white px-3 py-2 text-xs">
+          <span className="text-[#57606a]">
+            {scopeActive
+              ? <>Scoped to incident <span className="log-mono text-[#16436b]">{activeIncidentId}</span></>
+              : <>Session-wide view</>}
+          </span>
+          <div className="inline-flex rounded-md border border-[#d0d7de] overflow-hidden" role="group" aria-label="Endpoint scope">
+            <button type="button" onClick={() => setScoped(true)}
+              className={`px-2.5 py-1 font-medium transition ${scoped ? 'bg-[#101218] text-white' : 'bg-white text-[#57606a] hover:bg-[#eef1f4]'}`}>
+              This incident
+            </button>
+            <button type="button" onClick={() => setScoped(false)}
+              className={`px-2.5 py-1 font-medium transition ${!scoped ? 'bg-[#101218] text-white' : 'bg-white text-[#57606a] hover:bg-[#eef1f4]'}`}>
+              Session-wide
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header card */}
       <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-hidden mb-4">
         <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />

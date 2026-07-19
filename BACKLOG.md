@@ -58,6 +58,32 @@ When org-prefix theming substitution lands, this tenant literal joins the
 `{org_prefix}` set so the `acme` prefix is substituted consistently (e.g.
 `{org_prefix}-my.sharepoint.com`) rather than hardcoded in four places.
 
+## Stage 3.9B non-blocking notes (owner-directed 2026-07-19)
+
+**Target: as noted per item.**
+
+Three non-blocking notes recorded at the 3.9A close / 3.9B authorization:
+
+1. **Session-scoped immutability.** Submission records (and all grading state)
+   are in-memory only, cleared on `reset-simulator` and discarded on process
+   restart. Acceptable now. If any future mode wants persistent history or
+   leaderboards, persistence becomes an explicit design item at that time (it is
+   not implied by anything shipped).
+2. **Blind-verification mode.** Future blind end-to-end verifications should run
+   in a non-Guided mode where possible, so blindness is *structural* (Check
+   Answer unavailable) rather than merely behavioral.
+3. **Classification category validation.** `_valid_classification` currently
+   accepts any non-empty category for a `threat` verdict; it should validate the
+   category against the known category list. Low priority.
+
+Also recorded (Stage 3.9B / C2): the dormant `inputs.classification.report`
+field on the submission record (an undisclosed 3.9A addition, now unused since
+the Submit note input was removed) is left in place for 3.9B and its cleanup is
+deferred to a **separately reviewed migration outside 3.9B** (removing it would
+be a submission-record schema change). Process rule now in effect: implementation
+reports disclose every submission-record field and endpoint added, however
+incidental.
+
 ## Offline-host wrinkle: exercise in the trusted-actor-compromised scenario
 
 **Target: when the trusted-actor-compromised scenario is authored (backlog).**
@@ -70,3 +96,21 @@ host's status merely to exercise the mechanic). The trusted-actor-compromised
 scenario is the natural place to exercise it in real content - e.g. a host the
 actor has already taken offline, where a reflexive isolate fails and teaches the
 offline-host lesson. Wire it there when that scenario is authored.
+
+## Stage 3.9B Step 3 deferrals (closed 2026-07-19)
+
+Non-blocking items left for a later reviewed change:
+- **SOC Queue "Triggered Evidence Arrival" comment-rename.** The analyst-mode
+  trigger-only telemetry is presented as "SOC Queue" + "Triggered evidence
+  arrival" in the UI; the backend framing/comments still say `analyst`. A pure
+  comment-rename (`analyst` -> "triggered evidence arrival") is deferred; logic
+  is unchanged and already non-grading + submission-gated.
+- **Difficulty rubric.** The Guided catalog serializes `difficulty: null` and the
+  UI omits it (owner ruling: do not invent difficulty ratings this stage). A
+  reviewed product decision is required before a rubric ships.
+- **Cross-run Guided history.** One Guided incident = one independent run; Session
+  Performance = the current run's Incident Grade. Aggregate/history across
+  Practice-Another runs is deferred until persistent history is deliberately
+  designed (session state is in-memory only).
+- **Dormant `inputs.classification.report` field** (from 3.9A) cleanup remains a
+  separately reviewed migration, untouched by 3.9B.

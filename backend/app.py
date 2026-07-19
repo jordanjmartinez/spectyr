@@ -7,6 +7,7 @@ import random
 import time
 import copy
 import shutil
+import hashlib
 from datetime import datetime, timezone, timedelta
 import threading
 
@@ -165,6 +166,15 @@ def create_session():
         # Stage 3c tri-state marker: per-dripped-scenario grading records
         # (reviewed flag + claimed target scope). Server-side only.
         "scenario_grading": [],
+        # Stage 3.9A: immutable per-incident submission records. Grading is
+        # served ONLY across a submission boundary, from these stored records;
+        # nothing recomputes against later session state. incident_index maps
+        # the opaque client-facing incident id (INC-####) -> internal
+        # scenario_id; assisted holds incident ids whose Guided-mode Check
+        # Answer was used (final report card is marked Assisted).
+        "submissions": {},
+        "incident_index": {},
+        "assisted": set(),
     }
     with sessions_lock:
         sessions[session_id] = session
@@ -797,8 +807,8 @@ CAMPAIGN_LEVELS = [
         "scenarios": {
             "Phishing": {
                 "scenario_label": "phishing_link",
-                "ticket_title": "Rogue Program on Workstation",
-                "storyline": "An employee contacted the help desk after interacting with an email they now believe may have been fraudulent. The email appeared to come from a trusted third-party service. Endpoint and proxy logs show activity on the workstation following the interaction.",
+                "ticket_title": "Unrecognized Program on Workstation",
+                "storyline": "Help desk received a report after a possibly fraudulent email from a service the user recognized. Endpoint and proxy activity followed.",
             },
             "Data Exfiltration": {
                 "scenario_label": "data_exfil_archive",
@@ -807,8 +817,8 @@ CAMPAIGN_LEVELS = [
             },
             "Insider Threat": {
                 "scenario_label": "insider_staging",
-                "ticket_title": "Unauthorized Access to Financial Records",
-                "storyline": "A user account accessed a file share containing sensitive financial records outside of their normal role. A document was copied locally before an outbound connection was established to a personal cloud storage service. No transfer approval or business justification exists for this activity.",
+                "ticket_title": "Access to Financial Records Outside Normal Role",
+                "storyline": "An account accessed sensitive financial records outside its normal role. A document was copied locally and then transferred to personal cloud storage; no approval record was found.",
             },
             "False Positive": {
                 "scenario_label": "false_positive_veeam",
@@ -825,7 +835,7 @@ CAMPAIGN_LEVELS = [
             "Malware": {
                 "scenario_label": "malware_ransomware",
                 "ticket_title": "Mass File Encryption with Ransom Note",
-                "storyline": "An employee discovered a text file on their desktop demanding Bitcoin payment to restore access to their documents. Multiple files on the workstation appear to have been renamed with an unfamiliar extension. The employee did not make these changes and no maintenance was scheduled.",
+                "storyline": "Desktop text file demanding Bitcoin; many files were renamed to an unfamiliar extension; the user reported making no such changes.",
             },
             "Lateral Movement": {
                 "scenario_label": "lateral_movement_2",
@@ -851,8 +861,8 @@ CAMPAIGN_LEVELS = [
         "scenarios": {
             "Insider Threat": {
                 "scenario_label": "insider_shadow_it",
-                "ticket_title": "Unauthorized App Data Transfer",
-                "storyline": "A workstation launched an application not on the approved software list. Shortly after, multiple sensitive documents were moved into a folder associated with the application, and the proxy logged an upload to an external cloud storage provider. The employee has not submitted a software installation request.",
+                "ticket_title": "Unapproved Application Data Transfer",
+                "storyline": "An application outside the approved software inventory launched, sensitive documents moved into its folder, and the proxy recorded an upload to external cloud storage. No installation request was found.",
             },
             "Brute Force": {
                 "scenario_label": "password_spray",
@@ -867,7 +877,7 @@ CAMPAIGN_LEVELS = [
             "False Positive": {
                 "scenario_label": "false_positive_ssl_inspection",
                 "ticket_title": "Repeated TLS Failures",
-                "storyline": "Multiple workstations are generating repeated failed TLS connections to Microsoft 365 endpoints. The connection pattern resembles command-and-control beaconing with consistent retry intervals. The network team recently expanded the corporate proxy's SSL inspection policy to cover additional domains.",
+                "storyline": "Multiple workstations repeatedly failed TLS connections to M365 endpoints at consistent intervals. The proxy SSL-inspection policy was recently expanded.",
             }
         }
     }
@@ -2393,6 +2403,10 @@ def build_attack_chain_logs(session, scenario_entry, employee=None):
         if alert_id not in session["used_alert_ids"]:
             session["used_alert_ids"].add(alert_id)
             break
+    # Stage 3.9A: the alert_id IS the opaque client-facing incident id; map it
+    # to the internal scenario_id so submit/score routes resolve server-side.
+    scenario_entry["incident_id"] = alert_id
+    session.setdefault("incident_index", {})[alert_id] = scenario_id
 
     threat_logs = []
     prev_offset = 0
@@ -2827,6 +2841,9 @@ def reset_simulator():
         s["env_accounts"] = {}
         s["expected_actions"] = []
         s["scenario_grading"] = []
+        s["submissions"] = {}
+        s["incident_index"] = {}
+        s["assisted"] = set()
         for filepath in [s["paths"]["generated_logs"], s["paths"]["analyst_actions"], s["paths"]["incident_reports"]]:
             with open(filepath, "w", encoding="utf-8") as f:
                 f.truncate(0)
@@ -2873,6 +2890,7 @@ def get_current_level():
             "ticket_title": e.get("ticket_title"),
             "storyline": e.get("storyline"),
             "scenario_id": e.get("scenario_id"),
+            "incident_id": e.get("incident_id"),
             "startTime": e.get("chain_complete_at"),
         }
         for e in s.get("alert_queue", [])
@@ -3003,6 +3021,794 @@ def compute_composite_grade(classification, detection, response):
             "weights": weights, "components": public}
 
 
+# ============================================================================
+# Stage 3.9A: submission boundary + submission-gated grading contract
+# ============================================================================
+# Grading is served ONLY across a submission boundary, from an immutable stored
+# record. The compute_* scoring functions are UNCHANGED; each runs exactly once,
+# at submit time, over that incident's frozen inputs. Nothing below recomputes a
+# submitted incident against later session state, so a submitted grade is
+# byte-identical on every subsequent read regardless of later activity.
+
+def _incident_scenario_id(s, incident_id):
+    return s.get("incident_index", {}).get(incident_id)
+
+
+def _incident_actual_category(all_logs, scenario_id):
+    for log in all_logs:
+        if log.get("scenario_id") == scenario_id and log.get("category"):
+            return log["category"]
+    return None
+
+
+def _grading_record_for(s, scenario_id):
+    return next((g for g in s.get("scenario_grading", [])
+                 if g["scenario_id"] == scenario_id), None)
+
+
+def _incident_detections(s, scenario_id, grading_rec):
+    """This incident's detections: its own scenario-tagged detections plus the
+    ambient benign detections on its hosts. Server-side only."""
+    hosts = grading_rec["hostnames"] if grading_rec else set()
+    out = []
+    for d in s.get("detections", []):
+        if d.get("scenario_id") == scenario_id:
+            out.append(d)
+        elif d.get("scenario_id") is None and (d.get("entity") or {}).get("host") in hosts:
+            out.append(d)
+    return out
+
+
+def _incident_expected(s, scenario_id):
+    return [e for e in s.get("expected_actions", []) if e["scenario_id"] == scenario_id]
+
+
+def _entry_in_scope(entry, grading_rec, registry):
+    e = registry.get(entry["target"]["id"])
+    if e is None or grading_rec is None:
+        return False
+    if e["kind"] == "account":
+        return action_overlay.account_key(e["domain"], e["username"]) in grading_rec["accounts"]
+    return e.get("hostname") in grading_rec["hostnames"]
+
+
+def _classification_grade(verdict, category, actual_category):
+    """Unified classification correctness (matches the legacy classify rule).
+    verdict false_positive maps the submitted category to 'False Positive'."""
+    submitted = "False Positive" if verdict == "false_positive" else (category or "")
+    correct = submitted.strip().lower() == (actual_category or "").strip().lower()
+    return {
+        "verdict": verdict,
+        "category": submitted,
+        "actual_category": actual_category,
+        "correct": bool(correct),
+        "accuracy": 100.0 if correct else 0.0,
+        "grade": "A" if correct else "F",
+    }
+
+
+def _incident_report_card(s, scenario_id, grading_rec, payload, all_logs):
+    """Compute this incident's per-incident report card at submit time. Calls
+    the unchanged scoring functions over frozen per-incident inputs."""
+    actual_category = _incident_actual_category(all_logs, scenario_id)
+    classification = _classification_grade(
+        payload.get("verdict"), payload.get("category"), actual_category)
+
+    dets = _incident_detections(s, scenario_id, grading_rec)
+    detection = compute_detection_score(dets)
+
+    overlay = s.get("overlay") or action_overlay.new_overlay()
+    registry = s.get("entity_index", {})
+    executed = action_overlay.successful_executions(overlay, registry)
+    exp = _incident_expected(s, scenario_id)
+    isolated = {h for h in overlay.get("isolated", ())
+                if grading_rec and h in grading_rec["hostnames"]}
+    response = compute_action_score(exp, executed, isolated,
+                                    [grading_rec] if grading_rec else [])
+    acceptable_seqs = set(response.pop("acceptable_seqs"))
+    resp_raw = response.pop("accuracy_raw")            # kept for the composite
+    inaction_collateral = response.pop("inaction_collateral")
+    log = overlay.get("log", [])
+    acc_entries = [action_overlay.sanitize_action_entry(e) for e in log
+                   if e["seq"] in acceptable_seqs]
+    response["acceptable_taken"] = {"count": len(acc_entries), "entries": acc_entries}
+    failed = [action_overlay.sanitize_action_entry(e) for e in log
+              if e["outcome"] == action_overlay.FAILED
+              and _entry_in_scope(e, grading_rec, registry)]
+    noop = [action_overlay.sanitize_action_entry(e) for e in log
+            if e["outcome"] == action_overlay.NO_OP
+            and _entry_in_scope(e, grading_rec, registry)]
+    response["not_executed"] = {"count": len(failed), "entries": failed}
+    response["no_effect"] = {"count": len(noop), "entries": noop}
+
+    det_raw = (detection["correct"] / detection["graded"] * 100) if detection["graded"] else None
+    composite = compute_composite_grade(
+        (classification["accuracy"], 1),
+        (det_raw, detection["graded"]),
+        (resp_raw, response["graded"]))
+
+    return {
+        "classification": classification,
+        "detection": detection,
+        "response": response,
+        # scoring detail for the session pool, never a required-count leak
+        "_response_raw": resp_raw,
+        "_inaction_collateral": inaction_collateral,
+        "composite": composite,
+    }
+
+
+# Guided mode is the ONLY mode that may use Check Answer. Allow-list, never
+# deny-list: every other mode (SOC Queue / analyst, Hardcore) is rejected by
+# default. Stage 3.9B Step 3 adds "guided" as the canonical Guided mode the UI
+# selects; "training" is retained as the legacy alias so the frozen 3.9A
+# submission-gate test is untouched.
+GUIDED_MODES = {"training", "guided"}
+
+
+def _incident_roster_sealed(s, scenario_id):
+    """True once the incident's detection roster is FINALIZED. Detections are
+    materialized synchronously at drip start (build_attack_chain_logs), and the
+    queue entry's chain_complete_at is stamped only when the chain has fully
+    written; by that monotonic marker every detection scoped to the incident is
+    attached and the roster is fixed thereafter. Observable, no answer key."""
+    entry = next((e for e in s.get("alert_queue", [])
+                  if e.get("scenario_id") == scenario_id), None)
+    return bool(entry and entry.get("chain_complete_at"))
+
+
+def _incident_open_detections(s, scenario_id, grading_rec):
+    """The incident's sealed-roster detections still awaiting a disposition."""
+    return [d for d in _incident_detections(s, scenario_id, grading_rec)
+            if d.get("player_action", "open") == "open"]
+
+
+def _valid_classification(payload):
+    """A submission must carry the analyst's classification. Valid = verdict is
+    'threat' (with a non-empty attack category) or 'false_positive'. No default
+    is ever supplied; absence is rejected at the API with a neutral 400."""
+    payload = payload or {}
+    verdict = payload.get("verdict")
+    if verdict not in ("threat", "false_positive"):
+        return False
+    if verdict == "threat":
+        cat = payload.get("category")
+        return isinstance(cat, str) and bool(cat.strip())
+    return True
+
+
+def incident_submission_readiness(s, scenario_id, grading_rec):
+    """Observable submission readiness (never answer-key-derived). Returns one
+    of: ('sealing', 0) while the roster is still attaching, ('open', n) with n
+    detections from the finalized roster still awaiting a disposition, or
+    ('ready', 0). Response actions never gate submission (a required-action
+    count is hidden answer-key information)."""
+    if not _incident_roster_sealed(s, scenario_id):
+        return "sealing", 0
+    open_dets = _incident_open_detections(s, scenario_id, grading_rec)
+    if open_dets:
+        return "open", len(open_dets)
+    return "ready", 0
+
+
+def submit_incident(s, incident_id, payload):
+    """Atomic, confirmed, idempotent incident submission, gated on submission
+    READINESS: an incident may be submitted only once its detection roster is
+    sealed AND every detection in that finalized roster has been dispositioned.
+    Submit means the incident is ready to be graded, so the immutable record it
+    produces always carries a complete grade. Returns a discriminated dict:
+      {"status": "unknown"}                              -> 404
+      {"status": "sealing"}                              -> 409, telemetry loading
+      {"status": "open_detections", "open_detections": n}-> 409, n still open
+      {"status": "idempotent", "record": rec}            -> 200, no re-fire
+      {"status": "created", "record": rec}               -> 200, first submission
+    Readiness uses only observable player work; no answer-key info is consulted."""
+    with s["io_lock"]:
+        scenario_id = _incident_scenario_id(s, incident_id)
+        if scenario_id is None:
+            return {"status": "unknown"}
+        if incident_id in s["submissions"]:
+            # idempotent: return the frozen record, never a 2nd snapshot
+            return {"status": "idempotent", "record": s["submissions"][incident_id]}
+
+        # A valid classification is required to create a record: submit always
+        # carries the analyst's call. Enforced server-side (neutral 400), never
+        # a default (a defaulted verdict would silently grade an unmade call).
+        if not _valid_classification(payload):
+            return {"status": "invalid_classification"}
+
+        grading_rec = _grading_record_for(s, scenario_id)
+        state, open_n = incident_submission_readiness(s, scenario_id, grading_rec)
+        if state == "sealing":
+            return {"status": "sealing"}
+        if state == "open":
+            return {"status": "open_detections", "open_detections": open_n}
+
+        all_logs = _read_ndjson_unlocked(s["paths"]["generated_logs"])
+        overlay = s.get("overlay") or action_overlay.new_overlay()
+        rc = _incident_report_card(s, scenario_id, grading_rec, payload, all_logs)
+
+        dets = _incident_detections(s, scenario_id, grading_rec)
+        isolated = sorted(h for h in overlay.get("isolated", ())
+                          if grading_rec and h in grading_rec["hostnames"])
+        record = {
+            "incident_id": incident_id,
+            "assisted": incident_id in s.get("assisted", set()),
+            "submitted_at": datetime.now(timezone.utc).isoformat(),
+            "inputs": {
+                "classification": {"verdict": payload.get("verdict"),
+                                   "category": payload.get("category"),
+                                   "report": payload.get("report")},
+                "detection_dispositions": {d["id"]: d["player_action"] for d in dets},
+                "action_seq_cutoff": overlay.get("seq", 0),
+                "isolation_end_state": isolated,
+            },
+            "report_card": rc,
+        }
+        s["submissions"][incident_id] = record
+
+        # Mark this incident's raw events resolved so the Alerts feed shows it
+        # closed, and record queue resolution + history (mirrors the legacy
+        # classify path, minus the live verdict).
+        label = next((l.get("label") for l in all_logs
+                      if l.get("scenario_id") == scenario_id and l.get("label")), "")
+        changed = False
+        for log in all_logs:
+            if log.get("scenario_id") == scenario_id and log.get("status") != "classified":
+                log["status"] = "classified"
+                log["analyst_category"] = rc["classification"]["category"]
+                changed = True
+        if changed:
+            _write_ndjson_unlocked(s["paths"]["generated_logs"], all_logs)
+
+        # Post-boundary only: a classify entry for the Triage Review panel
+        # (action_history). Written at submit, never before, so no correctness
+        # is disclosed until the incident crosses its submission boundary.
+        with open(s["paths"]["analyst_actions"], "a", encoding="utf-8") as f:
+            f.write(json.dumps({
+                "timestamp": record["submitted_at"],
+                "scenario_id": scenario_id,
+                "action": "classify",
+                "label": label,
+                "incident_id": incident_id,
+                "selected_category": rc["classification"]["category"],
+                "correct_category": rc["classification"]["actual_category"],
+                "category_correct": rc["classification"]["correct"],
+            }) + "\n")
+
+        queue_entry = next((e for e in s.get("alert_queue", [])
+                            if e.get("scenario_id") == scenario_id), None)
+        if queue_entry and not queue_entry.get("resolved_at"):
+            queue_entry["resolved_at"] = record["submitted_at"]
+            s["resolved_count"] = s.get("resolved_count", 0) + 1
+            ttr = None
+            inj = queue_entry.get("injected_at")
+            if inj:
+                try:
+                    ttr = int((datetime.fromisoformat(record["submitted_at"])
+                               - datetime.fromisoformat(inj)).total_seconds())
+                except (ValueError, TypeError):
+                    pass
+            rc["_ttr"] = ttr
+            s["scenario_history"].append({
+                "level": queue_entry.get("queue_position"),
+                "ticket_title": queue_entry.get("ticket_title", "Unknown"),
+                "incident_id": incident_id,
+                "correct": rc["classification"]["correct"],
+                "scenario_id": scenario_id,
+                "time_to_resolve_seconds": ttr,
+            })
+            if s["resolved_count"] >= s["queue_length"]:
+                s["paused"] = True
+        return {"status": "created", "record": record}
+
+
+def _incident_progress(s, scenario_id, grading_rec):
+    """Observable activity only — never required-action counts or any
+    answer-key-derived total. Served for an unsubmitted incident."""
+    dets = _incident_detections(s, scenario_id, grading_rec)
+    triaged = sum(1 for d in dets if d.get("player_action") != "open")
+    overlay = s.get("overlay") or action_overlay.new_overlay()
+    registry = s.get("entity_index", {})
+    scoped = [e for e in overlay.get("log", []) if _entry_in_scope(e, grading_rec, registry)]
+    executed = sum(1 for e in scoped if e["outcome"] == action_overlay.SUCCESS)
+    state, open_n = incident_submission_readiness(s, scenario_id, grading_rec)
+    return {
+        "detections_triaged": triaged,
+        "detections_open": len(dets) - triaged,
+        "actions_attempted": len(scoped),
+        "actions_executed": executed,
+        "roster_sealed": state != "sealing",
+        "submission_ready": state == "ready",
+        "classified": "not_submitted",
+        "incident_status": "in_progress",
+    }
+
+
+def incident_score_view(s, incident_id):
+    """Discriminated per-incident view keyed by opaque incident id: submitted
+    grading from the stored record, or observable progress. 'grading' is
+    structurally impossible while state is in_progress."""
+    scenario_id = _incident_scenario_id(s, incident_id)
+    if scenario_id is None:
+        return None
+    rec = s.get("submissions", {}).get(incident_id)
+    if rec is not None:
+        # Drop server-side scoring internals (leading-underscore keys) from the
+        # serialized grading; the stored record keeps them for the aggregate.
+        grading = {k: v for k, v in rec["report_card"].items()
+                   if not k.startswith("_")}
+        return {"state": "submitted", "assisted": rec["assisted"],
+                "grading": grading}
+    grading_rec = _grading_record_for(s, scenario_id)
+    return {"state": "in_progress",
+            "progress": _incident_progress(s, scenario_id, grading_rec)}
+
+
+def _pool(records, dim):
+    return [r["report_card"][dim] for r in records]
+
+
+def aggregate_submitted(s):
+    """Session-wide grading over SUBMITTED incidents ONLY, aggregated from the
+    immutable stored records (never recomputed against current state). Each
+    session component is the MACRO mean of the frozen per-incident component
+    accuracies; because every per-incident score was already computed and
+    stored at submit time, this aggregate is byte-identical on every read.
+    Returns the discriminated shape.
+
+    Macro mean matches the Stage 3d baseline convention: response over all 20
+    scenarios reproduces exactly 30.0 for act-on-nothing (six inaction
+    scenarios at 100, fourteen attacks at 0). Response pricing (proportional
+    credit, absolute -20 collateral, inaction-zero) is applied once per
+    incident inside compute_action_score, so no pricing is re-derived here."""
+    subs = list(s.get("submissions", {}).values())
+    if not subs:
+        return {"state": "in_progress", "progress": _session_progress(s)}
+    cards = [r["report_card"] for r in subs]
+
+    # classification: each incident is one binary unit, so the macro mean over
+    # incidents is exactly correct / total. Tallies split threat vs FP by the
+    # incident's actual category (revealed post-submit only).
+    c_correct = sum(1 for c in cards if c["classification"]["correct"])
+    c_total = len(cards)
+    c_raw = (c_correct / c_total * 100) if c_total else None
+    threats_caught = wrong_category = fp_identified = fp_missed = 0
+    for c in cards:
+        is_fp = (c["classification"].get("actual_category") or "").strip().lower() == "false positive"
+        ok = c["classification"]["correct"]
+        if is_fp:
+            fp_identified += ok
+            fp_missed += not ok
+        else:
+            threats_caught += ok
+            wrong_category += not ok
+
+    # detection: macro mean of per-incident detection accuracies (unrounded),
+    # over incidents that had gradeable detections.
+    d_raws = [c["detection"]["correct"] / c["detection"]["graded"] * 100
+              for c in cards if c["detection"]["graded"]]
+    d_raw = (sum(d_raws) / len(d_raws)) if d_raws else None
+    d_correct = sum(c["detection"]["correct"] for c in cards)
+    d_wrong = sum(c["detection"]["wrong"] for c in cards)
+    d_open = sum(c["detection"]["open"] for c in cards)
+    d_graded = sum(c["detection"]["graded"] for c in cards)
+
+    # response: macro mean of the frozen per-incident response accuracies
+    # (already priced and inaction-zeroed at submit), over reviewed incidents
+    # (an unreviewed incident stores _response_raw == None and is excluded).
+    r_raws = [c["_response_raw"] for c in cards if c.get("_response_raw") is not None]
+    r_raw = (sum(r_raws) / len(r_raws)) if r_raws else None
+    a_required = sum(c["response"]["required"] for c in cards)
+    a_correct = sum(c["response"]["correct"] for c in cards)
+    a_missed = sum(c["response"]["missed"] for c in cards)
+    a_collateral = sum(c["response"]["collateral"] for c in cards)
+    a_order = sum(c["response"].get("order_violations", 0) for c in cards)
+    a_graded = sum(c["response"]["graded"] for c in cards)
+
+    def _merge_block(name):
+        seen, entries = set(), []
+        for c in cards:
+            for e in c["response"].get(name, {}).get("entries", []):
+                if e["seq"] in seen:
+                    continue
+                seen.add(e["seq"])
+                entries.append(e)
+        return {"count": len(entries), "entries": sorted(entries, key=lambda e: e["seq"])}
+
+    composite = compute_composite_grade((c_raw, c_total),
+                                        (d_raw, len(d_raws)),
+                                        (r_raw, len(r_raws)))
+
+    resolve_times = [{"incident_id": r["incident_id"],
+                      "seconds": r["report_card"].get("_ttr"),
+                      "correct": r["report_card"]["classification"]["correct"]}
+                     for r in subs if r["report_card"].get("_ttr") is not None]
+
+    return {
+        "state": "submitted",
+        "grading": {
+            "classification": {"accuracy": round(c_raw, 1) if c_raw is not None else None,
+                               "grade": _letter_grade(round(c_raw, 1) if c_raw is not None else 0, c_total),
+                               "correct": c_correct, "total": c_total, "graded": c_total,
+                               "threats_caught": threats_caught, "wrong_category": wrong_category,
+                               "fp_identified": fp_identified, "fp_missed": fp_missed},
+            "detection": {"accuracy": round(d_raw, 1) if d_raw is not None else None,
+                          "grade": _letter_grade(round(d_raw, 1) if d_raw is not None else 0, len(d_raws)),
+                          "correct": d_correct, "wrong": d_wrong, "open": d_open, "graded": d_graded},
+            "response": {"accuracy": round(r_raw, 1) if r_raw is not None else None,
+                         "grade": _letter_grade(round(r_raw, 1) if r_raw is not None else 0, len(r_raws)),
+                         "required": a_required, "correct": a_correct, "missed": a_missed,
+                         "collateral": a_collateral, "order_violations": a_order, "graded": a_graded,
+                         "acceptable_taken": _merge_block("acceptable_taken"),
+                         "not_executed": _merge_block("not_executed"),
+                         "no_effect": _merge_block("no_effect")},
+            "composite": composite,
+            "resolve_times": resolve_times,
+            "submitted_count": len(subs),
+        },
+    }
+
+
+def _session_progress(s):
+    """Observable session activity (no answer-key-derived totals): submitted
+    count, in-flight incidents, total detections triaged/open, actions taken."""
+    dets = s.get("detections", [])
+    triaged = sum(1 for d in dets if d.get("player_action") != "open")
+    overlay = s.get("overlay") or action_overlay.new_overlay()
+    log = overlay.get("log", [])
+    return {
+        "submitted": len(s.get("submissions", {})),
+        "queue_length": s.get("queue_length", 0),
+        "detections_triaged": triaged,
+        "detections_open": len(dets) - triaged,
+        "actions_attempted": len(log),
+        "actions_executed": sum(1 for e in log if e["outcome"] == action_overlay.SUCCESS),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Stage 3.9A incident routes: submission boundary + per-incident score view.
+# These are the ONLY endpoints that reveal correctness, and only across the
+# submission boundary. check-answer is the sole exception, Guided-mode only,
+# revealing classification correctness alone in exchange for an Assisted mark.
+# ---------------------------------------------------------------------------
+
+@app.route('/api/incidents/<incident_id>/submit', methods=['POST'])
+def submit_incident_route(incident_id):
+    """Unified, confirmed, atomic incident submission: the one grading
+    boundary. Freezes this incident's classification / detection / response
+    inputs, computes and stores the immutable per-incident report card, and
+    marks the incident resolved. Idempotent. Submission is gated on READINESS
+    (roster sealed + every scoped detection dispositioned); a not-ready attempt
+    is a 409 carrying an observable count only, never any correctness. Only
+    AFTER crossing this boundary is grading or correctness disclosed."""
+    s = g.session
+    payload = request.get_json(silent=True) or {}
+    result = submit_incident(s, incident_id, payload)
+    status = result["status"]
+    if status == "unknown":
+        return jsonify({"error": "Unknown incident"}), 404
+    if status == "invalid_classification":
+        return jsonify({"error": "A classification is required to submit.",
+                        "reason": "invalid_classification"}), 400
+    if status == "sealing":
+        return jsonify({"error": "Incident telemetry is still loading.",
+                        "reason": "sealing"}), 409
+    if status == "open_detections":
+        n = result["open_detections"]
+        return jsonify({
+            "error": f"{n} detection{'s' if n != 1 else ''} still need review.",
+            "reason": "open_detections", "open_detections": n}), 409
+    record = result["record"]
+    view = incident_score_view(s, incident_id)
+    # Hardcore: a wrong classification, revealed at the boundary, ends the run.
+    # Only on the FIRST submission (created) so an idempotent re-hit is inert.
+    if (status == "created" and s.get("game_mode") == "hardcore"
+            and not record["report_card"]["classification"]["correct"]):
+        s["paused"] = True
+        view = {**view, "hardcore_failure": True}
+    return jsonify(view), 200
+
+
+@app.route('/api/incidents/<incident_id>/score', methods=['GET'])
+def incident_score_route(incident_id):
+    """Discriminated per-incident view: an in_progress incident returns
+    observable progress only (no answer-key-derived totals); a submitted
+    incident returns its immutable stored grading. 'grading' is structurally
+    impossible while state is in_progress."""
+    s = g.session
+    with s["io_lock"]:
+        view = incident_score_view(s, incident_id)
+    if view is None:
+        return jsonify({"error": "Unknown incident"}), 404
+    return jsonify(view)
+
+
+# ---------------------------------------------------------------------------
+# Stage 3.9B: incident presentation scope, from OBSERVABLE ATTRIBUTION ONLY.
+# This function and its route are deliberately self-contained and reference
+# ONLY observable inputs: the opaque incident->scenario id map, the written
+# event pool, the player-visible detection list, and the chain-complete seal
+# marker. They NEVER read scenario_grading, expected_actions, answer keys, or
+# grading config (enforced by test_incident_scope.py's structural guard). The
+# authoritative detection roster is attributed by each detection's own tag
+# (scenario_id) plus ambient-benign detections on the incident's observable
+# participant hosts; a shared host's ambient benign appears honestly under
+# every incident whose observable scope includes that host.
+# ---------------------------------------------------------------------------
+
+def _incident_observable_scope(s, incident_id):
+    """The player-visible scope of an incident, from observable attribution
+    only (Stage 3.9B / C1). Returns None for an unknown incident, else a dict
+    of the incident's observable participant hosts + accounts, its authoritative
+    detection roster (ids + triaged count), and the seal flag. Scope grows only
+    as telemetry becomes player-visible (written events / materialized
+    detections); it is never derived from unreleased events or hidden chain."""
+    scenario_id = _incident_scenario_id(s, incident_id)
+    if scenario_id is None:
+        return None
+    sealed = _incident_roster_sealed(s, scenario_id)
+    written = _read_ndjson_unlocked(s["paths"]["generated_logs"])
+    events = [l for l in written
+              if l.get("scenario_id") == scenario_id
+              and l.get("label") != "normal_traffic"]
+    detections = s.get("detections", [])
+    tagged = [d for d in detections if d.get("scenario_id") == scenario_id]
+
+    # observable participant hosts/accounts: written event participants + the
+    # entities of this incident's own (tagged) detections.
+    hosts = {l.get("hostname") for l in events if l.get("hostname")}
+    hosts |= {(d.get("entity") or {}).get("host") for d in tagged}
+    hosts.discard(None)
+    accounts = set()
+    for l in events:
+        acct = (l.get("key_value_pairs") or {}).get("account_name")
+        if acct and acct not in ("-", "—"):
+            accounts.add(acct)
+    for d in tagged:
+        acct = (d.get("entity") or {}).get("account")
+        if acct:
+            accounts.add(acct)
+
+    # authoritative roster: tagged detections + ambient benign (untagged) on the
+    # incident's observable hosts (honest shared visibility).
+    ambient = [d for d in detections
+               if d.get("scenario_id") is None
+               and (d.get("entity") or {}).get("host") in hosts]
+    roster = tagged + ambient
+    roster_ids = [d["id"] for d in roster]
+    triaged = sum(1 for d in roster if d.get("player_action", "open") != "open")
+    return {
+        "sealed": sealed,
+        "hosts": sorted(hosts),
+        "accounts": sorted(accounts),
+        "roster_ids": sorted(roster_ids),
+        "roster_size": len(roster_ids),
+        "triaged": triaged,
+    }
+
+
+@app.route('/api/incidents', methods=['GET'])
+def list_incidents():
+    """Stage 3.9B Dashboard data source: the incident list, split into active
+    (in_progress) and completed (submitted). Active cards appear as soon as the
+    incident drips (C3: telemetry-loading state), carrying only observable
+    presentation data + the seal flag + observable readiness (roster total/
+    triaged withheld pre-seal, A2). Completed cards carry the post-boundary
+    Incident Grade summary + Assisted flag from the immutable stored record. No
+    scenario_id, category, answer key, or required-action count is serialized."""
+    s = g.session
+    sev_name = {1: "Low", 2: "Medium", 3: "High", 4: "Critical"}
+    sev_rank = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+    with s["io_lock"]:
+        subs = s.get("submissions", {})
+        written = _read_ndjson_unlocked(s["paths"]["generated_logs"])
+        sev_of = {}
+        for l in written:
+            sid = l.get("scenario_id")
+            if not sid or l.get("label") == "normal_traffic":
+                continue
+            r = sev_rank.get((l.get("severity") or "medium").lower(), 2)
+            if r > sev_of.get(sid, 0):
+                sev_of[sid] = r
+        active, completed = [], []
+        for e in s.get("alert_queue", []):
+            inc = e.get("incident_id")
+            sid = e.get("scenario_id")
+            if not inc or not e.get("injected_at"):
+                continue  # not yet dripped -> not surfaced
+            base = {"incident_id": inc,
+                    "title": e.get("ticket_title", ""),
+                    "briefing": e.get("storyline", ""),
+                    "severity": sev_name.get(sev_of.get(sid, 2), "Medium"),
+                    "queue_position": e.get("queue_position")}
+            if inc in subs:
+                rec = subs[inc]
+                comp = rec["report_card"]["composite"]
+                completed.append({**base, "state": "submitted",
+                                  "submitted_at": rec["submitted_at"],
+                                  "assisted": rec["assisted"],
+                                  "incident_grade": {"grade": comp["grade"],
+                                                     "accuracy": comp["accuracy"]}})
+            else:
+                scope = _incident_observable_scope(s, inc)
+                sealed = bool(scope and scope["sealed"])
+                card = {**base, "state": "in_progress", "sealed": sealed}
+                if sealed:
+                    total = scope["roster_size"]
+                    triaged = scope["triaged"]
+                    card["triage"] = {"total": total, "triaged": triaged}
+                    card["open_detections"] = total - triaged
+                    card["ready"] = triaged == total
+                active.append(card)
+    return jsonify({"active": active, "completed": completed,
+                    "queue_length": s.get("queue_length", 0),
+                    "resolved_count": s.get("resolved_count", 0)})
+
+
+# --- Guided catalog (Stage 3.9B Step 3) ------------------------------------
+# The answer-neutral scenario picker for Guided mode. Serializes ONLY opaque
+# handles + player-visible symptom wording (the same ticket_title/storyline the
+# in-game briefing reads, from CAMPAIGN_LEVELS, so picker == briefing). The
+# internal scenario label, category, answer key, and every grading signal never
+# serialize; catalog_id is an opaque salted digest that resolves server-side to
+# exactly one scenario. Permanent leak guard: test_guided_catalog.py.
+
+_GUIDED_CATALOG_SALT = "spectyr-guided-catalog-v1"
+_CATALOG_SEV_RANK = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+_CATALOG_SEV_NAME = {1: "Low", 2: "Medium", 3: "High", 4: "Critical"}
+
+
+def _catalog_id_for(label):
+    """Opaque, stable catalog id for a scenario label: a salted digest, never a
+    client-invertible transform of the label; resolved only server-side."""
+    return "cat-" + hashlib.sha256(
+        (_GUIDED_CATALOG_SALT + "|" + label).encode("utf-8")).hexdigest()[:12]
+
+
+def _guided_catalog_scenarios():
+    """(label, ticket_title, storyline) for every catalog scenario, from
+    CAMPAIGN_LEVELS (the same shared source the in-game briefing reads)."""
+    out = []
+    for level_config in CAMPAIGN_LEVELS:
+        for _category, scenario in level_config["scenarios"].items():
+            out.append((scenario["scenario_label"],
+                        scenario["ticket_title"], scenario["storyline"]))
+    return out
+
+
+def _catalog_severity(label):
+    """Deterministic headline severity: max severity across the scenario's
+    authored events (attack chain + supplemental), matching what the incident
+    surfaces at runtime, computed statically so the picker needs no session."""
+    sc = yaml_catalog.get(label, {})
+    rank = 0
+    for step in list(sc.get("chain", [])) + list(sc.get("supplemental_events", [])):
+        rank = max(rank, _CATALOG_SEV_RANK.get(
+            str(step.get("severity", "medium")).lower(), 2))
+    return _CATALOG_SEV_NAME.get(rank or 2, "Medium")
+
+
+def _resolve_catalog_id(catalog_id):
+    """Resolve an opaque catalog id to its internal scenario label, or None.
+    Server-side only; the mapping never serializes to the client."""
+    if not catalog_id:
+        return None
+    for label, _t, _s in _guided_catalog_scenarios():
+        if _catalog_id_for(label) == catalog_id:
+            return label
+    return None
+
+
+@app.route('/api/guided-catalog', methods=['GET'])
+def guided_catalog():
+    """Answer-neutral Guided picker payload (Stage 3.9B Step 3). Opaque handles
+    + symptom wording only; difficulty is null this stage (no rubric authored).
+    Order is by opaque catalog_id, so list position never correlates with
+    category. Whitelist + language guard: test_guided_catalog.py."""
+    catalog = [{
+        "catalog_id": _catalog_id_for(label),
+        "title": title,
+        "severity": _catalog_severity(label),
+        "description": storyline,
+        "difficulty": None,
+    } for label, title, storyline in _guided_catalog_scenarios()]
+    catalog.sort(key=lambda e: e["catalog_id"])
+    return jsonify({"catalog": catalog, "random_available": True})
+
+
+def build_guided_queue(catalog_id):
+    """Guided intake (Stage 3.9B Step 3): a queue of EXACTLY ONE scenario,
+    selected by opaque catalog_id or the sentinel "random". Same entry shape as
+    build_alert_queue (queue_position 1; scenario_id/injected/sealed/resolved
+    start None), so the drip, sealing, and readiness path is identical. Returns
+    None if the catalog_id does not resolve, so the caller rejects the intake
+    without building a session (no partial state, no answer-key exposure)."""
+    if catalog_id == "random":
+        label = random.choice([lbl for lbl, _t, _s in _guided_catalog_scenarios()])
+    else:
+        label = _resolve_catalog_id(catalog_id)
+        if label is None:
+            return None
+    for level_config in CAMPAIGN_LEVELS:
+        for category, scenario in level_config["scenarios"].items():
+            if scenario["scenario_label"] == label:
+                return [{
+                    "scenario_label": label,
+                    "category": category,
+                    "ticket_title": scenario["ticket_title"],
+                    "storyline": scenario["storyline"],
+                    "is_fp": category == "False Positive",
+                    "source_level": level_config["level"],
+                    "queue_position": 1,
+                    "scenario_id": None,
+                    "injected_at": None,
+                    "chain_complete_at": None,
+                    "resolved_at": None,
+                }]
+    return None
+
+
+@app.route('/api/incidents/<incident_id>/scope', methods=['GET'])
+def incident_scope_route(incident_id):
+    """Stage 3.9B presentation scope for an incident, observable-only. Serializes
+    the opaque incident id, the seal flag, the incident's observable participant
+    hosts + accounts, and its detection-roster ids. The roster TOTAL/triaged
+    counts are withheld until the roster is sealed (A2: no roster-derived total
+    before every roster detection is in the player-visible feed). No
+    scenario_id, category, answer key, or required-action count ever appears."""
+    s = g.session
+    with s["io_lock"]:
+        scope = _incident_observable_scope(s, incident_id)
+    if scope is None:
+        return jsonify({"error": "Unknown incident"}), 404
+    out = {
+        "incident_id": incident_id,
+        "sealed": scope["sealed"],
+        "hosts": scope["hosts"],
+        "accounts": scope["accounts"],
+        "detection_ids": scope["roster_ids"],
+    }
+    if scope["sealed"]:
+        out["triage"] = {"total": scope["roster_size"], "triaged": scope["triaged"]}
+    return jsonify(out)
+
+
+@app.route('/api/incidents/<incident_id>/check-answer', methods=['POST'])
+def check_answer_route(incident_id):
+    """Guided-mode ONLY (allow-list, not deny-list): available only when the
+    session mode is in GUIDED_MODES, and refused in every other mode (Hardcore,
+    Analyst, and any future SOC Queue mode). Reveals CLASSIFICATION correctness
+    for the supplied verdict/category WITHOUT submitting, and permanently marks
+    the incident Assisted (its eventual submission carries the flag). Never
+    reveals detection or response grading."""
+    s = g.session
+    if s.get("game_mode") not in GUIDED_MODES:
+        return jsonify({"error": "Check Answer is available in Guided mode only"}), 403
+    payload = request.get_json(silent=True) or {}
+    with s["io_lock"]:
+        scenario_id = _incident_scenario_id(s, incident_id)
+        if scenario_id is None:
+            return jsonify({"error": "Unknown incident"}), 404
+        if incident_id in s.get("submissions", {}):
+            return jsonify({"error": "Incident already submitted"}), 409
+        s.setdefault("assisted", set()).add(incident_id)
+        all_logs = _read_ndjson_unlocked(s["paths"]["generated_logs"])
+    actual_category = _incident_actual_category(all_logs, scenario_id)
+    cls = _classification_grade(payload.get("verdict"), payload.get("category"),
+                                actual_category)
+    return jsonify({
+        "incident_id": incident_id,
+        "assisted": True,
+        "classification": {
+            "correct": cls["correct"],
+            "your_category": cls["category"],
+            "actual_category": cls["actual_category"],
+        },
+    })
+
+
 # Disposition scoring: correct = promote a true positive, dismiss a false
 # positive, dismiss a benign_expected. Wrong = the inverse. Open detections
 # are pending, excluded from the grade.
@@ -3050,12 +3856,17 @@ def compute_detection_score(detections):
 
 @app.route('/api/analytics/detection_score', methods=['GET'])
 def get_detection_score():
-    """Disposition scoring v1: deterministic grade over the player's promote/
-    dismiss decisions against the server-side dispositions."""
+    """Disposition scoring v1, submission-gated (Stage 3.9A). The grade is
+    served ONLY across the submission boundary, aggregated from the immutable
+    stored records, never over the live (unsubmitted) triage state. Returns the
+    discriminated shape: {state: in_progress, progress} until an incident is
+    submitted, then {state: submitted, grading: <detection section>}."""
     s = g.session
     with s["io_lock"]:
-        result = compute_detection_score(list(s.get("detections", [])))
-    return jsonify(result)
+        agg = aggregate_submitted(s)
+    if agg["state"] != "submitted":
+        return jsonify(agg)
+    return jsonify({"state": "submitted", "grading": agg["grading"]["detection"]})
 
 
 def _action_target_key(action, target):
@@ -3279,38 +4090,20 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
 
 @app.route('/api/analytics/action_score', methods=['GET'])
 def get_action_score():
-    """Response-action scoring v1: counts and grade, plus three factual
-    surfacing blocks (no editorial labels, all score-neutral by the
-    standing taxonomy): not_executed (failed_precondition attempts),
-    no_effect (no_op repeats), acceptable_taken (executed
-    author-sanctioned acceptable actions). Which targets were expected
-    never serializes, and neither do the status or actions_reviewed
-    markers: the answer key cannot be reconstructed from a score poll;
-    acceptable entries surface only AFTER the player executed them."""
+    """Response-action scoring v1, submission-gated (Stage 3.9A). Grading is
+    served ONLY across the submission boundary, aggregated from the immutable
+    stored records; it never reflects live, unsubmitted response state. Returns
+    the discriminated shape: {state: in_progress, progress} until an incident is
+    submitted, then {state: submitted, grading: <response section>} with counts,
+    grade, and the three factual surfacing blocks (not_executed, no_effect,
+    acceptable_taken). Expected targets and the reviewed markers never
+    serialize, so the answer key cannot be reconstructed from a score poll."""
     s = g.session
     with s["io_lock"]:
-        overlay = s.get("overlay") or action_overlay.new_overlay()
-        executed = action_overlay.successful_executions(
-            overlay, s.get("entity_index", {}))
-        result = compute_action_score(
-            list(s.get("expected_actions", [])), executed,
-            set(overlay.get("isolated", ())),
-            list(s.get("scenario_grading", [])))
-        log = overlay.get("log", [])
-        acceptable_seqs = set(result.pop("acceptable_seqs"))
-        result.pop("accuracy_raw", None)          # internal: composite input only
-        result.pop("inaction_collateral", None)   # internal: scoring detail
-        failed = [action_overlay.sanitize_action_entry(e) for e in log
-                  if e["outcome"] == action_overlay.FAILED]
-        noop = [action_overlay.sanitize_action_entry(e) for e in log
-                if e["outcome"] == action_overlay.NO_OP]
-        acceptable = [action_overlay.sanitize_action_entry(e) for e in log
-                      if e["seq"] in acceptable_seqs]
-    result["not_executed"] = {"count": len(failed), "entries": failed}
-    result["no_effect"] = {"count": len(noop), "entries": noop}
-    result["acceptable_taken"] = {"count": len(acceptable),
-                                  "entries": acceptable}
-    return jsonify(result)
+        agg = aggregate_submitted(s)
+    if agg["state"] != "submitted":
+        return jsonify(agg)
+    return jsonify({"state": "submitted", "grading": agg["grading"]["response"]})
 
 
 @app.route('/api/analytics/attack_coverage', methods=['GET'])
@@ -3323,91 +4116,43 @@ def get_attack_coverage():
 
 @app.route("/api/analytics/report_card", methods=["GET"])
 def get_analyst_report_card():
+    """Headline grading, submission-gated (Stage 3.9A). Served ONLY across the
+    submission boundary from the immutable stored records: the 40/30/30
+    composite plus the classification / detection / response sections, all
+    aggregated over submitted incidents (aggregate_submitted). Until an
+    incident is submitted it returns {state: in_progress, progress}, which
+    carries observable activity only, never an answer-key-derived total."""
     s = g.session
     try:
-        actions = read_ndjson(s, "analyst_actions")
-        all_logs = read_ndjson(s, "generated_logs")
+        with s["io_lock"]:
+            agg = aggregate_submitted(s)
+        if agg["state"] != "submitted":
+            return jsonify(agg)
 
-        # Build lookup: scenario_id -> category + scenario_label
+        # Time-to-resolve enrichment, sourced from the submit-only
+        # scenario_history (also gated: entries are appended only at submit).
+        all_logs = read_ndjson(s, "generated_logs")
         scenario_info = {}
         for log in all_logs:
             sid = log.get("scenario_id")
             if sid and sid not in scenario_info:
-                scenario_info[sid] = {
-                    "category": log.get("category", ""),
-                    "scenario_label": log.get("label", ""),
-                }
-
-        correct_threat_identified = 0  # Correctly classified real threats
-        wrong_category = 0             # Wrong category selected on real threats
-        fp_identified = 0              # False positives correctly identified
-        fp_missed = 0                  # False positives wrongly classified as real threats
-
-        for action in actions:
-            sid = action.get("scenario_id")
-            act = action.get("action")
-
-            if act == "classify":
-                if action.get("correct_category", "").lower() == "false positive":
-                    # This was a false positive scenario
-                    if action.get("category_correct", False):
-                        fp_identified += 1   # Analyst correctly spotted the FP
-                    else:
-                        fp_missed += 1       # Analyst fell for the FP
-                else:
-                    # This was a real threat scenario
-                    if action.get("category_correct", False):
-                        correct_threat_identified += 1  # Correct category!
-                    else:
-                        wrong_category += 1  # Wrong category selected
-
-        # Calculate classification accuracy (exclude flags)
-        classification_actions = [a for a in actions if a.get("action") == "classify"]
-        total_classifications = len(classification_actions)
-        total_correct = correct_threat_identified + fp_identified
-        classification_accuracy = round((total_correct / total_classifications) * 100, 2) if total_classifications else 0
-
-        # Letter grade — single source of truth (10-point school scale);
-        # frontend components render this instead of re-deriving it
-        if total_classifications:
-            grade = ('A' if classification_accuracy >= 90 else
-                     'B' if classification_accuracy >= 80 else
-                     'C' if classification_accuracy >= 70 else
-                     'D' if classification_accuracy >= 60 else 'F')
-        else:
-            grade = '-'
-
-        # Average time-to-resolve across all resolved scenarios, and split by TP vs FP
-        all_times = []
-        tp_times = []
-        fp_times = []
-        scenario_resolve_times = []
-        scenario_correct_map = {}
-        for a in actions:
-            if a.get("action") == "classify":
-                asid = a.get("scenario_id")
-                if asid:
-                    scenario_correct_map[asid] = bool(a.get("category_correct", False))
+                scenario_info[sid] = {"category": log.get("category", ""),
+                                      "scenario_label": log.get("label", "")}
+        all_times, tp_times, fp_times, scenario_resolve_times = [], [], [], []
         for entry in s.get("scenario_history", []):
             ttr = entry.get("time_to_resolve_seconds")
             sid = entry.get("scenario_id")
             if not isinstance(ttr, int) or not sid:
                 continue
             all_times.append(ttr)
-            is_fp = scenario_info.get(sid, {}).get("category", "").lower() == "false positive"
-            if is_fp:
-                fp_times.append(ttr)
-            else:
-                tp_times.append(ttr)
             sinfo = scenario_info.get(sid, {})
-            label = sinfo.get("scenario_label", "")
             category = sinfo.get("category", "")
+            is_fp = category.strip().lower() == "false positive"
+            (fp_times if is_fp else tp_times).append(ttr)
+            label = sinfo.get("scenario_label", "")
             incident_name = (
                 TRIAGE_REVIEWS.get(label, {}).get("what_is_it", {}).get("title")
-                or category
-                or entry.get("ticket_title", "")
-                or "Unknown"
-            )
+                or category or entry.get("ticket_title", "") or "Unknown")
             scenario_resolve_times.append({
                 "scenario_id": sid,
                 "ticket_title": entry.get("ticket_title", ""),
@@ -3415,51 +4160,18 @@ def get_analyst_report_card():
                 "category": category,
                 "seconds": ttr,
                 "is_fp": is_fp,
-                "correct": scenario_correct_map.get(sid, False),
+                "correct": bool(entry.get("correct")),
             })
-        avg_time_to_resolve_seconds = int(sum(all_times) / len(all_times)) if all_times else None
-        avg_time_to_resolve_tp_seconds = int(sum(tp_times) / len(tp_times)) if tp_times else None
-        avg_time_to_resolve_fp_seconds = int(sum(fp_times) / len(fp_times)) if fp_times else None
 
-        # Stage 3d: the 40/30/30 headline composite. Detection + response
-        # components are read from the same deterministic scorers the
-        # standalone endpoints use, under the lock; the composite is computed
-        # from their UNROUNDED accuracies (compute_composite_grade). It is the
-        # headline grade; classification/detection/response still render as
-        # their own sections, so no weak component hides behind it.
-        with s["io_lock"]:
-            det = compute_detection_score(list(s.get("detections", [])))
-            overlay = s.get("overlay") or action_overlay.new_overlay()
-            executed = action_overlay.successful_executions(
-                overlay, s.get("entity_index", {}))
-            resp = compute_action_score(
-                list(s.get("expected_actions", [])), executed,
-                set(overlay.get("isolated", ())),
-                list(s.get("scenario_grading", [])))
-        # Component UNROUNDED accuracies: classification + detection are plain
-        # correct/graded ratios; response is its penalized accuracy (collateral
-        # pricing), NOT correct/graded.
-        cls_raw = (total_correct / total_classifications * 100) if total_classifications else None
-        det_raw = (det["correct"] / det["graded"] * 100) if det["graded"] else None
-        composite = compute_composite_grade(
-            (cls_raw, total_classifications),
-            (det_raw, det["graded"]),
-            (resp["accuracy_raw"], resp["graded"]))
-
-        return jsonify({
-            "threats_caught": correct_threat_identified,
-            "wrong_category": wrong_category,
-            "total_actions": total_classifications,
-            "accuracy": classification_accuracy,
-            "grade": grade,
-            "composite": composite,
-            "fp_identified": fp_identified,
-            "fp_missed": fp_missed,
-            "avg_time_to_resolve_seconds": avg_time_to_resolve_seconds,
-            "avg_time_to_resolve_tp_seconds": avg_time_to_resolve_tp_seconds,
-            "avg_time_to_resolve_fp_seconds": avg_time_to_resolve_fp_seconds,
-            "scenario_resolve_times": scenario_resolve_times,
-        })
+        grading = agg["grading"]
+        grading["avg_time_to_resolve_seconds"] = (
+            int(sum(all_times) / len(all_times)) if all_times else None)
+        grading["avg_time_to_resolve_tp_seconds"] = (
+            int(sum(tp_times) / len(tp_times)) if tp_times else None)
+        grading["avg_time_to_resolve_fp_seconds"] = (
+            int(sum(fp_times) / len(fp_times)) if fp_times else None)
+        grading["scenario_resolve_times"] = scenario_resolve_times
+        return jsonify(agg)
 
     except Exception as e:
         print(f"[ERROR] report_card failed: {e}", flush=True)
@@ -3547,141 +4259,89 @@ def get_triage_review(scenario_label):
     })
 
 
+@app.route('/api/incidents/<incident_id>/triage-review', methods=['GET'])
+def incident_triage_review(incident_id):
+    """Stage 3.9B: the post-boundary educational triage review for a SUBMITTED
+    incident (404 until submitted). Resolves the scenario label server-side and
+    serializes ONLY the educational content (MITRE, technique explainer,
+    playbook); the scenario label itself is never returned. Powers the single
+    Post-Incident Review surface in the Incidents workspace."""
+    s = g.session
+    if incident_id not in s.get("submissions", {}):
+        return jsonify({"error": "Not available until submitted"}), 404
+    scenario_id = _incident_scenario_id(s, incident_id)
+    entry = next((e for e in s.get("alert_queue", [])
+                  if e.get("scenario_id") == scenario_id), None)
+    label = entry.get("scenario_label") if entry else None
+    reviews = yaml_triage_reviews if SCENARIO_SOURCE in ("yaml", "yaml_v2") else TRIAGE_REVIEWS
+    review = reviews.get(label) or {}
+    # scenario_label is NOT serialized; only the educational reveal content is.
+    return jsonify({k: v for k, v in review.items() if k != "scenario_label"})
+
+
 @app.route("/api/resume", methods=["POST"])
 def resume_generation():
+    """Stage 3.9A: classification is now a SUBMISSION and crosses the single
+    grading boundary (submit_incident). This legacy endpoint is a thin,
+    non-revealing compatibility shim: a classify action routes to
+    submit_incident and returns NO correctness before the boundary (the only
+    post-boundary signal is the Hardcore failure, which the run reveals by
+    design). Non-classify actions annotate the raw event status only."""
     s = g.session
-    data = request.json
+    data = request.json or {}
     action = data.get("analyst_action")
     scenario_id = data.get("scenario_id")
     label = data.get("label", "unknown")
-    selected_category = data.get("selected_category")  # For classify action
+    selected_category = data.get("selected_category")
 
     if not scenario_id:
         return jsonify({"error": "Missing scenario_id"}), 400
 
-    print(f"\n[ANALYST ACTION] {action.upper()} on {label} ({scenario_id})", flush=True)
-    if selected_category:
-        print(f"[CATEGORY SELECTED] {selected_category}", flush=True)
+    if action == "classify":
+        queue_entry = next((e for e in s.get("alert_queue", [])
+                            if e.get("scenario_id") == scenario_id), None)
+        incident_id = queue_entry.get("incident_id") if queue_entry else None
+        if not incident_id:
+            return jsonify({"error": "Unknown incident"}), 404
+        if incident_id in s.get("submissions", {}):
+            return jsonify({"status": "already_classified", "incident_id": incident_id})
+        verdict = ("false_positive"
+                   if (selected_category or "").strip().lower() == "false positive"
+                   else "threat")
+        result = submit_incident(
+            s, incident_id, {"verdict": verdict, "category": selected_category})
+        st = result["status"]
+        if st == "unknown":
+            return jsonify({"error": "Unknown incident"}), 404
+        if st == "invalid_classification":
+            return jsonify({"status": "invalid_classification",
+                            "incident_id": incident_id}), 400
+        if st == "sealing":
+            return jsonify({"status": "not_ready", "reason": "sealing",
+                            "incident_id": incident_id}), 409
+        if st == "open_detections":
+            return jsonify({"status": "not_ready", "reason": "open_detections",
+                            "open_detections": result["open_detections"],
+                            "incident_id": incident_id}), 409
+        record = result["record"]
+        if (st == "created" and s.get("game_mode") == "hardcore"
+                and not record["report_card"]["classification"]["correct"]):
+            s["paused"] = True
+            return jsonify({"status": "hardcore_failure", "incident_id": incident_id})
+        return jsonify({"status": "submitted", "incident_id": incident_id})
 
-    existing_category = None
-    category_correct = False
-    already_classified = False
-
-    # Atomic read-modify-write: the log-writer thread appends to this file
-    # concurrently, so the whole section holds the session IO lock.
+    # Non-classify status annotation (e.g. marking an event under investigation).
     with s["io_lock"]:
         all_logs = _read_ndjson_unlocked(s["paths"]["generated_logs"])
-
+        changed = False
         for log in all_logs:
-            if log.get("scenario_id") == scenario_id:
-                if log.get("category") and not existing_category:
-                    existing_category = log["category"]
-                    break
-
-        # Guard against duplicate classify actions
-        already_classified = any(
-            log.get("scenario_id") == scenario_id and log.get("status") == "classified"
-            for log in all_logs
-        )
-
-        if not (already_classified and action == "classify"):
-            # Determine correctness for classify action
-            if action == "classify" and selected_category:
-                category_correct = selected_category.lower() == (existing_category or "").lower()
-                print(f"[SCORING] Selected: {selected_category}, Actual: {existing_category}, Match: {category_correct}", flush=True)
-
-            updated_logs = []
-            for log in all_logs:
-                if log.get("scenario_id") == scenario_id:
-                    if action == "classify":
-                        log["status"] = "classified"
-                        log["analyst_category"] = selected_category
-                        log["category_correct"] = category_correct
-                    else:
-                        log["status"] = action
-                    log["analyst_action"] = action
-                updated_logs.append(log)
-
-            _write_ndjson_unlocked(s["paths"]["generated_logs"], updated_logs)
-
-    if already_classified and action == "classify":
-        return jsonify({"status": "already_classified", "category": existing_category or "Unknown"})
-
-    action_log = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "scenario_id": scenario_id,
-        "action": action,
-        "label": label
-    }
-
-    # Add classify-specific fields
-    if action == "classify":
-        action_log["selected_category"] = selected_category
-        action_log["correct_category"] = existing_category
-        action_log["category_correct"] = category_correct
-
-    append_ndjson(s, "analyst_actions", action_log)
-
-    # Determine if answer was wrong for hardcore mode failure
-    answer_wrong = False
-    failure_reason = None
-
-    if action == "classify" and not category_correct:
-        # Wrong category selected
-        answer_wrong = True
-        failure_reason = f"Wrong category: selected {selected_category}, was {existing_category}"
-
-    # Mark this scenario resolved in the queue and push to history
-    queue_entry = next((e for e in s.get("alert_queue", []) if e.get("scenario_id") == scenario_id), None)
-    if queue_entry and not queue_entry.get("resolved_at"):
-        queue_entry["resolved_at"] = datetime.now(timezone.utc).isoformat()
-        s["resolved_count"] = s.get("resolved_count", 0) + 1
-        injected_at = queue_entry.get("injected_at")
-        resolved_at = queue_entry.get("resolved_at")
-        time_to_resolve_seconds = None
-        if injected_at and resolved_at:
-            try:
-                time_to_resolve_seconds = int(
-                    (datetime.fromisoformat(resolved_at) - datetime.fromisoformat(injected_at)).total_seconds()
-                )
-            except (ValueError, TypeError):
-                pass
-        s["scenario_history"].append({
-            "level": queue_entry.get("queue_position"),
-            "ticket_title": queue_entry.get("ticket_title", "Unknown"),
-            "storyline": queue_entry.get("storyline", ""),
-            "startTime": queue_entry.get("chain_complete_at") or queue_entry.get("injected_at"),
-            "correct": bool(category_correct),
-            "scenario_id": queue_entry.get("scenario_id"),
-            "time_to_resolve_seconds": time_to_resolve_seconds,
-        })
-        print(f"[RESOLVED {s['resolved_count']}/{s['queue_length']}] "
-              f"{queue_entry.get('ticket_title')} — {'correct' if category_correct else 'wrong'}",
-              flush=True)
-        if s["resolved_count"] >= s["queue_length"]:
-            s["paused"] = True
-            print("[SESSION COMPLETE] All alerts resolved!", flush=True)
-
-    if answer_wrong and s["game_mode"] == "hardcore":
-        print(f"[HARDCORE FAILURE] {failure_reason}", flush=True)
-        s["paused"] = True
-        return jsonify({
-            "status": "hardcore_failure",
-            "category": selected_category,
-            "correct_category": existing_category,
-            "reason": failure_reason,
-        })
-
-    # Verdict fields let Training mode show immediate feedback without a second
-    # round-trip; harmless for Hardcore-correct classifications.
-    return jsonify({
-        "status": "action logged",
-        "action": action,
-        "category_correct": category_correct if action == "classify" else None,
-        "selected_category": selected_category,
-        "correct_category": existing_category,
-        "scenario_label": label,
-    })
+            if log.get("scenario_id") == scenario_id and log.get("status") != "classified":
+                log["status"] = action
+                log["analyst_action"] = action
+                changed = True
+        if changed:
+            _write_ndjson_unlocked(s["paths"]["generated_logs"], all_logs)
+    return jsonify({"status": "action logged", "action": action})
 
 
 @app.route('/api/grouped-alerts', methods=['GET'])
@@ -3712,6 +4372,9 @@ def get_grouped_alerts():
                 "storyline": log.get("storyline", ""),
                 "analyst_category": log.get("analyst_category", ""),
                 "alert_id": log.get("alert_id", ""),
+                # Opaque client-facing incident id (== alert_id by construction);
+                # the submission boundary keys on this.
+                "incident_id": log.get("alert_id", ""),
                 "level": log.get("level"),
                 "log_count": 0,
                 "logs": [],
@@ -3774,6 +4437,19 @@ def get_grouped_alerts():
         highest = max(severity_order.get(log.get("severity", "medium").lower(), 2) for log in grp["logs"])
         grp["group_severity"] = {4: "Critical", 3: "High", 2: "Medium", 1: "Low"}[highest]
 
+    # Stage 3.9A submission readiness (observable only, no answer-key info): the
+    # frontend blocks Submit until the roster is sealed and every scoped
+    # detection is dispositioned. Computed over the AUTHORITATIVE server roster,
+    # not the UI-visible feed.
+    with s["io_lock"]:
+        for grp in result:
+            sid = grp["scenario_id"]
+            grading_rec = _grading_record_for(s, sid)
+            state, open_n = incident_submission_readiness(s, sid, grading_rec)
+            grp["detections_sealed"] = state != "sealing"
+            grp["open_detections"] = open_n
+            grp["submission_ready"] = state == "ready"
+
     # Compute aggregate stats
     total_alerts = len(result)
     closed_alerts = sum(1 for grp in result if grp["status"] in ["classified", "resolved"])
@@ -3804,96 +4480,42 @@ def get_grouped_alerts():
 
 @app.route("/api/reports", methods=["POST"])
 def submit_report():
+    """Stage 3.9A: incident reports are documentation only. Resolution and
+    grading happen exclusively at the submission boundary (submit_incident),
+    so this route neither resolves the queue nor computes correctness, and it
+    never stores the actual category (that would leak the answer key before
+    the incident is submitted). It annotates the raw events as under
+    investigation and files the report text."""
     s = g.session
 
-    data = request.json
+    data = request.json or {}
     scenario_id = data.get("scenario_id")
-    submitted_category = data.get("threat_category")
     data["timestamp"] = datetime.now(timezone.utc).isoformat()
     data["id"] = str(uuid.uuid4())
     if "owner" not in data:
         data["owner"] = "Unassigned"
-
-    correct_category = None
-    scenario_label = None
-
-    for log in read_ndjson(s, "generated_logs"):
-        if log.get("scenario_id") == scenario_id:
-            correct_category = log.get("category")
-            scenario_label = log.get("label")
-            break
-
-    # Fallback: if category not in log, look it up from CAMPAIGN_LEVELS using label
-    if not correct_category and scenario_label:
-        for level_config in CAMPAIGN_LEVELS:
-            for category, scenario in level_config.get("scenarios", {}).items():
-                if scenario.get("scenario_label") == scenario_label:
-                    correct_category = category
-                    break
-            if correct_category:
-                break
-
-    is_correct = (submitted_category or "").lower() == (correct_category or "").lower()
-    data["correct_category"] = correct_category
-    data["category_match"] = is_correct
-
-    print(f"[REPORT] scenario_id={scenario_id}, submitted={submitted_category}, correct={correct_category}, match={is_correct}", flush=True)
+    # Never persist answer-key-derived correctness on a report (pre-submission
+    # disclosure guard): strip any client-supplied grading fields.
+    data.pop("correct_category", None)
+    data.pop("category_match", None)
 
     append_ndjson(s, "incident_reports", data)
 
-    if scenario_id and not data.get("skip_advance"):
-        # Atomic read-modify-write against the concurrent log-writer thread
+    if scenario_id:
+        # Annotate the raw events as under investigation (no resolution: that
+        # is the submission boundary's job).
         with s["io_lock"]:
             logs = _read_ndjson_unlocked(s["paths"]["generated_logs"])
+            changed = False
             for log in logs:
-                if log.get("scenario_id") == scenario_id:
+                if log.get("scenario_id") == scenario_id and log.get("status") != "classified":
                     log["status"] = "investigating"
                     log["analyst_action"] = "investigate"
-            _write_ndjson_unlocked(s["paths"]["generated_logs"], logs)
+                    changed = True
+            if changed:
+                _write_ndjson_unlocked(s["paths"]["generated_logs"], logs)
 
-        # scenario_label was already looked up from the same file above
-        label = scenario_label or "unknown"
-
-        action_log = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "scenario_id": scenario_id,
-            "action": "investigate",
-            "label": label
-        }
-        append_ndjson(s, "analyst_actions", action_log)
-
-        # Mark scenario resolved in the queue (if not already resolved via classify)
-        queue_entry = next((e for e in s.get("alert_queue", []) if e.get("scenario_id") == scenario_id), None)
-        if queue_entry and not queue_entry.get("resolved_at"):
-            queue_entry["resolved_at"] = datetime.now(timezone.utc).isoformat()
-            s["resolved_count"] = s.get("resolved_count", 0) + 1
-            injected_at = queue_entry.get("injected_at")
-            resolved_at = queue_entry.get("resolved_at")
-            time_to_resolve_seconds = None
-            if injected_at and resolved_at:
-                try:
-                    time_to_resolve_seconds = int(
-                        (datetime.fromisoformat(resolved_at) - datetime.fromisoformat(injected_at)).total_seconds()
-                    )
-                except (ValueError, TypeError):
-                    pass
-            s["scenario_history"].append({
-                "level": queue_entry.get("queue_position"),
-                "ticket_title": queue_entry.get("ticket_title", "Unknown"),
-                "storyline": queue_entry.get("storyline", ""),
-                "startTime": queue_entry.get("chain_complete_at") or queue_entry.get("injected_at"),
-                "correct": bool(is_correct),
-                "scenario_id": queue_entry.get("scenario_id"),
-                "time_to_resolve_seconds": time_to_resolve_seconds,
-            })
-            print(f"[RESOLVED {s['resolved_count']}/{s['queue_length']}] "
-                  f"{queue_entry.get('ticket_title')} via report — "
-                  f"{'correct' if is_correct else 'wrong'}", flush=True)
-            if s["resolved_count"] >= s["queue_length"]:
-                s["paused"] = True
-                print("[SESSION COMPLETE] All alerts resolved!", flush=True)
-
-    return jsonify({"message": "Report submitted and scenario resolved"}), 200
+    return jsonify({"message": "Report filed"}), 200
 
 
 @app.route("/api/reports", methods=["GET"])
@@ -4016,15 +4638,29 @@ def start_simulator():
     s = g.session
 
     data = request.json or {}
-    s["game_mode"] = data.get("game_mode", "training")
+    mode = data.get("game_mode", "training")
+
+    # Build the alert queue. Guided (Stage 3.9B Step 3) is a single chosen
+    # scenario (opaque catalog_id or "random"); every other mode drips the
+    # sampled 10-scenario queue. Validate BEFORE mutating session state, so an
+    # unknown catalog_id is a clean 400 that starts nothing. The per-incident
+    # drip, chain_complete_at sealing, and readiness are identical across modes.
+    if mode == "guided":
+        alert_queue = build_guided_queue(data.get("catalog_id"))
+        if alert_queue is None:
+            return jsonify({"error": "Unknown scenario"}), 400
+    else:
+        alert_queue = build_alert_queue(n=10, fp_min=1, fp_max=2)
+
+    s["game_mode"] = mode
     s["analyst_name"] = data.get("analyst_name")
 
     print(f"\n[GAME MODE] Starting in {s['game_mode'].upper()} mode (session {s['id'][:8]})", flush=True)
     if s["analyst_name"]:
         print(f"[ANALYST] {s['analyst_name']}", flush=True)
 
-    # Build a fresh alert queue for the session
-    s["alert_queue"] = build_alert_queue(n=10, fp_min=1, fp_max=2)
+    # Fresh alert queue for the session (built + validated above)
+    s["alert_queue"] = alert_queue
     s["queue_length"] = len(s["alert_queue"])
     s["resolved_count"] = 0
     s["injected_count"] = 0
@@ -4037,6 +4673,14 @@ def start_simulator():
         s["detections"] = []
         s["detection_index"] = {}
         s["benign_hosts"] = set()
+        s["overlay"] = action_overlay.new_overlay()
+        s["entity_index"] = {}
+        s["env_accounts"] = {}
+        s["expected_actions"] = []
+        s["scenario_grading"] = []
+        s["submissions"] = {}
+        s["incident_index"] = {}
+        s["assisted"] = set()
     s["timer_start"] = now
     s["next_drip_at"] = now  # First alert drips immediately
     s["scenario_start_time"] = time.time() * 1000

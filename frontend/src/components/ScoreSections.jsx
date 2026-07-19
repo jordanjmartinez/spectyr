@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { apiFetch } from '../api';
+import React from 'react';
 
 // Stage 3d composite ruling: the 40/30/30 composite is the headline grade
 // (rendered by GradeCard); Classification, Detections, and Response render
@@ -7,6 +6,12 @@ import { apiFetch } from '../api';
 // details, misses, collateral, acceptable actions, and failed attempts, so
 // no weak component hides behind the composite. The Response card surfaces
 // failed/no-op attempts factually (count + entries), score-neutral.
+//
+// Stage 3.9A: all three sections read from the SUBMISSION-GATED report prop
+// (report.detection / report.response, aggregated over submitted incidents).
+// This component no longer polls the detection_score / action_score endpoints;
+// nothing is shown until at least one incident is submitted (its parent only
+// mounts it once grading exists).
 
 const ACTION_LABELS = {
   isolate_host: 'Isolate Host',
@@ -44,22 +49,8 @@ const StatRow = ({ items }) => (
 );
 
 const ScoreSections = ({ isVisible = true, report = null }) => {
-  const [detScore, setDetScore] = useState(null);
-  const [actScore, setActScore] = useState(null);
-
-  const fetchScores = useCallback(() => {
-    apiFetch('/api/analytics/detection_score')
-      .then(res => res.json()).then(setDetScore).catch(() => {});
-    apiFetch('/api/analytics/action_score')
-      .then(res => res.json()).then(setActScore).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (!isVisible) return;
-    fetchScores();
-    const interval = setInterval(fetchScores, 3000);
-    return () => clearInterval(interval);
-  }, [isVisible, fetchScores]);
+  const detScore = report?.detection ?? null;
+  const actScore = report?.response ?? null;
 
   const notExecuted = actScore?.not_executed;
   const noEffect = actScore?.no_effect;

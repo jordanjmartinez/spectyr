@@ -84,7 +84,8 @@ const IdentityStateChips = ({ state }) => {
 const shortTime = (iso) =>
   iso ? new Date(iso).toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
 
-const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot }) => {
+const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot,
+                      activeIncidentId = null }) => {
   const [feed, setFeed] = useState([]);
   const [counts, setCounts] = useState({ open: 0, promoted: 0, dismissed: 0 });
   const [view, setView] = useState('feed'); // 'feed' | 'threats' | 'log'
@@ -93,6 +94,12 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot })
   const [confirm, setConfirm] = useState(null); // {title, body, confirmLabel, action, target}
   const [busy, setBusy] = useState(false);
   const [actionNotice, setActionNotice] = useState(null);
+  // Stage 3.9B active-incident scope: the roster detection ids of the active
+  // incident (observable, from /scope), and whether the feed is scoped to it.
+  // Never locked; a Session-wide toggle switches back. Read-only; selecting an
+  // incident mutates nothing.
+  const [scopeIds, setScopeIds] = useState(null);
+  const [scoped, setScoped] = useState(true);
 
   const fetchFeed = useCallback(() => {
     apiFetch('/api/detections')
@@ -111,6 +118,18 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot })
       .then(data => setLogEntries(data.actions || []))
       .catch(() => {});
   }, []);
+
+  // Fetch the active incident's observable roster ids so the feed can scope to
+  // it. Cleared when no incident is active (session-wide).
+  useEffect(() => {
+    if (!activeIncidentId) { setScopeIds(null); return; }
+    let cancelled = false;
+    apiFetch(`/api/incidents/${activeIncidentId}/scope`)
+      .then(res => res.json())
+      .then(data => { if (!cancelled) setScopeIds(new Set(data.detection_ids || [])); })
+      .catch(() => { if (!cancelled) setScopeIds(null); });
+    return () => { cancelled = true; };
+  }, [activeIncidentId, resetTrigger]);
 
   useEffect(() => {
     if (!isVisible) return;
@@ -165,7 +184,9 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot })
     );
   }
 
-  const rows = view === 'threats' ? feed.filter(d => d.player_action === 'promoted') : feed;
+  const scopeActive = !!(activeIncidentId && scoped && scopeIds);
+  const baseRows = view === 'threats' ? feed.filter(d => d.player_action === 'promoted') : feed;
+  const rows = scopeActive ? baseRows.filter(d => scopeIds.has(d.id)) : baseRows;
   const headerCount = view === 'log' ? logEntries.length : rows.length;
   const logNewestFirst = [...logEntries].reverse();
 
@@ -180,6 +201,27 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot })
 
   return (
     <div>
+      {/* Stage 3.9B: active-incident scope toggle (never locks the tab). */}
+      {activeIncidentId && view !== 'log' && (
+        <div className="mb-3 flex items-center justify-between rounded-lg border border-[#d0d7de] bg-white px-3 py-2 text-xs">
+          <span className="text-[#57606a]">
+            {scopeActive
+              ? <>Scoped to incident <span className="log-mono text-[#16436b]">{activeIncidentId}</span></>
+              : <>Session-wide view</>}
+          </span>
+          <div className="inline-flex rounded-md border border-[#d0d7de] overflow-hidden" role="group" aria-label="Detection scope">
+            <button type="button" onClick={() => setScoped(true)}
+              className={`px-2.5 py-1 font-medium transition ${scoped ? 'bg-[#101218] text-white' : 'bg-white text-[#57606a] hover:bg-[#eef1f4]'}`}>
+              This incident
+            </button>
+            <button type="button" onClick={() => setScoped(false)}
+              className={`px-2.5 py-1 font-medium transition ${!scoped ? 'bg-[#101218] text-white' : 'bg-white text-[#57606a] hover:bg-[#eef1f4]'}`}>
+              Session-wide
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header card */}
       <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-hidden mb-4">
         <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
