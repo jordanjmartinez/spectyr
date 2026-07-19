@@ -97,3 +97,40 @@ test('table view toggle works and filters apply', async () => {
   expect(screen.queryByText(/nmap.exe launched/)).toBeNull();
   expect(screen.getAllByText(/www.google.com/).length).toBeGreaterThan(0);
 });
+
+// Pre-Stage-4 disclosure hotfix: the free-text SIEM search corpus is
+// JSON.stringify(event) over the fetched pool. Now that the SERVER whitelists
+// the feed, the client never receives hidden scenario/answer fields, so it
+// cannot search-match a value that lived only in those hidden fields.
+const HIDDEN_TERMS = ['Lateral Movement', 'lateral_movement_1',
+  'secret storyline', 'scenario-abc', 'INC-1234'];
+// What the fixed /api/fake-events returns: the whitelist fields only.
+const SANITIZED_EVENTS = [
+  {
+    id: 'e1', timestamp: '2026-07-16T12:10:00+00:00', event_type: 'ProcessCreate',
+    source_type: 'Sysmon', severity: 'high', hostname: 'ACME-WS12',
+    source_ip: '10.0.1.12', user_account: 'ACME\\nkhan',
+    message: 'Process created: nmap.exe launched by cmd.exe',
+    key_value_pairs: { event_id: 1, process_id: '8844' },
+  },
+];
+
+test('client search cannot match values that live only in hidden server fields', async () => {
+  apiFetch.mockImplementation((path) => {
+    if (path === '/api/endpoints') {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ org: { name: 'ACME Corp' }, endpoints: [] }) });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve(SANITIZED_EVENTS) });
+  });
+  render(<Siem setSiemCount={() => {}} resetTrigger={0} pivotQuery={null} onHostPivot={() => {}} />);
+  await screen.findByText(/nmap.exe launched/);
+  const search = screen.getByPlaceholderText(/Search events/i);
+  // a visible field value still matches
+  fireEvent.change(search, { target: { value: 'nmap' } });
+  expect(screen.getByText(/nmap.exe launched/)).toBeInTheDocument();
+  // hidden scenario/answer terms never match
+  for (const hidden of HIDDEN_TERMS) {
+    fireEvent.change(search, { target: { value: hidden } });
+    expect(screen.queryByText(/nmap.exe launched/)).toBeNull();
+  }
+});

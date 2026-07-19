@@ -2624,13 +2624,17 @@ def log_writer(session, interval=1):
 
 @app.route('/api/fake-events', methods=['GET'])
 def get_fake_events():
+    """Simulated SIEM event feed. Every event is serialized server-side through
+    detection_templates.sanitize_feed_event: scenario wiring, category, label,
+    and every other answer-bearing field are stripped here (the frontend display
+    whitelist is a convenience, not the disclosure boundary)."""
     s = g.session
     seen_ids = set()
     unique_logs = []
     for log in read_ndjson(s, "generated_logs"):
         if log["id"] not in seen_ids:
             seen_ids.add(log["id"])
-            unique_logs.append(log)
+            unique_logs.append(detection_templates.sanitize_feed_event(log))
     return jsonify(unique_logs)
 
 @app.route('/api/endpoints', methods=['GET'])
@@ -4344,6 +4348,24 @@ def resume_generation():
     return jsonify({"status": "action logged", "action": action})
 
 
+def _sanitize_alert_group(grp):
+    """Client-safe grouped-alerts group. Only the opaque incident id and the
+    observable submission-readiness fields survive; every answer-bearing field
+    (category, scenario_id, label, threat_pattern, storyline, ticket_title,
+    analyst_category, level, pivot_values) and the raw event `logs` are dropped.
+    Built explicitly from a whitelist so nothing leaks by pass-through, now or
+    if the internal group shape gains fields later."""
+    return {
+        # incident_id is the opaque INC-#### the Incidents UI and the submission
+        # boundary already key on -- NOT the internal scenario_id.
+        "incident_id": grp.get("incident_id", ""),
+        # Observable submission readiness (Stage 3.9A; no answer-key info).
+        "detections_sealed": grp.get("detections_sealed", False),
+        "open_detections": grp.get("open_detections", 0),
+        "submission_ready": grp.get("submission_ready", False),
+    }
+
+
 @app.route('/api/grouped-alerts', methods=['GET'])
 def get_grouped_alerts():
     s = g.session
@@ -4467,7 +4489,10 @@ def get_grouped_alerts():
             source_totals[src] = source_totals.get(src, 0) + 1
 
     return jsonify({
-        "alerts": result,
+        # Every group serialized through the whitelist: the raw event logs and
+        # all answer-bearing group fields are stripped server-side. `stats` is an
+        # aggregate of counts only (no per-scenario category/label/id).
+        "alerts": [_sanitize_alert_group(grp) for grp in result],
         "stats": {
             "total_alerts": total_alerts,
             "closed_alerts": closed_alerts,

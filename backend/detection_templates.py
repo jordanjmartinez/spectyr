@@ -302,6 +302,31 @@ def sanitize_event(log):
             if log.get(k) not in (None, "")}
 
 
+# The SIEM event feed (/api/fake-events) is the raw-log whitelist PLUS exactly
+# two non-answer-bearing fields the client genuinely needs:
+#   id        the opaque uuid4 event key -- React row key, dedup key in the
+#             feed, expand-row key, and the SIEM table's sort tie-break. It is
+#             random per event and reveals nothing about the scenario.
+#   protocol  the benign network field the SIEM `protocol=`/`proto=` filter
+#             reads (present top-level only on normal-traffic events; attack
+#             events carry protocol inside key_value_pairs). Kept purely to
+#             preserve the existing filter with zero behaviour change.
+# Every scenario-wiring / answer field (category, scenario_id, label,
+# threat_pattern, storyline, level_name, alert_id, ...) is dropped by omission.
+FEED_EVENT_WHITELIST = EVENT_WHITELIST + ("id", "protocol")
+
+
+def sanitize_feed_event(log):
+    """Client-safe SIEM feed event. Constructed explicitly from the whitelist
+    (never pass-through-then-delete), so any present-or-future internal field is
+    dropped by omission rather than needing a blacklist. `id` is always included
+    -- it is the SIEM's required opaque row identity."""
+    out = {k: log[k] for k in FEED_EVENT_WHITELIST
+           if log.get(k) not in (None, "")}
+    out["id"] = log["id"]
+    return out
+
+
 def order_detections_for_client(views):
     """Deterministic client-facing detection order (3d close-out, component 1).
 
