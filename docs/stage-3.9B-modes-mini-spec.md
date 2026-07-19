@@ -1,5 +1,11 @@
 # Stage 3.9B — Modes Mini-Spec (A4)
 
+**Status: APPROVED and IMPLEMENTED (Step 3 closed 2026-07-19).** The three modes
+(Guided / SOC Queue / Hardcore), the sanitized `GET /api/guided-catalog`, the
+one-scenario Guided intake, Check Answer UI, and Practice Another all ship per
+this spec; `test_guided_catalog.py` is the permanent leak guard. See the Workflow
+Clarity section of CLAUDE.md for the closed-stage summary.
+
 For owner approval BEFORE build step 3. Steps 1 and 2 (Dashboard + Submit/
 Resume/Review boundary; Incident Grade vs Session Performance) are built against
 the locked scaffold and do not depend on this document. This spec covers only

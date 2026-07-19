@@ -122,8 +122,8 @@ const Docs = () => {
 
             <Section id="queue" title="Queue">
               <p>
-                Each run contains 10 scenarios selected from a catalog of 20, including one or two
-                false positives.
+                A SOC Queue or Hardcore run contains 10 scenarios selected from a catalog of 20,
+                including one or two false positives. Guided mode runs a single scenario you choose.
               </p>
               <p>
                 Scenarios arrive every 20 to 40 seconds, with up to three open at once. Complete all
@@ -137,16 +137,16 @@ const Docs = () => {
 
             <Section id="game-modes" title="Game Modes">
               <div>
-                <p className="text-[#1a2332] font-medium mb-1">Training</p>
-                <p>Unlimited time, grouped attack chains, and immediate feedback after every decision.</p>
+                <p className="text-[#1a2332] font-medium mb-1">Guided</p>
+                <p>Pick one scenario from the catalog and work it with unlimited time. Check Answer reveals whether your classification is correct before you submit, and marks the incident Assisted.</p>
+              </div>
+              <div>
+                <p className="text-[#1a2332] font-medium mb-1">SOC Queue</p>
+                <p>A queue of alerts is pushed to you; only the trigger evidence arrives first. Pivot through the event stream to reconstruct the full chain.</p>
               </div>
               <div>
                 <p className="text-[#1a2332] font-medium mb-1">Hardcore</p>
                 <p>A single 15-minute timer for the entire queue. One wrong classification or an expired timer ends the run.</p>
-              </div>
-              <div>
-                <p className="text-[#1a2332] font-medium mb-1">Analyst</p>
-                <p>Only the trigger alert is shown. Pivot through the event stream to reconstruct the attack yourself.</p>
               </div>
             </Section>
 

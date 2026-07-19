@@ -96,3 +96,21 @@ host's status merely to exercise the mechanic). The trusted-actor-compromised
 scenario is the natural place to exercise it in real content - e.g. a host the
 actor has already taken offline, where a reflexive isolate fails and teaches the
 offline-host lesson. Wire it there when that scenario is authored.
+
+## Stage 3.9B Step 3 deferrals (closed 2026-07-19)
+
+Non-blocking items left for a later reviewed change:
+- **SOC Queue "Triggered Evidence Arrival" comment-rename.** The analyst-mode
+  trigger-only telemetry is presented as "SOC Queue" + "Triggered evidence
+  arrival" in the UI; the backend framing/comments still say `analyst`. A pure
+  comment-rename (`analyst` -> "triggered evidence arrival") is deferred; logic
+  is unchanged and already non-grading + submission-gated.
+- **Difficulty rubric.** The Guided catalog serializes `difficulty: null` and the
+  UI omits it (owner ruling: do not invent difficulty ratings this stage). A
+  reviewed product decision is required before a rubric ships.
+- **Cross-run Guided history.** One Guided incident = one independent run; Session
+  Performance = the current run's Incident Grade. Aggregate/history across
+  Practice-Another runs is deferred until persistent history is deliberately
+  designed (session state is in-memory only).
+- **Dormant `inputs.classification.report` field** (from 3.9A) cleanup remains a
+  separately reviewed migration, untouched by 3.9B.
