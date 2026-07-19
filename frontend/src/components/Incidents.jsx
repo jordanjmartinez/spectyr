@@ -130,7 +130,8 @@ const Incidents = ({
       });
       const b = await res.json().catch(() => ({}));
       setPendingSubmit(null);
-      if (res.ok) { setCheckResult({ correct: !!b.correct }); fetchList(); }
+      // check-answer nests correctness under `classification` (never top-level).
+      if (res.ok) { setCheckResult({ correct: !!(b.classification && b.classification.correct) }); fetchList(); }
       else { flash(b.error || 'Check Answer is available in Guided mode only.'); }
     } catch { flash('Could not check the answer.'); }
     finally { setCheckBusy(false); }

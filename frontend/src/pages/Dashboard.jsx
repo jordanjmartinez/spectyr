@@ -27,6 +27,7 @@ const Dashboard = () => {
   const [isResetting, setIsResetting] = useState(false);
   const [showSimulateModal, setShowSimulateModal] = useState(false);
   const [showDifficultyModal, setShowDifficultyModal] = useState(false);
+  const [practiceAnother, setPracticeAnother] = useState(false); // opens picker at the Guided catalog
   const [existingLogCount, setExistingLogCount] = useState(0);
   const [showFailureModal, setShowFailureModal] = useState(false);
   const [failureCategory, setFailureCategory] = useState(null);
@@ -115,6 +116,7 @@ const Dashboard = () => {
 
   const handleDifficultySelect = async (mode, name, catalogId) => {
     setShowDifficultyModal(false);
+    setPracticeAnother(false);
     setAnalystName(name);
     try {
       await apiFetch('/api/start-simulator', {
@@ -191,6 +193,7 @@ const Dashboard = () => {
   const handlePracticeAnother = async () => {
     await handleResetSimulator();
     setActiveIncidentId(null);
+    setPracticeAnother(true);       // open the picker straight at the Guided catalog
     setShowDifficultyModal(true);
   };
 
@@ -445,7 +448,9 @@ const Dashboard = () => {
       {showDifficultyModal && (
         <DifficultySelector
           onSelect={handleDifficultySelect}
-          onCancel={() => setShowDifficultyModal(false)}
+          onCancel={() => { setShowDifficultyModal(false); setPracticeAnother(false); }}
+          initialStep={practiceAnother ? 'catalog' : 'mode'}
+          initialName={practiceAnother ? (analystName || '') : ''}
         />
       )}
 

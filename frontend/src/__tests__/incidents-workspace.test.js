@@ -32,7 +32,7 @@ const routeJson = (path) => {
   if (path.endsWith('/scope')) return scopeFor(path.split('/')[3]);
   if (path.endsWith('/score')) return { state: 'submitted', assisted: false, grading: { classification: GRADE, detection: GRADE, response: GRADE, composite: GRADE } };
   if (path.endsWith('/triage-review')) return { what_is_it: { title: 'What', description: 'Why' } };
-  if (path.endsWith('/check-answer')) return { correct: true, assisted: true };
+  if (path.endsWith('/check-answer')) return { assisted: true, classification: { correct: true, your_category: 'False Positive', actual_category: 'False Positive' } };
   return {};
 };
 beforeEach(() => {
@@ -97,6 +97,14 @@ test('Check Answer is offered in Guided on a sealed incident, and hidden in Hard
   render(<Incidents gameMode="hardcore" activeIncidentId="INC-2000" />);
   await screen.findByText('brief B');
   expect(screen.queryByText('Check Answer')).toBeNull();
+});
+
+test('Check Answer reads nested classification.correct and marks Assisted', async () => {
+  render(<Incidents gameMode="training" activeIncidentId="INC-2000" />);   // guided, sealed
+  fireEvent.click(await screen.findByText('Check Answer'));
+  fireEvent.click(await screen.findByText('False Positive'));   // FP path -> immediate check
+  expect(await screen.findByText('Classification correct')).toBeInTheDocument();
+  expect(screen.getByText(/now marked/)).toBeInTheDocument();   // Assisted note
 });
 
 test('Practice Another (Guided) warns, cancels back, and calls back on confirm', async () => {

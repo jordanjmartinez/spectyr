@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../api';
 
 // Stage 3.9B Step 3: the three final modes. Guided (from the training engine)
@@ -29,25 +29,28 @@ const MODES = [
 
 const SEV_DOT = { Critical: '#b45858', High: '#c08a3e', Medium: '#c0a93e', Low: '#6fa868' };
 
-const DifficultySelector = ({ onSelect, onCancel }) => {
-  const [analystName, setAnalystName] = useState('');
-  const [step, setStep] = useState('mode');     // 'mode' | 'catalog'
-  const [catalog, setCatalog] = useState(null);  // null while loading
+const DifficultySelector = ({ onSelect, onCancel, initialName = '', initialStep = 'mode' }) => {
+  const [analystName, setAnalystName] = useState(initialName);
+  const [step, setStep] = useState(initialStep);     // 'mode' | 'catalog'
+  const [catalog, setCatalog] = useState(null);       // null while loading
 
   const isNameValid = analystName.trim().length > 0;
 
+  const loadCatalog = () => {
+    setCatalog(null);
+    apiFetch('/api/guided-catalog')
+      .then((r) => r.json())
+      .then((d) => setCatalog(d.catalog || []))
+      .catch(() => setCatalog([]));
+  };
+
+  // Practice Another opens straight at the answer-neutral Guided catalog.
+  useEffect(() => { if (initialStep === 'catalog') loadCatalog(); }, [initialStep]);
+
   const pickMode = (mode) => {
     if (!isNameValid) return;
-    if (mode === 'guided') {
-      setStep('catalog');
-      setCatalog(null);
-      apiFetch('/api/guided-catalog')
-        .then((r) => r.json())
-        .then((d) => setCatalog(d.catalog || []))
-        .catch(() => setCatalog([]));
-    } else {
-      onSelect(mode, analystName.trim());
-    }
+    if (mode === 'guided') { setStep('catalog'); loadCatalog(); }
+    else onSelect(mode, analystName.trim());
   };
 
   const pickScenario = (catalogId) => onSelect('guided', analystName.trim(), catalogId);

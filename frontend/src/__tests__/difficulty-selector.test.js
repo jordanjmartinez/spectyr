@@ -63,6 +63,15 @@ test('Guided Random selects the random sentinel', async () => {
   expect(onSelect).toHaveBeenCalledWith('guided', 'A', 'random');
 });
 
+test('Practice Another opens straight at the Guided catalog with the name preset', async () => {
+  const onSelect = jest.fn();
+  render(<DifficultySelector onSelect={onSelect} onCancel={jest.fn()} initialStep="catalog" initialName="Reviewer" />);
+  expect(await screen.findByText('Event Logs Cleared on Workstation')).toBeInTheDocument();  // catalog, no mode step
+  expect(screen.getByText('Random scenario')).toBeInTheDocument();
+  fireEvent.click(screen.getByText('Unusual HTTPS Traffic'));   // name already valid
+  expect(onSelect).toHaveBeenCalledWith('guided', 'Reviewer', 'cat-bbbbbbbbbbbb');
+});
+
 test('a name is required before any mode can be picked', () => {
   const onSelect = jest.fn();
   render(<DifficultySelector onSelect={onSelect} onCancel={jest.fn()} />);
