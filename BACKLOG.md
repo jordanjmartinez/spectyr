@@ -114,3 +114,12 @@ Non-blocking items left for a later reviewed change:
   designed (session state is in-memory only).
 - **Dormant `inputs.classification.report` field** (from 3.9A) cleanup remains a
   separately reviewed migration, untouched by 3.9B.
+
+## Dev-harness gotcha: gate battery vs a live dev backend (recorded 2026-07-19)
+
+Do not run the backend gate battery against a live development backend sharing
+`backend/logs`. Stop the server first or use an isolated work directory, because
+gate boot cleanup can remove the live session directory. (Observed during Stage
+3.9B runtime verification: a gate-process boot sweep deleted the running dev
+server's active session dir, killing its drip thread so incidents stopped
+sealing. Not a product defect; a dev-workflow collision on the shared logs dir.)
