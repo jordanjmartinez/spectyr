@@ -806,8 +806,8 @@ CAMPAIGN_LEVELS = [
         "scenarios": {
             "Phishing": {
                 "scenario_label": "phishing_link",
-                "ticket_title": "Rogue Program on Workstation",
-                "storyline": "An employee contacted the help desk after interacting with an email they now believe may have been fraudulent. The email appeared to come from a trusted third-party service. Endpoint and proxy logs show activity on the workstation following the interaction.",
+                "ticket_title": "Unrecognized Program on Workstation",
+                "storyline": "Help desk received a report after a possibly fraudulent email from a service the user recognized. Endpoint and proxy activity followed.",
             },
             "Data Exfiltration": {
                 "scenario_label": "data_exfil_archive",
@@ -816,8 +816,8 @@ CAMPAIGN_LEVELS = [
             },
             "Insider Threat": {
                 "scenario_label": "insider_staging",
-                "ticket_title": "Unauthorized Access to Financial Records",
-                "storyline": "A user account accessed a file share containing sensitive financial records outside of their normal role. A document was copied locally before an outbound connection was established to a personal cloud storage service. No transfer approval or business justification exists for this activity.",
+                "ticket_title": "Access to Financial Records Outside Normal Role",
+                "storyline": "An account accessed sensitive financial records outside its normal role. A document was copied locally and then transferred to personal cloud storage; no approval record was found.",
             },
             "False Positive": {
                 "scenario_label": "false_positive_veeam",
@@ -834,7 +834,7 @@ CAMPAIGN_LEVELS = [
             "Malware": {
                 "scenario_label": "malware_ransomware",
                 "ticket_title": "Mass File Encryption with Ransom Note",
-                "storyline": "An employee discovered a text file on their desktop demanding Bitcoin payment to restore access to their documents. Multiple files on the workstation appear to have been renamed with an unfamiliar extension. The employee did not make these changes and no maintenance was scheduled.",
+                "storyline": "Desktop text file demanding Bitcoin; many files were renamed to an unfamiliar extension; the user reported making no such changes.",
             },
             "Lateral Movement": {
                 "scenario_label": "lateral_movement_2",
@@ -860,8 +860,8 @@ CAMPAIGN_LEVELS = [
         "scenarios": {
             "Insider Threat": {
                 "scenario_label": "insider_shadow_it",
-                "ticket_title": "Unauthorized App Data Transfer",
-                "storyline": "A workstation launched an application not on the approved software list. Shortly after, multiple sensitive documents were moved into a folder associated with the application, and the proxy logged an upload to an external cloud storage provider. The employee has not submitted a software installation request.",
+                "ticket_title": "Unapproved Application Data Transfer",
+                "storyline": "An application outside the approved software inventory launched, sensitive documents moved into its folder, and the proxy recorded an upload to external cloud storage. No installation request was found.",
             },
             "Brute Force": {
                 "scenario_label": "password_spray",
@@ -876,7 +876,7 @@ CAMPAIGN_LEVELS = [
             "False Positive": {
                 "scenario_label": "false_positive_ssl_inspection",
                 "ticket_title": "Repeated TLS Failures",
-                "storyline": "Multiple workstations are generating repeated failed TLS connections to Microsoft 365 endpoints. The connection pattern resembles command-and-control beaconing with consistent retry intervals. The network team recently expanded the corporate proxy's SSL inspection policy to cover additional domains.",
+                "storyline": "Multiple workstations repeatedly failed TLS connections to M365 endpoints at consistent intervals. The proxy SSL-inspection policy was recently expanded.",
             }
         }
     }
