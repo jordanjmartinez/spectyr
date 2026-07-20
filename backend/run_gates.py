@@ -37,6 +37,7 @@ BACKEND_SUITES = [
     "test_snapshot_generator.py",
     "test_sim_epoch.py",
     "test_event_seq.py",
+    "test_lcql.py",
     "test_detections.py",
     "test_detection_scoring.py",
     "test_detection_order.py",
