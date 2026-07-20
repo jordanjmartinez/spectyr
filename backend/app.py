@@ -1,5 +1,7 @@
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
+import base64
+import hmac
 import os
 import json
 import uuid
@@ -22,6 +24,11 @@ import persistence
 # derives from (world["started_at"] IS the epoch; drip orchestration stays
 # wall clock). Stdlib-only.
 import sim_epoch
+
+# Stage 4 Phase 3: the LCQL engine behind the single event-query read.
+# Pure module; the route hands it a per-session catalog view whose hostname
+# namespace is the player-observable set only.
+import lcql
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True, expose_headers=["X-Session-ID"], origins=[
@@ -182,6 +189,10 @@ def create_session():
         # append-and-stamp choke point (unique, strictly increasing,
         # contiguous within the session).
         "event_seq": 0,
+        # Stage 4 P3: the per-session snapshot-token secret (HMAC key). Held
+        # only in session memory; rotated on reset and start, so Reset,
+        # Practice Another, and restart invalidate every outstanding token.
+        "snapshot_secret": os.urandom(32),
         # Stage 2 detections feed (io_lock guards it). Instances carry
         # server-side dispositions; benign_hosts tracks which hosts already
         # got their ambient benign detections.
@@ -2690,6 +2701,183 @@ def get_fake_events():
             seen_ids.add(log["id"])
             unique_logs.append(detection_templates.sanitize_feed_event(log))
     return jsonify(unique_logs)
+
+# ---------------------------------------------------------------------------
+# Stage 4 Phase 3: the SIEM Workbench query read (contract Section 17).
+# One server-side event-query path; deterministic snapshots; opaque
+# session-bound HMAC tokens. These helpers reference ONLY observable inputs
+# (the written pool, the world host list, the opaque incident scope) --
+# never scenario_grading, expected_actions, or answer keys (structural
+# guard in test_query_read.py, same technique as test_incident_scope.py).
+# ---------------------------------------------------------------------------
+
+_TIMEFRAME_SECONDS = {"15m": 900, "1h": 3600, "4h": 14400, "12h": 43200,
+                      "24h": 86400}
+_EVENT_CATALOG = None
+
+
+def _event_catalog():
+    """The repository-wide static catalog (fields, families, event types),
+    built lazily once. Hostnames are deliberately EMPTY here (fail-closed):
+    the query route always substitutes the session-observable hostname set
+    via with_hostnames(), so no repository hostname can leak through parser
+    errors or suggestions before the player has observed it."""
+    global _EVENT_CATALOG
+    if _EVENT_CATALOG is None:
+        _EVENT_CATALOG = lcql.build_field_catalog(
+            yaml_catalog, NORMAL_TRAFFIC_TEMPLATES, [], {})
+    return _EVENT_CATALOG
+
+
+def _visible_rows(s):
+    """Sanitized, id-deduped pool rows + current max event_seq + world
+    hostnames. Locked read; mutates nothing."""
+    with s["io_lock"]:
+        pool = _read_ndjson_unlocked(s["paths"]["generated_logs"])
+        world_hosts = set(((s.get("world") or {}).get("hosts") or {}).keys())
+    rows, seen, max_seq = [], set(), 0
+    for log in pool:
+        if log["id"] in seen:
+            continue
+        seen.add(log["id"])
+        seq = log.get("event_seq", 0)
+        if seq > max_seq:
+            max_seq = seq
+        rows.append(detection_templates.sanitize_feed_event(log))
+    return rows, max_seq, world_hosts
+
+
+def _observable_hostnames(rows, world_hosts):
+    """The hostname namespace the parser may accept and suggest: hosts on
+    visible pool rows plus materialized world endpoints. Never the full
+    repository roster."""
+    return {r["hostname"] for r in rows if r.get("hostname")} | world_hosts
+
+
+def _resolve_timeframe(tf, rows, session_id):
+    """(start_iso, end_iso), INCLUSIVE. Relative windows anchor to sim-now =
+    the maximum visible occurrence timestamp; `all` spans the minimum to the
+    maximum visible occurrence (corrected all-range, scaffold review
+    correction 1: authored negative supplemental offsets place events BEFORE
+    the epoch, so `all` must start at the visible minimum, never the epoch).
+    Empty pool: epoch..epoch."""
+    stamps = sorted(r["timestamp"] for r in rows if r.get("timestamp"))
+    if not stamps:
+        e = sim_epoch.epoch_iso(session_id)
+        return e, e
+    if tf == "all":
+        return stamps[0], stamps[-1]
+    end = stamps[-1]
+    start = (datetime.fromisoformat(end)
+             - timedelta(seconds=_TIMEFRAME_SECONDS[tf])).isoformat()
+    return start, end
+
+
+def _order_rows(rows):
+    """Canonical server order: occurrence timestamp descending, event_seq
+    descending, then id ascending as the final stable tie-break. Client
+    column sorting is view state and never re-enters the server."""
+    rows = sorted(rows, key=lambda r: r.get("id", ""))
+    rows.sort(key=lambda r: (r.get("timestamp", ""), r.get("event_seq", 0)),
+              reverse=True)
+    return rows
+
+
+def _match_rows(rows, query, resolved_range, scope_hosts, cutoff_seq):
+    """Filter the sanitized rows by cutoff, incident participant scope, and
+    the LCQL query over the resolved range. Pure."""
+    return [r for r in rows
+            if r.get("event_seq", 0) <= cutoff_seq
+            and (scope_hosts is None or r.get("hostname") in scope_hosts)
+            and lcql.matches(r, query, resolved_range=resolved_range)]
+
+
+def _mint_snapshot_token(s, identity):
+    """Opaque session-bound token: base64url(identity JSON) '.'
+    base64url(HMAC-SHA256 under the session secret). It identifies the
+    executed definition; it stores nothing server-side."""
+    payload = json.dumps(identity, sort_keys=True,
+                         separators=(",", ":")).encode()
+    mac = hmac.new(s["snapshot_secret"], payload, hashlib.sha256).digest()
+    b64 = base64.urlsafe_b64encode
+    return (b64(payload).decode().rstrip("=") + "."
+            + b64(mac).decode().rstrip("="))
+
+
+def _verify_snapshot_token(s, token):
+    """The identity dict for a valid token, else None. Malformed, altered,
+    foreign-session, and post-reset/post-restart tokens are all None -- the
+    caller returns ONE neutral body for every failure class."""
+    try:
+        p64, m64 = token.split(".", 1)
+
+        def unb64(x):
+            return base64.urlsafe_b64decode(x + "=" * (-len(x) % 4))
+
+        payload, mac = unb64(p64), unb64(m64)
+        expected = hmac.new(s["snapshot_secret"], payload,
+                            hashlib.sha256).digest()
+        if not hmac.compare_digest(mac, expected):
+            return None
+        ident = json.loads(payload)
+        if set(ident) != {"canonical_query", "scope", "resolved_range",
+                          "cutoff_seq"}:
+            return None
+        if set(ident["resolved_range"]) != {"start", "end"}:
+            return None
+        if not isinstance(ident["cutoff_seq"], int):
+            return None
+        return ident
+    except Exception:
+        return None
+
+
+@app.route('/api/events/query', methods=['GET'])
+def query_events():
+    """The workbench's single event-query path (contract Section 17).
+    200: {token, identity{canonical_query, scope, resolved_range{start,
+    end}, cutoff_seq}, count, rows} in canonical server order.
+    400 parse failure: {error: {position, reason[, suggestions]}}.
+    404 unknown incident scope (indistinguishable from foreign). Pure read."""
+    s = g.session
+    q_text = request.args.get("q", "")
+    scope = request.args.get("scope") or "session"
+    if len(q_text) > 300:
+        return jsonify({"error": {"position": 300,
+                                  "reason": "query exceeds the 300 character cap"}}), 400
+
+    scope_hosts = None
+    if scope != "session":
+        sc = _incident_observable_scope(s, scope)
+        if sc is None:
+            return jsonify({"error": "Unknown incident"}), 404
+        scope_hosts = set(sc["hosts"])
+
+    rows, max_seq, world_hosts = _visible_rows(s)
+    catalog = _event_catalog().with_hostnames(
+        _observable_hostnames(rows, world_hosts))
+    try:
+        query = lcql.parse(q_text, catalog=catalog)
+    except lcql.LcqlError as e:
+        err = {"position": e.position, "reason": e.reason}
+        if e.suggestions:
+            err["suggestions"] = e.suggestions
+        return jsonify({"error": err}), 400
+
+    start, end = _resolve_timeframe(query.timeframe, rows, s["id"])
+    matched = _order_rows(
+        _match_rows(rows, query, (start, end), scope_hosts, max_seq))
+    identity = {
+        "canonical_query": lcql.canonical(query),
+        "scope": scope,
+        "resolved_range": {"start": start, "end": end},
+        "cutoff_seq": max_seq,
+    }
+    return jsonify({"token": _mint_snapshot_token(s, identity),
+                    "identity": identity,
+                    "count": len(matched),
+                    "rows": matched})
+
 
 @app.route('/api/endpoints', methods=['GET'])
 def get_endpoints():

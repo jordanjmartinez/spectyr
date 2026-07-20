@@ -356,30 +356,48 @@ SOURCE_FAMILIES = ("Sysmon", "Windows Security", "Proxy", "DNS", "Firewall",
                    "Azure AD", "Veeam", "Defender")
 
 
+def _lower_map(values):
+    out = {}
+    for v in values:
+        key = v.lower()
+        if key in out and out[key] != v:
+            raise ValueError(f"catalog case collision: {out[key]!r} vs {v!r}")
+        out[key] = v
+    return out
+
+
 class Catalog:
     """The searchable-field catalog (contract 10.1/10.2): canonical top-level
     names, the authorized kvp key union, sensor families, known hostnames,
     and event types -- each with case-insensitive resolution to the
-    catalog-canonical spelling. Built once at boot from repository data."""
+    catalog-canonical spelling. Field names, families, and event types are
+    repository-wide static data; HOSTNAMES are session-observable data --
+    the product query path must use with_hostnames() so parser errors and
+    suggestions never reveal a repository hostname the player has not
+    observed (Phase 3 focus ruling)."""
 
     def __init__(self, kvp_keys, hostnames, event_types):
-        def lower_map(values):
-            out = {}
-            for v in values:
-                key = v.lower()
-                if key in out and out[key] != v:
-                    raise ValueError(
-                        f"catalog case collision: {out[key]!r} vs {v!r}")
-                out[key] = v
-            return out
-
-        self.filterable_top = lower_map(
+        self.filterable_top = _lower_map(
             f for f in SERIALIZED_TOP_FIELDS if f not in NON_FILTERABLE_TOP)
-        self.non_filterable_top = lower_map(NON_FILTERABLE_TOP)
-        self.kvp = lower_map(kvp_keys)
-        self.families = lower_map(SOURCE_FAMILIES)
-        self.hostnames = lower_map(hostnames)
-        self.event_types = lower_map(str(t) for t in event_types)
+        self.non_filterable_top = _lower_map(NON_FILTERABLE_TOP)
+        self.kvp = _lower_map(kvp_keys)
+        self.families = _lower_map(SOURCE_FAMILIES)
+        self.hostnames = _lower_map(hostnames)
+        self.event_types = _lower_map(str(t) for t in event_types)
+
+    def with_hostnames(self, hostnames):
+        """A per-session view of this catalog whose hostname namespace is
+        exactly the given observable set. Every other namespace is shared
+        (repository-wide static). The view is the ONLY form the product
+        query path may hand to parse()."""
+        view = object.__new__(Catalog)
+        view.filterable_top = self.filterable_top
+        view.non_filterable_top = self.non_filterable_top
+        view.kvp = self.kvp
+        view.families = self.families
+        view.event_types = self.event_types
+        view.hostnames = _lower_map(hostnames)
+        return view
 
     # -- name resolution ------------------------------------------------------
 
@@ -408,10 +426,15 @@ class Catalog:
             return self.families[low]
         if low in self.hostnames:
             return self.hostnames[low]
+        # Deliberately does NOT echo the input: the hostname namespace is
+        # session-observable, and the error for an unseen-but-real repository
+        # hostname must be indistinguishable from gibberish (no confirmation
+        # oracle). Suggestions draw only from families + observable hosts.
         raise LcqlError(
             position,
-            f"unknown sensor {text!r}: expected a source family "
-            f"({', '.join(SOURCE_FAMILIES)}) or a known hostname",
+            "unknown sensor: expected a source family "
+            f"({', '.join(SOURCE_FAMILIES)}) or a hostname observed in this "
+            "session",
             suggestions=_close(text, list(self.families.values())
                                + list(self.hostnames.values())))
 
