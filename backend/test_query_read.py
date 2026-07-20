@@ -510,6 +510,51 @@ def test_token_reexecution_equals_identity_reexecution():
         _stop(sid, s)
 
 
+# --- Phase 3.3: transitional route audit -------------------------------------
+
+def test_route_audit_single_event_query_path():
+    """Transitional form (tightened at Phase 8 when /api/fake-events and
+    /api/grouped-alerts retire): event ROWS are served by exactly two
+    routes -- the legacy /api/fake-events and /api/events/query -- proven
+    structurally: rows can only be emitted through the sanitize_feed_event
+    serializer or the _visible_rows helper, and the only /api views
+    referencing either are the audited set. The count read references
+    _visible_rows but serializes counts only (no rows key in its source)."""
+    import re
+    views = {r.rule: app.app.view_functions[r.endpoint]
+             for r in app.app.url_map.iter_rules()
+             if r.rule.startswith("/api/")}
+    emitters = sorted(
+        rule for rule, fn in views.items()
+        if re.search(r"sanitize_feed_event|_visible_rows",
+                     inspect.getsource(fn)))
+    assert emitters == ["/api/events/query", "/api/events/query/new-count",
+                        "/api/fake-events"], \
+        f"unexpected event-serving routes: {emitters}"
+    src = inspect.getsource(app.query_new_count)
+    assert '"rows"' not in src and "'rows'" not in src, \
+        "the count read must never serialize rows"
+
+
+def test_no_mode_specific_event_endpoint():
+    """No event-pool route is mode-addressed: every /api route whose view
+    touches the generated_logs pool or the event serializer has a mode-free
+    path. (/api/guided-catalog is the mode PICKER; it does not read the
+    pool and is not an event endpoint.)"""
+    import re
+    views = {r.rule: app.app.view_functions[r.endpoint]
+             for r in app.app.url_map.iter_rules()
+             if r.rule.startswith("/api/")}
+    mode_words = re.compile(r"guided|analyst|hardcore|training|mode", re.I)
+    pool_readers = [
+        rule for rule, fn in views.items()
+        if re.search(r"generated_logs|sanitize_feed_event|_visible_rows",
+                     inspect.getsource(fn))]
+    assert "/api/events/query" in pool_readers
+    offenders = [r for r in pool_readers if mode_words.search(r)]
+    assert not offenders, f"mode-addressed event routes: {offenders}"
+
+
 if __name__ == "__main__":
     import traceback
     tests = [(n, f) for n, f in sorted(globals().items())
