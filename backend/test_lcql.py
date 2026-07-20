@@ -316,6 +316,165 @@ def test_catalog_build_sanity_and_collision_guard():
         assert "collision" in str(e)
 
 
+# --- Phase 2.3: evaluation (GD-1/GD-5), pivots corpus, OR-scan corpus --------
+
+def _q(text):
+    return parse(text, catalog=CATALOG)
+
+
+_EV = {
+    "id": "ev-1", "event_seq": 7, "timestamp": "2026-03-17T04:00:00+00:00",
+    "event_type": "ProcessCreate", "source_type": "Sysmon",
+    "severity": "high", "hostname": "ACME-WS12", "source_ip": "10.0.1.12",
+    "user_account": "ACME\\nkhan",
+    "message": "Process created: PowerShell.exe launched",
+    "key_value_pairs": {"command_line": "PowerShell -enc AAA",
+                        "image": "C:\\Windows\\System32\\PowerShell.exe",
+                        "protocol": "tcp"},
+}
+
+
+def test_quote_case_matrix():
+    # double quotes: case-insensitive
+    assert lcql.matches(_EV, _q('all | * | * | command_line contains "powershell"'))
+    assert lcql.matches(_EV, _q('all | * | * | severity == "HIGH"'))
+    # unquoted: case-insensitive like double quotes (GD-1)
+    assert lcql.matches(_EV, _q("all | * | * | severity == high"))
+    assert lcql.matches(_EV, _q("all | * | * | command_line contains powershell"))
+    # single quotes: case-sensitive
+    assert lcql.matches(_EV, _q("all | * | * | command_line contains 'PowerShell'"))
+    assert not lcql.matches(_EV, _q("all | * | * | command_line contains 'powershell'"))
+    assert not lcql.matches(_EV, _q("all | * | * | severity == 'HIGH'"))
+    # != and not contains under each quote kind
+    assert not lcql.matches(_EV, _q('all | * | * | severity != "high"'))
+    assert lcql.matches(_EV, _q("all | * | * | severity != 'HIGH'"))
+    assert not lcql.matches(_EV, _q('all | * | * | command_line not contains "POWERSHELL"'))
+    assert lcql.matches(_EV, _q("all | * | * | command_line not contains 'POWERSHELL'"))
+
+
+def test_missing_field_evaluates_false_for_all_four_operators():
+    for op_expr in ('destination_ip == "8.8.8.8"', 'destination_ip != "8.8.8.8"',
+                    'destination_ip contains "8."',
+                    'destination_ip not contains "8."'):
+        assert not lcql.matches(_EV, _q(f"all | * | * | {op_expr}")), \
+            f"missing-field predicate must be false: {op_expr}"
+
+
+def test_precedence_evaluates_and_before_or():
+    # (severity==low AND hostname==ACME-WS12) OR message contains powershell
+    q = _q('all | * | * | severity == "low" and hostname == "ACME-WS12" '
+           'or message contains "powershell"')
+    assert lcql.matches(_EV, q), "the OR arm must rescue the failed AND group"
+    q2 = _q('all | * | * | severity == "low" or hostname == "ACME-WS12" '
+            'and message contains "powershell"')
+    assert lcql.matches(_EV, q2), "AND binds tighter on the right arm too"
+    q3 = _q('all | * | * | severity == "low" or hostname == "nope" '
+            'and message contains "powershell"')
+    assert not lcql.matches(_EV, q3)
+
+
+def test_sensor_family_hostname_and_type_matching():
+    assert lcql.matches(_EV, _q("all | Sysmon | * | *"))
+    assert not lcql.matches(_EV, _q("all | DNS | * | *"))
+    assert lcql.matches(_EV, _q("all | ACME-WS12 | * | *"))
+    assert not lcql.matches(_EV, _q("all | ACME-WS10 | * | *"))
+    assert lcql.matches(_EV, _q("all | * | ProcessCreate | *"))
+    assert not lcql.matches(_EV, _q("all | * | 4625 | *"))
+    # shadowed top-level binding evaluates the top-level value
+    assert lcql.matches(_EV, _q('all | * | * | source_ip == "10.0.1.12"'))
+    # kvp address evaluates inside key_value_pairs (OD-10 protocol placement)
+    assert lcql.matches(_EV, _q('all | * | * | protocol == "tcp"'))
+
+
+def test_resolved_range_is_inclusive_and_caller_supplied():
+    q = _q("all | * | * | *")
+    at = "2026-03-17T04:00:00+00:00"
+    assert lcql.matches(_EV, q, resolved_range=(at, at)), "bounds inclusive"
+    assert not lcql.matches(
+        _EV, q, resolved_range=("2026-03-17T04:00:01+00:00",
+                                "2026-03-17T05:00:00+00:00"))
+    assert lcql.matches(_EV, q, resolved_range=None), "no range -> no bound"
+
+
+def test_unresolved_query_refuses_evaluation():
+    structural = parse('all | * | * | a == "x"')     # no catalog
+    try:
+        lcql.matches(_EV, structural)
+        assert False, "unresolved predicates must fail loud"
+    except ValueError as e:
+        assert "catalog-resolved" in str(e)
+
+
+# The documented Section 13 pivot/descent forms (values filled realistically,
+# escaping per GD-5). Every form must parse under the real catalog and be
+# byte-canonical. The frontend generator (Phase 6) must emit exactly these
+# shapes; this is the backend half of the choke-point guarantee.
+_PIVOT_DESCENT_FIXTURES = [
+    "1h | ACME-WS10 | * | *",
+    '1h | * | * | user_account == "spatel"',
+    '1h | * | * | image == "C:\\\\Users\\\\Public\\\\winupdate.exe"',
+    '1h | * | ProcessCreate | image contains "winupdate"',
+    '1h | * | * | target_filename == "C:\\\\payload.docx"',
+    '1h | * | * | source_ip == "203.0.113.50" or destination_ip == "203.0.113.50"',
+    '1h | Proxy | * | url contains "evil.example"',
+    '1h | DNS | QUERY | query contains "evil.example"',
+    "1h | * | 4625 | *",
+    "1h | Windows Security | * | *",
+    "all | ACME-WS10 | * | *",
+    "all | * | * | *",
+]
+
+
+def test_documented_pivot_and_descent_forms_parse():
+    for q in _PIVOT_DESCENT_FIXTURES:
+        parsed = _q(q)
+        assert canonical(parsed) == q, \
+            f"pivot form must be byte-canonical: {q!r} -> {canonical(parsed)!r}"
+    # escaping round-trip: the escaped image path unescapes to real backslashes
+    p = _q(_PIVOT_DESCENT_FIXTURES[2]).filters[0][0]
+    assert p.value == "C:\\Users\\Public\\winupdate.exe"
+
+
+def test_sidebar_conjunction_append_composes():
+    base = '1h | * | ProcessCreate | image contains "winupdate"'
+    appended = base + ' and hostname == "ACME-WS10"'
+    q = _q(appended)
+    assert lcql.conjunction_only(q)
+    assert canonical(q) == appended
+
+
+# The shared OR-scan fixture corpus (scaffold 2.15): FILTERS text + expected
+# conjunction-only verdict. The frontend lexical scan (Phase 6) asserts the
+# SAME corpus; the equivalence of lexical scan and AST verdict holds only
+# while LCQL has no grouping/parentheses -- if grouping is introduced, the
+# scan mechanism must be replaced, not patched.
+OR_SCAN_CORPUS = [
+    ("*", True),
+    ('a == "x"', True),
+    ('a == "x" and b == "y" and c == "z"', True),
+    ('a == "x" or b == "y"', False),
+    ('a == "x" and b == "y" or c == "z"', False),
+    ('a == "x" or b == "y" or c == "z"', False),
+    ('message contains "black or white"', True),
+    ('message contains "say \\"or\\" nicely" and b == "y"', True),
+    ("a == corridor and b == ORACLE", True),
+    ("path == 'C:\\\\or\\\\bin'", True),
+]
+
+
+def test_or_scan_fixture_corpus_matches_ast_verdicts():
+    for filters_text, expected_conj_only in OR_SCAN_CORPUS:
+        q = parse(f"all | * | * | {filters_text}")   # structural: fields free
+        assert lcql.conjunction_only(q) is expected_conj_only, \
+            f"AST verdict diverges for FILTERS {filters_text!r}"
+
+
+def test_full_idempotence_with_catalog():
+    for q in list(_CONTRACT_VALID_EXAMPLES) + list(_PIVOT_DESCENT_FIXTURES):
+        c1 = canonical(_q(q))
+        assert canonical(_q(c1)) == c1
+
+
 if __name__ == "__main__":
     import traceback
     tests = [(n, f) for n, f in sorted(globals().items())

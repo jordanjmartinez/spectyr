@@ -470,6 +470,87 @@ def build_field_catalog(yaml_catalog, normal_templates, employees, servers):
                    event_types=event_types)
 
 
+# --- evaluation (Phase 2.3; GD-1/GD-5 semantics) -----------------------------
+
+def conjunction_only(query):
+    """True when FILTERS carries no top-level `or` (star or a single
+    AND-group). This is the pivot generator's append-vs-fresh rule; the
+    frontend's quote-aware lexical scan must agree with this AST verdict,
+    pinned by a shared fixture corpus on both sides. The equivalence holds
+    only while LCQL has no grouping/parentheses."""
+    return len(query.filters) <= 1
+
+
+def _pred_matches(event, pred):
+    if not pred.addr:
+        raise ValueError(
+            "matches() requires a catalog-resolved query (Pred.addr unset)")
+    if pred.addr == "kvp":
+        raw = (event.get("key_value_pairs") or {}).get(pred.field)
+    else:
+        raw = event.get(pred.field)
+    if raw is None:
+        # GD-5: a predicate over a field absent from the event evaluates
+        # false for ALL four operators (negatives do not match by absence).
+        return False
+    hay, needle = str(raw), pred.value
+    if pred.quote != "'":
+        # GD-1: double-quoted and unquoted values match case-insensitively;
+        # single quotes are the deliberate case-sensitive form.
+        hay, needle = hay.casefold(), needle.casefold()
+    if pred.op == "==":
+        return hay == needle
+    if pred.op == "!=":
+        return hay != needle
+    if pred.op == "contains":
+        return needle in hay
+    return needle not in hay          # not contains
+
+
+def _within_range(event, resolved_range):
+    from datetime import datetime
+    ts = event.get("timestamp")
+    if not ts:
+        return False
+    try:
+        t = datetime.fromisoformat(ts)
+        start = datetime.fromisoformat(resolved_range[0])
+        end = datetime.fromisoformat(resolved_range[1])
+    except (ValueError, TypeError):
+        return False
+    return start <= t <= end
+
+
+def matches(event, query, resolved_range=None):
+    """True when the SANITIZED event matches the catalog-resolved query.
+
+    `event` must be the sanitized feed shape -- structurally, a predicate can
+    never see an unsanitized field. `resolved_range` is the (start_iso,
+    end_iso) INCLUSIVE occurrence-time window the caller resolved at
+    execution (snapshot identity); the TIMEFRAME token itself is never
+    re-resolved here. SENSOR_SELECTOR matches the source family against
+    source_type or a known hostname against hostname (case-insensitive);
+    EVENT_TYPE matches case-insensitively; FILTERS per GD-1/GD-3/GD-5."""
+    if resolved_range is not None and not _within_range(event, resolved_range):
+        return False
+    if query.sensor != "*":
+        if query.sensor in SOURCE_FAMILIES:
+            if str(event.get("source_type", "")).casefold() != \
+                    query.sensor.casefold():
+                return False
+        elif str(event.get("hostname", "")).casefold() != \
+                query.sensor.casefold():
+            return False
+    if query.event_type != "*":
+        if str(event.get("event_type", "")).casefold() != \
+                query.event_type.casefold():
+            return False
+    if not query.filters:
+        return True
+    return any(all(_pred_matches(event, p) for p in group)
+               for group in query.filters)
+
+
 # --- canonical formatting ----------------------------------------------------
 
 def canonical(query):
