@@ -326,7 +326,11 @@ deleted with its tests replaced in the same commit.
 
 - **Current:** none.
 - **Target:** **added** in `backend/app.py` (route layer): identity dict
-  `{canonical_query, scope, resolved_range: {start, end}, cutoff_seq}`
+  `{canonical_query, scope, resolved_scope_hosts (Amendment E2, P3.4:
+  the participant-host set resolved at execution, sorted + deduplicated,
+  [] for session-wide; frozen so replay and the new-count baseline never
+  re-resolve a pre-seal incident's grown host set), resolved_range:
+  {start, end}, cutoff_seq}`
   computed at execution: canonical query from the parser; scope validated
   (`session` or known incident id); TIMEFRAME resolved against sim-now
   (max visible occurrence timestamp). **`all` resolution (review
@@ -559,8 +563,15 @@ Session binding: the standard session middleware (`X-Session-ID` header /
 {
   "token":    <string, opaque snapshot token>,
   "identity": {
-    "canonical_query": <string>,
-    "scope":           <string: "session" or the incident id>,
+    "canonical_query":      <string>,
+    "scope":                <string: "session" or the incident id>,
+    "resolved_scope_hosts": [ <hostname string>, ... ],
+                            // Amendment E2 (P3.4): the participant-host
+                            // set resolved at execution, sorted and
+                            // deduplicated; [] for session-wide (no
+                            // implicit constraint). MAC-covered. Frozen:
+                            // replay and the new-count baseline use THIS
+                            // list, never the incident's current set.
     "resolved_range":  { "start": <ISO-8601 string>, "end": <ISO-8601 string> },
     "cutoff_seq":      <integer>
   },

@@ -24,6 +24,20 @@ acceptance):**
   `" ' = ! | *` -- values containing those characters must be quoted.
   These rules MUST surface in the player-facing query help: the Phase 4
   workbench empty-state/hint copy and the Phase 8 Docs-page pass.
+- **Amendment E2 (pre-seal scope determinism; narrow, owner-authorized at
+  the Phase 3 review):** the snapshot identity gains
+  `resolved_scope_hosts: [<hostname strings>]` -- the incident
+  participant-host set RESOLVED AT EXECUTION, sorted and deduplicated;
+  `[]` for Session-wide (which carries no implicit hostname constraint).
+  Rationale: a pre-seal incident's observable host set can grow, and
+  identifying scope only by the opaque incident id made replay re-resolve
+  the grown set, breaking byte-identical replay and corrupting the
+  new-count baseline with sub-cutoff background events of newly joined
+  hosts. The frozen list governs original-snapshot reconstruction and
+  token replay; the prospective Refresh side of new-count and any actual
+  Refresh resolve the incident's CURRENT observable set and freeze it
+  into the new identity. The hostnames are observable at execution (no
+  answer-key or grading disclosure); the token MAC covers the field.
 
 Revision 2 incorporated: the owner/reviewer contract review (items 1-10),
 seven ratified owner rulings, the completed event-disclosure hotfix
@@ -840,9 +854,10 @@ observable-only and uses opaque identifiers.
 - `GET /api/events/query` with `q` (LCQL, 300-char cap; the cap was
   re-validated against measured descent needs, inspection report C) and
   `scope` (`session` or opaque incident id).
-  - 200: `{ token, identity: { canonical_query, scope, resolved_range:
-    {start, end}, cutoff_seq }, count, rows }` (rows in the Section 7
-    canonical order; sort is client view state).
+  - 200: `{ token, identity: { canonical_query, scope,
+    resolved_scope_hosts (Amendment E2), resolved_range: {start, end},
+    cutoff_seq }, count, rows }` (rows in the Section 7 canonical order;
+    sort is client view state).
   - 400 parse failure: `{ error: { position, reason } }`; nothing executes.
   - 404 unknown incident (indistinguishable from foreign, matching the
     actions-API convention).

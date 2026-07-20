@@ -2820,12 +2820,15 @@ def _verify_snapshot_token(s, token):
         if not hmac.compare_digest(mac, expected):
             return None
         ident = json.loads(payload)
-        if set(ident) != {"canonical_query", "scope", "resolved_range",
-                          "cutoff_seq"}:
+        if set(ident) != {"canonical_query", "scope", "resolved_scope_hosts",
+                          "resolved_range", "cutoff_seq"}:
             return None
         if set(ident["resolved_range"]) != {"start", "end"}:
             return None
         if not isinstance(ident["cutoff_seq"], int):
+            return None
+        if not isinstance(ident["resolved_scope_hosts"], list) or not all(
+                isinstance(h, str) for h in ident["resolved_scope_hosts"]):
             return None
         return ident
     except Exception:
@@ -2847,11 +2850,18 @@ def query_events():
                                   "reason": "query exceeds the 300 character cap"}}), 400
 
     scope_hosts = None
+    resolved_scope_hosts = []
     if scope != "session":
         sc = _incident_observable_scope(s, scope)
         if sc is None:
             return jsonify({"error": "Unknown incident"}), 404
+        # Amendment E2 (P3.4): the participant-host set is RESOLVED AT
+        # EXECUTION and frozen into the identity (sorted, deduplicated).
+        # A pre-seal incident's observable host set can grow; replay and
+        # baseline reconstruction must use this frozen list, never the
+        # incident's current set. Session-wide: empty list, no constraint.
         scope_hosts = set(sc["hosts"])
+        resolved_scope_hosts = sorted(scope_hosts)
 
     rows, max_seq, world_hosts = _visible_rows(s)
     catalog = _event_catalog().with_hostnames(
@@ -2870,6 +2880,7 @@ def query_events():
     identity = {
         "canonical_query": lcql.canonical(query),
         "scope": scope,
+        "resolved_scope_hosts": resolved_scope_hosts,
         "resolved_range": {"start": start, "end": end},
         "cutoff_seq": max_seq,
     }
@@ -2896,7 +2907,16 @@ def query_new_count():
         return jsonify({"error": "Unknown token"}), 400
     rows, cur_max, world_hosts = _visible_rows(s)
     scope = ident["scope"]
-    scope_hosts = None
+    # Amendment E2 (P3.4): two DIFFERENT host constraints, deliberately.
+    # The displayed-baseline reconstruction uses the identity's FROZEN
+    # resolved_scope_hosts (never the incident's current set -- a pre-seal
+    # scope can grow, and replaying with the grown set would pollute the
+    # baseline with sub-cutoff rows from newly joined hosts). The
+    # prospective Refresh side resolves the incident's CURRENT observable
+    # set, because pressing Refresh now includes newly revealed
+    # participant hosts.
+    frozen_hosts = None
+    current_hosts = None
     if scope != "session":
         sc = _incident_observable_scope(s, scope)
         if sc is None:
@@ -2904,7 +2924,8 @@ def query_new_count():
             # in-session (rotation kills cross-generation tokens); neutral
             # anyway, never a distinct error.
             return jsonify({"error": "Unknown token"}), 400
-        scope_hosts = set(sc["hosts"])
+        frozen_hosts = set(ident["resolved_scope_hosts"])
+        current_hosts = set(sc["hosts"])
     catalog = _event_catalog().with_hostnames(
         _observable_hostnames(rows, world_hosts))
     try:
@@ -2916,9 +2937,9 @@ def query_new_count():
     stored_range = (ident["resolved_range"]["start"],
                     ident["resolved_range"]["end"])
     displayed_ids = {r["id"] for r in _match_rows(
-        rows, query, stored_range, scope_hosts, ident["cutoff_seq"])}
+        rows, query, stored_range, frozen_hosts, ident["cutoff_seq"])}
     now_range = _resolve_timeframe(query.timeframe, rows, s["id"])
-    refresh = _match_rows(rows, query, now_range, scope_hosts, cur_max)
+    refresh = _match_rows(rows, query, now_range, current_hosts, cur_max)
     return jsonify({
         "new_count": sum(1 for r in refresh if r["id"] not in displayed_ids),
         "pool_growth": cur_max - ident["cutoff_seq"],

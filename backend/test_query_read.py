@@ -199,9 +199,10 @@ def test_rows_serialize_only_the_whitelist_and_no_planted_marker():
 def test_query_read_structural_no_answer_key_inputs():
     """Same technique as test_incident_scope's structural guard: the query
     path references only observable inputs."""
-    for fn in (app.query_events, app._visible_rows, app._match_rows,
-               app._resolve_timeframe, app._observable_hostnames,
-               app._order_rows, app._mint_snapshot_token):
+    for fn in (app.query_events, app.query_new_count, app._visible_rows,
+               app._match_rows, app._resolve_timeframe,
+               app._observable_hostnames, app._order_rows,
+               app._mint_snapshot_token, app._verify_snapshot_token):
         src = inspect.getsource(fn)
         for banned in ("expected_actions", "scenario_grading",
                        "_grading_record_for", "grading_rec", "answer_key"):
@@ -251,6 +252,11 @@ def test_scoped_results_subset_and_constraint_equals_participant_hosts():
             "the implicit constraint equals the participant hosts"
         assert "qe-o1" not in scoped_ids
         assert scoped["identity"]["scope"] == INC
+        # Amendment E2: the executed participant-host set is frozen into the
+        # identity, sorted and deduplicated; session-wide carries [].
+        assert scoped["identity"]["resolved_scope_hosts"] == [HOST_A]
+        session_wide = _q(client, sid, q).get_json()
+        assert session_wide["identity"]["resolved_scope_hosts"] == []
     finally:
         _stop(sid, s)
 
@@ -508,6 +514,104 @@ def test_token_reexecution_equals_identity_reexecution():
             {"new_count": 0, "pool_growth": 0}
     finally:
         _stop(sid, s)
+
+
+# --- Phase 3.4 (Amendment E2): pre-seal incident-scope determinism -----------
+
+def test_preseal_scope_growth_replay_and_refresh_semantics():
+    """The narrow Amendment E2 battery, on the reviewer's exact scenario:
+
+    A multi-host incident is snapshotted mid-chain when only Host A is
+    observable, while sub-cutoff BACKGROUND events for the later Host B
+    already sit in the pool. The drip then reveals Host B as a participant.
+    Proves: (1) replay/reconstruction of the original identity is
+    byte-identical and its baseline never changes (the frozen
+    resolved_scope_hosts governs, never the grown current set); (2)
+    new-count equals what a real Refresh now adds, INCLUDING the newly
+    eligible sub-cutoff Host B background rows; (3) an actual Refresh mints
+    a new identity whose resolved_scope_hosts includes Host B; (4) nothing
+    hidden serializes (whitelist rows; the pre-growth scoped response never
+    mentions Host B)."""
+    client, sid, s = _api_session()
+    try:
+        epoch = sim_epoch.epoch_dt(sid)
+        # started sessions carry the epoch in world.started_at; the append
+        # helper stamps background occurrence times from it (product path)
+        s["world"]["started_at"] = sim_epoch.epoch_iso(sid)
+        s.setdefault("incident_index", {})[INC] = SID
+        # sub-cutoff BACKGROUND event on the future participant Host B
+        # (normal traffic never enters observable scope attribution); its
+        # occurrence time is stamped by the product helper: epoch + 3s x 1
+        app.append_pool_event(s, _ev(
+            "bgB", hostname=HOST_B, label="normal_traffic", ts=None))  # seq 1
+        # Host A's chain step -- the only participant so far
+        app.append_pool_event(s, _ev(
+            "s1", hostname=HOST_A, scenario_id=SID,
+            ts=(epoch + timedelta(seconds=10)).isoformat()))           # seq 2
+
+        q = "all | * | * | *"
+        snap = _q(client, sid, q, scope=INC).get_json()
+        token = snap["token"]
+        assert snap["identity"]["resolved_scope_hosts"] == [HOST_A]
+        assert snap["identity"]["cutoff_seq"] == 2
+        assert [r["id"] for r in snap["rows"]] == ["qe-s1"], \
+            "Host B's background row is out of scope pre-growth"
+        pre_strings = " ".join(_all_strings(snap))
+        assert HOST_B not in pre_strings, \
+            "the pre-growth scoped response must not mention the future host"
+        baseline_before = json.dumps(_reconstruct(s, sid, snap["identity"]),
+                                     sort_keys=True)
+
+        # the drip continues: Host B joins the incident's observable scope
+        app.append_pool_event(s, _ev(
+            "s2", hostname=HOST_B, scenario_id=SID,
+            ts=(epoch + timedelta(seconds=20)).isoformat()))           # seq 3
+
+        # (1) frozen-identity reconstruction is byte-identical after growth
+        baseline_after = json.dumps(_reconstruct(s, sid, snap["identity"]),
+                                    sort_keys=True)
+        assert baseline_before == baseline_after, \
+            "the reconstructed original baseline must never change"
+
+        # (2) refresh-now counts the newly eligible rows: Host B's chain
+        # step AND its SUB-CUTOFF background row (never displayed)
+        counts = _new_count(client, sid, token).get_json()
+        assert counts["pool_growth"] == 1
+        assert counts["new_count"] == 2, counts
+
+        # (3) a real Refresh re-resolves and freezes the grown host set
+        refreshed = _q(client, sid, q, scope=INC).get_json()
+        assert refreshed["identity"]["resolved_scope_hosts"] == \
+            sorted([HOST_A, HOST_B])
+        refreshed_ids = {r["id"] for r in refreshed["rows"]}
+        assert refreshed_ids == {"qe-s1", "qe-s2", "qe-bgB"}
+        # new-count == what the Refresh actually added
+        displayed_ids = {r["id"] for r in snap["rows"]}
+        assert counts["new_count"] == len(refreshed_ids - displayed_ids)
+
+        # (4) whitelist discipline on every row of both snapshots
+        for row in snap["rows"] + refreshed["rows"]:
+            assert set(row) <= FEED
+    finally:
+        _stop(sid, s)
+
+
+def _reconstruct(s, sid, identity):
+    """White-box replay of a snapshot identity exactly as the count read
+    reconstructs its displayed baseline: the FROZEN resolved_scope_hosts,
+    the stored range, the stored cutoff."""
+    rows, _cur, world_hosts = app._visible_rows(s)
+    catalog = app._event_catalog().with_hostnames(
+        app._observable_hostnames(rows, world_hosts))
+    import lcql as _lcql
+    query = _lcql.parse(identity["canonical_query"], catalog=catalog)
+    frozen = (set(identity["resolved_scope_hosts"])
+              if identity["scope"] != "session" else None)
+    return app._order_rows(app._match_rows(
+        rows, query,
+        (identity["resolved_range"]["start"],
+         identity["resolved_range"]["end"]),
+        frozen, identity["cutoff_seq"]))
 
 
 # --- Phase 3.3: transitional route audit -------------------------------------
