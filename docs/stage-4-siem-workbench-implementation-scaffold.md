@@ -1277,7 +1277,16 @@ relocation). Specifically re-checked against the amendment triggers:
   owner review of 2026-07-19**: digest-derived epoch (Section 2.4);
   spacing constants (120s/position; background spacing revised 2s -> 3s
   under the quantified coherence check, Section 6) — **subject to the
-  quantified coherence bound test**; HMAC snapshot token and neutral
+  quantified coherence bound test**. **K2 tuning authority exercised
+  (recorded per the Phase 2 rider):** the reference model over the live
+  catalog (n_model = 309 seq steps = 270 drip-gap ticks + 21 drain ticks
+  for the longest chain + 18 worst-case supplemental appends; authored
+  max = 9 x 120s + 138s max hi-offset span = 1218s) measured 2 s/step at
+  background max 618s -> gap **600s, failing** the 300s bound, and
+  3 s/step at background max 927s -> gap **291s, passing**; the knob was
+  exercised once, 2s -> 3s, at scaffold correction, and
+  `test_event_seq.py::test_authored_background_gap_within_bound` now
+  recomputes exactly this model from the live catalog permanently; HMAC snapshot token and neutral
   failure response (Section 2.8); corrected `all`-range semantics
   (minimum visible occurrence, Section 2.7); stats relocation venue
   (fields on `/api/incidents`, Section 3.4.2) — **subject to preserving
