@@ -18,13 +18,28 @@ export const QUERY_HELP_EXAMPLES = [
   '24h | Windows Security | 4625 | user_account == "spatel" and source_ip contains "10.0."',
 ];
 
-const Siem = ({ setSiemCount, resetTrigger, onHostPivot }) => {
+export const TF_TOKENS = ['15m', '1h', '4h', '12h', '24h', 'all'];
+
+// The TIMEFRAME control derives its value FROM the text (single source of
+// truth), so control and text can never disagree: the text's first segment
+// is the control's value when it is a known token, a neutral placeholder
+// otherwise, and the documented default (1h) only while the bar is empty.
+const firstSegmentToken = (text) => {
+  const idx = text.indexOf('|');
+  const head = (idx === -1 ? text : text.slice(0, idx)).trim().toLowerCase();
+  return TF_TOKENS.includes(head) ? head : null;
+};
+
+const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => {
   const [org, setOrg] = useState({});
   const [view, setView] = useState('cards');
   const [queryText, setQueryText] = useState('');
   const [snapshot, setSnapshot] = useState(null);   // {token, identity, count, rows}
   const [error, setError] = useState(null);         // {position, reason, suggestions?}
   const [running, setRunning] = useState(false);
+  // Scope state machine (contract Section 6, revised scope-error behavior):
+  // {kind:'session'} | {kind:'incident', id, status:'loading'|'ready'|'error', sealed}
+  const [scope, setScope] = useState({ kind: 'session' });
 
   useEffect(() => {
     apiFetch('/api/endpoints')
@@ -39,16 +54,49 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot }) => {
     setSnapshot(null);
     setError(null);
     setRunning(false);
+    setScope({ kind: 'session' });
   }, [resetTrigger]);
 
   useEffect(() => {
     setSiemCount?.(snapshot ? snapshot.count : 0);
   }, [snapshot, setSiemCount]);
 
+  const loadIncidentScope = (id) => {
+    setScope({ kind: 'incident', id, status: 'loading' });
+    apiFetch(`/api/incidents/${id}/scope`)
+      .then((res) => { if (!res.ok) throw new Error('scope'); return res.json(); })
+      .then((sc) => setScope({ kind: 'incident', id, status: 'ready',
+                               sealed: !!sc.sealed }))
+      // Revised scope-error behavior: keep the chip, preserve the prior
+      // snapshot, disable Run; NEVER fall back to Session-wide silently.
+      .catch(() => setScope({ kind: 'incident', id, status: 'error' }));
+  };
+
+  const selectScope = (value) => {
+    if (value === 'session') setScope({ kind: 'session' });
+    else loadIncidentScope(value);
+  };
+
+  const scopeBlocked = scope.kind === 'incident' && scope.status !== 'ready';
+  const scopeParam = scope.kind === 'incident' ? scope.id : 'session';
+
+  const setTimeframe = (tok) => {
+    setQueryText((t) => {
+      if (t.trim() === '') return `${tok} | * | * | *`;
+      const idx = t.indexOf('|');
+      // the text up to the first pipe IS the first segment; replace it in
+      // place (no pipe: the whole text is the first segment)
+      if (idx === -1) return tok;
+      return `${tok} ${t.slice(idx)}`;
+    });
+  };
+  const tfValue = firstSegmentToken(queryText) ||
+    (queryText.trim() === '' ? '1h' : '');
+
   const runQuery = () => {
-    if (running) return;
+    if (running || scopeBlocked) return;
     setRunning(true);
-    apiFetch(`/api/events/query?q=${encodeURIComponent(queryText)}&scope=session`)
+    apiFetch(`/api/events/query?q=${encodeURIComponent(queryText)}&scope=${encodeURIComponent(scopeParam)}`)
       .then(async (res) => {
         const body = await res.json().catch(() => null);
         if (res.ok && body) {
@@ -112,8 +160,83 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot }) => {
         </div>
       </div>
 
-      {/* Query bar */}
+      {/* Scope + TIMEFRAME + query bar */}
       <div className="mb-3 flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <label className="flex items-center gap-1.5 text-[#6e7781]">
+            Scope
+            <select
+              value={scope.kind === 'incident' ? scope.id : 'session'}
+              onChange={(e) => selectScope(e.target.value)}
+              aria-label="Scope"
+              className="px-2.5 py-1.5 rounded-md border border-[#d0d7de] bg-white text-[#1a2332]"
+            >
+              <option value="session">Session-wide</option>
+              {activeIncidentId && (
+                <option value={activeIncidentId}>{`Focused on ${activeIncidentId}`}</option>
+              )}
+              {scope.kind === 'incident' && scope.id !== activeIncidentId && (
+                <option value={scope.id}>{`Focused on ${scope.id}`}</option>
+              )}
+            </select>
+          </label>
+          {scope.kind === 'incident' && (
+            <span
+              data-testid="scope-chip"
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-[#eef1f4] text-[#1a2332]"
+            >
+              <span className="log-mono text-[#16436b] font-medium">{scope.id}</span>
+              {scope.status === 'loading' && <span className="text-[#6e7781]">loading scope</span>}
+              {scope.status === 'error' && <span className="text-[#b26666]">scope unavailable</span>}
+              <button
+                type="button"
+                aria-label="Clear scope"
+                onClick={() => selectScope('session')}
+                className="text-[#6e7781] hover:text-[#1a2332]"
+              >
+                x
+              </button>
+            </span>
+          )}
+          <label className="flex items-center gap-1.5 text-[#6e7781] ml-auto">
+            Timeframe
+            <select
+              value={tfValue}
+              onChange={(e) => setTimeframe(e.target.value)}
+              aria-label="Timeframe"
+              className="px-2.5 py-1.5 rounded-md border border-[#d0d7de] bg-white text-[#1a2332]"
+            >
+              {tfValue === '' && <option value="">custom</option>}
+              {TF_TOKENS.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </label>
+        </div>
+
+        {scope.kind === 'incident' && scope.status === 'error' && (
+          <div className="px-3 py-2 rounded-md border border-[#e2e6ea] bg-[#faf6f0] text-xs text-[#1a2332]" role="alert">
+            Incident scope could not be loaded.
+            <button
+              type="button"
+              onClick={() => loadIncidentScope(scope.id)}
+              className="ml-2 px-2 py-0.5 rounded border border-[#d0d7de] bg-white text-[#1a2332]"
+            >
+              Retry
+            </button>
+            <button
+              type="button"
+              onClick={() => selectScope('session')}
+              className="ml-2 px-2 py-0.5 rounded border border-[#d0d7de] bg-white text-[#57606a]"
+            >
+              Use Session-wide
+            </button>
+          </div>
+        )}
+        {scope.kind === 'incident' && scope.status === 'ready' && scope.sealed === false && (
+          <div className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a]">
+            Incident telemetry is still loading.
+          </div>
+        )}
+
         <div className="flex gap-2">
           <input
             type="text"
@@ -129,7 +252,7 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot }) => {
           <button
             type="button"
             onClick={runQuery}
-            disabled={running}
+            disabled={running || scopeBlocked}
             className="px-4 py-2 text-xs font-medium rounded-md bg-[#101218] text-white disabled:opacity-50"
           >
             {running ? 'Running' : 'Run Query'}

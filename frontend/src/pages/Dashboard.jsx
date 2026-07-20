@@ -329,7 +329,7 @@ const Dashboard = () => {
         </div>
 
         <div className={view === "siem" ? "block" : "hidden"}>
-          <Siem setSiemCount={setAlertCount} resetTrigger={resetTrigger} onHostPivot={handleHostPivot} />
+          <Siem setSiemCount={setAlertCount} resetTrigger={resetTrigger} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} />
         </div>
 
         <div className={view === "detections" ? "block" : "hidden"}>
