@@ -6,6 +6,25 @@ the lock require an explicit owner-approved amendment. No code lands from
 this contract until its implementation scaffold is approved
 (scaffold -> approve -> implement).**
 
+**Post-lock amendments (owner-approved 2026-07-19, recorded at Phase 2
+acceptance):**
+
+- **Erratum E1 (event-type counts):** Sections 10.1 and 11 say "30" event
+  types. The binding definition is the data-derived, payload-bounded
+  catalog measured at implementation Phase 2.2: **29 authored types** (the
+  inventory's own Section 4.2/16.3 table in fact lists 29) **plus 12
+  background-template-only types** (`4634, 4647, 4648, 4672, 4688, 4768,
+  ALLOWED, DNSQuery, ImageLoaded, NXDOMAIN, ProcessTerminate,
+  SESSION_END`) **= 41 queryable types**. The catalog is built from
+  repository data at boot; the literal "30" is an erratum, not a cap.
+- **GD-5a (unquoted-value lexical rules, retroactively ratified as a
+  GD-5-adjacent grammar completion):** an unquoted FILTERS value may not
+  be a bare reserved word (`and`, `or`, `not`, `contains` -- quote it to
+  match it literally), and unquoted values end at whitespace or at any of
+  `" ' = ! | *` -- values containing those characters must be quoted.
+  These rules MUST surface in the player-facing query help: the Phase 4
+  workbench empty-state/hint copy and the Phase 8 Docs-page pass.
+
 Revision 2 incorporated: the owner/reviewer contract review (items 1-10),
 seven ratified owner rulings, the completed event-disclosure hotfix
 (reconciled), and the factual inspection report on event-shape parity,
@@ -535,7 +554,8 @@ acceptable.
 `id` (opaque event id; searchable, enabling exact-event queries),
 `event_seq` (arrival order; inspector display and cutoff; searchable is
 unnecessary and it is excluded from FILTERS in v1), `timestamp` (occurrence
-time), `event_type` (30 types), `source_type` (the 8 families), `severity`,
+time), `event_type` (30 types; Erratum E1: 41 data-derived), `source_type`
+(the 8 families), `severity`,
 `hostname`, `source_ip`, `destination_ip` (event-type-dependent),
 `user_account` (canonical account field per OD-10), `message`.
 
@@ -611,7 +631,8 @@ occurrence timestamp, then freezing into the snapshot identity;
 SENSOR_SELECTOR = a source family (`Sysmon`, `Windows Security`, `Proxy`,
 `DNS`, `Firewall`, `Azure AD`, `Veeam`, `Defender`), a known hostname, or
 `*`, matched case-insensitively as one trimmed token, spaces permitted
-unquoted; EVENT_TYPE = one of the 30 types or `*`; FILTERS = predicates
+unquoted; EVENT_TYPE = one of the catalog types (Erratum E1: the
+data-derived union, 41 at measurement) or `*`; FILTERS = predicates
 joined by `and`/`or` under GD-3, or `*`. `==`/`!=` whole-string,
 `contains`/`not contains` substring. Canonical formatting: single spaces
 around `|` and operators, operators lowercased, field names in catalog

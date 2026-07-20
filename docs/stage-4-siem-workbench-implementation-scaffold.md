@@ -979,7 +979,9 @@ Stop condition: owner + reviewer approve this scaffold. Rollback: n/a.
   the same commits.
 - **Endpoint/field changes:** none (consumes Phase 3 routes).
 - **Commits:** (4.1) shell + Run Query + snapshot status + minimal frozen
-  results + state tests; (4.2) scope control incl. the revised
+  results + state tests -- the empty-state/hint query help MUST include
+  the GD-5a unquoted-value rules (contract post-lock amendment, owner
+  rider at Phase 2 acceptance); (4.2) scope control incl. the revised
   scope-error behavior (chip retained, prior snapshot preserved, Run
   disabled, no silent fallback) + TIMEFRAME segment editor (control and
   text can never disagree).
