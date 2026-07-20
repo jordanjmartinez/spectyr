@@ -1094,7 +1094,9 @@ Stop condition: owner + reviewer approve this scaffold. Rollback: n/a.
 - **Commits:** (8.1) Dashboard existence check -> `game-state`; (8.2)
   stats relocation + IncidentDashboard migration + its test; (8.3) route
   deletions + trigger-branch removal + every retargeted backend test +
-  final route-audit assertion + nav key rename; (8.4) docs pass.
+  final route-audit assertion + nav key rename; (8.4) docs pass, incl.
+  the GD-5a unquoted-value rules in the Docs-page query help (owner
+  rider at Phase 2 acceptance).
 - **Tests before commit:** full battery both sides (`run_gates.py --all`).
 - **Chrome evidence:** Dashboard severity widget still renders; network
   tab shows zero calls to retired routes across all tabs.
