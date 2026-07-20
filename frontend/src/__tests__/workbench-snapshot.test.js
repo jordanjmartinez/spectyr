@@ -205,6 +205,33 @@ describe('indicator (fake timers)', () => {
     expect(stale.textContent).toBe('4 new (last run)');
   });
 
+  // Phase 5 ride-along (closed out at Phase 6 acceptance): contract Section 8's
+  // table lists "Scope changes" under the SAME row as "Query text edited (not
+  // yet run)" -- both stay bound to the executed snapshot, de-emphasized, until
+  // Run mints a new one. indicatorStale already checks
+  // `scopeParam !== snapshot.identity.scope` (Siem.jsx); this proves it fires
+  // on a scope-only change with the query bar left untouched.
+  test('a scope change without a Run also de-emphasizes the indicator (Section 8: "Scope changes")', async () => {
+    render(<Siem setSiemCount={() => {}} resetTrigger={0} onHostPivot={() => {}}
+                 activeIncidentId="INC-1" />);
+    fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Run Query/ }));
+    });
+    countResponse = () => ok({ new_count: 3, pool_growth: 3 });
+    await tickPoll();
+    const badge = screen.getByTestId('new-events-indicator');
+    expect(badge.className).not.toMatch(/opacity-50/);
+    expect(badge.textContent).toBe('3 new');
+
+    // scope-only change, bar text and query untouched, no Run
+    fireEvent.change(screen.getByLabelText('Scope'), { target: { value: 'INC-1' } });
+
+    const stale = screen.getByTestId('new-events-indicator');
+    expect(stale.className).toMatch(/opacity-50/);
+    expect(stale.textContent).toBe('3 new (last run)');
+  });
+
   test('the indicator resets after a deliberate Refresh', async () => {
     renderShell();
     await run('all | * | * | *');
