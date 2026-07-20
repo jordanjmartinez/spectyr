@@ -996,6 +996,14 @@ Stop condition: owner + reviewer approve this scaffold. Rollback: n/a.
   scope-error behavior (chip retained, prior snapshot preserved, Run
   disabled, no silent fallback) + TIMEFRAME segment editor (control and
   text can never disagree).
+- **Accepted process deviation (recorded at Phase 4 closure, owner
+  ruling):** the client TIMEFRAME helpers (`TIME_PRESETS`,
+  `withinPreset`, `poolAnchorMs`) and their old `siem.test.js` cases were
+  removed in commit 4.1 (`1694217`), while the replacement
+  TIMEFRAME-control coverage landed in commit 4.2 (`0fd08b4`) -- a
+  cross-commit replacement inside one phase, accepted without rewriting
+  history because the replacement control itself was a 4.2 deliverable.
+  **Same-concern replacement remains the rule going forward.**
 - **Tests before commit:** frontend suite (`CI=true npx react-scripts
   test --watchAll=false`) via `run_gates.py --frontend`.
 - **Chrome evidence:** run a valid query, see frozen results; parse error
