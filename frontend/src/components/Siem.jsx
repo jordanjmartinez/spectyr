@@ -1,39 +1,30 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../api';
 import SiemTable from './SiemTable';
 import SiemCards from './SiemCards';
-import {
-  parseEventQuery, alertFieldValue, platformOf,
-  TIME_PRESETS, withinPreset, poolAnchorMs,
-} from './siemUtils';
 
-// SIEM tab (Stage 1.5). Fetches the session event pool on the existing feed
-// cadence; every filter, search, preset, and sort operates client-side on
-// the cached pool. Time presets anchor to the pool's own latest timestamp
-// (the frozen scenario clock), never wall time.
+// SIEM Investigation Workbench shell (Stage 4 Phase 4). Analyst-driven:
+// the shell submits LCQL text to the server's single query read and renders
+// the returned frozen snapshot exactly as served. No polling, no client-side
+// filtering, no client-side query execution of any kind (contract P8): rows
+// never insert, remove, or reorder until the analyst runs a query again.
 
-const Siem = ({ setSiemCount, resetTrigger, pivotQuery, onHostPivot }) => {
-  const [alerts, setAlerts] = useState([]);
+// The placeholder is one canonical conforming LCQL example (never key=value).
+export const QUERY_PLACEHOLDER =
+  '1h | Sysmon | ProcessCreate | command_line contains "powershell"';
+
+export const QUERY_HELP_EXAMPLES = [
+  'all | * | * | *',
+  '24h | Windows Security | 4625 | user_account == "spatel" and source_ip contains "10.0."',
+];
+
+const Siem = ({ setSiemCount, resetTrigger, onHostPivot }) => {
   const [org, setOrg] = useState({});
   const [view, setView] = useState('cards');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sourceFilter, setSourceFilter] = useState('all');
-  const [platformFilter, setPlatformFilter] = useState('all');
-  const [typeFilter, setTypeFilter] = useState('all');
-  const [preset, setPreset] = useState('all');
-
-  const fetchAlerts = useCallback(() => {
-    apiFetch('/api/fake-events')
-      .then(res => res.json())
-      .then(data => setAlerts([...data].reverse()))
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    fetchAlerts();
-    const interval = setInterval(fetchAlerts, 2000);
-    return () => clearInterval(interval);
-  }, [fetchAlerts]);
+  const [queryText, setQueryText] = useState('');
+  const [snapshot, setSnapshot] = useState(null);   // {token, identity, count, rows}
+  const [error, setError] = useState(null);         // {position, reason, suggestions?}
+  const [running, setRunning] = useState(false);
 
   useEffect(() => {
     apiFetch('/api/endpoints')
@@ -42,58 +33,45 @@ const Siem = ({ setSiemCount, resetTrigger, pivotQuery, onHostPivot }) => {
       .catch(() => {});
   }, [resetTrigger]);
 
+  // Session reset clears every piece of workbench state (scaffold S6-S13).
   useEffect(() => {
-    setAlerts([]);
-    setSearchTerm('');
-    setSourceFilter('all');
-    setPlatformFilter('all');
-    setTypeFilter('all');
-    setPreset('all');
-    fetchAlerts();
-  }, [resetTrigger, fetchAlerts]);
-
-  // Entity pivot from the Alerts tab: prefill the search with the value.
-  useEffect(() => {
-    if (pivotQuery?.value) setSearchTerm(pivotQuery.value);
-  }, [pivotQuery]);
-
-  // Dropdown values derive from the cached pool, never hardcoded.
-  const sources = [...new Set(alerts.map(a => a.source_type || a.detected_by).filter(Boolean))].sort();
-  const platforms = [...new Set(alerts.map(platformOf))].sort();
-  const eventTypes = [...new Set(alerts.map(a => a.event_type).filter(Boolean))].sort();
-
-  const anchorMs = poolAnchorMs(alerts);
-  const { fieldFilters, free } = parseEventQuery(searchTerm);
-  const filtered = alerts.filter(alert => {
-    if (sourceFilter !== 'all' && (alert.source_type || alert.detected_by) !== sourceFilter) return false;
-    if (platformFilter !== 'all' && platformOf(alert) !== platformFilter) return false;
-    if (typeFilter !== 'all' && alert.event_type !== typeFilter) return false;
-    if (!withinPreset(alert, preset, anchorMs)) return false;
-    for (const [field, val] of fieldFilters) {
-      if (!String(alertFieldValue(alert, field)).toLowerCase().includes(val)) return false;
-    }
-    if (free && !JSON.stringify(alert).toLowerCase().includes(free)) return false;
-    return true;
-  });
+    setQueryText('');
+    setSnapshot(null);
+    setError(null);
+    setRunning(false);
+  }, [resetTrigger]);
 
   useEffect(() => {
-    setSiemCount?.(filtered.length);
-  }, [filtered.length, setSiemCount]);
+    setSiemCount?.(snapshot ? snapshot.count : 0);
+  }, [snapshot, setSiemCount]);
 
-  const selectClass =
-    'px-2.5 py-2 text-xs rounded-md border border-[#d0d7de] bg-white text-[#1a2332] focus:outline-none focus:ring-2 focus:ring-[#16436b]/30';
+  const runQuery = () => {
+    if (running) return;
+    setRunning(true);
+    apiFetch(`/api/events/query?q=${encodeURIComponent(queryText)}&scope=session`)
+      .then(async (res) => {
+        const body = await res.json().catch(() => null);
+        if (res.ok && body) {
+          // Atomic replacement: the new snapshot object swaps in whole; a
+          // failed run leaves the prior snapshot untouched.
+          setSnapshot(body);
+          setError(null);
+        } else if (body && body.error && typeof body.error === 'object') {
+          setError(body.error);
+        } else {
+          setError({ position: 0, reason: 'The query could not be executed.' });
+        }
+      })
+      .catch(() => setError({ position: 0, reason: 'The query could not be executed.' }))
+      .finally(() => setRunning(false));
+  };
 
-  const filterSelect = (label, value, onChange, options) => (
-    <label className="flex items-center gap-1.5 text-xs text-[#6e7781]">
-      {label}
-      <select value={value} onChange={e => onChange(e.target.value)} className={selectClass} aria-label={`Filter by ${label}`}>
-        <option value="all">All</option>
-        {options.map(o => <option key={o} value={o}>{o}</option>)}
-      </select>
-    </label>
-  );
-
-  const noPool = alerts.length === 0;
+  const simTime = (iso) => {
+    const t = Date.parse(iso || '');
+    return Number.isNaN(t)
+      ? ''
+      : new Date(t).toLocaleTimeString('en-GB', { hour12: false });
+  };
 
   return (
     <div>
@@ -109,10 +87,12 @@ const Siem = ({ setSiemCount, resetTrigger, pivotQuery, onHostPivot }) => {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332]">SIEM</h2>
-              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-[#57606a]">{filtered.length}</span>
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-[#57606a]">
+                {snapshot ? snapshot.count : 0}
+              </span>
             </div>
             <p className="text-sm text-[#57606a] truncate">
-              {org.name || 'ACME Corp'}: endpoint telemetry and scenario event data
+              {org.name || 'ACME Corp'}: investigation workbench over the session event pool
             </p>
           </div>
           <div className="ml-auto flex items-center rounded-md border border-[#d0d7de] overflow-hidden" role="group" aria-label="View">
@@ -132,70 +112,93 @@ const Siem = ({ setSiemCount, resetTrigger, pivotQuery, onHostPivot }) => {
         </div>
       </div>
 
-      {/* Toolbar: search, dropdown filters, time presets */}
-      <div className="mb-3 flex flex-col gap-2.5">
-        <div className="relative">
+      {/* Query bar */}
+      <div className="mb-3 flex flex-col gap-2">
+        <div className="flex gap-2">
           <input
             type="text"
-            placeholder="Search events, e.g. source_ip=10.0.1.24 event_type=4625"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder={QUERY_PLACEHOLDER}
+            value={queryText}
+            onChange={(e) => setQueryText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') runQuery(); }}
+            readOnly={running}
             maxLength={300}
-            className="w-full pl-4 pr-10 py-2 rounded-md bg-white border border-[#e2e6ea] text-[#1a2332] text-sm placeholder-[#8b949e] focus:border-[#8b949e] focus:outline-none transition-colors"
+            aria-label="LCQL query"
+            className="log-mono flex-1 pl-4 pr-4 py-2 rounded-md bg-white border border-[#e2e6ea] text-[#1a2332] text-sm placeholder-[#8b949e] focus:border-[#8b949e] focus:outline-none transition-colors"
           />
-          {searchTerm ? (
-            <button
-              onClick={() => setSearchTerm('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6e7781] hover:text-[#1a2332]"
-              aria-label="Clear search"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          ) : (
-            <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6e7781]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          )}
+          <button
+            type="button"
+            onClick={runQuery}
+            disabled={running}
+            className="px-4 py-2 text-xs font-medium rounded-md bg-[#101218] text-white disabled:opacity-50"
+          >
+            {running ? 'Running' : 'Run Query'}
+          </button>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {filterSelect('Source', sourceFilter, setSourceFilter, sources)}
-          {filterSelect('Platform', platformFilter, setPlatformFilter, platforms)}
-          {filterSelect('Event Type', typeFilter, setTypeFilter, eventTypes)}
-          <div className="flex items-center gap-1 ml-auto" role="group" aria-label="Time range">
-            {TIME_PRESETS.map(p => (
+
+        {error && (
+          <div className="px-3 py-2 rounded-md border border-[#e2e6ea] bg-[#faf6f0] text-xs text-[#1a2332]" role="alert">
+            <span className="font-medium">Parse error at position {error.position}:</span>{' '}
+            {error.reason}
+            {error.suggestions && error.suggestions.length > 0 && (
+              <span className="text-[#57606a]"> Did you mean: {error.suggestions.join(', ')}?</span>
+            )}
+          </div>
+        )}
+
+        {snapshot && (
+          <div className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a] flex flex-wrap items-center gap-x-3">
+            <span>
+              Snapshot: <span className="font-medium text-[#1a2332]">{snapshot.count} events</span>
+            </span>
+            <span>as of seq #{snapshot.identity.cutoff_seq}</span>
+            <span>{simTime(snapshot.identity.resolved_range.end)} sim</span>
+            <span className="log-mono">{snapshot.identity.canonical_query}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Results */}
+      {!snapshot ? (
+        <div
+          className="p-6 rounded-xl py-12"
+          style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+        >
+          <p className="text-sm font-medium text-[#1a2332] mb-1">Run a query to begin.</p>
+          <p className="text-xs text-[#57606a] mb-3">
+            LCQL has four segments: TIMEFRAME | SENSOR | EVENT TYPE | FILTERS. Try one of these:
+          </p>
+          <div className="flex flex-col gap-1.5 mb-4">
+            {QUERY_HELP_EXAMPLES.map((ex) => (
               <button
-                key={p.key}
+                key={ex}
                 type="button"
-                onClick={() => setPreset(p.key)}
-                className={`px-2 py-1 text-xs rounded-md border transition ${
-                  preset === p.key
-                    ? 'bg-[#101218] text-white border-transparent'
-                    : 'bg-white text-[#57606a] border-[#d0d7de] hover:bg-[#eef1f4]'
-                }`}
+                onClick={() => setQueryText(ex)}
+                className="log-mono text-left text-xs px-3 py-1.5 rounded-md border border-[#d0d7de] bg-[#f6f8fa] text-[#1a2332] hover:bg-[#eef1f4]"
               >
-                {p.label}
+                {ex}
               </button>
             ))}
           </div>
+          <p className="text-xs text-[#6e7781]">
+            Values containing spaces or any of{' '}
+            <span className="log-mono">&quot; &#39; = ! | *</span> must be quoted, and the bare
+            words and, or, not, contains must be quoted to match literally. Double-quoted and
+            unquoted values match case-insensitively; single quotes match exactly.
+          </p>
         </div>
-      </div>
-
-      {noPool ? (
+      ) : snapshot.count === 0 ? (
         <div
-          className="p-6 rounded-xl flex flex-col items-center justify-center py-16"
+          className="p-6 rounded-xl flex flex-col items-center justify-center py-14"
           style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
         >
-          <svg className="w-8 h-8 text-[#8b949e] mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17V7m4 10V11m4 6V9M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z" />
-          </svg>
-          <p className="text-sm text-[#6e7781]">No events yet. Start a simulation to begin.</p>
+          <p className="text-sm text-[#1a2332] mb-1">0 events match</p>
+          <p className="text-xs text-[#6e7781] log-mono">{snapshot.identity.canonical_query}</p>
         </div>
       ) : view === 'cards' ? (
-        <SiemCards alerts={filtered} resetTrigger={resetTrigger} onHostPivot={onHostPivot} />
+        <SiemCards alerts={snapshot.rows} resetTrigger={resetTrigger} onHostPivot={onHostPivot} />
       ) : (
-        <SiemTable alerts={filtered} resetTrigger={resetTrigger} onHostPivot={onHostPivot} />
+        <SiemTable alerts={snapshot.rows} resetTrigger={resetTrigger} onHostPivot={onHostPivot} />
       )}
     </div>
   );

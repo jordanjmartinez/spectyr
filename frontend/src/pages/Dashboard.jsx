@@ -35,18 +35,10 @@ const Dashboard = () => {
   const [analystName, setAnalystName] = useState(null);
   const [gameMode, setGameMode] = useState('training');
   const [incidentBadge, setIncidentBadge] = useState(0);
-  const [pivotQuery, setPivotQuery] = useState(null);
   const [simActive, setSimActive] = useState(false);
   const [endpointCount, setEndpointCount] = useState(0);
   const [detectionCount, setDetectionCount] = useState(0);
   const [pivotHost, setPivotHost] = useState(null);
-
-  // Analyst-mode entity pivot: a chip click in the Alerts tab jumps to the
-  // SIEM stream pre-filtered to that entity value.
-  const handlePivot = (query) => {
-    setPivotQuery({ value: query, ts: Date.now() });
-    setView('siem');
-  };
 
   // Host pivot: a hostname link in an event view opens that endpoint page.
   const handleHostPivot = (hostname) => {
@@ -337,7 +329,7 @@ const Dashboard = () => {
         </div>
 
         <div className={view === "siem" ? "block" : "hidden"}>
-          <Siem setSiemCount={setAlertCount} resetTrigger={resetTrigger} pivotQuery={pivotQuery} onHostPivot={handleHostPivot} />
+          <Siem setSiemCount={setAlertCount} resetTrigger={resetTrigger} onHostPivot={handleHostPivot} />
         </div>
 
         <div className={view === "detections" ? "block" : "hidden"}>
