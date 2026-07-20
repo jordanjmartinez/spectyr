@@ -1,22 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { sevColor, sourceColor, sanitizeEvent } from './siemUtils';
 
-// SIEM card view (Stage 1.5, default view): event cards color-coded by
-// source family, expandable to the sanitized raw-log JSON. Presentational
-// only; receives the already-filtered cached pool.
+// SIEM card view: event cards color-coded by source family, expandable to
+// the sanitized raw-log JSON. Presentational only; renders the frozen
+// snapshot rows. Selection is CONTROLLED by the workbench shell (Stage 4
+// P5.1: one inspector, selection keyed by event id, persisting across view
+// toggles and surviving Refresh when the id survives).
 
 const PER_PAGE = 12;
 
 const timeOf = (iso) =>
   iso ? new Date(iso).toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
 
-const SiemCards = ({ alerts, resetTrigger, onHostPivot }) => {
+const SiemCards = ({ alerts, resetTrigger, onHostPivot, selectedId, onSelect }) => {
   const [page, setPage] = useState(1);
-  const [expanded, setExpanded] = useState({});
 
   useEffect(() => {
     setPage(1);
-    setExpanded({});
   }, [resetTrigger]);
 
   useEffect(() => {
@@ -64,7 +64,7 @@ const SiemCards = ({ alerts, resetTrigger, onHostPivot }) => {
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
         {current.map((alert) => {
           const source = alert.source_type || alert.detected_by || 'Unknown';
-          const isOpen = !!expanded[alert.id];
+          const isOpen = alert.id === selectedId;
           return (
             <div
               key={alert.id}
@@ -73,7 +73,7 @@ const SiemCards = ({ alerts, resetTrigger, onHostPivot }) => {
             >
               <button
                 type="button"
-                onClick={() => setExpanded(prev => ({ ...prev, [alert.id]: !prev[alert.id] }))}
+                onClick={() => onSelect?.(isOpen ? null : alert.id)}
                 className="text-left p-4 flex-1 hover:bg-[#f6f8fa] transition-colors"
               >
                 <div className="flex items-center gap-2">

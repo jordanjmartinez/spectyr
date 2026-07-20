@@ -12,16 +12,14 @@ const SORTABLE = [
   { key: 'destination_ip', label: 'Dst IP' },
 ];
 
-const SiemTable = ({ alerts, resetTrigger, onHostPivot }) => {
+const SiemTable = ({ alerts, resetTrigger, onHostPivot, selectedId, onSelect }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [alertsPerPage, setAlertsPerPage] = useState(20);
-  const [expandedRows, setExpandedRows] = useState({});
-  const [sort, setSort] = useState(null); // { key, dir } or null = feed order
+  const [sort, setSort] = useState(null); // { key, dir } or null = server canonical order
   const [pageSizeOpen, setPageSizeOpen] = useState(false);
 
   useEffect(() => {
     setCurrentPage(1);
-    setExpandedRows({});
     setSort(null);
   }, [resetTrigger]);
 
@@ -50,7 +48,8 @@ const SiemTable = ({ alerts, resetTrigger, onHostPivot }) => {
   const currentAlerts = sorted.slice((currentPage - 1) * alertsPerPage, currentPage * alertsPerPage);
 
   const changePage = (n) => { if (n >= 1 && n <= totalPages) setCurrentPage(n); };
-  const toggleRow = (id) => setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
+  // Selection is controlled by the shell (P5.1): one inspector, id-keyed.
+  const toggleRow = (id) => onSelect?.(id === selectedId ? null : id);
 
   const renderCleanEventDetails = (log) => {
     const raw = sanitizeEvent(log);
@@ -234,7 +233,7 @@ const SiemTable = ({ alerts, resetTrigger, onHostPivot }) => {
                       <td className="px-2 sm:px-4 py-4 border-l-[3px]" style={{ borderLeftColor: sevColor(alert.severity) }}>
                         <svg
                           className={`w-5 h-5 text-[#6e7781] hover:text-[#1a2332] transition-transform duration-300 ease-in-out ${
-                            expandedRows[alert.id] ? 'rotate-180' : 'rotate-0'
+                            alert.id === selectedId ? 'rotate-180' : 'rotate-0'
                           }`}
                           fill="none" stroke="currentColor" viewBox="0 0 24 24"
                         >
@@ -261,7 +260,7 @@ const SiemTable = ({ alerts, resetTrigger, onHostPivot }) => {
                     <tr>
                       <td colSpan="7" className="p-0">
                         <div className={`grid transition-all duration-300 ease-in-out ${
-                          expandedRows[alert.id] ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                          alert.id === selectedId ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
                         }`}>
                           <div className="overflow-hidden min-h-0">
                             <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(0,0,0,0.08), transparent)' }} />

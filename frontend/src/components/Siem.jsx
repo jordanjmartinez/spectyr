@@ -40,6 +40,10 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
   // Scope state machine (contract Section 6, revised scope-error behavior):
   // {kind:'session'} | {kind:'incident', id, status:'loading'|'ready'|'error', sealed}
   const [scope, setScope] = useState({ kind: 'session' });
+  // P5.1: ONE inspector selection, keyed by event id, owned by the shell so
+  // it persists across view toggles and Refresh (when the id survives).
+  const [selectedId, setSelectedId] = useState(null);
+  const [selectionNotice, setSelectionNotice] = useState(null);
 
   useEffect(() => {
     apiFetch('/api/endpoints')
@@ -55,6 +59,8 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
     setError(null);
     setRunning(false);
     setScope({ kind: 'session' });
+    setSelectedId(null);
+    setSelectionNotice(null);
   }, [resetTrigger]);
 
   useEffect(() => {
@@ -93,17 +99,34 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
   const tfValue = firstSegmentToken(queryText) ||
     (queryText.trim() === '' ? '1h' : '');
 
-  const runQuery = () => {
-    if (running || scopeBlocked) return;
+  // Atomic replacement: the new snapshot object swaps in whole; a failed
+  // run leaves the prior snapshot untouched. Selection survival (P5.1):
+  // when the inspected id is present in the new rows, selection and the
+  // open inspector persist; otherwise the inspector closes with a one-line
+  // notice and nothing else is lost.
+  const applySnapshot = (body) => {
+    setSnapshot(body);
+    setError(null);
+    // Functional update so the survival check sees the selection as of
+    // REPLACEMENT time (a click during an in-flight run must not be lost).
+    setSelectedId((sel) => {
+      if (sel && !body.rows.some((r) => r.id === sel)) {
+        setSelectionNotice('The inspected event is not in the new snapshot.');
+        return null;
+      }
+      setSelectionNotice(null);
+      return sel;
+    });
+  };
+
+  const execute = (q, scopeValue) => {
+    if (running) return;
     setRunning(true);
-    apiFetch(`/api/events/query?q=${encodeURIComponent(queryText)}&scope=${encodeURIComponent(scopeParam)}`)
+    apiFetch(`/api/events/query?q=${encodeURIComponent(q)}&scope=${encodeURIComponent(scopeValue)}`)
       .then(async (res) => {
         const body = await res.json().catch(() => null);
         if (res.ok && body) {
-          // Atomic replacement: the new snapshot object swaps in whole; a
-          // failed run leaves the prior snapshot untouched.
-          setSnapshot(body);
-          setError(null);
+          applySnapshot(body);
         } else if (body && body.error && typeof body.error === 'object') {
           setError(body.error);
         } else {
@@ -112,6 +135,23 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
       })
       .catch(() => setError({ position: 0, reason: 'The query could not be executed.' }))
       .finally(() => setRunning(false));
+  };
+
+  const runQuery = () => {
+    if (running || scopeBlocked) return;
+    execute(queryText, scopeParam);
+  };
+
+  // Refresh re-executes the DISPLAYED snapshot's definition (its canonical
+  // query and executed scope), never the editable bar text (contract S7).
+  const refresh = () => {
+    if (!snapshot || running) return;
+    execute(snapshot.identity.canonical_query, snapshot.identity.scope);
+  };
+
+  const selectRow = (id) => {
+    setSelectedId(id);
+    setSelectionNotice(null);
   };
 
   const simTime = (iso) => {
@@ -270,13 +310,27 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
         )}
 
         {snapshot && (
-          <div className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a] flex flex-wrap items-center gap-x-3">
+          <div className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a] flex flex-wrap items-center gap-x-3 gap-y-1">
             <span>
               Snapshot: <span className="font-medium text-[#1a2332]">{snapshot.count} events</span>
             </span>
             <span>as of seq #{snapshot.identity.cutoff_seq}</span>
             <span>{simTime(snapshot.identity.resolved_range.end)} sim</span>
             <span className="log-mono">{snapshot.identity.canonical_query}</span>
+            <button
+              type="button"
+              onClick={refresh}
+              disabled={running}
+              className="ml-auto px-2.5 py-1 text-xs font-medium rounded-md border border-[#d0d7de] bg-white text-[#1a2332] hover:bg-[#eef1f4] disabled:opacity-50"
+            >
+              Refresh
+            </button>
+          </div>
+        )}
+
+        {selectionNotice && (
+          <div role="status" className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a]">
+            {selectionNotice}
           </div>
         )}
       </div>
@@ -319,9 +373,11 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
           <p className="text-xs text-[#6e7781] log-mono">{snapshot.identity.canonical_query}</p>
         </div>
       ) : view === 'cards' ? (
-        <SiemCards alerts={snapshot.rows} resetTrigger={resetTrigger} onHostPivot={onHostPivot} />
+        <SiemCards alerts={snapshot.rows} resetTrigger={resetTrigger} onHostPivot={onHostPivot}
+                   selectedId={selectedId} onSelect={selectRow} />
       ) : (
-        <SiemTable alerts={snapshot.rows} resetTrigger={resetTrigger} onHostPivot={onHostPivot} />
+        <SiemTable alerts={snapshot.rows} resetTrigger={resetTrigger} onHostPivot={onHostPivot}
+                   selectedId={selectedId} onSelect={selectRow} />
       )}
     </div>
   );
