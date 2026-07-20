@@ -63,6 +63,23 @@ const selectIncidentScope = async () => {
   });
 };
 
+test('an active incident elsewhere never scopes the SIEM silently', async () => {
+  // Default-scope rule (R10, Phase 4 closure): ordinary navigation opens
+  // Session-wide; incident scope is entered ONLY through explicit scope
+  // selection (or, from Phase 7, Open Evidence Timeline descent). An
+  // incident focused elsewhere in the app merely OFFERS a scope option.
+  const props = { setSiemCount: () => {}, resetTrigger: 0, onHostPivot: () => {} };
+  const { rerender } = render(<Siem {...props} activeIncidentId={null} />);
+  expect(screen.getByLabelText('Scope')).toHaveValue('session');
+  // an incident becomes active elsewhere while the SIEM stays mounted
+  rerender(<Siem {...props} activeIncidentId={INC} />);
+  expect(screen.getByLabelText('Scope')).toHaveValue('session');
+  // and no scope read fires without an explicit selection
+  const scopeCalls = apiFetch.mock.calls.map(c => c[0])
+    .filter(p => p.includes('/scope'));
+  expect(scopeCalls).toEqual([]);
+});
+
 test('default Session-wide; queries carry scope=session', async () => {
   renderShell();
   expect(screen.getByLabelText('Scope')).toHaveValue('session');
