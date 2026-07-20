@@ -340,6 +340,136 @@ def _close(word, options):
                                      [o.lower() for o in options], n=3)
 
 
+# --- field catalog and resolution (Phase 2.2; contract Section 10) -----------
+
+# The canonical serialized top-level fields (the sanitized feed shape minus
+# the key_value_pairs container, which is addressed through its keys).
+SERIALIZED_TOP_FIELDS = (
+    "id", "event_seq", "timestamp", "event_type", "source_type", "severity",
+    "hostname", "source_ip", "destination_ip", "user_account", "message",
+)
+# Display-vs-FILTERS split (review correction 8): event_seq serializes and
+# renders in the inspector but is NOT a FILTERS field in v1.
+NON_FILTERABLE_TOP = ("event_seq",)
+
+SOURCE_FAMILIES = ("Sysmon", "Windows Security", "Proxy", "DNS", "Firewall",
+                   "Azure AD", "Veeam", "Defender")
+
+
+class Catalog:
+    """The searchable-field catalog (contract 10.1/10.2): canonical top-level
+    names, the authorized kvp key union, sensor families, known hostnames,
+    and event types -- each with case-insensitive resolution to the
+    catalog-canonical spelling. Built once at boot from repository data."""
+
+    def __init__(self, kvp_keys, hostnames, event_types):
+        def lower_map(values):
+            out = {}
+            for v in values:
+                key = v.lower()
+                if key in out and out[key] != v:
+                    raise ValueError(
+                        f"catalog case collision: {out[key]!r} vs {v!r}")
+                out[key] = v
+            return out
+
+        self.filterable_top = lower_map(
+            f for f in SERIALIZED_TOP_FIELDS if f not in NON_FILTERABLE_TOP)
+        self.non_filterable_top = lower_map(NON_FILTERABLE_TOP)
+        self.kvp = lower_map(kvp_keys)
+        self.families = lower_map(SOURCE_FAMILIES)
+        self.hostnames = lower_map(hostnames)
+        self.event_types = lower_map(str(t) for t in event_types)
+
+    # -- name resolution ------------------------------------------------------
+
+    def resolve_field(self, name, position):
+        """Resolution order (contract 10.2): canonical top-level name first,
+        then kvp key. Returns (canonical_name, addr). event_seq is serialized
+        but not filterable (review correction 8)."""
+        low = name.lower()
+        if low in self.filterable_top:
+            return self.filterable_top[low], "top"
+        if low in self.non_filterable_top:
+            raise LcqlError(
+                position,
+                f"field {self.non_filterable_top[low]!r} is serialized for "
+                f"display but is not a FILTERS field in v1")
+        if low in self.kvp:
+            return self.kvp[low], "kvp"
+        raise LcqlError(
+            position, f"unknown field {name!r}",
+            suggestions=_close(name, list(self.filterable_top.values())
+                               + list(self.kvp.values())))
+
+    def resolve_sensor(self, text, position):
+        low = text.lower()
+        if low in self.families:
+            return self.families[low]
+        if low in self.hostnames:
+            return self.hostnames[low]
+        raise LcqlError(
+            position,
+            f"unknown sensor {text!r}: expected a source family "
+            f"({', '.join(SOURCE_FAMILIES)}) or a known hostname",
+            suggestions=_close(text, list(self.families.values())
+                               + list(self.hostnames.values())))
+
+    def resolve_event_type(self, text, position):
+        low = text.lower()
+        if low in self.event_types:
+            return self.event_types[low]
+        raise LcqlError(position, f"unknown event type {text!r}",
+                        suggestions=_close(text,
+                                           list(self.event_types.values())))
+
+    # -- query resolution -----------------------------------------------------
+
+    def resolve(self, query, sensor_pos, type_pos, pred_positions):
+        """Catalog-validate a structurally parsed Query and rewrite it into
+        canonical casing with each predicate bound to one address
+        (top | kvp). Deterministic; raises LcqlError on unknown names."""
+        sensor = query.sensor if query.sensor == "*" else \
+            self.resolve_sensor(query.sensor, sensor_pos)
+        etype = query.event_type if query.event_type == "*" else \
+            self.resolve_event_type(query.event_type, type_pos)
+        groups = []
+        for g_i, group in enumerate(query.filters):
+            preds = []
+            for p_i, p in enumerate(group):
+                fname, addr = self.resolve_field(
+                    p.field, pred_positions[g_i][p_i])
+                preds.append(Pred(field=fname, op=p.op, value=p.value,
+                                  raw_value=p.raw_value, quote=p.quote,
+                                  addr=addr))
+            groups.append(tuple(preds))
+        return Query(timeframe=query.timeframe, sensor=sensor,
+                     event_type=etype, filters=tuple(groups))
+
+
+def build_field_catalog(yaml_catalog, normal_templates, employees, servers):
+    """Boot-time catalog from repository truth: kvp key union over authored
+    chains + supplemental events + background templates (+ 'protocol', the
+    OD-10 uniform placement), hostnames from the employee roster and server
+    inventory, event types from the same authored + background sources."""
+    kvp_keys, event_types = set(), set()
+    for entry in yaml_catalog.values():
+        for step in entry["chain"]:
+            kvp_keys |= set(step.get("key_value_pairs") or {})
+            event_types.add(str(step.get("event_type")))
+        for step in entry.get("supplemental_events", []):
+            kvp_keys |= set(step.get("key_value_pairs") or {})
+            event_types.add(str(step.get("event_type")))
+    for tpl in normal_templates:
+        kvp_keys |= set(tpl.get("key_value_pairs") or {})
+        event_types.add(str(tpl.get("event_type")))
+    kvp_keys.add("protocol")
+    hostnames = ({e["workstation"] for e in employees}
+                 | {s["hostname"] for s in servers.values()})
+    return Catalog(kvp_keys=kvp_keys, hostnames=hostnames,
+                   event_types=event_types)
+
+
 # --- canonical formatting ----------------------------------------------------
 
 def canonical(query):

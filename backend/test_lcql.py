@@ -8,10 +8,16 @@ the evaluator + full pinned corpus in 2.3.
 
 Run: python test_lcql.py   (also: python -m pytest test_lcql.py -q)
 """
+import os
 import sys
 
-import lcql
-from lcql import LcqlError, Pred, canonical, parse
+os.environ.setdefault("SPECTYR_SCENARIO_SOURCE", "yaml_v2")
+import app  # noqa: E402  (catalog inputs only; lcql itself stays pure)
+import lcql  # noqa: E402
+from lcql import LcqlError, Pred, canonical, parse  # noqa: E402
+
+CATALOG = lcql.build_field_catalog(app.yaml_catalog, app.NORMAL_TRAFFIC_TEMPLATES,
+                                   app.EMPLOYEES, app.SERVERS)
 
 
 def _err(q, **kw):
@@ -213,6 +219,101 @@ def test_parse_is_deterministic():
     q = '4h | * | QUERY | query contains "telemetry-sync" or query contains "cdn-edge"'
     assert parse(q) == parse(q)
     assert canonical(parse(q)) == canonical(parse(q))
+
+
+# --- Phase 2.2: catalog resolution (contract Section 10, GD-2) ---------------
+
+# The contract Section 11 valid examples, VERBATIM. Each parses under the
+# real repository catalog and is already in canonical form.
+_CONTRACT_VALID_EXAMPLES = [
+    '1h | Sysmon | ProcessCreate | command_line contains "powershell"',
+    '24h | Windows Security | 4625 | user_account == "spatel" and source_ip contains "10.0."',
+    'all | ACME-WS10 | * | *',
+    "15m | Proxy | HTTP_CONNECT | url contains 'Login.Microsoft'",
+    '4h | * | QUERY | query contains "telemetry-sync" or query contains "cdn-edge"',
+]
+
+
+def test_contract_valid_examples_parse():
+    for q in _CONTRACT_VALID_EXAMPLES:
+        parsed = parse(q, catalog=CATALOG)
+        assert canonical(parsed) == q, \
+            f"contract example must already be canonical: {q!r} -> " \
+            f"{canonical(parsed)!r}"
+
+
+def test_catalog_canonical_casing_applied():
+    q = parse('1h | sysmon | processcreate | COMMAND_LINE contains "x"',
+              catalog=CATALOG)
+    assert q.sensor == "Sysmon"
+    assert q.event_type == "ProcessCreate"
+    assert q.filters[0][0].field == "command_line"
+    assert canonical(q) == '1h | Sysmon | ProcessCreate | command_line contains "x"'
+
+
+def test_sensor_family_and_hostname_resolution():
+    assert parse("all | windows security | * | *",
+                 catalog=CATALOG).sensor == "Windows Security"
+    assert parse("all | acme-ws12 | * | *",
+                 catalog=CATALOG).sensor == "ACME-WS12"
+    e = _err("all | Nonexistent-Host | * | *", catalog=CATALOG)
+    assert "unknown sensor" in e.reason and "source family" in e.reason
+
+
+def test_unknown_event_type_error_with_suggestions():
+    e = _err("all | * | ProcessCreat | *", catalog=CATALOG)
+    assert "unknown event type" in e.reason
+    assert "processcreate" in [s.lower() for s in e.suggestions]
+
+
+def test_unknown_field_error_with_suggestions():
+    e = _err('all | * | * | commandline == "x"', catalog=CATALOG)
+    assert "unknown field" in e.reason
+    assert "command_line" in e.suggestions
+
+
+def test_kvp_case_insensitive_resolution():
+    q = parse('all | Azure AD | SigninLogs | risklevel == "high"',
+              catalog=CATALOG)
+    p = q.filters[0][0]
+    assert p.field == "RiskLevel" and p.addr == "kvp"
+
+
+def test_shadowed_kvp_key_binds_top_level_first():
+    # source_ip and event_type exist both top-level and as kvp keys; the
+    # contract's resolution order binds the canonical top-level name.
+    q = parse('all | * | * | source_ip == "10.0.1.5" and event_type == "4625"',
+              catalog=CATALOG)
+    assert [p.addr for p in q.filters[0]] == ["top", "top"]
+
+
+def test_id_is_filterable_top_level():
+    q = parse('all | * | * | id == "abc-123"', catalog=CATALOG)
+    assert q.filters[0][0].addr == "top"
+
+
+def test_event_seq_rejected_as_filter_field():
+    e = _err('all | * | * | event_seq == "5"', catalog=CATALOG)
+    assert "not a FILTERS field" in e.reason
+    assert "event_seq" in e.reason
+    assert e.position == 14, "position must point at the field name"
+
+
+def test_catalog_build_sanity_and_collision_guard():
+    # zero lowercase collisions in the live corpus (guarded at build time)
+    assert "command_line" in CATALOG.kvp.values()
+    assert "protocol" in CATALOG.kvp.values()          # OD-10 placement
+    assert "ACME-WS10" in CATALOG.hostnames.values()   # the verbatim fixture host
+    assert "4625" in CATALOG.event_types.values()
+    # display-vs-filters split (review correction 8)
+    assert "event_seq" not in CATALOG.filterable_top.values()
+    assert "id" in CATALOG.filterable_top.values()
+    try:
+        lcql.Catalog(kvp_keys={"Status", "status"}, hostnames=set(),
+                     event_types=set())
+        assert False, "collision must raise"
+    except ValueError as e:
+        assert "collision" in str(e)
 
 
 if __name__ == "__main__":
