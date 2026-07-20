@@ -2879,6 +2879,52 @@ def query_events():
                     "rows": matched})
 
 
+@app.route('/api/events/query/new-count', methods=['GET'])
+def query_new_count():
+    """Refresh-now new-count (contract R16/OD-6), bound to the executed
+    snapshot token: the request carries ONLY the token, so edited bar text
+    structurally cannot influence the count. new_count = rows a Refresh
+    executed now would add (same canonical query and scope, TIMEFRAME
+    re-resolved at count time, cutoff = current max event_seq, counted by
+    id absence from the token's snapshot); pool_growth = current max
+    event_seq minus the token's cutoff. Every invalid-token class --
+    malformed, altered, foreign-session, post-reset, post-restart -- gets
+    the byte-identical neutral 400. Pure read."""
+    s = g.session
+    ident = _verify_snapshot_token(s, request.args.get("token", ""))
+    if ident is None:
+        return jsonify({"error": "Unknown token"}), 400
+    rows, cur_max, world_hosts = _visible_rows(s)
+    scope = ident["scope"]
+    scope_hosts = None
+    if scope != "session":
+        sc = _incident_observable_scope(s, scope)
+        if sc is None:
+            # A MAC-valid token with an unresolvable scope cannot arise
+            # in-session (rotation kills cross-generation tokens); neutral
+            # anyway, never a distinct error.
+            return jsonify({"error": "Unknown token"}), 400
+        scope_hosts = set(sc["hosts"])
+    catalog = _event_catalog().with_hostnames(
+        _observable_hostnames(rows, world_hosts))
+    try:
+        query = lcql.parse(ident["canonical_query"], catalog=catalog)
+    except lcql.LcqlError:
+        # Unreachable for genuine tokens (the observable namespace only
+        # grows within a session generation); neutral, not distinct.
+        return jsonify({"error": "Unknown token"}), 400
+    stored_range = (ident["resolved_range"]["start"],
+                    ident["resolved_range"]["end"])
+    displayed_ids = {r["id"] for r in _match_rows(
+        rows, query, stored_range, scope_hosts, ident["cutoff_seq"])}
+    now_range = _resolve_timeframe(query.timeframe, rows, s["id"])
+    refresh = _match_rows(rows, query, now_range, scope_hosts, cur_max)
+    return jsonify({
+        "new_count": sum(1 for r in refresh if r["id"] not in displayed_ids),
+        "pool_growth": cur_max - ident["cutoff_seq"],
+    })
+
+
 @app.route('/api/endpoints', methods=['GET'])
 def get_endpoints():
     """Endpoint list: one row per managed host in the session world. The
@@ -3078,6 +3124,9 @@ def reset_simulator():
     s["scenario_history"] = []
     s["gap_rng"] = None
     s["event_seq"] = 0
+    # Stage 4 P3.2: rotating the secret invalidates every outstanding
+    # snapshot token (Reset / Practice Another / restart all fail neutral).
+    s["snapshot_secret"] = os.urandom(32)
 
     with s["io_lock"]:
         s["world"] = {"hosts": {}, "started_at": None}
@@ -4955,6 +5004,8 @@ def start_simulator():
     # Stage 4 A1: dedicated per-session stream for authored [lo, hi] gap
     # ranges, seeded from the epoch digest (never the shared global RNG).
     s["gap_rng"] = sim_epoch.gap_rng(s["id"])
+    # Stage 4 P3.2: a fresh run invalidates outstanding snapshot tokens.
+    s["snapshot_secret"] = os.urandom(32)
     s["timer_start"] = now
     s["next_drip_at"] = now  # First alert drips immediately
     s["scenario_start_time"] = time.time() * 1000

@@ -349,6 +349,167 @@ def test_unseen_repository_hostname_rejected_and_never_suggested():
         _stop(sid, s)
 
 
+# --- Phase 3.2: token security and the refresh-now new-count ----------------
+
+def _new_count(client, sid, token, extra=None):
+    qs = {"token": token}
+    if extra:
+        qs.update(extra)
+    return client.get("/api/events/query/new-count", query_string=qs,
+                      headers={"X-Session-ID": sid})
+
+
+def test_invalid_tokens_fail_neutrally_and_identically():
+    """Every invalid-token class returns the byte-identical neutral 400:
+    altered payload, altered MAC, garbage, empty, foreign-session,
+    post-Reset, post-start (Practice Another's path), and the post-restart
+    stale-session case, where the session middleware (get_session,
+    app.py:224-229) auto-creates a FRESH session for a stale session id, so
+    the stale token hits the MAC path under a brand-new secret and fails
+    exactly like every other class."""
+    client, sid, s = _api_session()
+    client_b, sid_b, s_b = _api_session()
+    fresh_sid = None
+    try:
+        _seed_pool(s, sid)
+        _seed_pool(s_b, sid_b)
+        token = _q(client, sid, "all | * | * | *").get_json()["token"]
+        assert _new_count(client, sid, token).status_code == 200  # sane baseline
+        p64, m64 = token.split(".")
+        altered_payload = (("A" if p64[0] != "A" else "B") + p64[1:]) + "." + m64
+        altered_mac = p64 + "." + (("A" if m64[0] != "A" else "B") + m64[1:])
+        foreign = _q(client_b, sid_b, "all | * | * | *").get_json()["token"]
+
+        bodies = []
+        for tok in (altered_payload, altered_mac, "garbage", "", foreign):
+            r = _new_count(client, sid, tok)
+            assert r.status_code == 400
+            bodies.append(r.data)
+
+        # post-Reset: the same session rotates its secret
+        assert client.post("/api/reset-simulator",
+                           headers={"X-Session-ID": sid}).status_code == 200
+        r = _new_count(client, sid, token)
+        assert r.status_code == 400
+        bodies.append(r.data)
+
+        # post-start (the Practice Another path): rotate again
+        _seed_pool(s, sid, n=1)
+        token2 = _q(client, sid, "all | * | * | *").get_json()["token"]
+        assert client.post(
+            "/api/start-simulator",
+            headers={"X-Session-ID": sid, "Content-Type": "application/json"},
+            data=json.dumps({"game_mode": "guided", "catalog_id": "random",
+                             "analyst_name": "Probe"})).status_code == 200
+        r = _new_count(client, sid, token2)
+        assert r.status_code == 400
+        bodies.append(r.data)
+
+        # post-'restart': drop the session (as a process restart would) and
+        # present the stale sid + stale token. The middleware must
+        # auto-create a fresh session (new id in the response header) and
+        # the body must be the same neutral 400.
+        app.sessions.pop(sid, None)
+        s["paused"] = True
+        r = _new_count(client, sid, token2)
+        assert r.status_code == 400
+        bodies.append(r.data)
+        fresh_sid = r.headers["X-Session-ID"]
+        assert fresh_sid != sid, "middleware must mint a fresh session id"
+        assert fresh_sid in app.sessions, "the fresh session must exist"
+
+        assert len(set(bodies)) == 1, \
+            "all invalid-token classes must be byte-identical"
+        assert json.loads(bodies[0]) == {"error": "Unknown token"}
+    finally:
+        time.sleep(1.2)          # the started writer thread drains
+        shutil.rmtree(s.get("session_dir", ""), ignore_errors=True)
+        _stop(sid_b, s_b)
+        if fresh_sid and fresh_sid in app.sessions:
+            _stop(fresh_sid, app.sessions[fresh_sid])
+
+
+def test_new_count_matches_refresh_now_semantics_and_pool_growth():
+    """R16 refresh-now: the count is what Refresh would add NOW -- TIMEFRAME
+    re-resolved at count time -- so a matching event time-stamped BEYOND the
+    token's original window end still counts (the strict-window meaning
+    would report 0 for it). pool_growth is the all-events counter."""
+    client, sid, s = _api_session()
+    try:
+        epoch = sim_epoch.epoch_dt(sid)
+        _seed_pool(s, sid, n=3)                       # ts +10s..+30s, seq 1-3
+        q = '1h | Sysmon | ProcessCreate | message contains "seeded"'
+        minted = _q(client, sid, q).get_json()
+        token = minted["token"]
+        assert minted["identity"]["cutoff_seq"] == 3
+        original_end = minted["identity"]["resolved_range"]["end"]
+
+        # two matching + one non-matching arrival, all AFTER the original end
+        for i, (msg, secs) in enumerate((("seeded late one", 40),
+                                         ("seeded late two", 50),
+                                         ("unrelated noise", 60))):
+            app.append_pool_event(s, _ev(
+                f"new-{i}", ts=(epoch + timedelta(seconds=secs)).isoformat(),
+                message=msg))
+        assert minted["identity"]["resolved_range"]["end"] == original_end
+
+        body = _new_count(client, sid, token).get_json()
+        assert body == {"new_count": 2, "pool_growth": 3}, body
+        # deterministic and read-only: identical on a second call
+        assert _new_count(client, sid, token).get_json() == body
+    finally:
+        _stop(sid, s)
+
+
+def test_new_count_request_carries_token_only():
+    """Edited bar text structurally cannot alter the count: extra q/scope
+    parameters are ignored -- the response equals the token-only response."""
+    client, sid, s = _api_session()
+    try:
+        _seed_pool(s, sid)
+        token = _q(client, sid, "all | * | * | *").get_json()["token"]
+        plain = _new_count(client, sid, token)
+        noisy = _new_count(client, sid, token,
+                           extra={"q": '1h | * | * | message contains "zz"',
+                                  "scope": "INC-1111"})
+        assert plain.status_code == noisy.status_code == 200
+        assert plain.data == noisy.data
+    finally:
+        _stop(sid, s)
+
+
+def test_new_count_does_not_mutate():
+    client, sid, s = _api_session()
+    try:
+        _seed_pool(s, sid)
+        token = _q(client, sid, "all | * | * | *").get_json()["token"]
+        path = s["paths"]["generated_logs"]
+        with open(path, "rb") as f:
+            before = f.read()
+        seq_before = s["event_seq"]
+        assert _new_count(client, sid, token).status_code == 200
+        with open(path, "rb") as f:
+            assert f.read() == before
+        assert s["event_seq"] == seq_before
+    finally:
+        _stop(sid, s)
+
+
+def test_token_reexecution_equals_identity_reexecution():
+    """The token identifies, it does not store: the displayed set the count
+    read reconstructs from the token equals a fresh execution of the same
+    canonical query (deterministic replay), evidenced by a zero count on an
+    unchanged pool."""
+    client, sid, s = _api_session()
+    try:
+        _seed_pool(s, sid)
+        token = _q(client, sid, "all | * | * | *").get_json()["token"]
+        assert _new_count(client, sid, token).get_json() == \
+            {"new_count": 0, "pool_growth": 0}
+    finally:
+        _stop(sid, s)
+
+
 if __name__ == "__main__":
     import traceback
     tests = [(n, f) for n, f in sorted(globals().items())
