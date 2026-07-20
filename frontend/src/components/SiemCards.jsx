@@ -1,18 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { sevColor, sourceColor, sanitizeEvent } from './siemUtils';
+import { sevColor, sourceColor } from './siemUtils';
 
-// SIEM card view: event cards color-coded by source family, expandable to
-// the sanitized raw-log JSON. Presentational only; renders the frozen
-// snapshot rows. Selection is CONTROLLED by the workbench shell (Stage 4
-// P5.1: one inspector, selection keyed by event id, persisting across view
-// toggles and surviving Refresh when the id survives).
+// SIEM card view: event cards color-coded by source family. Presentational
+// only; renders the frozen snapshot rows. Selection is CONTROLLED by the
+// workbench shell (Stage 4 P5.1: one inspector, selection keyed by event
+// id, persisting across view toggles and surviving Refresh when the id
+// survives). The selected card's full detail renders in the shared
+// EventInspector below the results (Stage 4 P6.3) -- this component only
+// highlights which card is selected; it has no inline expansion.
 
 const PER_PAGE = 12;
 
 const timeOf = (iso) =>
   iso ? new Date(iso).toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
 
-const SiemCards = ({ alerts, resetTrigger, onHostPivot, selectedId, onSelect }) => {
+const SiemCards = ({ alerts, resetTrigger, selectedId, onSelect }) => {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -68,7 +70,9 @@ const SiemCards = ({ alerts, resetTrigger, onHostPivot, selectedId, onSelect }) 
           return (
             <div
               key={alert.id}
-              className="bg-white rounded-xl border border-[#e2e6ea] overflow-hidden flex flex-col"
+              className={`bg-white rounded-xl border overflow-hidden flex flex-col ${
+                isOpen ? 'border-[#16436b] ring-1 ring-[#16436b]' : 'border-[#e2e6ea]'
+              }`}
               style={{ borderLeft: `3px solid ${sevColor(alert.severity)}`, boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
             >
               <button
@@ -100,26 +104,6 @@ const SiemCards = ({ alerts, resetTrigger, onHostPivot, selectedId, onSelect }) 
                   {alert.message || '-'}
                 </p>
               </button>
-              {isOpen && (
-                <div className="border-t border-[#eef1f4]">
-                  {alert.hostname && onHostPivot && (
-                    <div className="px-4 pt-3 text-xs">
-                      <button
-                        type="button"
-                        onClick={() => onHostPivot(alert.hostname)}
-                        className="text-[#16436b] hover:underline font-mono"
-                        title={`Open ${alert.hostname} in Endpoints`}
-                      >
-                        {alert.hostname}
-                      </button>
-                      <span className="text-[#8b949e]"> in Endpoints</span>
-                    </div>
-                  )}
-                  <pre className="m-3 p-3 rounded-lg bg-[#f6f8fa] border border-[#eef1f4] text-[11px] leading-relaxed font-mono text-[#1a2332] overflow-x-auto">
-{JSON.stringify(sanitizeEvent(alert), null, 2)}
-                  </pre>
-                </div>
-              )}
             </div>
           );
         })}

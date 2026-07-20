@@ -3,6 +3,7 @@ import { apiFetch } from '../api';
 import SiemTable from './SiemTable';
 import SiemCards from './SiemCards';
 import FieldSidebar from './FieldSidebar';
+import EventInspector from './EventInspector';
 import { refineFilter } from './lcqlPivots';
 
 // SIEM Investigation Workbench shell (Stage 4 Phase 4). Analyst-driven:
@@ -471,12 +472,17 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
           <FieldSidebar snapshot={snapshot} running={running} onValueClick={refineAndRun} />
           <div data-testid="workbench-results" className="flex-1 min-w-0">
             {view === 'cards' ? (
-              <SiemCards alerts={snapshot.rows} resetTrigger={resetTrigger} onHostPivot={onHostPivot}
+              <SiemCards alerts={snapshot.rows} resetTrigger={resetTrigger}
                          selectedId={selectedId} onSelect={selectRow} />
             ) : (
-              <SiemTable alerts={snapshot.rows} resetTrigger={resetTrigger} onHostPivot={onHostPivot}
+              <SiemTable alerts={snapshot.rows} resetTrigger={resetTrigger}
                          selectedId={selectedId} onSelect={selectRow} />
             )}
+            <EventInspector
+              event={snapshot.rows.find((r) => r.id === selectedId) || null}
+              onFilter={refineAndRun}
+              onHostPivot={onHostPivot}
+            />
           </div>
         </div>
       )}

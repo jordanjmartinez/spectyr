@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { sevColor, sanitizeEvent } from './siemUtils';
+import { sevColor } from './siemUtils';
 
-// SIEM table view (Stage 1.5): presentational. Receives the already-filtered
-// cached pool from Siem.jsx; owns only pagination, sorting, and expansion.
+// SIEM table view: presentational. Receives the frozen snapshot rows from
+// Siem.jsx; owns pagination and client-only column sorting (contract
+// Section 7: sort is view state over the frozen row set, never a re-fetch).
+// Selection is CONTROLLED by the shell; the selected row's full detail
+// renders in the shared EventInspector below (Stage 4 P6.3) -- this
+// component only highlights the selected row, no inline expansion.
 
 const SORTABLE = [
   { key: 'timestamp', label: 'Time' },
@@ -12,7 +16,7 @@ const SORTABLE = [
   { key: 'destination_ip', label: 'Dst IP' },
 ];
 
-const SiemTable = ({ alerts, resetTrigger, onHostPivot, selectedId, onSelect }) => {
+const SiemTable = ({ alerts, resetTrigger, selectedId, onSelect }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [alertsPerPage, setAlertsPerPage] = useState(20);
   const [sort, setSort] = useState(null); // { key, dir } or null = server canonical order
@@ -50,67 +54,6 @@ const SiemTable = ({ alerts, resetTrigger, onHostPivot, selectedId, onSelect }) 
   const changePage = (n) => { if (n >= 1 && n <= totalPages) setCurrentPage(n); };
   // Selection is controlled by the shell (P5.1): one inspector, id-keyed.
   const toggleRow = (id) => onSelect?.(id === selectedId ? null : id);
-
-  const renderCleanEventDetails = (log) => {
-    const raw = sanitizeEvent(log);
-    const commonFields = [
-      ['timestamp', raw.timestamp ? raw.timestamp.replace('T', ' ').replace(/\.\d+.*$/, '') : null],
-      ['event_type', raw.event_type],
-      ['source_type', raw.source_type || 'Unknown'],
-      ['host', raw.hostname],
-      ['src_ip', raw.source_ip],
-      ['user', raw.user_account],
-    ];
-    const excludedKvp = [
-      'event_id', 'host', 'event_type', 'device_id', 'class_id',
-      'compatible_ids', 'location', 'subject_user', 'subject_domain',
-      'utc_time', 'process_guid', 'parent_command_line',
-      'parent_process_id', 'integrity_level', 'hashes',
-      'image', 'parent_image', 'user',
-    ];
-    const kvpFields = raw.key_value_pairs
-      ? Object.entries(raw.key_value_pairs).filter(([k]) => !excludedKvp.includes(k))
-      : [];
-    const allKeys = [...commonFields.filter(([, v]) => v).map(([k]) => k), ...kvpFields.map(([k]) => k), 'message'];
-    const maxKeyLen = Math.max(...allKeys.map(k => k.length));
-
-    return (
-      <div className="log-detail space-y-0.5">
-        {commonFields
-          .filter(([, v]) => v)
-          .map(([k, v]) => (
-            <div key={k}>
-              <span className="text-[#6e7781]">{k.padEnd(maxKeyLen)}</span>
-              <span className="text-[#6e7781]"> = </span>
-              {k === 'host' && onHostPivot ? (
-                <button
-                  type="button"
-                  onClick={() => onHostPivot(v)}
-                  className="text-[#16436b] hover:underline"
-                  title={`Open ${v} in Endpoints`}
-                >
-                  {v}
-                </button>
-              ) : (
-                <span className="text-[#1a2332]">{v}</span>
-              )}
-            </div>
-          ))}
-        {kvpFields.map(([k, v]) => (
-          <div key={k}>
-            <span className="text-[#6e7781]">{k.padEnd(maxKeyLen)}</span>
-            <span className="text-[#6e7781]"> = </span>
-            <span className="text-[#1a2332]">{String(v)}</span>
-          </div>
-        ))}
-        <div>
-          <span className="text-[#6e7781]">{'message'.padEnd(maxKeyLen)}</span>
-          <span className="text-[#6e7781]"> = </span>
-          <span className="text-[#1a2332]">{raw.message || ''}</span>
-        </div>
-      </div>
-    );
-  };
 
   const renderPaginationButtons = () => {
     const buttons = [];
@@ -225,9 +168,11 @@ const SiemTable = ({ alerts, resetTrigger, onHostPivot, selectedId, onSelect }) 
               </thead>
               <tbody className="divide-y divide-[#e2e6ea]">
                 {currentAlerts.map((alert) => (
-                  <React.Fragment key={alert.id}>
-                    <tr
-                      className="hover:bg-[#f6f8fa] transition-colors cursor-pointer border-b border-[#e2e6ea]/50"
+                  <tr
+                      key={alert.id}
+                      className={`hover:bg-[#f6f8fa] transition-colors cursor-pointer border-b border-[#e2e6ea]/50 ${
+                        alert.id === selectedId ? 'bg-[#eef1f4]' : ''
+                      }`}
                       onClick={() => toggleRow(alert.id)}
                     >
                       <td className="px-2 sm:px-4 py-4 border-l-[3px]" style={{ borderLeftColor: sevColor(alert.severity) }}>
@@ -257,19 +202,6 @@ const SiemTable = ({ alerts, resetTrigger, onHostPivot, selectedId, onSelect }) 
                         {alert.message || '-'}
                       </td>
                     </tr>
-                    <tr>
-                      <td colSpan="7" className="p-0">
-                        <div className={`grid transition-all duration-300 ease-in-out ${
-                          alert.id === selectedId ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-                        }`}>
-                          <div className="overflow-hidden min-h-0">
-                            <div style={{ height: '1px', background: 'linear-gradient(to right, rgba(0,0,0,0.08), transparent)' }} />
-                            <div className="px-6 py-4">{renderCleanEventDetails(alert)}</div>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  </React.Fragment>
                 ))}
               </tbody>
             </table>
