@@ -18,6 +18,11 @@ import threading
 import action_overlay
 import persistence
 
+# Stage 4 A1: the deterministic simulation epoch every occurrence timestamp
+# derives from (world["started_at"] IS the epoch; drip orchestration stays
+# wall clock). Stdlib-only.
+import sim_epoch
+
 app = Flask(__name__)
 CORS(app, supports_credentials=True, expose_headers=["X-Session-ID"], origins=[
     "http://localhost:3000",
@@ -141,8 +146,12 @@ def create_session():
         "scenario_start_time": None,
         "last_active": datetime.now(timezone.utc),
         # Stage 1 endpoint snapshots (io_lock guards it). started_at is the
-        # frozen session timestamp every generated world time derives from.
+        # frozen session timestamp every generated world time derives from
+        # (the Stage 4 A1 simulation epoch, set at start_simulator).
         "world": {"hosts": {}, "started_at": None},
+        # Stage 4 A1: the dedicated authored-gap RNG stream (set at
+        # start_simulator; None means bare/unstarted -> global-RNG fallback).
+        "gap_rng": None,
         # Stage 2 detections feed (io_lock guards it). Instances carry
         # server-side dispositions; benign_hosts tracks which hosts already
         # got their ambient benign detections.
@@ -2222,20 +2231,24 @@ def _raw_chain_ndjson(scenario_label, emp):
     return base_logs, gaps
 
 
-def _raw_chain_yaml(scenario_label, emp):
+def _raw_chain_yaml(scenario_label, emp, rng=None):
     """Phase 1 source: resolved base logs + authored per-step offset from YAML.
     Produces the same base-log keys the NDJSON path yields (label +
-    threat_pattern + step fields + key_value_pairs)."""
+    threat_pattern + step fields + key_value_pairs). Authored [lo, hi] gap
+    ranges draw from the given rng (the session's dedicated epoch-seeded
+    stream, Stage 4 A1) or fall back to the global random module for bare
+    harness sessions (parity_check_v2 seeds the global RNG itself)."""
     scenario = yaml_catalog.get(scenario_label)
     if not scenario:
         return None
     resolved = scenario_loader.resolve_entities(
         scenario, EMPLOYEES, SERVERS, rng=_ForcedChoice(emp)
     )
+    r = rng or random
     base_logs, gaps = [], []
     for i, step in enumerate(scenario["chain"]):
         off = step.get("offset", 0)
-        gap = 0 if i == 0 else (random.randint(off[0], off[1]) if isinstance(off, list) else off)
+        gap = 0 if i == 0 else (r.randint(off[0], off[1]) if isinstance(off, list) else off)
         gaps.append(gap)
         log = scenario_loader.substitute_deep(
             {k: v for k, v in step.items() if k != "offset"}, resolved
@@ -2389,14 +2402,24 @@ def build_attack_chain_logs(session, scenario_entry, employee=None):
     emp = employee or random.choice(EMPLOYEES)
 
     producer = _raw_chain_yaml if SCENARIO_SOURCE in ("yaml", "yaml_v2") else _raw_chain_ndjson
-    raw = producer(scenario_label, emp)
+    if producer is _raw_chain_yaml:
+        # Active path: authored gap ranges resolve from the session's dedicated
+        # epoch-seeded stream (Stage 4 A1). The NDJSON revert path is frozen
+        # and keeps its original signature.
+        raw = producer(scenario_label, emp, rng=session.get("gap_rng"))
+    else:
+        raw = producer(scenario_label, emp)
     if raw is None:
         return None
     base_logs, gaps = raw
 
     scenario_id = generate_scenario_id()
     scenario_entry["scenario_id"] = scenario_id
-    base_time = datetime.now(timezone.utc)
+    # Stage 4 A1: occurrence-time base = simulation epoch + per-queue-position
+    # spacing, never the wall clock. Falls back to SIM_BASE for bare harness
+    # sessions (no id).
+    base_time = sim_epoch.authored_base(session.get("id"),
+                                        scenario_entry.get("queue_position"))
 
     while True:
         alert_id = f"INC-{random.randint(1000, 9999)}"
@@ -2834,6 +2857,7 @@ def reset_simulator():
     s["next_drip_at"] = None
     s["scenario_start_time"] = None
     s["scenario_history"] = []
+    s["gap_rng"] = None
 
     with s["io_lock"]:
         s["world"] = {"hosts": {}, "started_at": None}
@@ -4692,9 +4716,11 @@ def start_simulator():
     s["scenario_history"] = []
     now = datetime.now(timezone.utc)
     with s["io_lock"]:
-        # fresh run, fresh endpoint world; freeze the session timestamp all
-        # generated world times derive from (nothing reads the live clock)
-        s["world"] = {"hosts": {}, "started_at": now.replace(microsecond=0).isoformat()}
+        # fresh run, fresh endpoint world; the frozen session timestamp all
+        # generated world times derive from is the deterministic simulation
+        # epoch (Stage 4 A1) -- never the live clock. The response-action
+        # clock inherits it through started_at unchanged.
+        s["world"] = {"hosts": {}, "started_at": sim_epoch.epoch_iso(s["id"])}
         s["detections"] = []
         s["detection_index"] = {}
         s["benign_hosts"] = set()
@@ -4706,6 +4732,9 @@ def start_simulator():
         s["submissions"] = {}
         s["incident_index"] = {}
         s["assisted"] = set()
+    # Stage 4 A1: dedicated per-session stream for authored [lo, hi] gap
+    # ranges, seeded from the epoch digest (never the shared global RNG).
+    s["gap_rng"] = sim_epoch.gap_rng(s["id"])
     s["timer_start"] = now
     s["next_drip_at"] = now  # First alert drips immediately
     s["scenario_start_time"] = time.time() * 1000
