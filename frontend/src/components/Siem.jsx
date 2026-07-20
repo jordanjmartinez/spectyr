@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../api';
 import SiemTable from './SiemTable';
 import SiemCards from './SiemCards';
+import FieldSidebar from './FieldSidebar';
+import { refineFilter } from './lcqlPivots';
 
 // SIEM Investigation Workbench shell (Stage 4 Phase 4). Analyst-driven:
 // the shell submits LCQL text to the server's single query read and renders
@@ -44,6 +46,10 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
   // it persists across view toggles and Refresh (when the id survives).
   const [selectedId, setSelectedId] = useState(null);
   const [selectionNotice, setSelectionNotice] = useState(null);
+  // P6.1/6.2: the OR-fallback notice from a sidebar/inspector refinement
+  // (distinct lifecycle from selectionNotice -- set only when refineFilter
+  // reports `fresh`, cleared by any subsequent plain Run/Refresh).
+  const [queryNotice, setQueryNotice] = useState(null);
   // P5.2: the new-events indicator (contract Section 8, R16 refresh-now).
   // Token-bound: the poll carries ONLY the executed snapshot's token, so
   // edited bar text structurally cannot influence the count. countHalted
@@ -68,6 +74,7 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
     setScope({ kind: 'session' });
     setSelectedId(null);
     setSelectionNotice(null);
+    setQueryNotice(null);
   }, [resetTrigger]);
 
   useEffect(() => {
@@ -133,7 +140,10 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
     });
   };
 
-  const execute = (q, scopeValue) => {
+  // `noticeAfter`: the OR-fallback text to show once THIS run lands (null
+  // clears any stale notice from an earlier refinement -- plain Run/Refresh
+  // always pass none).
+  const execute = (q, scopeValue, noticeAfter = null) => {
     if (running) return;
     setRunning(true);
     apiFetch(`/api/events/query?q=${encodeURIComponent(q)}&scope=${encodeURIComponent(scopeValue)}`)
@@ -141,6 +151,7 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
         const body = await res.json().catch(() => null);
         if (res.ok && body) {
           applySnapshot(body);
+          setQueryNotice(noticeAfter);
         } else if (body && body.error && typeof body.error === 'object') {
           setError(body.error);
         } else {
@@ -166,6 +177,17 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
   const selectRow = (id) => {
     setSelectedId(id);
     setSelectionNotice(null);
+  };
+
+  // Sidebar value clicks and inspector ==/!= actions ROUTE ONLY through the
+  // approved generator (lcqlPivots.refineFilter); the resulting query is
+  // executed immediately as a new snapshot (contract Section 13: "Every
+  // pivot ... executes it as a new snapshot").
+  const refineAndRun = (field, op, value) => {
+    if (!snapshot || running || scopeBlocked) return;
+    const { query, fresh, notice } = refineFilter(snapshot.identity.canonical_query, field, op, value);
+    setQueryText(query);
+    execute(query, scopeParam, fresh ? notice : null);
   };
 
   // P5.2 indicator poll: token-bound only; passive (the snapshot never
@@ -397,6 +419,11 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
             {selectionNotice}
           </div>
         )}
+        {queryNotice && (
+          <div role="status" data-testid="query-notice" className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a]">
+            {queryNotice}
+          </div>
+        )}
       </div>
 
       {/* Results */}
@@ -429,19 +456,29 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
           </p>
         </div>
       ) : snapshot.count === 0 ? (
-        <div
-          className="p-6 rounded-xl flex flex-col items-center justify-center py-14"
-          style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
-        >
-          <p className="text-sm text-[#1a2332] mb-1">0 events match</p>
-          <p className="text-xs text-[#6e7781] log-mono">{snapshot.identity.canonical_query}</p>
+        <div className="flex flex-col lg:flex-row gap-4">
+          <FieldSidebar snapshot={snapshot} running={running} onValueClick={refineAndRun} />
+          <div
+            className="flex-1 min-w-0 p-6 rounded-xl flex flex-col items-center justify-center py-14"
+            style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+          >
+            <p className="text-sm text-[#1a2332] mb-1">0 events match</p>
+            <p className="text-xs text-[#6e7781] log-mono">{snapshot.identity.canonical_query}</p>
+          </div>
         </div>
-      ) : view === 'cards' ? (
-        <SiemCards alerts={snapshot.rows} resetTrigger={resetTrigger} onHostPivot={onHostPivot}
-                   selectedId={selectedId} onSelect={selectRow} />
       ) : (
-        <SiemTable alerts={snapshot.rows} resetTrigger={resetTrigger} onHostPivot={onHostPivot}
-                   selectedId={selectedId} onSelect={selectRow} />
+        <div className="flex flex-col lg:flex-row gap-4">
+          <FieldSidebar snapshot={snapshot} running={running} onValueClick={refineAndRun} />
+          <div data-testid="workbench-results" className="flex-1 min-w-0">
+            {view === 'cards' ? (
+              <SiemCards alerts={snapshot.rows} resetTrigger={resetTrigger} onHostPivot={onHostPivot}
+                         selectedId={selectedId} onSelect={selectRow} />
+            ) : (
+              <SiemTable alerts={snapshot.rows} resetTrigger={resetTrigger} onHostPivot={onHostPivot}
+                         selectedId={selectedId} onSelect={selectRow} />
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

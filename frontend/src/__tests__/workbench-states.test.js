@@ -10,7 +10,7 @@
  * disagree in either direction.
  */
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import Siem from '../components/Siem';
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
@@ -62,6 +62,11 @@ const selectIncidentScope = async () => {
     fireEvent.change(screen.getByLabelText('Scope'), { target: { value: INC } });
   });
 };
+
+// The field sidebar (P6.2) also renders top message VALUES, which can
+// duplicate a row's own message text; scope row-content queries to the
+// results pane specifically so they cannot match a sidebar button too.
+const results = () => within(screen.getByTestId('workbench-results'));
 
 test('an active incident elsewhere never scopes the SIEM silently', async () => {
   // Default-scope rule (R10, Phase 4 closure): ordinary navigation opens
@@ -116,7 +121,7 @@ test('submitted incidents stay selectable as scope (no special casing)', async (
 test('scope-error: chip retained, prior snapshot preserved, Run disabled, no silent fallback; retry and explicit Session-wide recover', async () => {
   renderShell();
   await runSessionQuery();
-  expect(screen.getByText(/nmap.exe launched/)).toBeInTheDocument();
+  expect(results().getByText(/nmap.exe launched/)).toBeInTheDocument();
   const callsBefore = apiFetch.mock.calls.length;
 
   scopeResponse = () => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) });
@@ -126,7 +131,7 @@ test('scope-error: chip retained, prior snapshot preserved, Run disabled, no sil
   expect(screen.getByTestId('scope-chip').textContent).toContain(INC);
   expect(screen.getByRole('alert').textContent).toContain('Incident scope could not be loaded.');
   // prior snapshot untouched
-  expect(screen.getByText(/nmap.exe launched/)).toBeInTheDocument();
+  expect(results().getByText(/nmap.exe launched/)).toBeInTheDocument();
   // Run disabled
   expect(screen.getByRole('button', { name: /Run Query/ })).toBeDisabled();
   // no silent Session-wide fallback: the control still shows the incident

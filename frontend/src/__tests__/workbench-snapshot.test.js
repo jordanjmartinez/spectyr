@@ -7,7 +7,7 @@
  * 5.2 extends this file with the new-events indicator battery.
  */
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import Siem from '../components/Siem';
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
@@ -63,6 +63,10 @@ const run = async (text) => {
 };
 
 const resultsHtml = () => document.querySelector('.grid').outerHTML;
+// The field sidebar (P6.2) also renders top message VALUES, which can
+// duplicate a row's own message text; scope row-content queries to the
+// results pane specifically so they cannot match a sidebar button too.
+const results = () => within(screen.getByTestId('workbench-results'));
 
 test('rows and order are byte-stable across unrelated re-renders', async () => {
   renderShell();
@@ -77,8 +81,8 @@ test('rows and order are byte-stable across unrelated re-renders', async () => {
 test('atomic replacement: prior rows fully visible while a run is pending, then swap whole', async () => {
   renderShell();
   await run('all | * | * | *');
-  expect(screen.getByText(/alpha event one/)).toBeInTheDocument();
-  expect(screen.getByText(/bravo event two/)).toBeInTheDocument();
+  expect(results().getByText(/alpha event one/)).toBeInTheDocument();
+  expect(results().getByText(/bravo event two/)).toBeInTheDocument();
 
   let resolveNext;
   queryResponses.push(new Promise((res) => {
@@ -87,12 +91,12 @@ test('atomic replacement: prior rows fully visible while a run is pending, then 
   fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
   fireEvent.click(screen.getByRole('button', { name: /Run Query|Running/ }));
   // pending: the prior snapshot is untouched and complete
-  expect(screen.getByText(/alpha event one/)).toBeInTheDocument();
-  expect(screen.getByText(/bravo event two/)).toBeInTheDocument();
+  expect(results().getByText(/alpha event one/)).toBeInTheDocument();
+  expect(results().getByText(/bravo event two/)).toBeInTheDocument();
   expect(screen.queryByText(/charlie event three/)).toBeNull();
   await act(async () => { resolveNext(); });
   // swapped whole: only the new row set renders
-  expect(screen.getByText(/charlie event three/)).toBeInTheDocument();
+  expect(results().getByText(/charlie event three/)).toBeInTheDocument();
   expect(screen.queryByText(/alpha event one/)).toBeNull();
   expect(screen.queryByText(/bravo event two/)).toBeNull();
 });
@@ -116,7 +120,7 @@ test('Refresh re-executes the executed identity, never the edited bar text', asy
 test('selection persists across Refresh when the inspected id survives', async () => {
   renderShell();
   await run('all | * | * | *');
-  fireEvent.click(screen.getByText(/alpha event one/));
+  fireEvent.click(results().getByText(/alpha event one/));
   expect(document.querySelector('pre')).not.toBeNull();   // inspector open
   queryResponses.push(ok(snap([R3, R2, R1], { token: 'tok.two' })));
   await act(async () => {
@@ -129,7 +133,7 @@ test('selection persists across Refresh when the inspected id survives', async (
 test('inspector closes with the one-line notice when the inspected id is gone', async () => {
   renderShell();
   await run('all | * | * | *');
-  fireEvent.click(screen.getByText(/alpha event one/));
+  fireEvent.click(results().getByText(/alpha event one/));
   expect(document.querySelector('pre')).not.toBeNull();
   queryResponses.push(ok(snap([R3], { token: 'tok.two' })));
   await act(async () => {
@@ -138,14 +142,14 @@ test('inspector closes with the one-line notice when the inspected id is gone', 
   expect(document.querySelector('pre')).toBeNull();       // inspector closed
   expect(screen.getByText('The inspected event is not in the new snapshot.')).toBeInTheDocument();
   // the notice clears on the next selection
-  fireEvent.click(screen.getByText(/charlie event three/));
+  fireEvent.click(results().getByText(/charlie event three/));
   expect(screen.queryByText('The inspected event is not in the new snapshot.')).toBeNull();
 });
 
 test('selection is shared across the Cards/Table view toggle', async () => {
   renderShell();
   await run('all | * | * | *');
-  fireEvent.click(screen.getByText(/alpha event one/));
+  fireEvent.click(results().getByText(/alpha event one/));
   fireEvent.click(screen.getByRole('button', { name: 'Table' }));
   expect(await screen.findByText('Src Type')).toBeInTheDocument();
   // the expanded table row for e1 renders the detail view

@@ -13,7 +13,7 @@
  * unquoted-value rules surface in the player-facing query help.
  */
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import Siem, { QUERY_PLACEHOLDER, QUERY_HELP_EXAMPLES } from '../components/Siem';
 import { sanitizeEvent } from '../components/siemUtils';
 
@@ -66,6 +66,11 @@ const run = async (text) => {
   });
 };
 
+// The field sidebar (P6.2) also renders top message VALUES, which can
+// duplicate a row's own message text; scope row-content queries to the
+// results pane specifically so they cannot match a sidebar button too.
+const results = () => within(screen.getByTestId('workbench-results'));
+
 test('empty state: canonical placeholder, two valid examples, GD-5a rules in the help copy', () => {
   renderShell();
   const bar = screen.getByLabelText('LCQL query');
@@ -89,7 +94,7 @@ test('Run Query submits the exact encoded text and renders the returned rows', a
   await run(q);
   const call = apiFetch.mock.calls.map(c => c[0]).find(p => p.startsWith('/api/events/query'));
   expect(call).toBe(`/api/events/query?q=${encodeURIComponent(q)}&scope=session`);
-  expect(screen.getByText(/nmap.exe launched/)).toBeInTheDocument();
+  expect(results().getByText(/nmap.exe launched/)).toBeInTheDocument();
   expect(screen.getByText(/as of seq #7/)).toBeInTheDocument();
 });
 
@@ -98,13 +103,13 @@ test('no client-side query execution: rows render exactly as served (P8)', async
   // that re-filtered would drop it. The shell must render it verbatim.
   renderShell();
   await run('1h | DNS | QUERY | query contains "zzz-no-such"');
-  expect(screen.getByText(/nmap.exe launched/)).toBeInTheDocument();
+  expect(results().getByText(/nmap.exe launched/)).toBeInTheDocument();
 });
 
 test('parse error renders position + reason + suggestions; prior snapshot intact', async () => {
   renderShell();
   await run('all | * | * | *');
-  expect(screen.getByText(/nmap.exe launched/)).toBeInTheDocument();
+  expect(results().getByText(/nmap.exe launched/)).toBeInTheDocument();
 
   queryResponses.push(bad(400, {
     error: { position: 14, reason: 'unknown field \'commandline\'', suggestions: ['command_line'] },
@@ -114,7 +119,7 @@ test('parse error renders position + reason + suggestions; prior snapshot intact
   expect(screen.getByRole('alert').textContent).toMatch(/unknown field/);
   expect(screen.getByRole('alert').textContent).toMatch(/command_line/);
   // the prior snapshot is untouched
-  expect(screen.getByText(/nmap.exe launched/)).toBeInTheDocument();
+  expect(results().getByText(/nmap.exe launched/)).toBeInTheDocument();
   expect(screen.getByText(/as of seq #7/)).toBeInTheDocument();
 });
 
@@ -137,7 +142,7 @@ test('loading state disables Run and makes the bar read-only until completion', 
   expect(screen.getByRole('button', { name: /Running/ })).toBeDisabled();
   expect(screen.getByLabelText('LCQL query')).toHaveAttribute('readonly');
   await act(async () => { resolveQuery(); });
-  expect(screen.getByText(/nmap.exe launched/)).toBeInTheDocument();
+  expect(results().getByText(/nmap.exe launched/)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /Run Query/ })).not.toBeDisabled();
 });
 
@@ -168,7 +173,7 @@ test('sanitizeEvent strips every simulation-internal field (carried forward)', (
 test('expanding a card shows sanitized JSON only (carried forward)', async () => {
   renderShell();
   await run('all | * | * | *');
-  fireEvent.click(screen.getByText(/nmap.exe launched/));
+  fireEvent.click(results().getByText(/nmap.exe launched/));
   const pre = document.querySelector('pre');
   expect(pre).not.toBeNull();
   for (const k of ['label', 'category', 'scenario_id', 'storyline', 'alert_id']) {
