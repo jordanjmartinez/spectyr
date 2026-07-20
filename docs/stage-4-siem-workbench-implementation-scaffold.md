@@ -1,8 +1,10 @@
 # Stage 4 SIEM Workbench — Implementation Scaffold
 
-**Status: proposed, awaiting owner and reviewer approval. No product code,
-tests, schemas, or endpoints land from this document until it is approved
-(scaffold -> approve -> implement, per the locked contract and CLAUDE.md).**
+**Status: APPROVED WITH CORRECTIONS (owner review, 2026-07-19); this
+revision folds in the eight review corrections plus the action-clock
+re-anchoring rule. Implementation is authorized on branch
+`stage-4-siem-workbench` from `main` after this correction commit, in the
+phase order below, stopping at every phase stop condition.**
 
 Governing document: `docs/stage-4a-siem-workbench-contract.md` — the
 canonical LOCKED Stage 4A contract (Revision 3, final; R1-R18; lock
@@ -133,6 +135,19 @@ deleted with its tests replaced in the same commit.
   alongside `id`. `EVENT_WHITELIST` (detection triggering events)
   **unchanged** — triggering events continue to serialize no `id` and gain
   no `event_seq` (preserves the enforced D11 invariant and R17's design).
+  **Transitional protocol compatibility (review correction 5):** the one
+  legacy consumer of top-level `protocol` is the SIEM search filter
+  (`siemUtils.js:11` `protocol`/`proto` aliases, read via
+  `alertFieldValue`, `siemUtils.js:33-34`; the display whitelist never
+  included it). Chosen option: update that consumer **in the same Phase
+  1.3 concern commit** — the `protocol` filter reads
+  `key_value_pairs.protocol` (top-level fallback kept for robustness) —
+  with its frontend test updated alongside, so the relocation never
+  breaks the live legacy SIEM between Phases 1 and 4. Delaying the
+  relocation to Phase 4 was rejected: it would carry a known population
+  discriminator (a leak-class defect) through Phases 2-3. **Every
+  serialized-payload change in Phase 1 runs the complete backend and
+  frontend gate (`run_gates.py --all`).**
 - **Constrained today by:** `test_event_disclosure.py` (8 tests),
   `test_detections.py::test_sanitized_triggering_events_are_whitelisted`,
   `::test_whole_corpus_detections_sanitize_clean`.
@@ -146,25 +161,32 @@ deleted with its tests replaced in the same commit.
 ### 2.3 `event_seq` assignment
 
 - **Current:** none; array position is the implicit stand-in (inventory 11).
-- **Target:** **added** allocator: `session["event_seq"]` counter,
-  incremented and stamped under `session["io_lock"]` at the single
-  pool-write choke point. Both write paths route through it:
-  `append_ndjson(session, "generated_logs", log)` (normal + attack writes
-  from `log_writer`) and the raw supplemental append inside
-  `build_attack_chain_logs` (`app.py:2471-2474`, already under `io_lock`).
-  Implementation shape: a small `_stamp_event_seq(session, log)` helper
-  called by both, so assignment is exactly-once and write-ordered. The
-  stamped value persists in the NDJSON row. Detection instances hold
+- **Target (review correction 4):** **added** allocator: **one actual
+  append-and-stamp helper is the only way a generated event enters the
+  pool.** Shape: `_append_pool_event_unlocked(session, log)` (stamp
+  `event_seq = counter + 1`, write the NDJSON line, then advance the
+  counter — so a failed append never advances it) plus a locking wrapper
+  `append_pool_event(session, log)`. Both existing write paths route
+  through it: the `log_writer` normal/attack writes (today
+  `append_ndjson`, `app.py:2604,:2620`) use the wrapper; the supplemental
+  append inside `build_attack_chain_logs` (`app.py:2471-2474`, already
+  under `io_lock`) uses the unlocked variant. **Sequence assignment and
+  the successful append occur inside one atomic `io_lock` boundary**;
+  the stamped value persists in the NDJSON row. This is load-bearing
+  for the API: `pool_growth = max_seq - cutoff_seq` is only a truthful
+  event count if the sequence is contiguous. Detection instances hold
   references to the same dicts; their serialization path
   (`sanitize_event`) whitelists `event_seq` away, so no linkage leaks.
 - **Constrained today by:** nothing (the identity gap is inventory finding
   D6/11).
-- **Tests to add:** `backend/test_event_seq.py` — uniqueness across a full
-  session pool; strict monotonicity in write order; assignment-once
-  (re-reads and re-serializations never re-stamp); pool append-only under
-  polling; read-no-mutation on every event read route; `event_seq` present
-  on every `/api/fake-events` (transitional) and query-read row; absent
-  from detection triggering events.
+- **Tests to add (permanent):** `backend/test_event_seq.py` — uniqueness
+  across a full session pool; **strict increase**; **contiguity (1..N, no
+  gaps)**; **assignment-once** (re-reads and re-serializations never
+  re-stamp); **no counter advancement on a failed append** (patched write
+  failure leaves the counter and the file consistent); pool append-only
+  under polling; read-no-mutation on every event read route; `event_seq`
+  present on every `/api/fake-events` (transitional) and query-read row;
+  absent from detection triggering events.
 
 ### 2.4 Simulation epoch and `world["started_at"]`
 
@@ -200,6 +222,58 @@ deleted with its tests replaced in the same commit.
   the same epoch; different ids yield different epochs; epoch is within
   the SIM_BASE window; `started_at == epoch`; snapshot-generator and
   action-clock guards re-run green against it.
+- **Harness compatibility (verified):** `parity_check_v2.py:99-100` calls
+  `build_attack_chain_logs` with a bare session dict (no `id`, no rng)
+  and seeds the global RNG itself. The A1 call sites therefore fall back
+  when session identity is absent: base time falls back to `SIM_BASE`
+  with zero offset, and gap draws fall back to the global `random`
+  module — both deterministic under the harness's own seeding, so the
+  parity harness is untouched.
+
+### 2.4b Response-action clock (review correction 6, with the re-anchoring rule)
+
+- **Exact current formula (verified):** `action_overlay.record_attempt`
+  (`action_overlay.py:469-471`): `overlay["seq"] += 1;
+  ts = datetime.fromisoformat(started_at) + timedelta(seconds=overlay["seq"])`,
+  microseconds zeroed. `started_at` is `world["started_at"]`, passed at
+  the one call site (`app.py:2804`).
+- **Monotonicity: proven.** `seq` strictly increments under the request
+  path; timestamps are `started_at + seq` seconds, hence strictly
+  increasing. Already guarded by
+  `test_actions.py::test_log_records_every_attempt_with_frozen_clock_sequence`.
+- **"Never timestamps before the visible evidence": disproven — today
+  and under A1 alike.** The action clock is a logical clock anchored at
+  session start: today actions stamp `wall_start + seq` seconds while
+  evidence occurrence times are wall-at-drip (minutes later); under A1
+  actions stamp `epoch + seq` seconds while evidence runs from
+  `epoch - 80s` (negative supplemental offsets) up to `epoch + ~19min`.
+  An action responding to late evidence has always carried an earlier
+  logical timestamp than that evidence. This is a pre-existing Stage 3.9
+  property, not an A1 regression; `seq` is the authoritative order.
+- **Must actions re-anchor to sim-now? NO — ruled out by the
+  determinism requirement.** Sim-now at action time is the maximum
+  visible occurrence timestamp, which depends on how many events the
+  nondeterministic drip interleave has written when the player acts. A1
+  deliberately leaves ordering unseeded, so a sim-now-anchored timestamp
+  cannot be a pure function of (session identity, action sequence), and
+  the Stage 3.9A byte-identical action-log invariant
+  (`test_actions.py::test_replay_determinism_byte_identical_logs`)
+  cannot be re-proven in its ruled sense. Per the owner's rule ("if it
+  cannot be, leave the action clock exactly as it is today"), **the
+  action clock is left byte-for-byte unchanged**. It inherits the epoch
+  base automatically through `started_at` — zero code change, all
+  existing guards untouched and green.
+- **Evidence added anyway (commit 1.1):**
+  `test_sim_epoch.py::test_action_clock_base_equals_epoch` (the log's
+  first timestamp derives from the epoch — the alignment the contract's
+  finalization item 3 asks for) and
+  `test_sim_epoch.py::test_action_score_is_timestamp_invariant`
+  (`compute_action_score` output is unchanged under arbitrary mutation
+  of log timestamps — scoring never reads the clock).
+- **Recorded, not built:** a timeline-coherent action *display* (e.g.
+  presenting the Response Log on the sim timeline) would require the
+  deferred deterministic anchoring and comes back as an explicit
+  amendment if ever wanted.
 
 ### 2.5 LCQL tokenizer / parser / AST / canonicalizer
 
@@ -255,9 +329,17 @@ deleted with its tests replaced in the same commit.
   `{canonical_query, scope, resolved_range: {start, end}, cutoff_seq}`
   computed at execution: canonical query from the parser; scope validated
   (`session` or known incident id); TIMEFRAME resolved against sim-now
-  (max visible occurrence timestamp; for `all`, `start` = the simulation
-  epoch and `end` = sim-now; empty pool resolves `start == end == epoch`);
-  `cutoff_seq` = current max `event_seq` (0 when the pool is empty).
+  (max visible occurrence timestamp). **`all` resolution (review
+  correction 1):** `start` = the **minimum visible occurrence timestamp**
+  and `end` = sim-now — never the epoch, because authored negative
+  supplemental offsets place events before the epoch (e.g.
+  `data_exfil_archive` supplemental events at -80s/-65s), and an
+  epoch-anchored `all` would exclude them. Empty pool: `start == end ==`
+  the epoch (permitted). A pinned fixture proves the rule
+  (`test_query_read.py::test_all_range_includes_negative_offset_supplemental`:
+  drip a negative-offset scenario, then `all | * | * | *` returns every
+  visible event). `cutoff_seq` = current max `event_seq` (0 when the pool
+  is empty).
   Sort is **not** identity: the response rows are always in canonical
   server order — occurrence `timestamp` descending, then `event_seq`
   descending, then `id`.
@@ -333,10 +415,20 @@ deleted with its tests replaced in the same commit.
   (`EMPLOYEES` workstations + `SERVERS` hostnames). Case-insensitive
   resolution to catalog-canonical case (GD-2); resolution order canonical
   top-level first, then kvp (contract 10.2).
+  **Two catalogs, separated (review correction 8):** the catalog exposes
+  `SERIALIZED_FIELDS` (everything the payload/display/inspector may
+  carry, including `event_seq`) and `FILTERABLE_FIELDS` (what a FILTERS
+  predicate may name) as distinct sets, with
+  `FILTERABLE_FIELDS = SERIALIZED_FIELDS - {event_seq}` in v1: `id` IS
+  filterable (contract 10.1, exact-event queries), `event_seq` serializes
+  and renders in the inspector but is **rejected by the parser as a
+  FILTERS field** with a parse-time error naming it as not filterable.
 - **Tests to add:** in `test_lcql.py` — catalog contains every serialized
   field observed on a live drip of both populations and nothing outside
   the sanitized shape; `RiskLevel`-style case resolution; shadowed-key
-  addressing; unknown-name suggestions.
+  addressing; unknown-name suggestions;
+  `test_lcql.py::test_event_seq_rejected_as_filter_field` (the parser
+  rejection, permanent).
 
 ### 2.12 SIEM frontend state
 
@@ -393,10 +485,22 @@ deleted with its tests replaced in the same commit.
   lowercase spaced operators; the scan honors GD-5 escapes). This is
   generation logic, not query execution, so P8 (no client-side execution)
   is preserved; the choke-point test pins its behavior.
+  **Equivalence boundary (review requirement):** `lcqlPivots.js` carries
+  a permanent comment stating that the lexical OR scan is equivalent to
+  AST conjunction-detection **only while LCQL has no grouping or
+  parentheses**; if grouping is ever introduced (a deferred grammar
+  item), this mechanism must be replaced, not patched. The equivalence
+  itself is pinned by a shared fixture corpus: a list of FILTERS strings
+  with expected conjunction-only verdicts, asserted against the lexical
+  scan in `workbench-pivots.test.js` and against the parser's AST in
+  `test_lcql.py::test_or_scan_fixture_corpus_matches_ast_verdicts` — the
+  same corpus, both engines, permanent.
 - **Tests to add:** `workbench-pivots.test.js` — every documented form
   emits exactly the documented shape; escaping; the OR-case fresh-query
-  fallback and notice. Backend: `test_lcql.py::test_documented_pivot_and_descent_forms_parse`
-  parses the same pinned fixture strings, closing the loop.
+  fallback and notice; the shared OR-scan fixture corpus. Backend:
+  `test_lcql.py::test_documented_pivot_and_descent_forms_parse` parses
+  the same pinned fixture strings, closing the loop, plus the AST side
+  of the OR-scan corpus.
 
 ### 2.16 Evidence-timeline descent
 
@@ -549,12 +653,25 @@ above. No token enumeration, no expiry metadata, no job objects.
    "critical": n } }` — the relocation target for the grouped-alerts
    `.stats` consumer. **[Scaffold decision]** fields-on-`/api/incidents`
    chosen over a new stats endpoint (P1 authorizes either; a new endpoint
-   for one widget is surface without benefit). Computation: per-event
-   severities of chain-complete non-normal events, **uniform across
-   modes** — the analyst-mode trigger-reduced severity variant retires
-   with R11, a deliberate, disclosed consequence of ratified uniform
-   visibility. The `source_breakdown`, `total/open/closed_alerts` stats
-   die with the endpoint (no consumer; `IncidentDashboard` reads only
+   for one widget is surface without benefit).
+   **Exact semantics comparison (review correction 7).** Current
+   calculation, recorded from code: `get_grouped_alerts` builds one group
+   per non-normal scenario with a per-group `severity_breakdown` counting
+   **each written event's** severity (`app.py:4411-4414`); groups are
+   filtered to chain-complete (`:4417`); analyst mode first reduces each
+   group's logs to trigger events and recomputes the breakdown
+   (`:4434-4444`); `stats.severity_breakdown` then sums the per-group
+   per-event counts (`:4479-4486`). So the widget's current meaning is
+   **per-event severity counts over chain-complete attack-scenario
+   events, excluding normal traffic** — it has never been per-incident
+   severity. The relocated computation is **byte-for-byte the same
+   aggregation** (per-event, non-normal, chain-complete-scenarios-only)
+   with exactly one ratified difference: the analyst-mode trigger
+   reduction disappears with R11 uniform visibility. Nothing is
+   redefined; the migration commit (8.2) asserts equality of the
+   relocated and legacy computations over the same pool in a non-analyst
+   session. The `source_breakdown`, `total/open/closed_alerts` stats die
+   with the endpoint (no consumer; `IncidentDashboard` reads only
    `severity_breakdown` — verified `IncidentDashboard.jsx:31,39` and its
    test mock).
 3. **`GET /api/detections/<id>` / `GET /api/threats`:** **unchanged.**
@@ -677,12 +794,28 @@ failures are attributable to that layer alone.
    RNG (S3), seeded from the epoch digest; consumption order is the
    deterministic queue order, so within a session the gap sequence is a
    pure function of session identity and queue composition.
-5. **Background occurrence time:** `epoch + event_seq * 2s` **[Scaffold
-   decision: 2s per sequence step]**, replacing
+5. **Background occurrence time:** `epoch + event_seq * 3s` **[Scaffold
+   decision, revised at review per correction 3]**, replacing
    wall-clock-minus-random-backdate (`app.py:2177`). Strictly increasing,
-   coherent with the authored timeline's order of magnitude (10 positions
-   x 120s ~ 18 sim-minutes; a full session's background span lands in the
-   same tens-of-minutes window).
+   and lands in Phase 1 commit 1.2 (it is a function of `event_seq`,
+   which does not exist before 1.2 — review correction 2).
+   **Quantified coherence bound (correction 3):** at full-queue drain
+   under the encoded reference write model (10 scenarios; writer 1
+   write/tick; drip every 30 ticks; one attack write per ~3.5 ticks
+   while a chain drains; supplemental events appended at drip; authored
+   chain offsets at their `hi` values), the latest background occurrence
+   must land within **300 s** of the latest authored occurrence. The
+   originally proposed 2 s/step **fails** that bound by precomputation
+   (~300 total seq -> background max ~ epoch+600s vs authored max ~
+   epoch+1140s: gap ~540s), so the first permitted tuning knob —
+   background spacing — was exercised at scaffold correction: **3 s/step**
+   (~epoch+900s vs ~epoch+1140s: gap ~240s, inside the bound). The bound
+   is enforced permanently by
+   `test_event_seq.py::test_authored_background_gap_within_bound`
+   (the reference model recomputed from the live catalog's chain lengths
+   and offsets, so corpus drift moves the guard). If the constant fails
+   again, background spacing is the first knob; any broader semantic
+   change requires an owner amendment.
 6. **Response-action clock:** unchanged code, now epoch-based via
    `started_at` (item 2).
 7. **Sim-now:** the maximum **visible** occurrence timestamp (pool
@@ -752,19 +885,29 @@ Stop condition: owner + reviewer approve this scaffold. Rollback: n/a.
   `backend/test_event_seq.py`; adapted `backend/app.py` (`:2140-2198`,
   `:2225-2246`, `:2382-2522`, `:2541-2623`, `:4697`, `create_session`,
   `reset_simulator`), `backend/detection_templates.py` (`:294-327`),
-  `backend/test_event_disclosure.py`; `backend/run_gates.py` suite list
-  extension.
+  `backend/test_event_disclosure.py`, `frontend/src/components/siemUtils.js`
+  + `frontend/src/__tests__/siem.test.js` (the 1.3 transitional protocol
+  consumer); `backend/run_gates.py` suite list extension.
 - **Endpoint/field changes:** `/api/fake-events` rows gain `event_seq`;
   `user_account` appears on background events with account data;
   top-level `protocol` disappears into `key_value_pairs` (all
   pre-authorized; disclosed in the implementation report).
-- **Commits:** (1.1) simulation epoch + `started_at` unification +
-  authored/background occurrence times + determinism tests + parity
-  re-run; (1.2) `event_seq` allocator + serialization + pool invariants;
+- **Commits (order per review correction 2 — background occurrence times
+  cannot land before `event_seq` exists):**
+  (1.1) simulation epoch + `started_at` unification + **authored**
+  occurrence times + determinism tests + parity re-run + the action-clock
+  alignment/scoring-invariance evidence (Section 2.4b; the action clock
+  itself is unchanged);
+  (1.2) `event_seq` allocator (atomic append-and-stamp helper) +
+  serialization + **background** occurrence times (`epoch + 3s x seq`) +
+  pool invariants (uniqueness, strict increase, contiguity, once-only,
+  failed-append) + the authored/background coherence-bound test;
   (1.3) OD-10 shape amendment + shape-parity test + disclosure-suite
-  updates.
-- **Tests before each commit:** full backend battery (`run_gates.py`),
-  including the new suites from that commit onward.
+  updates + the `siemUtils` protocol-filter compatibility change and its
+  test (same concern).
+- **Tests before each commit:** the complete backend AND frontend gate
+  (`run_gates.py --all`) for every Phase 1 commit (each changes the
+  serialized payload; review correction 5).
 - **Chrome evidence:** optional payload spot-check only (backend phase).
 - **Stop condition:** battery green; parity green; a captured
   `/api/fake-events` payload of both populations shows the canonical
@@ -1000,7 +1143,7 @@ retargeted existing test. Backend files: `test_sim_epoch.py` (T-SE),
 | Hierarchy (3.9 battery untouched, incl. detection indistinguishability) | the full existing battery via `run_gates.py` (no renames) | existing suite | #8 modes | every phase | ext (unchanged, continuously green) |
 | Sanitized payloads (retargeted hotfix suite; recursive planted markers; structural whitelist) | T-ED::test_query_read_serializes_only_the_whitelist (mig of fake-events form); T-QR::test_planted_marker_never_serializes_recursively; T-ED::test_fake_events_unknown_future_field_does_not_pass_through (mig to query read at P8) | W::renders only whitelisted keys (recursive props check) | #9 payload inspection | 3, 8 | mig + new |
 | Shape parity (OD-10) | T-ED::test_shape_parity_no_population_exclusive_top_level_field | n/a | #9 payload inspection | 1 | new |
-| event_seq foundation: uniqueness, monotonicity, assignment-once | T-EQ::test_event_seq_unique_and_strictly_monotonic; T-EQ::test_event_seq_assigned_exactly_once | W::inspector displays arrival position | #2 inspector | 1 | new |
+| event_seq foundation: uniqueness, strict increase, contiguity, assignment-once, failed-append safety | T-EQ::test_event_seq_unique_and_strictly_monotonic; T-EQ::test_event_seq_contiguous_no_gaps; T-EQ::test_event_seq_assigned_exactly_once; T-EQ::test_failed_append_does_not_advance_counter | W::inspector displays arrival position | #2 inspector | 1 | new |
 | Append-only pool | T-EQ::test_pool_append_only_under_polls_and_reads | W-SN (mocked pool only grows) | #1 | 1 | new |
 | Stable snapshots (byte-stable under growth; atomic replacement) | T-QR::test_snapshot_rows_stable_for_fixed_identity | W-SN::"snapshot rows byte-stable while mocked pool grows"; W-SN::"replacement is atomic" | #1 | 3, 5 | new |
 | Deterministic within-session replay (identity and token) | T-QR::test_identical_identity_replays_byte_identical; T-QR::test_token_reexecution_equals_identity_reexecution | n/a | #1 refresh | 3 | new |
@@ -1009,7 +1152,9 @@ retargeted existing test. Backend files: `test_sim_epoch.py` (T-SE),
 | Token security (neutral, indistinguishable failures; invalid after Reset / Practice Another / restart) | T-QR::test_invalid_tokens_fail_neutrally_and_identically; T-QR::test_reset_and_start_rotate_secret | W-ST::"token failure clears indicator neutrally" | #7 token lifecycle | 3 | new |
 | Shared epoch (started_at == epoch; frozen-time guard green; no wall clock) | T-SE::test_world_started_at_equals_epoch; T-SE::test_no_wall_clock_in_occurrence_timestamps; existing test_snapshot_generator + test_actions guards | n/a | #9 | 1 | new + ext |
 | New-count (refresh-now semantics; token-bound; zero state; pool_growth; bar text cannot alter) | T-QR::test_new_count_matches_refresh_now_semantics; T-QR::test_new_count_request_carries_token_only | W-SN::"indicator hidden at zero; de-emphasized on edit" | #1 | 3, 5 | new |
-| Time semantics A1 (recomputation equality; sim-now = pool max) | T-SE::test_occurrence_times_recompute_from_epoch_spacing_offsets_gapstream; T-SE::test_sim_now_is_pool_max_never_wall_clock | n/a | #9 | 1 | new |
+| Time semantics A1 (recomputation equality; sim-now = pool max; coherence bound; action clock unchanged) | T-SE::test_occurrence_times_recompute_from_epoch_spacing_offsets_gapstream; T-SE::test_sim_now_is_pool_max_never_wall_clock; T-EQ::test_authored_background_gap_within_bound; T-SE::test_action_clock_base_equals_epoch; T-SE::test_action_score_is_timestamp_invariant | n/a | #9 (incl. sorted-window interleave) | 1 | new |
+| `all`-range correctness (min visible occurrence; negative offsets included) | T-QR::test_all_range_includes_negative_offset_supplemental | n/a | #1 | 3 | new |
+| Display vs FILTERS catalogs (event_seq serialized but not filterable) | T-LC::test_event_seq_rejected_as_filter_field | W::inspector shows event_seq; no filter action offered on it | #2 | 2, 6 | new |
 | LCQL grammar (valid/invalid fixtures; errors w/ position; precedence; quote matrix; idempotence) | T-LC::test_contract_valid_examples_parse; T-LC::test_contract_invalid_examples_reject_with_position; T-LC::test_and_binds_tighter_than_or; T-LC::test_quote_case_matrix; T-LC::test_canonicalization_idempotent | W::query bar surfaces position + reason inline | #1, #5 | 2 | new |
 | Pivot and descent generation (choke point; escaping; OR fallback; both descent forms) | T-LC::test_documented_pivot_and_descent_forms_parse | W-PV::"every documented form emitted exactly"; W-PV::"OR filters trigger fresh standalone query + notice"; W-PV::"escaping of injected values" | #4, #5 | 6, 7 | new |
 | Evidence descent (host-anchored; uniform across detection kinds; origin banner; ascending) | T-LC (descent fixtures); existing test_detection_indistinguishability battery stays green | W-PV::"descent emits all-host timeline ascending with banner" | #2, #3 | 7 | new + ext |
@@ -1073,17 +1218,30 @@ workflows is started fresh and stopped before any battery run).
    and call new-count — neutral 400; (b) replay a token from a different
    session — identical neutral 400; (c) Reset — old token identical
    neutral 400; (d) Practice Another — same; (e) restart the backend —
-   same; verify all five failure bodies are byte-identical.
+   same, **explicitly confirming the stale-session middleware path: after
+   restart the old session id no longer exists, so the request traverses
+   session-middleware re-creation before token validation, and the
+   response must still be the byte-identical neutral 400 (not a different
+   middleware error body)**; verify all five failure bodies are
+   byte-identical.
 8. **All three modes.** In Guided, SOC Queue, and Hardcore: verify the
    SIEM issues only `/api/events/query` + `/api/events/query/new-count`
    for events (network tab); verify no pre-submission grading appears
    anywhere in the workbench; verify no mode-specific event endpoint is
    ever called; verify identical workbench behavior modulo intake/timer.
-9. **Console and network audit.** A full session (start -> investigate ->
-   submit at least one incident) with the console open: zero steady-state
-   errors; capture one `/api/events/query` and one new-count payload and
-   inspect every field against Section 3's enumeration: no forbidden
-   field, no population discriminator, no grading value.
+9. **Console and network audit, plus time-coherence evidence (review
+   correction 3).** A full session (start -> investigate -> submit at
+   least one incident) with the console open: zero steady-state errors;
+   capture one `/api/events/query` and one new-count payload and inspect
+   every field against Section 3's enumeration: no forbidden field, no
+   population discriminator, no grading value. **Then the interleave
+   proof:** run `all | * | * | *` sorted by occurrence time and verify
+   authored and background events remain meaningfully interleaved in the
+   sorted window — events of a known incident's chain (identified by the
+   tester via known scenario content, invisible to players) appear
+   interspersed with background events, not as a detached block beyond
+   all background timestamps; record the observed latest-authored vs
+   latest-background gap against the tested 300 s bound.
 
 ---
 
@@ -1092,8 +1250,8 @@ workflows is started fresh and stopped before any battery run).
 | # | Risk | Detection strategy | Retired in | Halt condition | Owner amendment needed? |
 |---|---|---|---|---|---|
 | K1 | Changing `world["started_at"]` breaks snapshot/world invariants (stable-key world times, action clock) | run `test_snapshot_generator.py` + `test_actions.py` + full battery in commit 1.1; the epoch is an ISO string exactly like today's value, so type surface is unchanged | 1 | any frozen-clock guard red at 1.1 | no (R8 authorizes; if a guard proves epoch-incompatible in a way requiring semantics change, halt and report) |
-| K2 | Occurrence-timestamp changes upset scenario parity or UI time displays (relative labels, presets) | parity suite (ignores timestamps) + T-SE; manual Chrome sweep of every timestamp-rendering surface (SIEM, Detections `time`, Endpoints, Incidents) in Phase 4/9 | 1 (backend), 9 (UI sweep) | parity red, or a UI surface renders nonsense sim times that constants tuning cannot fix | constants tuning: no; semantics change (e.g. re-anchoring authored times to drip seq): yes, amendment |
-| K3 | `event_seq` not exactly-once under concurrent writes (writer thread vs supplemental raw append) | single stamped choke point under `io_lock`; T-EQ monotonicity/uniqueness over a live multi-incident drip; code review of both write paths | 1 | duplicate or skipped seq observed in any test run | no |
+| K2 | Occurrence-timestamp changes upset scenario parity, UI time displays, or authored/background coherence | parity suite (ignores timestamps) + T-SE; the quantified 300 s gap bound (T-EQ, reference model); Chrome workflow 9's sorted-window interleave proof; manual sweep of every timestamp-rendering surface (SIEM, Detections `time`, Endpoints, Incidents) in Phase 4/9 | 1 (backend), 9 (UI sweep) | parity red, bound test red, or a UI surface renders nonsense sim times that the permitted knob cannot fix | **background spacing is the first permitted tuning knob** (already exercised once: 2s -> 3s at scaffold correction); any broader semantic change (e.g. re-anchoring authored times to drip seq): yes, amendment |
+| K3 | `event_seq` not exactly-once/contiguous under concurrent writes (writer thread vs supplemental append), breaking `pool_growth = max_seq - cutoff_seq` | ONE append-and-stamp helper under a single atomic `io_lock` boundary; counter advances only on successful append; T-EQ uniqueness/strict-increase/contiguity/failed-append tests over a live multi-incident drip; code review of both write paths | 1 | duplicate, skipped, or non-contiguous seq observed in any test run | no |
 | K4 | Token signing/validation flaw (forgeable, distinguishable failures, secret survives reset) | T-QR security battery incl. byte-identical failure assertion + rotation tests; constant-time compare | 3 | any distinguishable failure or accepted forgery | no |
 | K5 | Query parser ambiguity (precedence, quotes, segment boundaries with spaces) | pinned fixture battery + idempotence property + fuzz-lite corpus in T-LC | 2 | any fixture ambiguous or canonicalization non-idempotent | no (grammar completions are ratified; a discovered grammar hole = amendment request, not silent fix) |
 | K6 | Nested `key_value_pairs` normalization (OD-10 protocol injection) mutating stored logs or colliding with existing kvp keys | serializer copies kvp before injection; never overwrites an existing key; T-EQ read-no-mutation + T-ED shape tests | 1 | any mutation of a stored log dict or NDJSON row observed | no |
@@ -1115,13 +1273,20 @@ changes (`event_seq`; the OD-10 shape amendment; the P1 stats
 relocation). Specifically re-checked against the amendment triggers:
 
 - **Not covered by the contract:** nothing found requiring coverage. The
-  scaffold-level decisions the contract explicitly delegated are made and
-  marked: epoch derivation (digest-derived, Section 2.4), spacing
-  constants (120s/position, 2s/seq, Section 6), token format and neutral
-  failure shape (Section 2.8), `all`-range resolution bounds (Section
-  2.7), stats relocation venue (fields on `/api/incidents`, Section
-  3.4.2), conjunction-detection mechanism (lexical scan at the generation
-  choke point, Section 2.15). Approving this scaffold ratifies them.
+  scaffold-level decisions the contract delegated are **RATIFIED at the
+  owner review of 2026-07-19**: digest-derived epoch (Section 2.4);
+  spacing constants (120s/position; background spacing revised 2s -> 3s
+  under the quantified coherence check, Section 6) — **subject to the
+  quantified coherence bound test**; HMAC snapshot token and neutral
+  failure response (Section 2.8); corrected `all`-range semantics
+  (minimum visible occurrence, Section 2.7); stats relocation venue
+  (fields on `/api/incidents`, Section 3.4.2) — **subject to preserving
+  the widget's recorded semantics** (the comparison in 3.4.2);
+  quote-aware conjunction scan (Section 2.15, with the
+  grouping-equivalence boundary comment and shared fixture corpus).
+  The review also ruled: action clock left unchanged (Section 2.4b),
+  Phase 1 commit order 1.1/1.2/1.3 as revised, and transitional protocol
+  compatibility handled in 1.3.
 - **More expensive than represented:** nothing found. The A1 cost
   matches the contract's re-costed estimate (one new module + localized
   call-site changes + one determinism suite); the action clock aligns for
