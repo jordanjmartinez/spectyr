@@ -311,23 +311,37 @@ def sanitize_event(log):
 #              the contract's one explicit whitelist extension). Visibility-
 #              order identity and the snapshot cutoff dimension; reveals
 #              nothing about the scenario (arrival order is already visible).
-#   protocol   the benign network field the SIEM `protocol=`/`proto=` filter
-#              reads (present top-level only on normal-traffic events; attack
-#              events carry protocol inside key_value_pairs). Relocated into
-#              key_value_pairs by the OD-10 shape amendment (Stage 4 P1.3).
+# OD-10 shape amendment (Stage 4 P1.3): top-level `protocol` is NOT in the
+# whitelist -- it serializes uniformly inside key_value_pairs for both
+# populations -- and internal `user` maps to the canonical `user_account`.
+# Field shape/presence must never discriminate authored from background
+# events (the game is telling attack from noise).
 # Every scenario-wiring / answer field (category, scenario_id, label,
 # threat_pattern, storyline, level_name, alert_id, ...) is dropped by omission.
-FEED_EVENT_WHITELIST = EVENT_WHITELIST + ("id", "protocol", "event_seq")
+FEED_EVENT_WHITELIST = EVENT_WHITELIST + ("id", "event_seq")
 
 
 def sanitize_feed_event(log):
     """Client-safe SIEM feed event. Constructed explicitly from the whitelist
     (never pass-through-then-delete), so any present-or-future internal field is
     dropped by omission rather than needing a blacklist. `id` is always included
-    -- it is the SIEM's required opaque row identity."""
+    -- it is the SIEM's required opaque row identity.
+
+    OD-10 canonicalization: background events' internal `user` serializes as
+    `user_account`; a non-empty internal top-level `protocol` serializes inside
+    a COPIED key_value_pairs (the stored log is never mutated; an existing kvp
+    `protocol` key is never overwritten), so both populations share one shape.
+    """
     out = {k: log[k] for k in FEED_EVENT_WHITELIST
            if log.get(k) not in (None, "")}
     out["id"] = log["id"]
+    if "user_account" not in out and log.get("user") not in (None, ""):
+        out["user_account"] = log["user"]
+    p = log.get("protocol")
+    if p not in (None, ""):
+        kvp = dict(out.get("key_value_pairs") or {})
+        kvp.setdefault("protocol", p)
+        out["key_value_pairs"] = kvp
     return out
 
 

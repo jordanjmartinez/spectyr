@@ -163,13 +163,18 @@ def _seed(s, with_marker=False):
 # --- unit --------------------------------------------------------------------
 
 def test_sanitize_feed_event_strips_all_but_whitelist():
-    out = dt.sanitize_feed_event(_attack_event())
+    ev = _attack_event()
+    out = dt.sanitize_feed_event(ev)
     assert set(out) <= FEED, f"leaked keys: {set(out) - FEED}"
     assert not (FORBIDDEN & set(out)), f"forbidden key: {FORBIDDEN & set(out)}"
     assert out["id"] == "atk-1"                     # opaque row id retained
     assert out["message"] == "suspicious encryption activity"
     assert out["key_value_pairs"]["process_id"] == "8844"   # kvp blob preserved
-    assert out["protocol"] == "tcp"                 # benign filter field retained
+    # OD-10: protocol never serializes top-level; it lands inside a COPIED kvp
+    assert "protocol" not in out
+    assert out["key_value_pairs"]["protocol"] == "tcp"
+    assert "protocol" not in ev["key_value_pairs"], \
+        "the stored log's kvp must never be mutated by serialization"
 
 
 def test_generated_background_traffic_is_sanitized():
@@ -180,8 +185,80 @@ def test_generated_background_traffic_is_sanitized():
     out = dt.sanitize_feed_event(normal)
     assert set(out) <= FEED
     for k in ("scenario_id", "label", "user", "detected_by",
-              "process_id", "parent_process_id", "flagged"):
+              "process_id", "parent_process_id", "flagged", "protocol"):
         assert k not in out
+    # OD-10: the canonical account field is present on background events too
+    assert out["user_account"] == normal["user"]
+    # OD-10: a background protocol value serializes inside key_value_pairs
+    if normal.get("protocol") not in (None, ""):
+        assert out["key_value_pairs"]["protocol"] == normal["protocol"]
+
+
+def test_shape_parity_no_population_exclusive_top_level_field():
+    """OD-10 acceptance (contract Section 18 'Shape parity'): no serialized
+    row carries top-level `protocol`, and every row whose internal shape has
+    account data (authored `user_account` or background `user`) serializes
+    the canonical `user_account` -- so top-level field presence never marks a
+    row as authored or background.
+
+    The authored-side proof is deterministic (a built chain, no drip race:
+    malware_usb authors both `user_account` and a kvp-nested protocol); the
+    live-drip sweep then proves uniformity over both real populations without
+    depending on WHICH random scenario dripped or how far its chain got."""
+    # authored side, deterministic
+    emp = next(e for e in app.EMPLOYEES if e["name"] == "nkhan")
+    chain = app.build_attack_chain_logs(
+        {"used_alert_ids": set()},
+        {"scenario_label": "malware_usb", "queue_position": 1,
+         "ticket_title": "T", "storyline": "S", "category": "C"},
+        employee=emp)
+    authored = [dt.sanitize_feed_event(l) for l in chain]
+    assert all("protocol" not in e for e in authored)
+    assert any(e.get("user_account") for e in authored), \
+        "authored population must carry the canonical account field"
+
+    # live drip, both real populations
+    client, sid, s = _api_session()
+    try:
+        r = client.post("/api/start-simulator",
+                        headers={"X-Session-ID": sid,
+                                 "Content-Type": "application/json"},
+                        data=json.dumps({"game_mode": "guided",
+                                         "catalog_id": "random",
+                                         "analyst_name": "Probe"}))
+        assert r.status_code == 200
+        hdr = {"X-Session-ID": sid}
+        deadline = time.time() + 25
+        raw, feed = [], []
+        while time.time() < deadline:
+            raw = app.read_ndjson(s, "generated_logs")
+            feed = client.get("/api/fake-events", headers=hdr).get_json()
+            has_bg = any(l.get("label") == "normal_traffic" for l in raw)
+            has_atk = any(l.get("label") not in (None, "normal_traffic")
+                          for l in raw)
+            if has_bg and has_atk and len(feed) >= 6:
+                break
+            time.sleep(0.3)
+        assert raw and feed, "no live drip captured"
+        by_id = {e["id"]: e for e in feed}
+        saw_bg_account = False
+        for l in raw:
+            e = by_id.get(l["id"])
+            assert e is not None, "every pool row must serialize"
+            assert "protocol" not in e, \
+                "top-level protocol is a population discriminator (OD-10)"
+            internal_account = l.get("user_account") or l.get("user")
+            if internal_account:
+                assert e.get("user_account") == internal_account
+                if l.get("label") == "normal_traffic":
+                    saw_bg_account = True
+            if l.get("protocol") not in (None, ""):
+                assert e["key_value_pairs"]["protocol"] == l["protocol"]
+        assert saw_bg_account, \
+            "background rows always carry `user`; the canonical mapping " \
+            "must have produced user_account on at least one"
+    finally:
+        _stop(sid, s)
 
 
 # --- /api/fake-events --------------------------------------------------------

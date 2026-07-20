@@ -29,7 +29,7 @@ const EVENTS = [
     source_type: 'DNS', severity: 'low', hostname: 'ACME-SVR03',
     source_ip: '10.0.1.12', destination_ip: '10.0.1.202',
     message: 'DNS query received for www.google.com',
-    key_value_pairs: { query: 'www.google.com' },
+    key_value_pairs: { query: 'www.google.com', protocol: 'udp' },
     label: 'normal_traffic',
   },
 ];
@@ -86,6 +86,17 @@ test('expanding a card shows sanitized JSON only', async () => {
     expect(pre.textContent).not.toContain(`"${k}"`);
   });
   expect(pre.textContent).toContain('"event_type"');
+});
+
+test('protocol filter reads the key_value_pairs placement (OD-10)', async () => {
+  render(<Siem setSiemCount={() => {}} resetTrigger={0} pivotQuery={null} onHostPivot={() => {}} />);
+  await screen.findByText(/nmap.exe launched/);
+  const search = screen.getByPlaceholderText(/Search events/i);
+  fireEvent.change(search, { target: { value: 'proto=udp' } });
+  expect(screen.queryByText(/nmap.exe launched/)).toBeNull();
+  expect(screen.getAllByText(/www.google.com/).length).toBeGreaterThan(0);
+  fireEvent.change(search, { target: { value: 'protocol=tcp' } });
+  expect(screen.queryByText(/www.google.com/)).toBeNull();
 });
 
 test('table view toggle works and filters apply', async () => {

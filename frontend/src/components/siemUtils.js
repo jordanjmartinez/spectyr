@@ -30,8 +30,15 @@ export const parseEventQuery = (term) => {
   return { fieldFilters, free: free.join(' ') };
 };
 
-export const alertFieldValue = (alert, field) =>
-  field === 'source_type' ? (alert.source_type || alert.detected_by || '') : (alert[field] ?? '');
+export const alertFieldValue = (alert, field) => {
+  if (field === 'source_type') return alert.source_type || alert.detected_by || '';
+  // OD-10 (Stage 4 P1.3): protocol serializes inside key_value_pairs for
+  // every population; top-level kept only as a legacy-fixture fallback.
+  if (field === 'protocol') {
+    return (alert.key_value_pairs && alert.key_value_pairs.protocol) || alert.protocol || '';
+  }
+  return alert[field] ?? '';
+};
 
 // Severity as a thin colored left edge (table rows and cards alike).
 export const SEV_EDGE = { critical: '#b26666', high: '#c28e46', medium: '#d4cc6e', low: '#e2e6ea' };
