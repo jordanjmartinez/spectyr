@@ -44,6 +44,13 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
   // it persists across view toggles and Refresh (when the id survives).
   const [selectedId, setSelectedId] = useState(null);
   const [selectionNotice, setSelectionNotice] = useState(null);
+  // P5.2: the new-events indicator (contract Section 8, R16 refresh-now).
+  // Token-bound: the poll carries ONLY the executed snapshot's token, so
+  // edited bar text structurally cannot influence the count. countHalted
+  // stops the poll neutrally after a token invalidation (reset/restart).
+  const [newCount, setNewCount] = useState(0);
+  const [poolGrowth, setPoolGrowth] = useState(0);
+  const [countHalted, setCountHalted] = useState(false);
 
   useEffect(() => {
     apiFetch('/api/endpoints')
@@ -107,6 +114,13 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
   const applySnapshot = (body) => {
     setSnapshot(body);
     setError(null);
+    // The bar shows the executed snapshot's canonical text (contract S6
+    // Active state) -- clicks and runs teach the canonical form.
+    setQueryText(body.identity.canonical_query);
+    // A new snapshot means a new cutoff and token: the indicator resets.
+    setNewCount(0);
+    setPoolGrowth(0);
+    setCountHalted(false);
     // Functional update so the survival check sees the selection as of
     // REPLACEMENT time (a click during an in-flight run must not be lost).
     setSelectedId((sel) => {
@@ -153,6 +167,42 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
     setSelectedId(id);
     setSelectionNotice(null);
   };
+
+  // P5.2 indicator poll: token-bound only; passive (the snapshot never
+  // changes); stops neutrally when the token is invalidated (a 400 after
+  // Reset / Practice Another / restart) -- no error surface, the indicator
+  // simply disappears until the next run mints a fresh token.
+  useEffect(() => {
+    if (!snapshot || countHalted) return undefined;
+    let cancelled = false;
+    const token = snapshot.token;
+    const tick = () => {
+      apiFetch(`/api/events/query/new-count?token=${encodeURIComponent(token)}`)
+        .then((res) => { if (!res.ok) throw new Error('token'); return res.json(); })
+        .then((d) => {
+          if (!cancelled) {
+            setNewCount(d.new_count);
+            setPoolGrowth(d.pool_growth);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setNewCount(0);
+            setPoolGrowth(0);
+            setCountHalted(true);
+          }
+        });
+    };
+    const interval = setInterval(tick, 3000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [snapshot, countHalted]);
+
+  // De-emphasis (contract Section 8): the indicator describes the LAST RUN;
+  // when the bar or scope control differs from the executed identity, it
+  // dims and says so rather than implying it tracks the edited text.
+  const indicatorStale = !!snapshot
+    && (queryText !== snapshot.identity.canonical_query
+        || scopeParam !== snapshot.identity.scope);
 
   const simTime = (iso) => {
     const t = Date.parse(iso || '');
@@ -317,10 +367,24 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
             <span>as of seq #{snapshot.identity.cutoff_seq}</span>
             <span>{simTime(snapshot.identity.resolved_range.end)} sim</span>
             <span className="log-mono">{snapshot.identity.canonical_query}</span>
+            {newCount > 0 && (
+              <span
+                data-testid="new-events-indicator"
+                className={`px-2 py-0.5 rounded-full text-white bg-[#16436b] font-medium ${indicatorStale ? 'opacity-50' : ''}`}
+              >
+                {newCount} new{indicatorStale ? ' (last run)' : ''}
+              </span>
+            )}
+            {poolGrowth > 0 && (
+              <span data-testid="pool-growth" className="text-[#8b949e]">
+                pool: +{poolGrowth}
+              </span>
+            )}
             <button
               type="button"
               onClick={refresh}
               disabled={running}
+              title={poolGrowth > 0 ? `pool: +${poolGrowth} events` : undefined}
               className="ml-auto px-2.5 py-1 text-xs font-medium rounded-md border border-[#d0d7de] bg-white text-[#1a2332] hover:bg-[#eef1f4] disabled:opacity-50"
             >
               Refresh

@@ -151,3 +151,122 @@ test('selection is shared across the Cards/Table view toggle', async () => {
   // the expanded table row for e1 renders the detail view
   expect(document.body.textContent).toContain('alpha event one');
 });
+
+// --- Phase 5.2: the new-events indicator ------------------------------------
+
+const tickPoll = async (ms = 3000) => {
+  await act(async () => { jest.advanceTimersByTime(ms); });
+  await act(async () => {});          // flush the poll's promise chain
+};
+
+const countCalls = () => apiFetch.mock.calls.map(c => c[0])
+  .filter(p => p.startsWith('/api/events/query/new-count'));
+
+describe('indicator (fake timers)', () => {
+  beforeEach(() => { jest.useFakeTimers(); });
+  afterEach(() => { jest.useRealTimers(); });
+
+  test('rows stay byte-stable across multiple poll cycles while the count climbs', async () => {
+    renderShell();
+    await run('all | * | * | *');
+    const before = resultsHtml();
+    let n = 0;
+    countResponse = () => { n += 1; return ok({ new_count: n * 2, pool_growth: n * 3 }); };
+    await tickPoll();
+    await tickPoll();
+    await tickPoll();
+    expect(resultsHtml()).toBe(before);   // zero automatic row movement
+    expect(screen.getByTestId('new-events-indicator').textContent).toBe('6 new');
+    expect(screen.getByTestId('pool-growth').textContent).toBe('pool: +9');
+  });
+
+  test('zero state: the indicator is hidden at count 0', async () => {
+    renderShell();
+    await run('all | * | * | *');
+    countResponse = () => ok({ new_count: 0, pool_growth: 0 });
+    await tickPoll();
+    expect(screen.queryByTestId('new-events-indicator')).toBeNull();
+    expect(screen.queryByTestId('pool-growth')).toBeNull();
+  });
+
+  test('de-emphasized when the bar differs from the executed canonical query', async () => {
+    renderShell();
+    await run('all | * | * | *');
+    countResponse = () => ok({ new_count: 4, pool_growth: 4 });
+    await tickPoll();
+    const badge = screen.getByTestId('new-events-indicator');
+    expect(badge.className).not.toMatch(/opacity-50/);
+    expect(badge.textContent).toBe('4 new');
+    // the bar was synced to the canonical text on run; an edit diverges it
+    fireEvent.change(screen.getByLabelText('LCQL query'),
+      { target: { value: 'all | * | * | * draft' } });
+    const stale = screen.getByTestId('new-events-indicator');
+    expect(stale.className).toMatch(/opacity-50/);
+    expect(stale.textContent).toBe('4 new (last run)');
+  });
+
+  test('the indicator resets after a deliberate Refresh', async () => {
+    renderShell();
+    await run('all | * | * | *');
+    countResponse = () => ok({ new_count: 5, pool_growth: 8 });
+    await tickPoll();
+    expect(screen.getByTestId('new-events-indicator').textContent).toBe('5 new');
+    queryResponses.push(ok(snap([R3, R2, R1], { token: 'tok.two', cutoff: 12 })));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+    });
+    expect(screen.queryByTestId('new-events-indicator')).toBeNull();
+    expect(screen.getByText(/as of seq #12/)).toBeInTheDocument();
+  });
+
+  test('the poll carries ONLY the token, bound to the executed snapshot', async () => {
+    renderShell();
+    await run('all | * | * | *');
+    fireEvent.change(screen.getByLabelText('LCQL query'),
+      { target: { value: 'edited draft text' } });
+    countResponse = () => ok({ new_count: 1, pool_growth: 1 });
+    await tickPoll();
+    await tickPoll();
+    const calls = countCalls();
+    expect(calls.length).toBeGreaterThanOrEqual(2);
+    for (const url of calls) {
+      expect(url).toBe(`/api/events/query/new-count?token=${encodeURIComponent('tok.one')}`);
+    }
+  });
+
+  test('the poll halts neutrally on token invalidation', async () => {
+    renderShell();
+    await run('all | * | * | *');
+    countResponse = () => ok({ new_count: 3, pool_growth: 3 });
+    await tickPoll();
+    expect(screen.getByTestId('new-events-indicator')).toBeInTheDocument();
+    // token invalidated (reset/restart server-side): neutral 400
+    countResponse = () => Promise.resolve({ ok: false, status: 400,
+      json: () => Promise.resolve({ error: 'Unknown token' }) });
+    await tickPoll();
+    expect(screen.queryByTestId('new-events-indicator')).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();          // neutral: no error surface
+    const after = countCalls().length;
+    await tickPoll();
+    await tickPoll();
+    expect(countCalls().length).toBe(after);                 // polling stopped
+  });
+
+  test('client column sorting issues no network request and keeps the snapshot token', async () => {
+    renderShell();
+    await run('all | * | * | *');
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+    await screen.findByText('Src Type');
+    const callsBefore = apiFetch.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: /^Time/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Time/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Event Type/ }));
+    expect(apiFetch.mock.calls.length).toBe(callsBefore);    // zero requests
+    expect(screen.getByText(/as of seq #2/)).toBeInTheDocument();  // same snapshot
+    countResponse = () => ok({ new_count: 1, pool_growth: 1 });
+    await tickPoll();
+    // the poll still carries the ORIGINAL token after sorting
+    expect(countCalls().pop()).toBe(
+      `/api/events/query/new-count?token=${encodeURIComponent('tok.one')}`);
+  });
+});
