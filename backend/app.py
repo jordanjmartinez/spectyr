@@ -97,6 +97,32 @@ def append_ndjson(session, key, record):
             f.write(json.dumps(record) + "\n")
 
 
+def _append_pool_event_unlocked(session, log):
+    """The ONLY way a generated event enters the session pool (Stage 4 P1.2,
+    scaffold 2.3). Must be called with io_lock held. Stamps the monotonic
+    `event_seq` and, for background traffic, the sim occurrence timestamp
+    (epoch + spacing * seq); the counter advances only AFTER the line is
+    written, inside the same lock hold, so the sequence is unique, strictly
+    increasing, and contiguous with no gaps -- `pool_growth = max_seq -
+    cutoff_seq` arithmetic depends on exactly this."""
+    seq = session.get("event_seq", 0) + 1
+    log["event_seq"] = seq
+    if log.get("label") == "normal_traffic":
+        started = (session.get("world") or {}).get("started_at")
+        if started:
+            log["timestamp"] = sim_epoch.background_occurrence(started, seq)
+    with open(session["paths"]["generated_logs"], "a", encoding="utf-8") as f:
+        f.write(json.dumps(log) + "\n")
+    session["event_seq"] = seq
+    return log
+
+
+def append_pool_event(session, log):
+    """Locked wrapper for the pool append-and-stamp choke point."""
+    with session["io_lock"]:
+        return _append_pool_event_unlocked(session, log)
+
+
 TIMER_DURATIONS = {1: 900, 2: 900, 3: 900, 4: 900, 5: 900}
 
 CONCURRENT_QUEUE_CAP = 3  # Max in-flight (injected, unresolved) scenarios
@@ -152,6 +178,10 @@ def create_session():
         # Stage 4 A1: the dedicated authored-gap RNG stream (set at
         # start_simulator; None means bare/unstarted -> global-RNG fallback).
         "gap_rng": None,
+        # Stage 4 P1.2: the pool event_seq counter, advanced only inside the
+        # append-and-stamp choke point (unique, strictly increasing,
+        # contiguous within the session).
+        "event_seq": 0,
         # Stage 2 detections feed (io_lock guards it). Instances carry
         # server-side dispositions; benign_hosts tracks which hosts already
         # got their ambient benign detections.
@@ -2489,12 +2519,12 @@ def build_attack_chain_logs(session, scenario_entry, employee=None):
                     session["world"], entry, concrete_env, threat_logs,
                     session["id"], RESERVED_PIDS, SERVERS,
                     supplemental=(sup_logs, sup_meta))
-                # supplemental logs join the pool immediately (raw append; we
-                # already hold io_lock, so append_ndjson would deadlock).
+                # supplemental logs join the pool immediately through the
+                # append-and-stamp choke point (unlocked variant: we already
+                # hold io_lock, so the locking wrapper would deadlock).
                 if sup_logs:
-                    with open(session["paths"]["generated_logs"], "a", encoding="utf-8") as f:
-                        for log in sup_logs:
-                            f.write(json.dumps(log) + "\n")
+                    for log in sup_logs:
+                        _append_pool_event_unlocked(session, log)
                 # Stage 2: this scenario's authored detections (triggering on
                 # attack or supplemental events), plus ambient benign
                 # detections for any host now seen for the first time.
@@ -2624,7 +2654,7 @@ def log_writer(session, interval=1):
         # Write an attack log from the queue if gap satisfied
         if attack_queue and logs_since_last_attack >= next_attack_gap:
             attack_log = attack_queue.pop(0)
-            append_ndjson(session, "generated_logs", attack_log)
+            append_pool_event(session, attack_log)
             logs_since_last_attack = 0
             next_attack_gap = random.randint(2, 3)
 
@@ -2638,9 +2668,10 @@ def log_writer(session, interval=1):
                 if entry and not entry.get("chain_complete_at"):
                     entry["chain_complete_at"] = datetime.now(timezone.utc).isoformat()
         else:
-            # Normal traffic tick
+            # Normal traffic tick (occurrence time stamped from the epoch +
+            # event_seq at the append choke point)
             normal_log = generate_normal_event()
-            append_ndjson(session, "generated_logs", normal_log)
+            append_pool_event(session, normal_log)
             logs_since_last_attack += 1
 
         time.sleep(interval)
@@ -2858,6 +2889,7 @@ def reset_simulator():
     s["scenario_start_time"] = None
     s["scenario_history"] = []
     s["gap_rng"] = None
+    s["event_seq"] = 0
 
     with s["io_lock"]:
         s["world"] = {"hosts": {}, "started_at": None}

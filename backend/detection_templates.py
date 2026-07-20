@@ -302,18 +302,22 @@ def sanitize_event(log):
             if log.get(k) not in (None, "")}
 
 
-# The SIEM event feed (/api/fake-events) is the raw-log whitelist PLUS exactly
-# two non-answer-bearing fields the client genuinely needs:
-#   id        the opaque uuid4 event key -- React row key, dedup key in the
-#             feed, expand-row key, and the SIEM table's sort tie-break. It is
-#             random per event and reveals nothing about the scenario.
-#   protocol  the benign network field the SIEM `protocol=`/`proto=` filter
-#             reads (present top-level only on normal-traffic events; attack
-#             events carry protocol inside key_value_pairs). Kept purely to
-#             preserve the existing filter with zero behaviour change.
+# The SIEM event feed (/api/fake-events) is the raw-log whitelist PLUS the
+# non-answer-bearing fields the client genuinely needs:
+#   id         the opaque uuid4 event key -- React row key, dedup key in the
+#              feed, expand-row key, and the SIEM table's sort tie-break. It
+#              is random per event and reveals nothing about the scenario.
+#   event_seq  the monotonic within-session arrival position (Stage 4 P1.2;
+#              the contract's one explicit whitelist extension). Visibility-
+#              order identity and the snapshot cutoff dimension; reveals
+#              nothing about the scenario (arrival order is already visible).
+#   protocol   the benign network field the SIEM `protocol=`/`proto=` filter
+#              reads (present top-level only on normal-traffic events; attack
+#              events carry protocol inside key_value_pairs). Relocated into
+#              key_value_pairs by the OD-10 shape amendment (Stage 4 P1.3).
 # Every scenario-wiring / answer field (category, scenario_id, label,
 # threat_pattern, storyline, level_name, alert_id, ...) is dropped by omission.
-FEED_EVENT_WHITELIST = EVENT_WHITELIST + ("id", "protocol")
+FEED_EVENT_WHITELIST = EVENT_WHITELIST + ("id", "protocol", "event_seq")
 
 
 def sanitize_feed_event(log):
