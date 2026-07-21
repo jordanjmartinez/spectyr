@@ -4,7 +4,11 @@ import SiemTable from './SiemTable';
 import SiemCards from './SiemCards';
 import FieldSidebar from './FieldSidebar';
 import EventInspector from './EventInspector';
-import { refineFilter } from './lcqlPivots';
+import {
+  refineFilter, splitSegments, pivotHost, pivotAccount, pivotProcessImage,
+  pivotFile, pivotIp, pivotDomainProxy, pivotDomainDns, pivotEventType,
+  pivotSensorFamily,
+} from './lcqlPivots';
 
 // SIEM Investigation Workbench shell (Stage 4 Phase 4). Analyst-driven:
 // the shell submits LCQL text to the server's single query read and renders
@@ -58,6 +62,10 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
   const [newCount, setNewCount] = useState(0);
   const [poolGrowth, setPoolGrowth] = useState(0);
   const [countHalted, setCountHalted] = useState(false);
+  // P7.1: cross-host investigation (contract Section 14). The last focused
+  // incident backs the one-click "Back to INC-…" return chip after an entity
+  // pivot's Session-wide flip. UI/query state only -- reads, never mutations.
+  const [lastIncident, setLastIncident] = useState(null);
 
   useEffect(() => {
     apiFetch('/api/endpoints')
@@ -76,6 +84,7 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
     setSelectedId(null);
     setSelectionNotice(null);
     setQueryNotice(null);
+    setLastIncident(null);
   }, [resetTrigger]);
 
   useEffect(() => {
@@ -83,6 +92,7 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
   }, [snapshot, setSiemCount]);
 
   const loadIncidentScope = (id) => {
+    setLastIncident(id);
     setScope({ kind: 'incident', id, status: 'loading' });
     apiFetch(`/api/incidents/${id}/scope`)
       .then((res) => { if (!res.ok) throw new Error('scope'); return res.json(); })
@@ -189,6 +199,43 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
     const { query, fresh, notice } = refineFilter(snapshot.identity.canonical_query, field, op, value);
     setQueryText(query);
     execute(query, scopeParam, fresh ? notice : null);
+  };
+
+  // P7.1 entity pivots (contract Sections 13/14): every pivot mints its
+  // documented query from the EXECUTED snapshot's TIMEFRAME token through
+  // the one generator, then ALWAYS executes Session-wide -- the scope
+  // control flips on screen as part of the pivot (never a silent side
+  // effect), and the incident being left stays one click away (return chip).
+  const PIVOT_FORMS = {
+    host: pivotHost, account: pivotAccount, process: pivotProcessImage,
+    file: pivotFile, ip: pivotIp, domain_proxy: pivotDomainProxy,
+    domain_dns: pivotDomainDns, event_type: pivotEventType,
+    sensor: pivotSensorFamily,
+  };
+  const pivotAndRun = (kind, value) => {
+    if (!snapshot || running) return;
+    const tf = splitSegments(snapshot.identity.canonical_query)[0];
+    const query = PIVOT_FORMS[kind](tf, value);
+    setScope({ kind: 'session' });
+    setQueryText(query);
+    execute(query, 'session');
+  };
+
+  // The return chip (Section 14 "Returning"): re-run the query currently in
+  // the bar under the last focused incident's participant scope. Uses the
+  // same scope-read + revised error behavior as the scope control (never a
+  // silent fallback).
+  const returnToIncident = (id) => {
+    if (running) return;
+    setLastIncident(id);
+    setScope({ kind: 'incident', id, status: 'loading' });
+    apiFetch(`/api/incidents/${id}/scope`)
+      .then((res) => { if (!res.ok) throw new Error('scope'); return res.json(); })
+      .then((sc) => {
+        setScope({ kind: 'incident', id, status: 'ready', sealed: !!sc.sealed });
+        execute(queryText, id);
+      })
+      .catch(() => setScope({ kind: 'incident', id, status: 'error' }));
   };
 
   // P5.2 indicator poll: token-bound only; passive (the snapshot never
@@ -310,6 +357,17 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
                 x
               </button>
             </span>
+          )}
+          {lastIncident && scopeParam !== lastIncident && (
+            <button
+              type="button"
+              data-testid="return-chip"
+              onClick={() => returnToIncident(lastIncident)}
+              disabled={running}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-[#16436b]/40 text-[#16436b] text-xs hover:bg-[#16436b]/5 disabled:opacity-50"
+            >
+              Back to {lastIncident}
+            </button>
           )}
           <label className="flex items-center gap-1.5 text-[#6e7781] ml-auto">
             Timeframe
@@ -482,6 +540,7 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
               event={snapshot.rows.find((r) => r.id === selectedId) || null}
               onFilter={refineAndRun}
               onHostPivot={onHostPivot}
+              onPivot={pivotAndRun}
             />
           </div>
         </div>

@@ -14,8 +14,33 @@ import kvpCatalogOrder from './kvpCatalogOrder.json';
 // the same lcqlPivots.refineFilter the sidebar uses (via the parent's
 // onFilter). A malformed event falls back to its sanitized raw JSON with a
 // notice rather than failing to render.
+//
+// Phase 7.1 adds the per-field [pivot] action (contract Section 12: "pivot
+// to host, user_account, process, file, IP, domain/url"; Section 13 forms;
+// Section 14 scope rule). PIVOT_MAP below is the complete field->form map;
+// a field outside it simply has no pivot. The shell's onPivot executes the
+// generated query Session-wide with the scope flip on screen.
 
 const CANONICAL_COMMONS = ['hostname', 'user_account', 'source_ip', 'destination_ip', 'severity'];
+
+// Entity-pivot sources (Phase 7.1). Keys are ONLY serialized observable
+// fields -- canonical commons and cataloged kvp keys -- pinned by a
+// structural test (workbench-cross-host.test.js): no answer-key or hidden
+// field can enter query generation through this map. `kind` selects the
+// documented Section 13 generator form in the shell.
+export const PIVOT_MAP = {
+  hostname: { kind: 'host', label: 'host timeline' },
+  user_account: { kind: 'account', label: 'account activity' },
+  source_ip: { kind: 'ip', label: 'IP activity' },
+  destination_ip: { kind: 'ip', label: 'IP activity' },
+  image: { kind: 'process', label: 'process image' },
+  parent_image: { kind: 'process', label: 'process image' },
+  target_filename: { kind: 'file', label: 'file activity' },
+  url: { kind: 'domain_proxy', label: 'proxy URL' },
+  query: { kind: 'domain_dns', label: 'DNS queries' },
+  event_type: { kind: 'event_type', label: 'event type' },
+  source_type: { kind: 'sensor', label: 'sensor family' },
+};
 
 // "Catalog order" (contract Section 12) = the checked-in
 // kvpCatalogOrder.json fixture: the backend field catalog's canonical kvp
@@ -61,7 +86,7 @@ const SectionLabel = ({ children }) => (
   </div>
 );
 
-const EventInspector = ({ event, onFilter, onHostPivot }) => {
+const EventInspector = ({ event, onFilter, onHostPivot, onPivot }) => {
   if (!event) return null;
 
   let view = null;
@@ -74,6 +99,7 @@ const EventInspector = ({ event, onFilter, onHostPivot }) => {
 
   const Actions = ({ field, value }) => {
     if (value === undefined || value === null || value === '') return null;
+    const piv = PIVOT_MAP[field];
     return (
       <span className="flex gap-1 shrink-0">
         <button
@@ -92,6 +118,17 @@ const EventInspector = ({ event, onFilter, onHostPivot }) => {
         >
           !=
         </button>
+        {piv && onPivot && (
+          <button
+            type="button"
+            onClick={() => onPivot(piv.kind, value)}
+            aria-label={`Pivot ${field}`}
+            title={`Pivot: ${piv.label} (runs Session-wide)`}
+            className="px-1.5 py-0.5 text-[10px] rounded border border-[#d0d7de] text-[#16436b] hover:bg-[#eef1f4]"
+          >
+            pivot
+          </button>
+        )}
       </span>
     );
   };
