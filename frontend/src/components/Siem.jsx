@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { apiFetch } from '../api';
 import SiemTable from './SiemTable';
 import SiemCards from './SiemCards';
@@ -73,6 +73,7 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
   // render ONLY while the displayed snapshot's canonical query is the
   // timeline's own query, so they can never mislabel another snapshot.
   const [timeline, setTimeline] = useState(null);
+  const focusSeqRef = useRef(0);
 
   useEffect(() => {
     apiFetch('/api/endpoints')
@@ -227,6 +228,21 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
     setScope({ kind: 'session' });
     setQueryText(query);
     execute(query, 'session');
+  };
+
+  // P7.3 surrounding events (contract Section 13 row: `all | H | * | *`,
+  // occurrence ascending, viewport centered on the source event). A context
+  // view around one event, NOT an entity pivot -- Section 14's Session-wide
+  // rule does not apply, so it runs under the CURRENT scope. The generated
+  // string is the documented host-timeline form (the one generator).
+  const surroundingAndRun = (hostname, eventId) => {
+    if (!snapshot || running || scopeBlocked) return;
+    const query = descentHost(hostname);
+    focusSeqRef.current += 1;
+    setQueryText(query);
+    setTimeline({ kind: 'surrounding', host: hostname, focusId: eventId,
+                  focusSeq: focusSeqRef.current, query });
+    execute(query, scopeParam);
   };
 
   // The return chip (Section 14 "Returning"): re-run the query currently in
@@ -531,15 +547,22 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
             role="status"
             className="px-3 py-1.5 rounded-md border border-[#16436b]/30 bg-[#16436b]/5 text-xs text-[#1a2332] flex flex-wrap items-center gap-x-2 gap-y-1"
           >
-            <span>
-              Evidence timeline
-              {timeline.host
-                ? <> for <span className="log-mono font-medium">{timeline.host}</span></>
-                : ' (all participant hosts)'}
-              , from <span className="log-mono text-[#16436b]">{timeline.origin}</span>
-            </span>
+            {timeline.kind === 'surrounding' ? (
+              <span>
+                Surrounding events for <span className="log-mono font-medium">{timeline.host}</span>,
+                centered on the selected event
+              </span>
+            ) : (
+              <span>
+                Evidence timeline
+                {timeline.host
+                  ? <> for <span className="log-mono font-medium">{timeline.host}</span></>
+                  : ' (all participant hosts)'}
+                , from <span className="log-mono text-[#16436b]">{timeline.origin}</span>
+              </span>
+            )}
             <span className="text-[#8b949e]">occurrence ascending</span>
-            {timeline.backView && onNavigate && (
+            {timeline.kind === 'descent' && timeline.backView && onNavigate && (
               <button
                 type="button"
                 onClick={() => onNavigate(timeline.backView)}
@@ -608,16 +631,21 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
           <div data-testid="workbench-results" className="flex-1 min-w-0">
             {view === 'cards' ? (
               <SiemCards alerts={displayRows} resetTrigger={resetTrigger}
-                         selectedId={selectedId} onSelect={selectRow} />
+                         selectedId={selectedId} onSelect={selectRow}
+                         focus={timelineActive && timeline.kind === 'surrounding'
+                           ? { id: timeline.focusId, seq: timeline.focusSeq } : null} />
             ) : (
               <SiemTable alerts={displayRows} resetTrigger={resetTrigger}
-                         selectedId={selectedId} onSelect={selectRow} />
+                         selectedId={selectedId} onSelect={selectRow}
+                         focus={timelineActive && timeline.kind === 'surrounding'
+                           ? { id: timeline.focusId, seq: timeline.focusSeq } : null} />
             )}
             <EventInspector
               event={snapshot.rows.find((r) => r.id === selectedId) || null}
               onFilter={refineAndRun}
               onHostPivot={onHostPivot}
               onPivot={pivotAndRun}
+              onSurrounding={surroundingAndRun}
             />
           </div>
         </div>

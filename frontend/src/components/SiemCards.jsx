@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { sevColor, sourceColor } from './siemUtils';
 
 // SIEM card view: event cards color-coded by source family. Presentational
@@ -14,8 +14,9 @@ const PER_PAGE = 12;
 const timeOf = (iso) =>
   iso ? new Date(iso).toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
 
-const SiemCards = ({ alerts, resetTrigger, selectedId, onSelect }) => {
+const SiemCards = ({ alerts, resetTrigger, selectedId, onSelect, focus }) => {
   const [page, setPage] = useState(1);
+  const focusRef = useRef(null);
 
   useEffect(() => {
     setPage(1);
@@ -25,6 +26,20 @@ const SiemCards = ({ alerts, resetTrigger, selectedId, onSelect }) => {
     const maxPage = Math.max(1, Math.ceil(alerts.length / PER_PAGE));
     if (page > maxPage) setPage(maxPage);
   }, [alerts.length, page]);
+
+  // P7.3 surrounding-events centering: jump to the focus event's page, then
+  // scroll its card into the viewport center. Display-only view state.
+  useEffect(() => {
+    if (!focus || !focus.id) return;
+    const idx = alerts.findIndex((a) => a.id === focus.id);
+    if (idx !== -1) setPage(Math.floor(idx / PER_PAGE) + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus && focus.seq]);
+  useEffect(() => {
+    if (focus && focusRef.current && typeof focusRef.current.scrollIntoView === 'function') {
+      focusRef.current.scrollIntoView({ block: 'center' });
+    }
+  }, [focus && focus.seq, page]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalPages = Math.max(1, Math.ceil(alerts.length / PER_PAGE));
   const current = alerts.slice((page - 1) * PER_PAGE, page * PER_PAGE);
@@ -70,6 +85,8 @@ const SiemCards = ({ alerts, resetTrigger, selectedId, onSelect }) => {
           return (
             <div
               key={alert.id}
+              ref={focus && alert.id === focus.id ? focusRef : undefined}
+              data-focused={focus && alert.id === focus.id ? 'true' : undefined}
               className={`bg-white rounded-xl border overflow-hidden flex flex-col ${
                 isOpen ? 'border-[#16436b] ring-1 ring-[#16436b]' : 'border-[#e2e6ea]'
               }`}

@@ -86,7 +86,7 @@ const SectionLabel = ({ children }) => (
   </div>
 );
 
-const EventInspector = ({ event, onFilter, onHostPivot, onPivot }) => {
+const EventInspector = ({ event, onFilter, onHostPivot, onPivot, onSurrounding }) => {
   if (!event) return null;
 
   let view = null;
@@ -217,6 +217,23 @@ const EventInspector = ({ event, onFilter, onHostPivot, onPivot }) => {
       <pre className="p-3 rounded-lg bg-[#f6f8fa] border border-[#eef1f4] text-[11px] leading-relaxed font-mono text-[#1a2332] overflow-x-auto">
 {JSON.stringify(sanitizeEvent(event), null, 2)}
       </pre>
+
+      {/* P7.3 Surrounding events (contract Sections 12/13): the host's full
+          timeline, occurrence ascending, viewport centered on THIS event.
+          Host-anchored -- an event without a hostname (identity-provider
+          telemetry) has no host to anchor, so no control. */}
+      {event.hostname && onSurrounding && (
+        <div className="mt-3 pt-2 border-t border-[#eef1f4]">
+          <button
+            type="button"
+            onClick={() => onSurrounding(event.hostname, event.id)}
+            title="All events on this host, occurrence ascending, centered on this event"
+            className="px-2.5 py-1 text-xs rounded-md border border-[#d0d7de] text-[#16436b] hover:bg-[#eef1f4]"
+          >
+            Surrounding events
+          </button>
+        </div>
+      )}
     </div>
   );
 };
