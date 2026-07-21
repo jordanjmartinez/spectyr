@@ -76,7 +76,8 @@ const ProcessCard = ({ title, name, cmdline, path, pid, ppid, signer, sha256, us
   );
 };
 
-const DetectionDetail = ({ detId, onBack, onAction, onHostPivot }) => {
+const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
+                           onEvidenceDescent, descentScopeIncidentId }) => {
   const [det, setDet] = useState(null);
   const [notFound, setNotFound] = useState(false);
 
@@ -133,6 +134,28 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot }) => {
             )}
           </div>
           <h2 className="mt-2 text-xl sm:text-2xl font-semibold text-[#1a2332]">{det.rule_name}</h2>
+          {/* P7.2 Open Evidence Timeline (contract Section 13, host-anchored
+              v1 form; OD-9 naming ruling -- never "View Triggering
+              Evidence"). The SAME honest control and query shape for every
+              detection kind; it reads nothing but the observable entity
+              host. Identity (account-entity) detections carry no endpoint
+              link, so there is no host to anchor and no timeline control. */}
+          {det.entity?.host && onEvidenceDescent && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => onEvidenceDescent({
+                  origin: det.id,
+                  hosts: [det.entity.host],
+                  scopeIncidentId: descentScopeIncidentId || null,
+                  backView: 'detections',
+                })}
+                className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#16436b] hover:bg-[#eef1f4]"
+              >
+                Open Evidence Timeline
+              </button>
+            </div>
+          )}
           <p className="mt-1 text-sm text-[#57606a] font-mono">
             {det.time ? det.time.slice(0, 19).replace('T', ' ') : '-'}
             {' '}&middot;{' '}

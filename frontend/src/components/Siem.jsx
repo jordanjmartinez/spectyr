@@ -7,7 +7,7 @@ import EventInspector from './EventInspector';
 import {
   refineFilter, splitSegments, pivotHost, pivotAccount, pivotProcessImage,
   pivotFile, pivotIp, pivotDomainProxy, pivotDomainDns, pivotEventType,
-  pivotSensorFamily,
+  pivotSensorFamily, descentHost, descentSessionAll,
 } from './lcqlPivots';
 
 // SIEM Investigation Workbench shell (Stage 4 Phase 4). Analyst-driven:
@@ -37,7 +37,8 @@ const firstSegmentToken = (text) => {
   return TF_TOKENS.includes(head) ? head : null;
 };
 
-const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => {
+const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
+                descentRequest, onNavigate }) => {
   const [org, setOrg] = useState({});
   const [view, setView] = useState('cards');
   const [queryText, setQueryText] = useState('');
@@ -66,6 +67,12 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
   // incident backs the one-click "Back to INC-…" return chip after an entity
   // pivot's Session-wide flip. UI/query state only -- reads, never mutations.
   const [lastIncident, setLastIncident] = useState(null);
+  // P7.2: the evidence-timeline context ({kind:'descent', origin, backView,
+  // host, query}). Pure UI provenance (contract Section 12: the breadcrumb
+  // "implies nothing about any row"); the banner and the ascending display
+  // render ONLY while the displayed snapshot's canonical query is the
+  // timeline's own query, so they can never mislabel another snapshot.
+  const [timeline, setTimeline] = useState(null);
 
   useEffect(() => {
     apiFetch('/api/endpoints')
@@ -85,6 +92,7 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
     setSelectionNotice(null);
     setQueryNotice(null);
     setLastIncident(null);
+    setTimeline(null);
   }, [resetTrigger]);
 
   useEffect(() => {
@@ -238,6 +246,38 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
       .catch(() => setScope({ kind: 'incident', id, status: 'error' }));
   };
 
+  // P7.2 Open Evidence Timeline descent (contract Sections 13/16): descent
+  // explicitly establishes scope for this entry. One participant host
+  // anchors that host's timeline (all | H | * | *); several -- or none
+  // known yet -- anchor the scoped session query (all | * | * | *) under
+  // the incident's participant scope. The request carries ONLY observable
+  // data from the origin surface; the query is generated HERE through the
+  // one generator. A detection descent without a player-selected incident
+  // context runs Session-wide.
+  useEffect(() => {
+    if (!descentRequest) return;
+    const { origin, hosts, scopeIncidentId, backView } = descentRequest;
+    const host = hosts && hosts.length === 1 ? hosts[0] : null;
+    const query = host ? descentHost(host) : descentSessionAll();
+    setQueryText(query);
+    setTimeline({ kind: 'descent', origin, backView, host, query });
+    if (scopeIncidentId) {
+      setLastIncident(scopeIncidentId);
+      setScope({ kind: 'incident', id: scopeIncidentId, status: 'loading' });
+      apiFetch(`/api/incidents/${scopeIncidentId}/scope`)
+        .then((res) => { if (!res.ok) throw new Error('scope'); return res.json(); })
+        .then((sc) => {
+          setScope({ kind: 'incident', id: scopeIncidentId, status: 'ready', sealed: !!sc.sealed });
+          execute(query, scopeIncidentId);
+        })
+        .catch(() => setScope({ kind: 'incident', id: scopeIncidentId, status: 'error' }));
+    } else {
+      setScope({ kind: 'session' });
+      execute(query, 'session');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [descentRequest]);
+
   // P5.2 indicator poll: token-bound only; passive (the snapshot never
   // changes); stops neutrally when the token is invalidated (a 400 after
   // Reset / Practice Another / restart) -- no error surface, the indicator
@@ -280,6 +320,18 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
       ? ''
       : new Date(t).toLocaleTimeString('en-GB', { hour12: false });
   };
+
+  // Timeline presentation (contract Section 13: "sorted occurrence
+  // ascending"): active only while the displayed snapshot IS the timeline's
+  // query. The ascending order is client view state over the frozen row set
+  // -- applied at display time, before the components' own column sorting.
+  const timelineActive = !!(timeline && snapshot
+    && snapshot.identity.canonical_query === timeline.query);
+  const occAsc = (a, b) =>
+    String(a.timestamp || '').localeCompare(String(b.timestamp || ''))
+    || (a.event_seq || 0) - (b.event_seq || 0);
+  const displayRows = !snapshot ? []
+    : timelineActive ? [...snapshot.rows].sort(occAsc) : snapshot.rows;
 
   return (
     <div>
@@ -473,6 +525,31 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
           </div>
         )}
 
+        {timelineActive && (
+          <div
+            data-testid="descent-banner"
+            role="status"
+            className="px-3 py-1.5 rounded-md border border-[#16436b]/30 bg-[#16436b]/5 text-xs text-[#1a2332] flex flex-wrap items-center gap-x-2 gap-y-1"
+          >
+            <span>
+              Evidence timeline
+              {timeline.host
+                ? <> for <span className="log-mono font-medium">{timeline.host}</span></>
+                : ' (all participant hosts)'}
+              , from <span className="log-mono text-[#16436b]">{timeline.origin}</span>
+            </span>
+            <span className="text-[#8b949e]">occurrence ascending</span>
+            {timeline.backView && onNavigate && (
+              <button
+                type="button"
+                onClick={() => onNavigate(timeline.backView)}
+                className="ml-auto text-[#16436b] hover:underline"
+              >
+                Back to {timeline.backView === 'grouped' ? 'Incidents' : 'Detections'}
+              </button>
+            )}
+          </div>
+        )}
         {selectionNotice && (
           <div role="status" className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a]">
             {selectionNotice}
@@ -530,10 +607,10 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId }) => 
           <FieldSidebar snapshot={snapshot} running={running} onValueClick={refineAndRun} />
           <div data-testid="workbench-results" className="flex-1 min-w-0">
             {view === 'cards' ? (
-              <SiemCards alerts={snapshot.rows} resetTrigger={resetTrigger}
+              <SiemCards alerts={displayRows} resetTrigger={resetTrigger}
                          selectedId={selectedId} onSelect={selectRow} />
             ) : (
-              <SiemTable alerts={snapshot.rows} resetTrigger={resetTrigger}
+              <SiemTable alerts={displayRows} resetTrigger={resetTrigger}
                          selectedId={selectedId} onSelect={selectRow} />
             )}
             <EventInspector

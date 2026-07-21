@@ -1,0 +1,284 @@
+/**
+ * Stage 4 Phase 7.2: Open Evidence Timeline descent (contract Sections 13,
+ * 16; OD-9 host-anchored v1 ruling).
+ *
+ * Proves: the SIEM shell consumes a descent request built ONLY from
+ * observable data and generates the documented descent forms (single
+ * participant host -> `all | H | * | *`; several -> `all | * | * | *`
+ * under the incident's participant scope); descent explicitly establishes
+ * scope (incident context when the entry carries one, Session-wide
+ * otherwise); the origin banner + breadcrumb render only while the
+ * displayed snapshot IS the timeline query (never mislabeling another
+ * snapshot); the timeline displays occurrence-ascending; and both descent
+ * entry points (Incidents workspace, DetectionDetail) supply exactly the
+ * observable fields -- with the SAME honest control and query shape for
+ * every detection kind, and no control at all for identity (account-
+ * entity) detections, which have no host to anchor.
+ */
+import React from 'react';
+import { render, screen, fireEvent, act, waitFor, within } from '@testing-library/react';
+import Siem from '../components/Siem';
+import Incidents from '../components/Incidents';
+import DetectionDetail from '../components/DetectionDetail';
+
+jest.mock('../api', () => ({ apiFetch: jest.fn() }));
+const { apiFetch } = require('../api');
+
+const ok = (body) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
+
+const EV = (id, seq, ts, msg) => ({
+  id, event_seq: seq, timestamp: ts, event_type: 'QUERY', source_type: 'DNS',
+  severity: 'low', hostname: 'ACME-WS10', message: msg, key_value_pairs: {},
+});
+// Served deliberately OUT of occurrence order (newest-first canonical).
+const ROWS_UNORDERED = [
+  EV('e3', 30, '2026-03-17T05:03:00+00:00', 'third event'),
+  EV('e1', 10, '2026-03-17T05:01:00+00:00', 'first event'),
+  EV('e2', 20, '2026-03-17T05:02:00+00:00', 'second event'),
+];
+
+const snapWith = (rows, canonical, scope = 'session') => ({
+  token: 'tok.one',
+  identity: {
+    canonical_query: canonical, scope, resolved_scope_hosts: [],
+    resolved_range: { start: '2026-03-17T03:41:00+00:00', end: '2026-03-17T05:20:00+00:00' },
+    cutoff_seq: 500,
+  },
+  count: rows.length, rows,
+});
+
+let queryResponses;
+beforeEach(() => {
+  queryResponses = [];
+  apiFetch.mockReset();
+  apiFetch.mockImplementation((p) => {
+    if (p === '/api/endpoints') return ok({ org: {}, endpoints: [] });
+    if (p.startsWith('/api/events/query/new-count')) return ok({ new_count: 0, pool_growth: 0 });
+    if (p.startsWith('/api/events/query')) {
+      return queryResponses.length
+        ? queryResponses.shift()
+        : ok(snapWith(ROWS_UNORDERED, 'all | ACME-WS10 | * | *'));
+    }
+    if (p.match(/^\/api\/incidents\/[^/]+\/scope$/)) {
+      const id = p.split('/')[3];
+      return ok({ incident_id: id, sealed: true, hosts: ['ACME-WS10'], accounts: [], detection_ids: [] });
+    }
+    return ok({});
+  });
+});
+
+const queryCalls = () =>
+  apiFetch.mock.calls.map((c) => c[0]).filter((p) => p.startsWith('/api/events/query?'))
+    .map(decodeURIComponent);
+
+const renderSiem = (props = {}) =>
+  render(<Siem setSiemCount={() => {}} resetTrigger={0} onHostPivot={() => {}} {...props} />);
+
+// --- the shell consumes descent requests -------------------------------------
+
+test('single-host detection descent (no incident context) runs all | H | * | * Session-wide with the origin banner', async () => {
+  const nav = jest.fn();
+  await act(async () => {
+    renderSiem({
+      descentRequest: { origin: 'DET-42', hosts: ['ACME-WS10'], scopeIncidentId: null, backView: 'detections', seq: 1 },
+      onNavigate: nav,
+    });
+  });
+  expect(queryCalls().pop()).toBe('/api/events/query?q=all | ACME-WS10 | * | *&scope=session');
+  expect(screen.getByLabelText('Scope').value).toBe('session');
+  const banner = screen.getByTestId('descent-banner');
+  expect(banner).toHaveTextContent('Evidence timeline for ACME-WS10, from DET-42');
+  expect(banner).toHaveTextContent('occurrence ascending');
+  fireEvent.click(within(banner).getByRole('button', { name: 'Back to Detections' }));
+  expect(nav).toHaveBeenCalledWith('detections');
+});
+
+test('single-host incident descent explicitly establishes the incident scope', async () => {
+  const nav = jest.fn();
+  queryResponses.push(ok(snapWith(ROWS_UNORDERED, 'all | ACME-WS10 | * | *', 'INC-9368')));
+  await act(async () => {
+    renderSiem({
+      descentRequest: { origin: 'INC-9368', hosts: ['ACME-WS10'], scopeIncidentId: 'INC-9368', backView: 'grouped', seq: 1 },
+      onNavigate: nav,
+    });
+  });
+  expect(apiFetch).toHaveBeenCalledWith('/api/incidents/INC-9368/scope');
+  expect(queryCalls().pop()).toBe('/api/events/query?q=all | ACME-WS10 | * | *&scope=INC-9368');
+  expect(screen.getByLabelText('Scope').value).toBe('INC-9368');
+  const banner = screen.getByTestId('descent-banner');
+  expect(banner).toHaveTextContent('Evidence timeline for ACME-WS10, from INC-9368');
+  fireEvent.click(within(banner).getByRole('button', { name: 'Back to Incidents' }));
+  expect(nav).toHaveBeenCalledWith('grouped');
+});
+
+test('multi-host incident descent runs the scoped session query under the incident scope', async () => {
+  queryResponses.push(ok(snapWith(ROWS_UNORDERED, 'all | * | * | *', 'INC-9368')));
+  await act(async () => {
+    renderSiem({
+      descentRequest: { origin: 'INC-9368', hosts: ['ACME-WS10', 'ACME-WS22'], scopeIncidentId: 'INC-9368', backView: 'grouped', seq: 1 },
+      onNavigate: () => {},
+    });
+  });
+  expect(queryCalls().pop()).toBe('/api/events/query?q=all | * | * | *&scope=INC-9368');
+  expect(screen.getByTestId('descent-banner'))
+    .toHaveTextContent('Evidence timeline (all participant hosts), from INC-9368');
+});
+
+test('the descent timeline displays occurrence ASCENDING regardless of served order', async () => {
+  await act(async () => {
+    renderSiem({
+      descentRequest: { origin: 'DET-42', hosts: ['ACME-WS10'], scopeIncidentId: null, backView: 'detections', seq: 1 },
+      onNavigate: () => {},
+    });
+  });
+  const text = screen.getByTestId('workbench-results').textContent;
+  const i1 = text.indexOf('first event');
+  const i2 = text.indexOf('second event');
+  const i3 = text.indexOf('third event');
+  expect(i1).toBeGreaterThan(-1);
+  expect(i1).toBeLessThan(i2);
+  expect(i2).toBeLessThan(i3);
+});
+
+test('the banner and ascending order vanish when the player executes a different query', async () => {
+  await act(async () => {
+    renderSiem({
+      descentRequest: { origin: 'DET-42', hosts: ['ACME-WS10'], scopeIncidentId: null, backView: 'detections', seq: 1 },
+      onNavigate: () => {},
+    });
+  });
+  expect(screen.getByTestId('descent-banner')).toBeInTheDocument();
+  queryResponses.push(ok(snapWith(ROWS_UNORDERED, 'all | * | * | *')));
+  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: /Run Query/ }));
+  });
+  expect(screen.queryByTestId('descent-banner')).toBeNull();
+  const text = screen.getByTestId('workbench-results').textContent;
+  // canonical served order again (newest first), not re-sorted ascending
+  expect(text.indexOf('third event')).toBeLessThan(text.indexOf('first event'));
+});
+
+// --- entry point: the Incidents workspace ------------------------------------
+
+test('the Incidents workspace descent button supplies exactly the observable participant scope', async () => {
+  apiFetch.mockImplementation((p) => {
+    if (p === '/api/incidents') {
+      return ok({
+        active: [{ incident_id: 'INC-A', title: 'Suspicious DNS', state: 'in_progress', sealed: true, ready: false, open_detections: 2, severity: 'High' }],
+        completed: [], queue_length: 10, resolved_count: 0,
+      });
+    }
+    if (p === '/api/incidents/INC-A/scope') {
+      return ok({ incident_id: 'INC-A', sealed: true, hosts: ['ACME-WS10', 'ACME-WS22'], accounts: ['ACME\\nkhan'], detection_ids: [] });
+    }
+    if (p === '/api/actions') return ok([]);
+    return ok({});
+  });
+  const onDescent = jest.fn();
+  render(<Incidents gameMode="soc_queue" activeIncidentId="INC-A" onEvidenceDescent={onDescent} />);
+  const btn = await screen.findByRole('button', { name: 'Open Evidence Timeline' });
+  fireEvent.click(btn);
+  expect(onDescent).toHaveBeenCalledWith({
+    origin: 'INC-A',
+    hosts: ['ACME-WS10', 'ACME-WS22'],
+    scopeIncidentId: 'INC-A',
+    backView: 'grouped',
+  });
+});
+
+// --- entry point: DetectionDetail --------------------------------------------
+
+const DET_FIXTURES = {
+  'det-aaa1': {
+    id: 'det-aaa1', rule_name: 'Encoded Subdomain Beacon Pattern', rule_type: 'sigma_behavioral',
+    severity: 'high', time: '2026-03-17T05:05:00+00:00', description: 'Rule text A.',
+    entity: { host: 'ACME-WS10' }, player_action: 'open',
+    triggering_events: [{ event_type: 'QUERY', source_type: 'DNS', hostname: 'ACME-WS10', message: 'DNS query.', key_value_pairs: {} }],
+  },
+  'det-bbb2': {
+    id: 'det-bbb2', rule_name: 'Scheduled Update Check', rule_type: 'sigma_behavioral',
+    severity: 'low', time: '2026-03-17T05:06:00+00:00', description: 'Rule text B.',
+    entity: { host: 'ACME-WS10' }, player_action: 'open',
+    triggering_events: [{ event_type: 'ProcessCreate', source_type: 'Sysmon', hostname: 'ACME-WS10', message: 'Updater ran.', key_value_pairs: {} }],
+  },
+  'det-idn3': {
+    id: 'det-idn3', rule_name: 'Impossible Travel Sign-in', rule_type: 'sigma_behavioral',
+    severity: 'high', time: '2026-03-17T05:07:00+00:00', description: 'Rule text C.',
+    entity: { account: 'rnguyen@acme.com' }, player_action: 'open',
+    triggering_events: [{ event_type: 'SigninLogs', source_type: 'Azure AD', message: 'Sign-in.', key_value_pairs: {} }],
+  },
+};
+
+const mockDetRoutes = () => {
+  apiFetch.mockImplementation((p) => {
+    const m = p.match(/^\/api\/detections\/([^/]+)$/);
+    if (m) return ok(DET_FIXTURES[decodeURIComponent(m[1])]);
+    return ok({});
+  });
+};
+
+test('a host-entity detection descends with exactly the observable entity host (Session-wide without context)', async () => {
+  mockDetRoutes();
+  const onDescent = jest.fn();
+  render(<DetectionDetail detId="det-aaa1" onBack={() => {}} onAction={() => {}} onEvidenceDescent={onDescent} descentScopeIncidentId={null} />);
+  const btn = await screen.findByRole('button', { name: 'Open Evidence Timeline' });
+  fireEvent.click(btn);
+  expect(onDescent).toHaveBeenCalledWith({
+    origin: 'det-aaa1', hosts: ['ACME-WS10'], scopeIncidentId: null, backView: 'detections',
+  });
+});
+
+test('a detection viewed under the player-selected incident context descends into that scope', async () => {
+  mockDetRoutes();
+  const onDescent = jest.fn();
+  render(<DetectionDetail detId="det-aaa1" onBack={() => {}} onAction={() => {}} onEvidenceDescent={onDescent} descentScopeIncidentId="INC-A" />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Open Evidence Timeline' }));
+  expect(onDescent.mock.calls[0][0].scopeIncidentId).toBe('INC-A');
+});
+
+test('every detection kind exposes the SAME control and request shape (indistinguishability through descent)', async () => {
+  mockDetRoutes();
+  const calls = [];
+  for (const id of ['det-aaa1', 'det-bbb2']) {
+    const onDescent = jest.fn();
+    const { unmount } = render(
+      <DetectionDetail detId={id} onBack={() => {}} onAction={() => {}} onEvidenceDescent={onDescent} descentScopeIncidentId={null} />
+    );
+    const btn = await screen.findByRole('button', { name: 'Open Evidence Timeline' });
+    expect(btn.textContent).toBe('Open Evidence Timeline');   // identical label
+    fireEvent.click(btn);
+    calls.push(onDescent.mock.calls[0][0]);
+    unmount();
+  }
+  // identical request SHAPE: same keys, same query form (host-anchored),
+  // differing only in the observable origin id
+  expect(Object.keys(calls[0]).sort()).toEqual(Object.keys(calls[1]).sort());
+  expect(calls[0].hosts).toEqual(calls[1].hosts);
+  expect(calls[0].scopeIncidentId).toBe(calls[1].scopeIncidentId);
+  expect(calls[0].backView).toBe(calls[1].backView);
+});
+
+test('an identity (account-entity) detection has no host to anchor and no timeline control', async () => {
+  mockDetRoutes();
+  render(<DetectionDetail detId="det-idn3" onBack={() => {}} onAction={() => {}} onEvidenceDescent={() => {}} descentScopeIncidentId={null} />);
+  await screen.findByText('Impossible Travel Sign-in');
+  expect(screen.queryByRole('button', { name: 'Open Evidence Timeline' })).toBeNull();
+});
+
+test('re-descending with a new seq re-executes the same timeline', async () => {
+  const props = {
+    descentRequest: { origin: 'DET-42', hosts: ['ACME-WS10'], scopeIncidentId: null, backView: 'detections', seq: 1 },
+    onNavigate: () => {},
+  };
+  let utils;
+  await act(async () => { utils = renderSiem(props); });
+  const before = queryCalls().length;
+  await act(async () => {
+    utils.rerender(
+      <Siem setSiemCount={() => {}} resetTrigger={0} onHostPivot={() => {}}
+            descentRequest={{ ...props.descentRequest, seq: 2 }} onNavigate={() => {}} />
+    );
+  });
+  expect(queryCalls().length).toBe(before + 1);
+});

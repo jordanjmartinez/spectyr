@@ -41,6 +41,7 @@ const PhaseStrip = ({ sealed, triage, related, ready }) => {
 const Incidents = ({
   isVisible, resetTrigger, onHardcoreFailure, onReset, gameMode = 'training',
   activeIncidentId, onSelectIncident, onNavigate, setGroupedAlertCount, onPracticeAnother,
+  onEvidenceDescent,
 }) => {
   const [data, setData] = useState({ active: [], completed: [], queue_length: 0, resolved_count: 0 });
   const [view, setView] = useState('active');    // 'active' | 'ready' | 'completed'
@@ -247,6 +248,27 @@ const Incidents = ({
                   {scope.accounts?.length ? <p><span className="text-[#8b949e]">Related accounts:</span> {scope.accounts.join(', ')}</p> : null}
                 </div>
               ) : null}
+
+              {/* P7.2 Open Evidence Timeline (contract Section 13 naming
+                  ruling; Section 16 descent-sets-scope). Supplies ONLY the
+                  observable participant scope; the SIEM shell generates the
+                  query. Evidence stays reviewable after submission. */}
+              {scope && scope.incident_id === selected.incident_id && onEvidenceDescent && (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => onEvidenceDescent({
+                      origin: selected.incident_id,
+                      hosts: scope.hosts || [],
+                      scopeIncidentId: selected.incident_id,
+                      backView: 'grouped',
+                    })}
+                    className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#16436b] hover:bg-[#eef1f4]"
+                  >
+                    Open Evidence Timeline
+                  </button>
+                </div>
+              )}
 
               {/* Related response activity (C5, non-exclusive) */}
               {relatedList.length > 0 && (

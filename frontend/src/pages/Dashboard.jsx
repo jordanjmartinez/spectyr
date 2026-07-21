@@ -39,11 +39,24 @@ const Dashboard = () => {
   const [endpointCount, setEndpointCount] = useState(0);
   const [detectionCount, setDetectionCount] = useState(0);
   const [pivotHost, setPivotHost] = useState(null);
+  // Stage 4 P7.2: Open Evidence Timeline descent requests (contract Sections
+  // 13/16). The request carries ONLY observable data supplied by the origin
+  // surface (origin label, participant hostnames, the player-selected
+  // incident context); the SIEM shell generates the query through the one
+  // generator. seq retriggers identical consecutive descents.
+  const [descentRequest, setDescentRequest] = useState(null);
+  const descentSeqRef = useRef(0);
 
   // Host pivot: a hostname link in an event view opens that endpoint page.
   const handleHostPivot = (hostname) => {
     setPivotHost({ value: hostname, ts: Date.now() });
     setView('endpoints');
+  };
+
+  const handleEvidenceDescent = (req) => {
+    descentSeqRef.current += 1;
+    setDescentRequest({ ...req, seq: descentSeqRef.current });
+    setView('siem');
   };
 
   useEffect(() => {
@@ -325,15 +338,16 @@ const Dashboard = () => {
             onNavigate={setView}
             setGroupedAlertCount={setGroupedAlertCount}
             onPracticeAnother={handlePracticeAnother}
+            onEvidenceDescent={handleEvidenceDescent}
           />
         </div>
 
         <div className={view === "siem" ? "block" : "hidden"}>
-          <Siem setSiemCount={setAlertCount} resetTrigger={resetTrigger} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} />
+          <Siem setSiemCount={setAlertCount} resetTrigger={resetTrigger} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} descentRequest={descentRequest} onNavigate={setView} />
         </div>
 
         <div className={view === "detections" ? "block" : "hidden"}>
-          <Detections isVisible={view === "detections"} resetTrigger={resetTrigger} setDetectionCount={setDetectionCount} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} />
+          <Detections isVisible={view === "detections"} resetTrigger={resetTrigger} setDetectionCount={setDetectionCount} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} onEvidenceDescent={handleEvidenceDescent} />
         </div>
 
         <div className={view === "endpoints" ? "block" : "hidden"}>
