@@ -46,7 +46,7 @@ const FieldSidebar = ({ snapshot, running, onValueClick }) => {
               <li key={value}>
                 <button
                   type="button"
-                  onClick={() => onValueClick(field, value)}
+                  onClick={() => onValueClick(field, '==', value)}
                   title={`${field} == "${value}"`}
                   className="w-full flex items-center justify-between gap-2 text-xs text-[#57606a] hover:bg-[#eef1f4] px-1.5 py-0.5 rounded"
                 >

@@ -134,11 +134,17 @@ test('FieldSidebar no-results state matches the locked contract', () => {
   expect(screen.getByText('No fields to summarize.')).toBeInTheDocument();
 });
 
-test('clicking a sidebar value calls onValueClick with (field, value) -- routes only through the generator', () => {
+test('clicking a sidebar value calls onValueClick with (field, "==", value) -- routes only through the generator', () => {
+  // refineFilter's signature is (query, field, op, value); the sidebar's
+  // onValueClick MUST supply the '==' operator explicitly. A prior version
+  // of this handler omitted it (onValueClick(field, value) only), which
+  // silently shifted the value into refineFilter's `op` parameter and
+  // produced a garbled query (caught live in Chrome, not by a unit test --
+  // this assertion is the fix, pinning the correct 3-arg call).
   const onValueClick = jest.fn();
   render(<FieldSidebar snapshot={{ count: 3, rows: ROWS }} running={false} onValueClick={onValueClick} />);
   fireEvent.click(screen.getByText('ACME-WS12'));
-  expect(onValueClick).toHaveBeenCalledWith('hostname', 'ACME-WS12');
+  expect(onValueClick).toHaveBeenCalledWith('hostname', '==', 'ACME-WS12');
 });
 
 test('no sidebar action can generate an event_seq predicate: no clickable element is ever tied to event_seq', () => {
@@ -179,6 +185,22 @@ describe('sidebar pinned to the displayed snapshot (fake timers)', () => {
     });
   });
   afterEach(() => { jest.useRealTimers(); });
+
+  test('clicking a sidebar value executes a well-formed refined query end-to-end (catches signature-mismatch regressions)', async () => {
+    render(<Siem setSiemCount={() => {}} resetTrigger={0} onHostPivot={() => {}} />);
+    fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Run Query/ }));
+    });
+    const sidebar = screen.getByTestId('field-sidebar');
+    await act(async () => {
+      fireEvent.click(within(sidebar).getByText('ACME-WS12'));
+    });
+    const calls = apiFetch.mock.calls.map((c) => c[0]).filter((p) => p.startsWith('/api/events/query?'));
+    const last = decodeURIComponent(calls[calls.length - 1]);
+    expect(last).toBe('/api/events/query?q=all | * | * | hostname == "ACME-WS12"&scope=session');
+    expect(last).not.toContain('undefined');
+  });
 
   test('sidebar values and counts remain unchanged while the underlying pool grows but the snapshot does not', async () => {
     render(<Siem setSiemCount={() => {}} resetTrigger={0} onHostPivot={() => {}} />);
