@@ -58,10 +58,16 @@ test('every documented pivot form is byte-canonical (parity with backend _PIVOT_
 test('descent forms are byte-canonical (parity with backend _PIVOT_DESCENT_FIXTURES[10..12])', () => {
   expect(descentHost('ACME-WS10')).toBe('all | ACME-WS10 | * | *');
   expect(descentSessionAll()).toBe('all | * | * | *');
-  // identity descent (7.4): the fixture account carries a domain backslash,
-  // so GD-5 escaping is exercised by the identity-descent fixture itself
+  // identity descent (7.5 uniform two-field OR, replacing the retired 7.4
+  // single-field form): the fixture account carries a domain backslash, so
+  // GD-5 escaping is exercised by the identity-descent fixture itself
   expect(descentAccount('ACME\\dlee'))
-    .toBe('all | * | * | user_account == "ACME\\\\dlee"');
+    .toBe('all | * | * | user_account == "ACME\\\\dlee" or UserPrincipalName == "ACME\\\\dlee"');
+});
+
+test('identity descent with a UPN-shaped account emits BOTH predicates in the approved order', () => {
+  expect(descentAccount('ahill@acme.com'))
+    .toBe('all | * | * | user_account == "ahill@acme.com" or UserPrincipalName == "ahill@acme.com"');
 });
 
 // The full ordered list, identical to the backend's, for one final
@@ -79,7 +85,7 @@ const BACKEND_PIVOT_DESCENT_FIXTURES = [
   '1h | Windows Security | * | *',
   'all | ACME-WS10 | * | *',
   'all | * | * | *',
-  'all | * | * | user_account == "ACME\\\\dlee"',
+  'all | * | * | user_account == "ACME\\\\dlee" or UserPrincipalName == "ACME\\\\dlee"',
 ];
 
 test('the generator output list equals the backend fixture list exactly, in order', () => {

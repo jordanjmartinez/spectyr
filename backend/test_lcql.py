@@ -423,9 +423,10 @@ _PIVOT_DESCENT_FIXTURES = [
     "1h | Windows Security | * | *",
     "all | ACME-WS10 | * | *",
     "all | * | * | *",
-    # identity-detection descent (Phase 7.4): account-anchored, GD-5
-    # domain-backslash escaping exercised by the fixture itself
-    'all | * | * | user_account == "ACME\\\\dlee"',
+    # identity-detection descent (Phase 7.5, replaces the retired 7.4
+    # single-field form): the uniform two-field OR -- GD-5 domain-backslash
+    # escaping exercised by the fixture itself
+    'all | * | * | user_account == "ACME\\\\dlee" or UserPrincipalName == "ACME\\\\dlee"',
 ]
 
 

@@ -308,9 +308,13 @@ test('scenario-looking and ambient-looking identity detections expose the identi
   expect(calls[1].account).toBe('ACME\\rhall');
 });
 
-test('identity descent runs the account-anchored form Session-wide without an incident context (GD-5 escaped)', async () => {
+// The P7.5 uniform two-field OR identity form, as one decoded query string.
+const IDENTITY_OR_QUERY =
+  'all | * | * | user_account == "ACME\\\\dlee" or UserPrincipalName == "ACME\\\\dlee"';
+
+test('identity descent runs the uniform two-field OR Session-wide without an incident context (GD-5 escaped)', async () => {
   const nav = jest.fn();
-  queryResponses.push(ok(snapWith(ROWS_UNORDERED, 'all | * | * | user_account == "ACME\\\\dlee"')));
+  queryResponses.push(ok(snapWith(ROWS_UNORDERED, IDENTITY_OR_QUERY)));
   await act(async () => {
     renderSiem({
       descentRequest: { origin: 'det-ids1', hosts: [], account: 'ACME\\dlee', scopeIncidentId: null, backView: 'detections', seq: 1 },
@@ -318,15 +322,17 @@ test('identity descent runs the account-anchored form Session-wide without an in
     });
   });
   expect(queryCalls().pop())
-    .toBe('/api/events/query?q=all | * | * | user_account == "ACME\\\\dlee"&scope=session');
+    .toBe(`/api/events/query?q=${IDENTITY_OR_QUERY}&scope=session`);
   expect(screen.getByLabelText('Scope').value).toBe('session');
   const banner = screen.getByTestId('descent-banner');
   expect(banner).toHaveTextContent('Evidence timeline for ACME\\dlee, from det-ids1');
   expect(banner.textContent).not.toMatch(/—/);   // approved copy punctuation only
+  // descent starts a FRESH query: no OR-fallback notice at descent time
+  expect(screen.queryByTestId('query-notice')).toBeNull();
 });
 
-test('identity descent under a player-selected incident context RETAINS that scope (no special-case)', async () => {
-  queryResponses.push(ok(snapWith([], 'all | * | * | user_account == "ACME\\\\dlee"', 'INC-9368')));
+test('identity descent under a player-selected incident context RETAINS that scope (no special-case, no silent broadening)', async () => {
+  queryResponses.push(ok(snapWith([], IDENTITY_OR_QUERY, 'INC-9368')));
   await act(async () => {
     renderSiem({
       descentRequest: { origin: 'det-ids1', hosts: [], account: 'ACME\\dlee', scopeIncidentId: 'INC-9368', backView: 'detections', seq: 1 },
@@ -334,12 +340,34 @@ test('identity descent under a player-selected incident context RETAINS that sco
     });
   });
   expect(queryCalls().pop())
-    .toBe('/api/events/query?q=all | * | * | user_account == "ACME\\\\dlee"&scope=INC-9368');
+    .toBe(`/api/events/query?q=${IDENTITY_OR_QUERY}&scope=INC-9368`);
   expect(screen.getByLabelText('Scope').value).toBe('INC-9368');
   // zero rows is the honest incident-scoped outcome when the account's
   // events lack participant hostnames; the visible scope control (and the
   // explicit Session-wide switch) is the designed path, not a silent one
   expect(screen.getByText('0 events match')).toBeInTheDocument();
+  // no silent scope broadening: nothing executed Session-wide in this flow
+  expect(queryCalls().some((c) => c.endsWith('&scope=session'))).toBe(false);
+});
+
+test('a refinement from the identity-descent OR timeline mints a fresh standalone query with the exact approved notice', async () => {
+  queryResponses.push(ok(snapWith(ROWS_UNORDERED, IDENTITY_OR_QUERY)));
+  await act(async () => {
+    renderSiem({
+      descentRequest: { origin: 'det-ids1', hosts: [], account: 'ACME\\dlee', scopeIncidentId: null, backView: 'detections', seq: 1 },
+      onNavigate: () => {},
+    });
+  });
+  expect(screen.queryByTestId('query-notice')).toBeNull();   // fresh at descent
+  fireEvent.click(within(screen.getByTestId('workbench-results')).getByText('first event'));
+  queryResponses.push(ok(snapWith(ROWS_UNORDERED, 'all | * | * | hostname == "ACME-WS10"')));
+  await act(async () => {
+    fireEvent.click(screen.getByLabelText('Filter hostname equals'));
+  });
+  expect(queryCalls().pop())
+    .toBe('/api/events/query?q=all | * | * | hostname == "ACME-WS10"&scope=session');
+  expect(screen.getByTestId('query-notice'))
+    .toHaveTextContent('Started a new query; the previous one mixed or-conditions.');
 });
 
 test('re-descending with a new seq re-executes the same timeline', async () => {

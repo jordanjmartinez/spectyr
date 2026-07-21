@@ -184,11 +184,17 @@ export function descentSessionAll() {
   return 'all | * | * | *';
 }
 
-// Identity-detection descent (Phase 7.4 ruling): evidence descent anchors
-// to the detection's OBSERVABLE ENTITY, so an account-entity detection
-// descends account-anchored. Always `all`, like every descent form; scope
-// follows the same rule as host descent (player-selected incident context
-// or Session-wide -- never special-cased).
+// Identity-detection descent (Phase 7.5 ruling): the UNIFORM two-field OR
+// for every identity/account detection. UPN-carrying families (Azure AD)
+// store the visible account in kvp UserPrincipalName while DOMAIN\username
+// families store it in user_account, so a single-field anchor lands on an
+// empty timeline for one of them (the live P7.4 finding). No branching on
+// account format, source family, or anything else -- one shape always;
+// correlating UPN identity with DOMAIN\username host activity remains
+// player investigation work through pivots. Always `all`; scope follows
+// the same rule as host descent (player-selected incident context or
+// Session-wide -- never special-cased).
 export function descentAccount(account) {
-  return `all | * | * | user_account == ${quoteValue(account)}`;
+  const a = quoteValue(account);
+  return `all | * | * | user_account == ${a} or UserPrincipalName == ${a}`;
 }
