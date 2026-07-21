@@ -302,8 +302,9 @@ def sanitize_event(log):
             if log.get(k) not in (None, "")}
 
 
-# The SIEM event feed (/api/fake-events) is the raw-log whitelist PLUS the
-# non-answer-bearing fields the client genuinely needs:
+# The SIEM event feed -- served by the Stage 4 query read /api/events/query;
+# the legacy /api/fake-events route is deleted (P8.3) -- is the raw-log
+# whitelist PLUS the non-answer-bearing fields the client genuinely needs:
 #   id         the opaque uuid4 event key -- React row key, dedup key in the
 #              feed, expand-row key, and the SIEM table's sort tie-break. It
 #              is random per event and reveals nothing about the scenario.

@@ -1,9 +1,11 @@
-# Stage 4 Query Grammar Notes (design record, do not implement yet)
+# Stage 4 Query Grammar Notes (design record; the grammar is now SHIPPED)
 
-Decisions recorded during Stage 1.5 for the future Stage 4 query bar. Nothing
-here is implemented now: Stage 1.5 filtering is dropdowns and free-text over
-the cached pool, with no query language. These notes exist so the Stage 4
-grammar is settled before it is built.
+Decisions recorded during Stage 1.5 for the Stage 4 query bar, since shipped
+as LCQL in the Stage 4 SIEM Investigation Workbench. The locked Stage 4A
+contract (Section 11) is the binding grammar; this file remains the original
+design record. The frozen-clock anchoring below is now TRUE in the shipped
+workbench: TIMEFRAME resolves against the deterministic simulation epoch and
+the pool's occurrence clock, never wall time.
 
 ## Pipe structure (four parts)
 

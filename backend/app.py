@@ -2604,9 +2604,10 @@ def finalize_chain(session, scenario_id):
 
 def log_writer(session, interval=1):
     """Rolling-queue log writer: continuously emits normal traffic and drips
-    attack chains from session['alert_queue'] every 40-80 seconds.
-    No per-level pause; only pauses when all alerts are resolved or session
-    is explicitly paused.
+    attack chains from session['alert_queue'] 20-40 seconds apart (C7 doc
+    correction: the docstring previously said 40-80s; the code has always
+    dripped 20-40s). No per-level pause; only pauses when all alerts are
+    resolved or session is explicitly paused.
     """
     attack_queue = []  # pending attack log dicts to write, interleaved with normals
     logs_since_last_attack = 0

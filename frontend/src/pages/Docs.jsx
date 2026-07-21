@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 const SECTIONS = [
   { id: 'queue', label: 'Queue' },
   { id: 'game-modes', label: 'Game Modes' },
+  { id: 'siem', label: 'SIEM Workbench' },
   { id: 'scenarios', label: 'Scenarios' },
   { id: 'analytics', label: 'Analytics' },
   { id: 'reports', label: 'Reports' },
@@ -148,6 +149,30 @@ const Docs = () => {
                 <p className="text-[#1a2332] font-medium mb-1">Hardcore</p>
                 <p>A single 15-minute timer for the entire queue. One wrong classification or an expired timer ends the run.</p>
               </div>
+            </Section>
+
+            <Section id="siem" title="SIEM Workbench">
+              <p>
+                The SIEM tab is an investigation workbench over the session event pool. Queries are
+                written in LCQL, four segments joined by pipes:
+              </p>
+              <p className="log-mono text-[#1a2332]">TIMEFRAME | SENSOR | EVENT TYPE | FILTERS</p>
+              <p>
+                Run Query executes the bar as a frozen snapshot: results never move until you run
+                again or press Refresh, and a new-events badge counts telemetry that arrived since
+                the snapshot. Sidebar values and per-field inspector actions refine the executed
+                query; entity pivots (host, account, IP, domain, process, file, event type, sensor)
+                always run Session-wide, with a one-click chip back to your incident scope.
+                Open Evidence Timeline on an incident or detection descends into its evidence,
+                sorted occurrence-ascending, and Surrounding events centers the host timeline on
+                the event you are inspecting.
+              </p>
+              <p>
+                Quoting rules for filter values: values containing spaces or any of{' '}
+                <span className="log-mono">&quot; &#39; = ! | *</span> must be quoted, and the bare
+                words and, or, not, contains must be quoted to match literally. Double-quoted and
+                unquoted values match case-insensitively; single quotes match exactly.
+              </p>
             </Section>
 
             <Section id="scenarios" title="Scenarios">
