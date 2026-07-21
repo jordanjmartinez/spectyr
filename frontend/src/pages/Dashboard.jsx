@@ -63,7 +63,7 @@ const Dashboard = () => {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
       switch (e.key) {
         case '1': setView('dashboard'); break;
-        case '2': setView('grouped'); setIncidentBadge(0); break;
+        case '2': setView('incidents'); setIncidentBadge(0); break;
         case '3': setView('siem'); break;
         case '4': setView('detections'); break;
         case '5': setView('endpoints'); break;
@@ -88,7 +88,7 @@ const Dashboard = () => {
           const injected = data.injected_count ?? 0;
           if (injected > lastInjectedRef.current) {
             const delta = injected - lastInjectedRef.current;
-            if (view !== 'grouped') {
+            if (view !== 'incidents') {
               setIncidentBadge(prev => prev + delta);
             }
           }
@@ -203,7 +203,7 @@ const Dashboard = () => {
   const tabs = [
     { key: 'dashboard', label: 'Dashboard', count: 0,
       icon: 'M4 5a1 1 0 011-1h5a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM14 13a1 1 0 011-1h4a1 1 0 011 1v6a1 1 0 01-1 1h-4a1 1 0 01-1-1v-6zM4 15a1 1 0 011-1h5a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4z' },
-    { key: 'grouped', label: 'Incidents', count: groupedAlertCount,
+    { key: 'incidents', label: 'Incidents', count: groupedAlertCount,
       icon: 'M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z' },
     { key: 'siem', label: 'SIEM', count: alertCount,
       icon: 'M4 6h16M4 10h16M4 14h16M4 18h16' },
@@ -236,7 +236,7 @@ const Dashboard = () => {
             return (
               <button
                 key={t.key}
-                onClick={() => { setView(t.key); if (t.key === 'grouped') setIncidentBadge(0); }}
+                onClick={() => { setView(t.key); if (t.key === 'incidents') setIncidentBadge(0); }}
                 title={t.label}
                 className={`group relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
                   active ? 'bg-white/10 text-white' : 'text-gray-400 hover:bg-white/5 hover:text-white'
@@ -324,9 +324,9 @@ const Dashboard = () => {
           />
         </div>
 
-        <div className={view === "grouped" ? "block" : "hidden"}>
+        <div className={view === "incidents" ? "block" : "hidden"}>
           <Incidents
-            isVisible={view === "grouped"}
+            isVisible={view === "incidents"}
             resetTrigger={resetTrigger}
             onHardcoreFailure={handleHardcoreFailure}
             onReset={() => setShowResetModal(true)}

@@ -2687,20 +2687,10 @@ def log_writer(session, interval=1):
 
         time.sleep(interval)
 
-@app.route('/api/fake-events', methods=['GET'])
-def get_fake_events():
-    """Simulated SIEM event feed. Every event is serialized server-side through
-    detection_templates.sanitize_feed_event: scenario wiring, category, label,
-    and every other answer-bearing field are stripped here (the frontend display
-    whitelist is a convenience, not the disclosure boundary)."""
-    s = g.session
-    seen_ids = set()
-    unique_logs = []
-    for log in read_ndjson(s, "generated_logs"):
-        if log["id"] not in seen_ids:
-            seen_ids.add(log["id"])
-            unique_logs.append(detection_templates.sanitize_feed_event(log))
-    return jsonify(unique_logs)
+# /api/fake-events DELETED (Stage 4 P8.3, scaffold Section 3.5): the query
+# read below is the single event path. Every former consumer is migrated
+# (Siem.jsx -> P4 shell; Dashboard existence check -> game-state, P8.1;
+# backend tests -> the query read, P8.3).
 
 # ---------------------------------------------------------------------------
 # Stage 4 Phase 3: the SIEM Workbench query read (contract Section 17).
@@ -4684,159 +4674,11 @@ def resume_generation():
     return jsonify({"status": "action logged", "action": action})
 
 
-def _sanitize_alert_group(grp):
-    """Client-safe grouped-alerts group. Only the opaque incident id and the
-    observable submission-readiness fields survive; every answer-bearing field
-    (category, scenario_id, label, threat_pattern, storyline, ticket_title,
-    analyst_category, level, pivot_values) and the raw event `logs` are dropped.
-    Built explicitly from a whitelist so nothing leaks by pass-through, now or
-    if the internal group shape gains fields later."""
-    return {
-        # incident_id is the opaque INC-#### the Incidents UI and the submission
-        # boundary already key on -- NOT the internal scenario_id.
-        "incident_id": grp.get("incident_id", ""),
-        # Observable submission readiness (Stage 3.9A; no answer-key info).
-        "detections_sealed": grp.get("detections_sealed", False),
-        "open_detections": grp.get("open_detections", 0),
-        "submission_ready": grp.get("submission_ready", False),
-    }
-
-
-@app.route('/api/grouped-alerts', methods=['GET'])
-def get_grouped_alerts():
-    s = g.session
-    logs = read_ndjson(s, "generated_logs")
-
-    grouped = {}
-
-    for log in logs:
-        scenario_id = log.get("scenario_id")
-        threat_pattern = log.get("threat_pattern", "Suspicious Activity")
-
-        if not scenario_id or log.get("label") == "normal_traffic":
-            continue
-
-        group_key = scenario_id
-
-        if group_key not in grouped:
-            grouped[group_key] = {
-                "scenario_id": scenario_id,
-                "threat_pattern": threat_pattern,
-                "label": log.get("label", "Unknown"),
-                "status": log.get("status", "unknown"),
-                "severity": log.get("severity", "unknown"),
-                "category": log.get("category", ""),
-                "ticket_title": log.get("level_name", ""),
-                "storyline": log.get("storyline", ""),
-                "analyst_category": log.get("analyst_category", ""),
-                "alert_id": log.get("alert_id", ""),
-                # Opaque client-facing incident id (== alert_id by construction);
-                # the submission boundary keys on this.
-                "incident_id": log.get("alert_id", ""),
-                "level": log.get("level"),
-                "log_count": 0,
-                "logs": [],
-                "severity_breakdown": {"low": 0, "medium": 0, "high": 0, "critical": 0}
-            }
-        else:
-            # Update analyst_category if it exists in this log
-            if log.get("analyst_category"):
-                grouped[group_key]["analyst_category"] = log.get("analyst_category")
-
-        grouped[group_key]["logs"].append(log)
-        grouped[group_key]["log_count"] += 1
-        sev = log.get("severity", "medium").lower()
-        if sev in grouped[group_key]["severity_breakdown"]:
-            grouped[group_key]["severity_breakdown"][sev] += 1
-
-    # Only return groups where the full attack chain has been injected
-    result = [grp for grp in grouped.values() if any(log.get("chain_complete") for log in grp["logs"])]
-
-    # Analyst mode: reveal only the trigger step(s); the rest of the chain is
-    # found by pivoting on the entity in the Events stream. Everything derived
-    # below (group severity, breakdowns, aggregate stats) then reflects only
-    # the revealed logs, so nothing leaks the hidden chain's composition.
-    analyst_mode = s.get("game_mode") == "analyst"
-    # Infra host/IP values are shared by unrelated network noise, so pivoting on
-    # them returns the whole domain's traffic rather than this chain. Excluded
-    # from pivot chips (matching fairness_check's pivot_values rule); external
-    # destinations like C2/exfil IPs are kept — those are useful pivots.
-    infra_values = set()
-    for srv in SERVERS.values():
-        infra_values.add(srv["ip"])
-        infra_values.add(srv["hostname"])
-    for grp in result:
-        grp["total_log_count"] = grp["log_count"]
-        if analyst_mode:
-            visible = [l for l in grp["logs"] if l.get("trigger")]
-            if visible:  # safety: if no trigger flagged, fall back to full chain
-                grp["logs"] = visible
-            grp["log_count"] = len(grp["logs"])
-            sb = {"low": 0, "medium": 0, "high": 0, "critical": 0}
-            for l in grp["logs"]:
-                sev = l.get("severity", "medium").lower()
-                if sev in sb:
-                    sb[sev] += 1
-            grp["severity_breakdown"] = sb
-            # Distinguishing entity values on the trigger log(s), infra excluded
-            pivots = []
-            for l in grp["logs"]:
-                candidates = [l.get("source_ip"), l.get("destination_ip"), l.get("hostname")]
-                candidates.append((l.get("key_value_pairs") or {}).get("account_name"))
-                for v in candidates:
-                    if v and v not in ("-", "—") and v not in infra_values and v not in pivots:
-                        pivots.append(v)
-            grp["pivot_values"] = pivots
-        grp["hidden_count"] = grp["total_log_count"] - grp["log_count"]
-
-    # Compute unified group severity (highest in the group)
-    severity_order = {"critical": 4, "high": 3, "medium": 2, "low": 1}
-    for grp in result:
-        highest = max(severity_order.get(log.get("severity", "medium").lower(), 2) for log in grp["logs"])
-        grp["group_severity"] = {4: "Critical", 3: "High", 2: "Medium", 1: "Low"}[highest]
-
-    # Stage 3.9A submission readiness (observable only, no answer-key info): the
-    # frontend blocks Submit until the roster is sealed and every scoped
-    # detection is dispositioned. Computed over the AUTHORITATIVE server roster,
-    # not the UI-visible feed.
-    with s["io_lock"]:
-        for grp in result:
-            sid = grp["scenario_id"]
-            grading_rec = _grading_record_for(s, sid)
-            state, open_n = incident_submission_readiness(s, sid, grading_rec)
-            grp["detections_sealed"] = state != "sealing"
-            grp["open_detections"] = open_n
-            grp["submission_ready"] = state == "ready"
-
-    # Compute aggregate stats
-    total_alerts = len(result)
-    closed_alerts = sum(1 for grp in result if grp["status"] in ["classified", "resolved"])
-    open_alerts = total_alerts - closed_alerts
-    severity_totals = {"low": 0, "medium": 0, "high": 0, "critical": 0}
-    source_totals = {}
-    for grp in result:
-        # Sum per-log severities (not per-scenario), so the donut reflects
-        # the real distribution of event severities, not just chain peaks.
-        for sev_key, sev_count in grp["severity_breakdown"].items():
-            if sev_key in severity_totals:
-                severity_totals[sev_key] += sev_count
-        for log in grp["logs"]:
-            src = log.get("source_type") or "Unknown"
-            source_totals[src] = source_totals.get(src, 0) + 1
-
-    return jsonify({
-        # Every group serialized through the whitelist: the raw event logs and
-        # all answer-bearing group fields are stripped server-side. `stats` is an
-        # aggregate of counts only (no per-scenario category/label/id).
-        "alerts": [_sanitize_alert_group(grp) for grp in result],
-        "stats": {
-            "total_alerts": total_alerts,
-            "closed_alerts": closed_alerts,
-            "open_alerts": open_alerts,
-            "severity_breakdown": severity_totals,
-            "source_breakdown": source_totals
-        }
-    })
+# /api/grouped-alerts and _sanitize_alert_group DELETED (Stage 4 P8.3,
+# scaffold Section 3.5), and the analyst trigger-only reveal branch retired
+# with them (OD-4 uniform written-pool visibility, contract Sections 5/15).
+# Surviving consumers: the Dashboard severity stats ride on /api/incidents
+# ("stats", P8.2); readiness fields ride on the /api/incidents cards (3.9B).
 
 
 @app.route("/api/reports", methods=["POST"])

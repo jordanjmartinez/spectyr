@@ -184,10 +184,14 @@ def test_live_drip_pool_rows_carry_contiguous_event_seq():
                                          "analyst_name": "Probe"}))
         assert r.status_code == 200
         hdr = {"X-Session-ID": sid}
+        # P8.3: the pool is read through the single event path (the legacy
+        # feed is deleted); TIMEFRAME `all` at session scope returns every
+        # visible row
+        q_all = "/api/events/query?q=all%20%7C%20*%20%7C%20*%20%7C%20*&scope=session"
         events = []
         deadline = time.time() + 20
         while time.time() < deadline:
-            events = client.get("/api/fake-events", headers=hdr).get_json()
+            events = client.get(q_all, headers=hdr).get_json()["rows"]
             if len(events) >= 6:
                 break
             time.sleep(0.3)
@@ -199,7 +203,7 @@ def test_live_drip_pool_rows_carry_contiguous_event_seq():
             f"live pool seq must be contiguous 1..N, got {seqs}"
         # append-only under polling: a second read is byte-identical or longer,
         # never mutated (compare the common prefix by id+seq)
-        again = client.get("/api/fake-events", headers=hdr).get_json()
+        again = client.get(q_all, headers=hdr).get_json()["rows"]
         prefix = {e["id"]: e["event_seq"] for e in events}
         for e in again:
             if e["id"] in prefix:

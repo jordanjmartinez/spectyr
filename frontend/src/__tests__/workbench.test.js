@@ -151,7 +151,7 @@ test('the shell never polls: no event requests without an explicit Run', async (
   renderShell();
   await act(async () => { jest.advanceTimersByTime(10000); });
   const eventCalls = apiFetch.mock.calls.map(c => c[0])
-    .filter(p => p.startsWith('/api/events/query') || p.startsWith('/api/fake-events'));
+    .filter(p => p.startsWith('/api/events/query'));
   expect(eventCalls).toEqual([]);
   jest.useRealTimers();
 });

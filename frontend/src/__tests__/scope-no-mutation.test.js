@@ -90,7 +90,7 @@ test('P7 descent, pivot, scope switch, and return-to-incident issue reads only',
       <Siem
         setSiemCount={() => {}} resetTrigger={0} onHostPivot={() => {}}
         activeIncidentId="INC-A" onNavigate={() => {}}
-        descentRequest={{ origin: 'INC-A', hosts: ['ACME-WS10'], scopeIncidentId: 'INC-A', backView: 'grouped', seq: 1 }}
+        descentRequest={{ origin: 'INC-A', hosts: ['ACME-WS10'], scopeIncidentId: 'INC-A', backView: 'incidents', seq: 1 }}
       />
     );
   });

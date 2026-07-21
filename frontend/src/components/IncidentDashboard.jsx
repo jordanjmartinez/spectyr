@@ -58,7 +58,7 @@ const IncidentDashboard = ({
   const offline = (env || []).length - online;
 
   // Navigation-level actions only (D7): deep-link into the Incidents workspace.
-  const openInIncidents = (incidentId) => { onSelectIncident?.(incidentId); onNavigate?.('grouped'); };
+  const openInIncidents = (incidentId) => { onSelectIncident?.(incidentId); onNavigate?.('incidents'); };
 
   return (
     <div className="space-y-6">

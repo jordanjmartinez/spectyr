@@ -614,16 +614,17 @@ def _reconstruct(s, sid, identity):
         frozen, identity["cutoff_seq"]))
 
 
-# --- Phase 3.3: transitional route audit -------------------------------------
+# --- Phase 8.3: final route audit --------------------------------------------
 
 def test_route_audit_single_event_query_path():
-    """Transitional form (tightened at Phase 8 when /api/fake-events and
-    /api/grouped-alerts retire): event ROWS are served by exactly two
-    routes -- the legacy /api/fake-events and /api/events/query -- proven
-    structurally: rows can only be emitted through the sanitize_feed_event
-    serializer or the _visible_rows helper, and the only /api views
-    referencing either are the audited set. The count read references
-    _visible_rows but serializes counts only (no rows key in its source)."""
+    """Final form (Phase 8.3: /api/fake-events and /api/grouped-alerts are
+    DELETED): event ROWS are served by exactly ONE route -- /api/events/query
+    -- proven structurally: rows can only be emitted through the
+    sanitize_feed_event serializer or the _visible_rows helper, and the only
+    /api views referencing either are the query read and its count
+    companion. The count read references _visible_rows but serializes counts
+    only (no rows key in its source). The retired legacy routes are asserted
+    absent from the URL map outright."""
     import re
     views = {r.rule: app.app.view_functions[r.endpoint]
              for r in app.app.url_map.iter_rules()
@@ -632,9 +633,10 @@ def test_route_audit_single_event_query_path():
         rule for rule, fn in views.items()
         if re.search(r"sanitize_feed_event|_visible_rows",
                      inspect.getsource(fn)))
-    assert emitters == ["/api/events/query", "/api/events/query/new-count",
-                        "/api/fake-events"], \
+    assert emitters == ["/api/events/query", "/api/events/query/new-count"], \
         f"unexpected event-serving routes: {emitters}"
+    assert "/api/fake-events" not in views, "retired route still in the URL map"
+    assert "/api/grouped-alerts" not in views, "retired route still in the URL map"
     src = inspect.getsource(app.query_new_count)
     assert '"rows"' not in src and "'rows'" not in src, \
         "the count read must never serialize rows"

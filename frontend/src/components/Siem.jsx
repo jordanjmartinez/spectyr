@@ -576,7 +576,7 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
                 onClick={() => onNavigate(timeline.backView)}
                 className="ml-auto text-[#16436b] hover:underline"
               >
-                Back to {timeline.backView === 'grouped' ? 'Incidents' : 'Detections'}
+                Back to {timeline.backView === 'incidents' ? 'Incidents' : 'Detections'}
               </button>
             )}
           </div>

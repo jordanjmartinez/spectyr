@@ -98,7 +98,7 @@ test('single-host incident descent explicitly establishes the incident scope', a
   queryResponses.push(ok(snapWith(ROWS_UNORDERED, 'all | ACME-WS10 | * | *', 'INC-9368')));
   await act(async () => {
     renderSiem({
-      descentRequest: { origin: 'INC-9368', hosts: ['ACME-WS10'], scopeIncidentId: 'INC-9368', backView: 'grouped', seq: 1 },
+      descentRequest: { origin: 'INC-9368', hosts: ['ACME-WS10'], scopeIncidentId: 'INC-9368', backView: 'incidents', seq: 1 },
       onNavigate: nav,
     });
   });
@@ -108,14 +108,14 @@ test('single-host incident descent explicitly establishes the incident scope', a
   const banner = screen.getByTestId('descent-banner');
   expect(banner).toHaveTextContent('Evidence timeline for ACME-WS10, from INC-9368');
   fireEvent.click(within(banner).getByRole('button', { name: 'Back to Incidents' }));
-  expect(nav).toHaveBeenCalledWith('grouped');
+  expect(nav).toHaveBeenCalledWith('incidents');
 });
 
 test('multi-host incident descent runs the scoped session query under the incident scope', async () => {
   queryResponses.push(ok(snapWith(ROWS_UNORDERED, 'all | * | * | *', 'INC-9368')));
   await act(async () => {
     renderSiem({
-      descentRequest: { origin: 'INC-9368', hosts: ['ACME-WS10', 'ACME-WS22'], scopeIncidentId: 'INC-9368', backView: 'grouped', seq: 1 },
+      descentRequest: { origin: 'INC-9368', hosts: ['ACME-WS10', 'ACME-WS22'], scopeIncidentId: 'INC-9368', backView: 'incidents', seq: 1 },
       onNavigate: () => {},
     });
   });
@@ -184,7 +184,7 @@ test('the Incidents workspace descent button supplies exactly the observable par
     hosts: ['ACME-WS10', 'ACME-WS22'],
     account: null,
     scopeIncidentId: 'INC-A',
-    backView: 'grouped',
+    backView: 'incidents',
   });
 });
 

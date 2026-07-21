@@ -262,7 +262,7 @@ const Incidents = ({
                       hosts: scope.hosts || [],
                       account: null,
                       scopeIncidentId: selected.incident_id,
-                      backView: 'grouped',
+                      backView: 'incidents',
                     })}
                     className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#16436b] hover:bg-[#eef1f4]"
                   >

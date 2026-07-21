@@ -491,21 +491,23 @@ def test_fp_inaction_scenario_reaches_readiness_and_full_grade():
         _cleanup(sid, s)
 
 
-def test_grouped_alerts_surface_incident_scoped_readiness():
-    """The grouped-alerts group carries observable readiness (sealed + open
-    count), incident-scoped, for the frontend Submit gate."""
+def test_incident_cards_surface_incident_scoped_readiness():
+    """P8.3 retarget (was test_grouped_alerts_surface_incident_scoped_
+    readiness; the grouped-alerts route is deleted): the /api/incidents
+    active card carries observable readiness (sealed + open count),
+    incident-scoped, for the frontend Submit gate."""
     client, sid, s = _api_session()
     try:
         with s["io_lock"]:
             _seed_incident(s, det_specs=[
                 ("g1", "true_positive", "open"),
                 ("g2", "false_positive", "promoted")])
-        grp = next(g for g in client.get("/api/grouped-alerts",
-                   headers={"X-Session-ID": sid}).get_json()["alerts"]
-                   if g["incident_id"] == INC)
-        assert grp["detections_sealed"] is True
-        assert grp["open_detections"] == 1
-        assert grp["submission_ready"] is False
+        cards = client.get("/api/incidents",
+                           headers={"X-Session-ID": sid}).get_json()["active"]
+        card = next(c for c in cards if c["incident_id"] == INC)
+        assert card["sealed"] is True
+        assert card["open_detections"] == 1
+        assert card["ready"] is False
     finally:
         _cleanup(sid, s)
 
@@ -530,10 +532,11 @@ def test_sealed_roster_finality_no_growth_on_poll_or_unrelated_activity():
         # ambient-benign step is a no-op for it (no re-attach)
         assert WS in s["benign_hosts"]
 
-        # duplicate polling must not regenerate/expand the roster
+        # duplicate polling must not regenerate/expand the roster (P8.3: the
+        # readiness-bearing poll surface is /api/incidents)
         for _ in range(3):
             client.get("/api/detections", headers=hdr)
-            client.get("/api/grouped-alerts", headers=hdr)
+            client.get("/api/incidents", headers=hdr)
         after_poll = {d["id"] for d in app._incident_detections(s, SID_SCENARIO, grec)}
         assert after_poll == base
 
