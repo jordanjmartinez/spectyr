@@ -28,7 +28,6 @@ const Dashboard = () => {
   const [showSimulateModal, setShowSimulateModal] = useState(false);
   const [showDifficultyModal, setShowDifficultyModal] = useState(false);
   const [practiceAnother, setPracticeAnother] = useState(false); // opens picker at the Guided catalog
-  const [existingLogCount, setExistingLogCount] = useState(0);
   const [showFailureModal, setShowFailureModal] = useState(false);
   const [failureCategory, setFailureCategory] = useState(null);
   const [failureType, setFailureType] = useState(null); // 'timeout' or 'wrong_answer'
@@ -101,17 +100,16 @@ const Dashboard = () => {
     return () => clearInterval(interval);
   }, [view]);
 
+  // Stage 4 P8.1 (scaffold Section 3.5): session existence comes from
+  // /api/game-state (analyst_name set once a run started), not from counting
+  // the legacy event feed. The feed route retires in P8.3.
   const handleSimulateEvents = async () => {
     try {
-      const res = await apiFetch('/api/fake-events');
+      const res = await apiFetch('/api/game-state');
       const data = await res.json();
-      const logCount = Array.isArray(data) ? data.length : 0;
-
-      if (logCount > 0) {
-        setExistingLogCount(logCount);
+      if (data.analyst_name) {
         setShowSimulateModal(true);
       } else {
-        // No logs - show difficulty selection
         setShowDifficultyModal(true);
       }
     } catch (err) {
@@ -436,7 +434,7 @@ const Dashboard = () => {
             <h3 className="text-lg font-semibold text-[#1a2332] mb-4">Simulation Active</h3>
             <div className="mb-5" style={{ height: '1px', background: 'linear-gradient(to right, rgba(0,0,0,0.08), transparent)' }} />
             <p className="text-[#57606a] mb-6">
-              You have <span className="text-[#1a2332] font-medium">{existingLogCount} events</span> from an active session. Use <span className="text-[#1a2332] font-medium">Reset Simulation</span> to start fresh.
+              A simulation session is already active. Use <span className="text-[#1a2332] font-medium">Reset Simulation</span> to start fresh.
             </p>
             <div className="flex justify-end gap-2">
               <button
