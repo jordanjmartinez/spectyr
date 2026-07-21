@@ -423,6 +423,9 @@ _PIVOT_DESCENT_FIXTURES = [
     "1h | Windows Security | * | *",
     "all | ACME-WS10 | * | *",
     "all | * | * | *",
+    # identity-detection descent (Phase 7.4): account-anchored, GD-5
+    # domain-backslash escaping exercised by the fixture itself
+    'all | * | * | user_account == "ACME\\\\dlee"',
 ]
 
 

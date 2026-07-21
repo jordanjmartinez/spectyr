@@ -21,7 +21,8 @@ const {
   escapeValue, isConjunctionOnly, refineFilter, OR_FALLBACK_NOTICE,
   pivotHost, pivotAccount, pivotProcessImage, pivotProcessNameContains,
   pivotFile, pivotIp, pivotDomainProxy, pivotDomainDns, pivotEventType,
-  pivotSensorFamily, descentHost, descentSessionAll, splitSegments,
+  pivotSensorFamily, descentHost, descentSessionAll, descentAccount,
+  splitSegments,
 } = pivots;
 
 // --- GD-5 escaping ------------------------------------------------------
@@ -54,9 +55,13 @@ test('every documented pivot form is byte-canonical (parity with backend _PIVOT_
   expect(pivotSensorFamily('1h', 'Windows Security')).toBe('1h | Windows Security | * | *');
 });
 
-test('descent forms are byte-canonical (parity with backend _PIVOT_DESCENT_FIXTURES[10..11])', () => {
+test('descent forms are byte-canonical (parity with backend _PIVOT_DESCENT_FIXTURES[10..12])', () => {
   expect(descentHost('ACME-WS10')).toBe('all | ACME-WS10 | * | *');
   expect(descentSessionAll()).toBe('all | * | * | *');
+  // identity descent (7.4): the fixture account carries a domain backslash,
+  // so GD-5 escaping is exercised by the identity-descent fixture itself
+  expect(descentAccount('ACME\\dlee'))
+    .toBe('all | * | * | user_account == "ACME\\\\dlee"');
 });
 
 // The full ordered list, identical to the backend's, for one final
@@ -74,6 +79,7 @@ const BACKEND_PIVOT_DESCENT_FIXTURES = [
   '1h | Windows Security | * | *',
   'all | ACME-WS10 | * | *',
   'all | * | * | *',
+  'all | * | * | user_account == "ACME\\\\dlee"',
 ];
 
 test('the generator output list equals the backend fixture list exactly, in order', () => {
@@ -90,6 +96,7 @@ test('the generator output list equals the backend fixture list exactly, in orde
     pivotSensorFamily('1h', 'Windows Security'),
     descentHost('ACME-WS10'),
     descentSessionAll(),
+    descentAccount('ACME\\dlee'),
   ];
   expect(generated).toEqual(BACKEND_PIVOT_DESCENT_FIXTURES);
 });

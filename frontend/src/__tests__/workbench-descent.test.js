@@ -182,6 +182,7 @@ test('the Incidents workspace descent button supplies exactly the observable par
   expect(onDescent).toHaveBeenCalledWith({
     origin: 'INC-A',
     hosts: ['ACME-WS10', 'ACME-WS22'],
+    account: null,
     scopeIncidentId: 'INC-A',
     backView: 'grouped',
   });
@@ -202,10 +203,20 @@ const DET_FIXTURES = {
     entity: { host: 'ACME-WS10' }, player_action: 'open',
     triggering_events: [{ event_type: 'ProcessCreate', source_type: 'Sysmon', hostname: 'ACME-WS10', message: 'Updater ran.', key_value_pairs: {} }],
   },
-  'det-idn3': {
-    id: 'det-idn3', rule_name: 'Impossible Travel Sign-in', rule_type: 'sigma_behavioral',
+  // P7.4 identity fixtures: both carry a DOMAIN-BACKSLASH account so the
+  // identity-descent path exercises GD-5 escaping itself; one attack-looking,
+  // one benign-looking payload (kind is not even present in the sanitized
+  // payload -- the control must not vary with it).
+  'det-ids1': {
+    id: 'det-ids1', rule_name: 'Password Spray Pattern Across Accounts', rule_type: 'sigma_behavioral',
     severity: 'high', time: '2026-03-17T05:07:00+00:00', description: 'Rule text C.',
-    entity: { account: 'rnguyen@acme.com' }, player_action: 'open',
+    entity: { account: 'ACME\\dlee' }, player_action: 'open',
+    triggering_events: [{ event_type: '4625', source_type: 'Windows Security', message: 'Failed logon.', key_value_pairs: {} }],
+  },
+  'det-ida2': {
+    id: 'det-ida2', rule_name: 'Conditional Access Policy Evaluation', rule_type: 'sigma_behavioral',
+    severity: 'low', time: '2026-03-17T05:08:00+00:00', description: 'Rule text D.',
+    entity: { account: 'ACME\\rhall' }, player_action: 'open',
     triggering_events: [{ event_type: 'SigninLogs', source_type: 'Azure AD', message: 'Sign-in.', key_value_pairs: {} }],
   },
 };
@@ -225,7 +236,8 @@ test('a host-entity detection descends with exactly the observable entity host (
   const btn = await screen.findByRole('button', { name: 'Open Evidence Timeline' });
   fireEvent.click(btn);
   expect(onDescent).toHaveBeenCalledWith({
-    origin: 'det-aaa1', hosts: ['ACME-WS10'], scopeIncidentId: null, backView: 'detections',
+    origin: 'det-aaa1', hosts: ['ACME-WS10'], account: null,
+    scopeIncidentId: null, backView: 'detections',
   });
 });
 
@@ -259,11 +271,75 @@ test('every detection kind exposes the SAME control and request shape (indisting
   expect(calls[0].backView).toBe(calls[1].backView);
 });
 
-test('an identity (account-entity) detection has no host to anchor and no timeline control', async () => {
+// --- P7.4: identity-detection descent (R17 uniform control) ------------------
+
+test('an identity detection descends anchored to its observable account', async () => {
   mockDetRoutes();
-  render(<DetectionDetail detId="det-idn3" onBack={() => {}} onAction={() => {}} onEvidenceDescent={() => {}} descentScopeIncidentId={null} />);
-  await screen.findByText('Impossible Travel Sign-in');
-  expect(screen.queryByRole('button', { name: 'Open Evidence Timeline' })).toBeNull();
+  const onDescent = jest.fn();
+  render(<DetectionDetail detId="det-ids1" onBack={() => {}} onAction={() => {}} onEvidenceDescent={onDescent} descentScopeIncidentId={null} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Open Evidence Timeline' }));
+  expect(onDescent).toHaveBeenCalledWith({
+    origin: 'det-ids1', hosts: [], account: 'ACME\\dlee',
+    scopeIncidentId: null, backView: 'detections',
+  });
+});
+
+test('scenario-looking and ambient-looking identity detections expose the identical control and request shape', async () => {
+  mockDetRoutes();
+  const calls = [];
+  for (const id of ['det-ids1', 'det-ida2']) {
+    const onDescent = jest.fn();
+    const { unmount } = render(
+      <DetectionDetail detId={id} onBack={() => {}} onAction={() => {}} onEvidenceDescent={onDescent} descentScopeIncidentId={null} />
+    );
+    const btn = await screen.findByRole('button', { name: 'Open Evidence Timeline' });
+    expect(btn.textContent).toBe('Open Evidence Timeline');   // identical label
+    fireEvent.click(btn);
+    calls.push(onDescent.mock.calls[0][0]);
+    unmount();
+  }
+  // identical key set and values, differing ONLY by the visible origin id
+  // and the visible account
+  expect(Object.keys(calls[0]).sort()).toEqual(Object.keys(calls[1]).sort());
+  expect(calls[0].hosts).toEqual(calls[1].hosts);
+  expect(calls[0].scopeIncidentId).toBe(calls[1].scopeIncidentId);
+  expect(calls[0].backView).toBe(calls[1].backView);
+  expect(calls[0].account).toBe('ACME\\dlee');
+  expect(calls[1].account).toBe('ACME\\rhall');
+});
+
+test('identity descent runs the account-anchored form Session-wide without an incident context (GD-5 escaped)', async () => {
+  const nav = jest.fn();
+  queryResponses.push(ok(snapWith(ROWS_UNORDERED, 'all | * | * | user_account == "ACME\\\\dlee"')));
+  await act(async () => {
+    renderSiem({
+      descentRequest: { origin: 'det-ids1', hosts: [], account: 'ACME\\dlee', scopeIncidentId: null, backView: 'detections', seq: 1 },
+      onNavigate: nav,
+    });
+  });
+  expect(queryCalls().pop())
+    .toBe('/api/events/query?q=all | * | * | user_account == "ACME\\\\dlee"&scope=session');
+  expect(screen.getByLabelText('Scope').value).toBe('session');
+  const banner = screen.getByTestId('descent-banner');
+  expect(banner).toHaveTextContent('Evidence timeline for ACME\\dlee, from det-ids1');
+  expect(banner.textContent).not.toMatch(/—/);   // approved copy punctuation only
+});
+
+test('identity descent under a player-selected incident context RETAINS that scope (no special-case)', async () => {
+  queryResponses.push(ok(snapWith([], 'all | * | * | user_account == "ACME\\\\dlee"', 'INC-9368')));
+  await act(async () => {
+    renderSiem({
+      descentRequest: { origin: 'det-ids1', hosts: [], account: 'ACME\\dlee', scopeIncidentId: 'INC-9368', backView: 'detections', seq: 1 },
+      onNavigate: () => {},
+    });
+  });
+  expect(queryCalls().pop())
+    .toBe('/api/events/query?q=all | * | * | user_account == "ACME\\\\dlee"&scope=INC-9368');
+  expect(screen.getByLabelText('Scope').value).toBe('INC-9368');
+  // zero rows is the honest incident-scoped outcome when the account's
+  // events lack participant hostnames; the visible scope control (and the
+  // explicit Session-wide switch) is the designed path, not a silent one
+  expect(screen.getByText('0 events match')).toBeInTheDocument();
 });
 
 test('re-descending with a new seq re-executes the same timeline', async () => {

@@ -134,19 +134,22 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
             )}
           </div>
           <h2 className="mt-2 text-xl sm:text-2xl font-semibold text-[#1a2332]">{det.rule_name}</h2>
-          {/* P7.2 Open Evidence Timeline (contract Section 13, host-anchored
-              v1 form; OD-9 naming ruling -- never "View Triggering
-              Evidence"). The SAME honest control and query shape for every
-              detection kind; it reads nothing but the observable entity
-              host. Identity (account-entity) detections carry no endpoint
-              link, so there is no host to anchor and no timeline control. */}
-          {det.entity?.host && onEvidenceDescent && (
+          {/* P7.2/P7.4 Open Evidence Timeline (contract Section 13; OD-9
+              naming ruling -- never "View Triggering Evidence"; R17 uniform
+              control). Descent anchors to the detection's OBSERVABLE
+              ENTITY: host-entity detections descend host-anchored,
+              identity (account-entity) detections descend account-anchored.
+              One control, one request grammar for every detection kind --
+              presence and content depend only on the visible entity, never
+              on disposition, scenario membership, or any answer-key state. */}
+          {(det.entity?.host || det.entity?.account) && onEvidenceDescent && (
             <div className="mt-2">
               <button
                 type="button"
                 onClick={() => onEvidenceDescent({
                   origin: det.id,
-                  hosts: [det.entity.host],
+                  hosts: det.entity.host ? [det.entity.host] : [],
+                  account: det.entity.host ? null : det.entity.account,
                   scopeIncidentId: descentScopeIncidentId || null,
                   backView: 'detections',
                 })}

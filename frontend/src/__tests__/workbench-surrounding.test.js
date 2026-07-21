@@ -94,6 +94,7 @@ test('Surrounding events emits all | H | * | * under the CURRENT scope with the 
   const banner = screen.getByTestId('descent-banner');
   expect(banner).toHaveTextContent('Surrounding events for ACME-WS10, centered on the selected event');
   expect(banner).toHaveTextContent('occurrence ascending');
+  expect(banner.textContent).not.toMatch(/—/);   // approved copy punctuation only
 });
 
 test('the viewport centers on the source event: page jump, scrollIntoView, focus marker, retained selection', async () => {

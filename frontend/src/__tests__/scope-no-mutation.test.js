@@ -115,3 +115,20 @@ test('P7 descent, pivot, scope switch, and return-to-incident issue reads only',
 
   expect(mutatingCalls()).toHaveLength(0);   // the investigation surface is read-only
 });
+
+// P7.4: identity-detection descent (account-anchored) is a read like every
+// other descent -- under an incident context and Session-wide alike.
+test('P7.4 identity descent issues reads only', async () => {
+  await act(async () => {
+    render(
+      <Siem
+        setSiemCount={() => {}} resetTrigger={0} onHostPivot={() => {}}
+        activeIncidentId="INC-A" onNavigate={() => {}}
+        descentRequest={{ origin: 'det-ids1', hosts: [], account: 'ACME\\dlee', scopeIncidentId: 'INC-A', backView: 'detections', seq: 1 }}
+      />
+    );
+  });
+  await waitFor(() =>
+    expect(apiFetch).toHaveBeenCalledWith(expect.stringContaining('/api/events/query')));
+  expect(mutatingCalls()).toHaveLength(0);
+});

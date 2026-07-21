@@ -183,3 +183,12 @@ export function descentHost(hostname) {
 export function descentSessionAll() {
   return 'all | * | * | *';
 }
+
+// Identity-detection descent (Phase 7.4 ruling): evidence descent anchors
+// to the detection's OBSERVABLE ENTITY, so an account-entity detection
+// descends account-anchored. Always `all`, like every descent form; scope
+// follows the same rule as host descent (player-selected incident context
+// or Session-wide -- never special-cased).
+export function descentAccount(account) {
+  return `all | * | * | user_account == ${quoteValue(account)}`;
+}

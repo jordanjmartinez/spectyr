@@ -7,7 +7,7 @@ import EventInspector from './EventInspector';
 import {
   refineFilter, splitSegments, pivotHost, pivotAccount, pivotProcessImage,
   pivotFile, pivotIp, pivotDomainProxy, pivotDomainDns, pivotEventType,
-  pivotSensorFamily, descentHost, descentSessionAll,
+  pivotSensorFamily, descentHost, descentSessionAll, descentAccount,
 } from './lcqlPivots';
 
 // SIEM Investigation Workbench shell (Stage 4 Phase 4). Analyst-driven:
@@ -262,21 +262,29 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
       .catch(() => setScope({ kind: 'incident', id, status: 'error' }));
   };
 
-  // P7.2 Open Evidence Timeline descent (contract Sections 13/16): descent
-  // explicitly establishes scope for this entry. One participant host
-  // anchors that host's timeline (all | H | * | *); several -- or none
-  // known yet -- anchor the scoped session query (all | * | * | *) under
-  // the incident's participant scope. The request carries ONLY observable
-  // data from the origin surface; the query is generated HERE through the
-  // one generator. A detection descent without a player-selected incident
-  // context runs Session-wide.
+  // P7.2/P7.4 Open Evidence Timeline descent (contract Sections 13/16; R17
+  // uniform control): descent explicitly establishes scope for this entry
+  // and anchors to the OBSERVABLE ENTITY. An account-entity detection
+  // descends account-anchored (all | * | * | user_account == "A"); one
+  // participant host anchors that host's timeline (all | H | * | *);
+  // several -- or none known yet -- anchor the scoped session query
+  // (all | * | * | *) under the incident's participant scope. Scope
+  // follows ONE rule for every anchor kind: the player-selected incident
+  // context when the entry carries one, Session-wide otherwise -- identity
+  // descent is deliberately NOT special-cased, so an incident-scoped
+  // account timeline may honestly show zero rows when the account's events
+  // lack participant hostnames; the visible scope control is the designed
+  // path out. The request carries ONLY observable data from the origin
+  // surface; the query is generated HERE through the one generator.
   useEffect(() => {
     if (!descentRequest) return;
-    const { origin, hosts, scopeIncidentId, backView } = descentRequest;
-    const host = hosts && hosts.length === 1 ? hosts[0] : null;
-    const query = host ? descentHost(host) : descentSessionAll();
+    const { origin, hosts, account, scopeIncidentId, backView } = descentRequest;
+    const host = !account && hosts && hosts.length === 1 ? hosts[0] : null;
+    const query = account ? descentAccount(account)
+      : host ? descentHost(host) : descentSessionAll();
     setQueryText(query);
-    setTimeline({ kind: 'descent', origin, backView, host, query });
+    setTimeline({ kind: 'descent', origin, backView, host,
+                  account: account || null, query });
     if (scopeIncidentId) {
       setLastIncident(scopeIncidentId);
       setScope({ kind: 'incident', id: scopeIncidentId, status: 'loading' });
@@ -555,8 +563,8 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
             ) : (
               <span>
                 Evidence timeline
-                {timeline.host
-                  ? <> for <span className="log-mono font-medium">{timeline.host}</span></>
+                {timeline.host || timeline.account
+                  ? <> for <span className="log-mono font-medium">{timeline.host || timeline.account}</span></>
                   : ' (all participant hosts)'}
                 , from <span className="log-mono text-[#16436b]">{timeline.origin}</span>
               </span>

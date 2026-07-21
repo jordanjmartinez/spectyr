@@ -260,6 +260,7 @@ const Incidents = ({
                     onClick={() => onEvidenceDescent({
                       origin: selected.incident_id,
                       hosts: scope.hosts || [],
+                      account: null,
                       scopeIncidentId: selected.incident_id,
                       backView: 'grouped',
                     })}
