@@ -1,5 +1,6 @@
 import React from 'react';
 import { sourceColor, sanitizeEvent, renderFieldValue } from './siemUtils';
+import kvpCatalogOrder from './kvpCatalogOrder.json';
 
 // Event inspector (Stage 4 Phase 6.3, contract Section 12). One lens over
 // exactly the whitelisted, sanitized event -- no non-whitelisted field is
@@ -16,6 +17,16 @@ import { sourceColor, sanitizeEvent, renderFieldValue } from './siemUtils';
 
 const CANONICAL_COMMONS = ['hostname', 'user_account', 'source_ip', 'destination_ip', 'severity'];
 
+// "Catalog order" (contract Section 12) = the checked-in
+// kvpCatalogOrder.json fixture: the backend field catalog's canonical kvp
+// key union, sorted, byte-pinned to build_field_catalog by
+// test_lcql.py::test_kvp_catalog_order_fixture_byte_equals_catalog_order
+// (the 6.1 shared-fixture pattern -- one order, two consumers, drift fails
+// the battery). A key absent from the catalog still renders, after every
+// cataloged key, alphabetically.
+const KVP_RANK = new Map(kvpCatalogOrder.map((k, i) => [k, i]));
+const kvpRank = (k) => (KVP_RANK.has(k) ? KVP_RANK.get(k) : Infinity);
+
 // May throw for genuinely malformed shapes; the caller catches it and
 // falls back to the raw-JSON-only view (contract Section 12 States).
 function buildStructuredView(event) {
@@ -28,7 +39,7 @@ function buildStructuredView(event) {
   }
   const kvpEntries = Object.entries(kvpRaw || {})
     .filter(([, v]) => v !== undefined && v !== null && v !== '')
-    .sort(([a], [b]) => a.localeCompare(b));
+    .sort(([a], [b]) => kvpRank(a) - kvpRank(b) || a.localeCompare(b));
   const commons = CANONICAL_COMMONS
     .map((f) => [f, event[f]])
     .filter(([, v]) => v !== undefined && v !== null && v !== '');

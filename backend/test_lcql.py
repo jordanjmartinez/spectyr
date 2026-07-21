@@ -8,6 +8,7 @@ the evaluator + full pinned corpus in 2.3.
 
 Run: python test_lcql.py   (also: python -m pytest test_lcql.py -q)
 """
+import json
 import os
 import sys
 
@@ -473,6 +474,35 @@ def test_full_idempotence_with_catalog():
     for q in list(_CONTRACT_VALID_EXAMPLES) + list(_PIVOT_DESCENT_FIXTURES):
         c1 = canonical(_q(q))
         assert canonical(_q(c1)) == c1
+
+
+# The checked-in kvp catalog-order fixture (Phase 6.3 completion, owner
+# ruling): frontend/src/components/kvpCatalogOrder.json is the ONE
+# statement of "catalog order" for the inspector's Family-fields section
+# (contract Section 12). A client-side copy of the order was rejected as a
+# silent duplicate, and a catalog endpoint as an unauthorized surface
+# addition -- instead the 6.1 shared-fixture pattern: one artifact, two
+# consumers (the inspector imports it; this test pins it to repository
+# truth), so drift fails loud in the battery. Byte equality modulo checkout
+# line-ending policy only (core.autocrlf may materialize CRLF in a Windows
+# working tree). Regenerate on an INTENTIONAL catalog change, from backend/:
+#   python -c "import json, app, lcql; c = lcql.build_field_catalog(
+#       app.yaml_catalog, app.NORMAL_TRAFFIC_TEMPLATES, app.EMPLOYEES,
+#       app.SERVERS); open('../frontend/src/components/kvpCatalogOrder.json',
+#       'w', newline='\n').write(json.dumps(sorted(c.kvp.values()),
+#       indent=2) + '\n')"
+_KVP_ORDER_FIXTURE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..",
+    "frontend", "src", "components", "kvpCatalogOrder.json")
+
+
+def test_kvp_catalog_order_fixture_byte_equals_catalog_order():
+    expected = json.dumps(sorted(CATALOG.kvp.values()), indent=2) + "\n"
+    with open(_KVP_ORDER_FIXTURE, "rb") as f:
+        raw = f.read().decode("utf-8")
+    assert raw.replace("\r\n", "\n") == expected, (
+        "kvpCatalogOrder.json has drifted from build_field_catalog's "
+        "canonical kvp order -- regenerate it (command in the comment above)")
 
 
 if __name__ == "__main__":

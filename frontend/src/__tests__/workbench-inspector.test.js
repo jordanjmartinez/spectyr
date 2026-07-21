@@ -15,6 +15,7 @@ import React from 'react';
 import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import EventInspector from '../components/EventInspector';
 import Siem from '../components/Siem';
+import kvpCatalogOrder from '../components/kvpCatalogOrder.json';
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
 const { apiFetch } = require('../api');
@@ -150,6 +151,61 @@ test('type-aware rendering: the identity timestamp is localized, not the raw ISO
 test('an Azure AD identity event omits hostname (never force-resolved to a host)', () => {
   render(<EventInspector event={FAMILY_EVENTS['Azure AD']} onFilter={() => {}} />);
   expect(screen.queryByText('hostname')).toBeNull();
+});
+
+// --- kvp "catalog order" comes from the checked-in fixture -------------------
+// kvpCatalogOrder.json is byte-pinned to the backend's build_field_catalog
+// order by test_lcql.py::test_kvp_catalog_order_fixture_byte_equals_catalog_order.
+// These tests prove the inspector derives its Family-fields order FROM that
+// fixture: not from kvp insertion order, and not from a locale-aware sort
+// (the catalog sorts code-point-wise, so every PascalCase key precedes every
+// snake_case key -- an order localeCompare would not produce).
+
+const familyFieldOrder = (event) =>
+  within(screen.getByTestId('event-inspector'))
+    .getAllByRole('button', { name: /^Filter .+ equals$/ })
+    .map((b) => b.getAttribute('aria-label').replace(/^Filter /, '').replace(/ equals$/, ''))
+    .filter((f) => f in event.key_value_pairs);
+
+test('family fields render in fixture order regardless of kvp insertion order', () => {
+  const event = {
+    id: 'ord-1', event_seq: 300, timestamp: '2026-03-17T05:00:00+00:00',
+    event_type: 'SigninLogs', source_type: 'Azure AD', severity: 'low',
+    user_account: 'ord@acme.com', message: 'ordering fixture',
+    // deliberately inserted in an order that is neither the fixture's nor
+    // a locale sort's; all four keys are cataloged
+    key_value_pairs: {
+      ip_address: '91.204.227.15', UserPrincipalName: 'ord@acme.com',
+      app: 'Outlook', Location: 'RO',
+    },
+  };
+  for (const k of Object.keys(event.key_value_pairs)) {
+    expect(kvpCatalogOrder).toContain(k);
+  }
+  render(<EventInspector event={event} onFilter={() => {}} />);
+  const rendered = familyFieldOrder(event);
+  const expected = Object.keys(event.key_value_pairs)
+    .sort((a, b) => kvpCatalogOrder.indexOf(a) - kvpCatalogOrder.indexOf(b));
+  expect(rendered).toEqual(expected);
+  // pin the concrete shape too: PascalCase before snake_case (code-point
+  // order), which distinguishes fixture order from a locale-aware sort
+  expect(rendered).toEqual(['Location', 'UserPrincipalName', 'app', 'ip_address']);
+});
+
+test('an off-catalog kvp key still renders, after every cataloged key', () => {
+  const event = {
+    id: 'ord-2', event_seq: 301, timestamp: '2026-03-17T05:01:00+00:00',
+    event_type: 'QUERY', source_type: 'DNS', severity: 'low',
+    hostname: 'ACME-WS08', message: 'off-catalog ordering',
+    // 'aaa_not_in_catalog' sorts alphabetically FIRST but must render LAST
+    key_value_pairs: {
+      aaa_not_in_catalog: 'still-shown', query: 'slack.com', Location: 'RO',
+    },
+  };
+  expect(kvpCatalogOrder).not.toContain('aaa_not_in_catalog');
+  render(<EventInspector event={event} onFilter={() => {}} />);
+  expect(familyFieldOrder(event)).toEqual(['Location', 'query', 'aaa_not_in_catalog']);
+  expect(screen.getByText('still-shown')).toBeInTheDocument();
 });
 
 // --- recursive rendered-props leak guard ------------------------------------
