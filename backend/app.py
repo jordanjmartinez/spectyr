@@ -3915,21 +3915,42 @@ def list_incidents():
     presentation data + the seal flag + observable readiness (roster total/
     triaged withheld pre-seal, A2). Completed cards carry the post-boundary
     Incident Grade summary + Assisted flag from the immutable stored record. No
-    scenario_id, category, answer key, or required-action count is serialized."""
+    scenario_id, category, answer key, or required-action count is serialized.
+
+    Stage 4 P8.2 (scaffold Section 3.5): also serializes the Dashboard's
+    severity stats, relocated from the retiring /api/grouped-alerts. Exact
+    field: "stats": {"severity_breakdown": {"low": <int>, "medium": <int>,
+    "high": <int>, "critical": <int>}} -- per-event severity counts summed
+    over chain-complete incidents' own events, computed UNIFORMLY in every
+    mode (the analyst trigger-only reduction retires with its route; OD-4
+    uniform visibility). Counts only; no per-scenario answer-bearing field."""
     s = g.session
     sev_name = {1: "Low", 2: "Medium", 3: "High", 4: "Critical"}
     sev_rank = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+    severity_breakdown = {"low": 0, "medium": 0, "high": 0, "critical": 0}
     with s["io_lock"]:
         subs = s.get("submissions", {})
         written = _read_ndjson_unlocked(s["paths"]["generated_logs"])
         sev_of = {}
+        sev_counts = {}
+        chain_done = set()
         for l in written:
             sid = l.get("scenario_id")
             if not sid or l.get("label") == "normal_traffic":
                 continue
-            r = sev_rank.get((l.get("severity") or "medium").lower(), 2)
+            sev = (l.get("severity") or "medium").lower()
+            r = sev_rank.get(sev, 2)
             if r > sev_of.get(sid, 0):
                 sev_of[sid] = r
+            counts = sev_counts.setdefault(
+                sid, {"low": 0, "medium": 0, "high": 0, "critical": 0})
+            if sev in counts:
+                counts[sev] += 1
+            if l.get("chain_complete"):
+                chain_done.add(sid)
+        for sid in chain_done:
+            for k, v in sev_counts.get(sid, {}).items():
+                severity_breakdown[k] += v
         active, completed = [], []
         for e in s.get("alert_queue", []):
             inc = e.get("incident_id")
@@ -3962,7 +3983,8 @@ def list_incidents():
                 active.append(card)
     return jsonify({"active": active, "completed": completed,
                     "queue_length": s.get("queue_length", 0),
-                    "resolved_count": s.get("resolved_count", 0)})
+                    "resolved_count": s.get("resolved_count", 0),
+                    "stats": {"severity_breakdown": severity_breakdown}})
 
 
 # --- Guided catalog (Stage 3.9B Step 3) ------------------------------------
