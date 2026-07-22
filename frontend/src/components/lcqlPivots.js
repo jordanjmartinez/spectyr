@@ -1,0 +1,200 @@
+// Stage 4 Phase 6.1: the SINGLE LCQL query-generation choke point (contract
+// Section 13). Every pivot, sidebar action, and descent form used anywhere
+// in the workbench MUST route through here -- one generator, one place to
+// audit, one permanent parity proof against the backend parser
+// (backend/test_lcql.py::test_documented_pivot_and_descent_forms_parse).
+//
+// Pure string generation only. This module NEVER executes a query,
+// evaluates a predicate, or filters an event locally (contract P8): every
+// string it builds is submitted to the server and parsed there. It has no
+// React, no fetch, no state.
+//
+// `<tf>` inheritance: entity pivots (host, account, process, file, IP,
+// domain, event type, sensor family) always take the current snapshot's
+// TIMEFRAME token explicitly as a parameter -- callers extract it from
+// `snapshot.identity.canonical_query`'s first segment. Descent forms
+// (`descentHost`, `descentSessionAll`) are hardcoded to `all` regardless of
+// the caller's timeframe (contract Section 13: "Surrounding events ...
+// `all | H | * | *`"; Section 3 row 3 / Section 13's descent row).
+
+// --- GD-5 escaping ------------------------------------------------------
+
+// Backslash-escape a value for placement inside a double-quoted LCQL string
+// literal: backslash doubles, double-quote escapes. Mirrors the backend
+// tokenizer's unescape in reverse (lcql.py's _tokenize_filters).
+export function escapeValue(v) {
+  return String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+const quoteValue = (v) => `"${escapeValue(v)}"`;
+
+// --- quote-aware segment splitting (mirrors lcql.py's _split_segments) ---
+
+// Split a canonical 4-segment query on top-level `|` only -- a pipe inside
+// a quoted FILTERS value never splits. Returns [timeframe, sensor,
+// eventType, filtersText], each trimmed.
+export function splitSegments(query) {
+  const segs = [];
+  let quote = null;
+  let start = 0;
+  for (let i = 0; i < query.length; i++) {
+    const c = query[i];
+    if (quote) {
+      if (c === '\\' && i + 1 < query.length) { i += 1; continue; }
+      if (c === quote) quote = null;
+      continue;
+    }
+    if (c === '"' || c === "'") { quote = c; continue; }
+    if (c === '|') { segs.push(query.slice(start, i)); start = i + 1; }
+  }
+  segs.push(query.slice(start));
+  return segs.map((s) => s.trim());
+}
+
+// --- conjunction-only lexical scan ---------------------------------------
+//
+// EQUIVALENCE BOUNDARY (scaffold Section 2.15, permanent notice): this
+// lexical scan is equivalent to the backend's AST-based
+// `lcql.conjunction_only()` verdict ONLY WHILE LCQL HAS NO GROUPING OR
+// PARENTHESES (a deferred grammar item, contract Section 19). It works by
+// tokenizing the FILTERS text on top-level whitespace (quote-aware, GD-5
+// escape-aware) and checking for a bare `or` token. If parentheses are ever
+// introduced, `or` could appear nested inside a group that a flat AND/OR
+// chain at the top level does not see, and this scan would need to walk
+// the same grouping structure the parser does -- IT MUST BE REPLACED, NOT
+// PATCHED, at that point. The shared OR_SCAN_CORPUS below is asserted
+// against this scan; the identical corpus is asserted against the real AST
+// in backend/test_lcql.py::test_or_scan_fixture_corpus_matches_ast_verdicts
+// -- one corpus, two implementations, byte-equal verdicts (the Phase 2
+// parity promise).
+export function isConjunctionOnly(filtersText) {
+  const text = filtersText.trim();
+  if (text === '*') return true;
+  let quote = null;
+  let token = '';
+  const tokens = [];
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quote) {
+      token += c;
+      if (c === '\\' && i + 1 < text.length) {
+        i += 1;
+        token += text[i];
+        continue;
+      }
+      if (c === quote) quote = null;
+      continue;
+    }
+    if (c === '"' || c === "'") { quote = c; token += c; continue; }
+    if (/\s/.test(c)) {
+      if (token) { tokens.push(token); token = ''; }
+      continue;
+    }
+    token += c;
+  }
+  if (token) tokens.push(token);
+  return !tokens.some((t) => t.toLowerCase() === 'or');
+}
+
+// --- sidebar / per-field refinement (conjunction-only append vs OR fallback) -
+
+// The exact contract-quoted notice (Section 11, OR-composition restriction).
+export const OR_FALLBACK_NOTICE =
+  'Started a new query; the previous one mixed or-conditions.';
+
+// Refine the EXECUTED canonical query with one new predicate (a sidebar
+// value click, or an inspector ==/!= action). If the current FILTERS AST
+// is conjunction-only (or `*`), append `and field op "value"` (or replace
+// the bare `*`); TIMEFRAME/SENSOR/EVENT_TYPE are carried over unchanged.
+// If FILTERS mixes `or`, a UI click could otherwise emit a query whose
+// precedence surprises the player (`A or B` + `and C` would mean
+// `A or (B and C)`) -- so this generates a FRESH standalone query
+// (TIMEFRAME/SENSOR/EVENT_TYPE unchanged, FILTERS reset to just the new
+// predicate) and returns the exact contract notice.
+export function refineFilter(executedCanonicalQuery, field, op, value) {
+  const [tf, sensor, eventType, filtersText] = splitSegments(executedCanonicalQuery);
+  const predicate = `${field} ${op} ${quoteValue(value)}`;
+  if (isConjunctionOnly(filtersText)) {
+    const newFilters = filtersText.trim() === '*' ? predicate : `${filtersText} and ${predicate}`;
+    return { query: `${tf} | ${sensor} | ${eventType} | ${newFilters}`, fresh: false, notice: null };
+  }
+  return {
+    query: `${tf} | ${sensor} | ${eventType} | ${predicate}`,
+    fresh: true,
+    notice: OR_FALLBACK_NOTICE,
+  };
+}
+
+// --- entity pivots (contract Section 13 table) ---------------------------
+// Every entity pivot mints a query from `<tf>` alone -- SENSOR/EVENT_TYPE
+// are NOT inherited from the current query (Section 14: entity pivots
+// always execute Session-wide with a full scope reset, wiring in Phase 7).
+
+export function pivotHost(tf, hostname) {
+  return `${tf} | ${hostname} | * | *`;
+}
+
+export function pivotAccount(tf, account) {
+  return `${tf} | * | * | user_account == ${quoteValue(account)}`;
+}
+
+export function pivotProcessImage(tf, image) {
+  return `${tf} | * | * | image == ${quoteValue(image)}`;
+}
+
+export function pivotProcessNameContains(tf, name) {
+  return `${tf} | * | ProcessCreate | image contains ${quoteValue(name)}`;
+}
+
+export function pivotFile(tf, path) {
+  return `${tf} | * | * | target_filename == ${quoteValue(path)}`;
+}
+
+export function pivotIp(tf, ip) {
+  return `${tf} | * | * | source_ip == ${quoteValue(ip)} or destination_ip == ${quoteValue(ip)}`;
+}
+
+export function pivotDomainProxy(tf, domain) {
+  return `${tf} | Proxy | * | url contains ${quoteValue(domain)}`;
+}
+
+export function pivotDomainDns(tf, domain) {
+  return `${tf} | DNS | QUERY | query contains ${quoteValue(domain)}`;
+}
+
+export function pivotEventType(tf, eventType) {
+  return `${tf} | * | ${eventType} | *`;
+}
+
+export function pivotSensorFamily(tf, family) {
+  return `${tf} | ${family} | * | *`;
+}
+
+// --- descent forms (contract Section 13; UI wiring is Phase 7) -----------
+// Pure string generation only, per the Phase 6 boundary clarification: the
+// Open Evidence Timeline controls, navigation, banners, breadcrumbs, and
+// scope behavior that USE these strings are Phase 7. Always `all`,
+// regardless of the caller's current timeframe.
+
+export function descentHost(hostname) {
+  return `all | ${hostname} | * | *`;
+}
+
+export function descentSessionAll() {
+  return 'all | * | * | *';
+}
+
+// Identity-detection descent (Phase 7.5 ruling): the UNIFORM two-field OR
+// for every identity/account detection. UPN-carrying families (Azure AD)
+// store the visible account in kvp UserPrincipalName while DOMAIN\username
+// families store it in user_account, so a single-field anchor lands on an
+// empty timeline for one of them (the live P7.4 finding). No branching on
+// account format, source family, or anything else -- one shape always;
+// correlating UPN identity with DOMAIN\username host activity remains
+// player investigation work through pivots. Always `all`; scope follows
+// the same rule as host descent (player-selected incident context or
+// Session-wide -- never special-cased).
+export function descentAccount(account) {
+  const a = quoteValue(account);
+  return `all | * | * | user_account == ${a} or UserPrincipalName == ${a}`;
+}

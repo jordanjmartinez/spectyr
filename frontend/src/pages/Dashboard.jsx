@@ -28,25 +28,23 @@ const Dashboard = () => {
   const [showSimulateModal, setShowSimulateModal] = useState(false);
   const [showDifficultyModal, setShowDifficultyModal] = useState(false);
   const [practiceAnother, setPracticeAnother] = useState(false); // opens picker at the Guided catalog
-  const [existingLogCount, setExistingLogCount] = useState(0);
   const [showFailureModal, setShowFailureModal] = useState(false);
   const [failureCategory, setFailureCategory] = useState(null);
   const [failureType, setFailureType] = useState(null); // 'timeout' or 'wrong_answer'
   const [analystName, setAnalystName] = useState(null);
   const [gameMode, setGameMode] = useState('training');
   const [incidentBadge, setIncidentBadge] = useState(0);
-  const [pivotQuery, setPivotQuery] = useState(null);
   const [simActive, setSimActive] = useState(false);
   const [endpointCount, setEndpointCount] = useState(0);
   const [detectionCount, setDetectionCount] = useState(0);
   const [pivotHost, setPivotHost] = useState(null);
-
-  // Analyst-mode entity pivot: a chip click in the Alerts tab jumps to the
-  // SIEM stream pre-filtered to that entity value.
-  const handlePivot = (query) => {
-    setPivotQuery({ value: query, ts: Date.now() });
-    setView('siem');
-  };
+  // Stage 4 P7.2: Open Evidence Timeline descent requests (contract Sections
+  // 13/16). The request carries ONLY observable data supplied by the origin
+  // surface (origin label, participant hostnames, the player-selected
+  // incident context); the SIEM shell generates the query through the one
+  // generator. seq retriggers identical consecutive descents.
+  const [descentRequest, setDescentRequest] = useState(null);
+  const descentSeqRef = useRef(0);
 
   // Host pivot: a hostname link in an event view opens that endpoint page.
   const handleHostPivot = (hostname) => {
@@ -54,12 +52,18 @@ const Dashboard = () => {
     setView('endpoints');
   };
 
+  const handleEvidenceDescent = (req) => {
+    descentSeqRef.current += 1;
+    setDescentRequest({ ...req, seq: descentSeqRef.current });
+    setView('siem');
+  };
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
       switch (e.key) {
         case '1': setView('dashboard'); break;
-        case '2': setView('grouped'); setIncidentBadge(0); break;
+        case '2': setView('incidents'); setIncidentBadge(0); break;
         case '3': setView('siem'); break;
         case '4': setView('detections'); break;
         case '5': setView('endpoints'); break;
@@ -84,7 +88,7 @@ const Dashboard = () => {
           const injected = data.injected_count ?? 0;
           if (injected > lastInjectedRef.current) {
             const delta = injected - lastInjectedRef.current;
-            if (view !== 'grouped') {
+            if (view !== 'incidents') {
               setIncidentBadge(prev => prev + delta);
             }
           }
@@ -96,17 +100,16 @@ const Dashboard = () => {
     return () => clearInterval(interval);
   }, [view]);
 
+  // Stage 4 P8.1 (scaffold Section 3.5): session existence comes from
+  // /api/game-state (analyst_name set once a run started), not from counting
+  // the legacy event feed. The feed route retires in P8.3.
   const handleSimulateEvents = async () => {
     try {
-      const res = await apiFetch('/api/fake-events');
+      const res = await apiFetch('/api/game-state');
       const data = await res.json();
-      const logCount = Array.isArray(data) ? data.length : 0;
-
-      if (logCount > 0) {
-        setExistingLogCount(logCount);
+      if (data.analyst_name) {
         setShowSimulateModal(true);
       } else {
-        // No logs - show difficulty selection
         setShowDifficultyModal(true);
       }
     } catch (err) {
@@ -200,7 +203,7 @@ const Dashboard = () => {
   const tabs = [
     { key: 'dashboard', label: 'Dashboard', count: 0,
       icon: 'M4 5a1 1 0 011-1h5a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM14 13a1 1 0 011-1h4a1 1 0 011 1v6a1 1 0 01-1 1h-4a1 1 0 01-1-1v-6zM4 15a1 1 0 011-1h5a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4z' },
-    { key: 'grouped', label: 'Incidents', count: groupedAlertCount,
+    { key: 'incidents', label: 'Incidents', count: groupedAlertCount,
       icon: 'M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z' },
     { key: 'siem', label: 'SIEM', count: alertCount,
       icon: 'M4 6h16M4 10h16M4 14h16M4 18h16' },
@@ -233,7 +236,7 @@ const Dashboard = () => {
             return (
               <button
                 key={t.key}
-                onClick={() => { setView(t.key); if (t.key === 'grouped') setIncidentBadge(0); }}
+                onClick={() => { setView(t.key); if (t.key === 'incidents') setIncidentBadge(0); }}
                 title={t.label}
                 className={`group relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
                   active ? 'bg-white/10 text-white' : 'text-gray-400 hover:bg-white/5 hover:text-white'
@@ -321,9 +324,9 @@ const Dashboard = () => {
           />
         </div>
 
-        <div className={view === "grouped" ? "block" : "hidden"}>
+        <div className={view === "incidents" ? "block" : "hidden"}>
           <Incidents
-            isVisible={view === "grouped"}
+            isVisible={view === "incidents"}
             resetTrigger={resetTrigger}
             onHardcoreFailure={handleHardcoreFailure}
             onReset={() => setShowResetModal(true)}
@@ -333,15 +336,16 @@ const Dashboard = () => {
             onNavigate={setView}
             setGroupedAlertCount={setGroupedAlertCount}
             onPracticeAnother={handlePracticeAnother}
+            onEvidenceDescent={handleEvidenceDescent}
           />
         </div>
 
         <div className={view === "siem" ? "block" : "hidden"}>
-          <Siem setSiemCount={setAlertCount} resetTrigger={resetTrigger} pivotQuery={pivotQuery} onHostPivot={handleHostPivot} />
+          <Siem setSiemCount={setAlertCount} resetTrigger={resetTrigger} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} descentRequest={descentRequest} onNavigate={setView} />
         </div>
 
         <div className={view === "detections" ? "block" : "hidden"}>
-          <Detections isVisible={view === "detections"} resetTrigger={resetTrigger} setDetectionCount={setDetectionCount} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} />
+          <Detections isVisible={view === "detections"} resetTrigger={resetTrigger} setDetectionCount={setDetectionCount} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} onEvidenceDescent={handleEvidenceDescent} />
         </div>
 
         <div className={view === "endpoints" ? "block" : "hidden"}>
@@ -430,7 +434,7 @@ const Dashboard = () => {
             <h3 className="text-lg font-semibold text-[#1a2332] mb-4">Simulation Active</h3>
             <div className="mb-5" style={{ height: '1px', background: 'linear-gradient(to right, rgba(0,0,0,0.08), transparent)' }} />
             <p className="text-[#57606a] mb-6">
-              You have <span className="text-[#1a2332] font-medium">{existingLogCount} events</span> from an active session. Use <span className="text-[#1a2332] font-medium">Reset Simulation</span> to start fresh.
+              A simulation session is already active. Use <span className="text-[#1a2332] font-medium">Reset Simulation</span> to start fresh.
             </p>
             <div className="flex justify-end gap-2">
               <button

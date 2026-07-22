@@ -236,15 +236,16 @@ Note: `simulated_attack_logs.ndjson` is at `backend/logs/` root (shared across s
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `/api/health` | GET | Health check (frontend polls this on boot) |
-| `/api/fake-events` | GET | Retrieve generated logs |
+| `/api/events/query` | GET | **The single event path** (Stage 4): LCQL query read, frozen snapshot + HMAC token (`/api/fake-events` deleted in P8.3) |
+| `/api/events/query/new-count` | GET | Token-bound new-events count + pool growth (counts only, never rows) |
 | `/api/reset-simulator` | POST | Clear logs, reset game state |
+| `/api/incidents` | GET | Incident cards (active/completed, observable readiness) + queue counters + `stats.severity_breakdown` (Dashboard severity widget; relocated from the deleted `/api/grouped-alerts` in P8.2) |
 | `/api/current-level` | GET | Get current level (=queue position), scenario history (submit-only), level pass/fail results |
 | `/api/start-simulator` | POST | Start with selected game mode + analyst name |
 | `/api/incidents/<incident_id>/submit` | POST | **Stage 3.9A** submission boundary: commit verdict/category/report, grade + store the immutable record, resolve the incident. Idempotent |
 | `/api/incidents/<incident_id>/score` | GET | **Stage 3.9A** discriminated per-incident view: `{state:in_progress, progress}` or `{state:submitted, grading}` |
 | `/api/incidents/<incident_id>/check-answer` | POST | **Stage 3.9A** Guided-mode only: reveal classification correctness alone, mark the incident Assisted (403 in Hardcore) |
 | `/api/resume` | POST | Legacy classify shim: routes classification through the submission boundary (no pre-submit reveal); non-classify actions annotate status |
-| `/api/grouped-alerts` | GET | Get grouped threat scenarios with stats (each carries `incident_id`) |
 | `/api/reports` | GET/POST | Get/file incident reports (documentation only: no resolution, no correctness stored) |
 | `/api/reports/<id>` | PUT/DELETE | Update/delete reports |
 | `/api/analytics/report_card` | GET | **Submission-gated** headline grading (discriminated shape; composite + sections over submitted incidents only) |

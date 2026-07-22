@@ -302,28 +302,47 @@ def sanitize_event(log):
             if log.get(k) not in (None, "")}
 
 
-# The SIEM event feed (/api/fake-events) is the raw-log whitelist PLUS exactly
-# two non-answer-bearing fields the client genuinely needs:
-#   id        the opaque uuid4 event key -- React row key, dedup key in the
-#             feed, expand-row key, and the SIEM table's sort tie-break. It is
-#             random per event and reveals nothing about the scenario.
-#   protocol  the benign network field the SIEM `protocol=`/`proto=` filter
-#             reads (present top-level only on normal-traffic events; attack
-#             events carry protocol inside key_value_pairs). Kept purely to
-#             preserve the existing filter with zero behaviour change.
+# The SIEM event feed -- served by the Stage 4 query read /api/events/query;
+# the legacy /api/fake-events route is deleted (P8.3) -- is the raw-log
+# whitelist PLUS the non-answer-bearing fields the client genuinely needs:
+#   id         the opaque uuid4 event key -- React row key, dedup key in the
+#              feed, expand-row key, and the SIEM table's sort tie-break. It
+#              is random per event and reveals nothing about the scenario.
+#   event_seq  the monotonic within-session arrival position (Stage 4 P1.2;
+#              the contract's one explicit whitelist extension). Visibility-
+#              order identity and the snapshot cutoff dimension; reveals
+#              nothing about the scenario (arrival order is already visible).
+# OD-10 shape amendment (Stage 4 P1.3): top-level `protocol` is NOT in the
+# whitelist -- it serializes uniformly inside key_value_pairs for both
+# populations -- and internal `user` maps to the canonical `user_account`.
+# Field shape/presence must never discriminate authored from background
+# events (the game is telling attack from noise).
 # Every scenario-wiring / answer field (category, scenario_id, label,
 # threat_pattern, storyline, level_name, alert_id, ...) is dropped by omission.
-FEED_EVENT_WHITELIST = EVENT_WHITELIST + ("id", "protocol")
+FEED_EVENT_WHITELIST = EVENT_WHITELIST + ("id", "event_seq")
 
 
 def sanitize_feed_event(log):
     """Client-safe SIEM feed event. Constructed explicitly from the whitelist
     (never pass-through-then-delete), so any present-or-future internal field is
     dropped by omission rather than needing a blacklist. `id` is always included
-    -- it is the SIEM's required opaque row identity."""
+    -- it is the SIEM's required opaque row identity.
+
+    OD-10 canonicalization: background events' internal `user` serializes as
+    `user_account`; a non-empty internal top-level `protocol` serializes inside
+    a COPIED key_value_pairs (the stored log is never mutated; an existing kvp
+    `protocol` key is never overwritten), so both populations share one shape.
+    """
     out = {k: log[k] for k in FEED_EVENT_WHITELIST
            if log.get(k) not in (None, "")}
     out["id"] = log["id"]
+    if "user_account" not in out and log.get("user") not in (None, ""):
+        out["user_account"] = log["user"]
+    p = log.get("protocol")
+    if p not in (None, ""):
+        kvp = dict(out.get("key_value_pairs") or {})
+        kvp.setdefault("protocol", p)
+        out["key_value_pairs"] = kvp
     return out
 
 

@@ -1,5 +1,7 @@
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
+import base64
+import hmac
 import os
 import json
 import uuid
@@ -17,6 +19,16 @@ import threading
 # the base. Imported unconditionally so revert paths keep working.
 import action_overlay
 import persistence
+
+# Stage 4 A1: the deterministic simulation epoch every occurrence timestamp
+# derives from (world["started_at"] IS the epoch; drip orchestration stays
+# wall clock). Stdlib-only.
+import sim_epoch
+
+# Stage 4 Phase 3: the LCQL engine behind the single event-query read.
+# Pure module; the route hands it a per-session catalog view whose hostname
+# namespace is the player-observable set only.
+import lcql
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True, expose_headers=["X-Session-ID"], origins=[
@@ -92,6 +104,32 @@ def append_ndjson(session, key, record):
             f.write(json.dumps(record) + "\n")
 
 
+def _append_pool_event_unlocked(session, log):
+    """The ONLY way a generated event enters the session pool (Stage 4 P1.2,
+    scaffold 2.3). Must be called with io_lock held. Stamps the monotonic
+    `event_seq` and, for background traffic, the sim occurrence timestamp
+    (epoch + spacing * seq); the counter advances only AFTER the line is
+    written, inside the same lock hold, so the sequence is unique, strictly
+    increasing, and contiguous with no gaps -- `pool_growth = max_seq -
+    cutoff_seq` arithmetic depends on exactly this."""
+    seq = session.get("event_seq", 0) + 1
+    log["event_seq"] = seq
+    if log.get("label") == "normal_traffic":
+        started = (session.get("world") or {}).get("started_at")
+        if started:
+            log["timestamp"] = sim_epoch.background_occurrence(started, seq)
+    with open(session["paths"]["generated_logs"], "a", encoding="utf-8") as f:
+        f.write(json.dumps(log) + "\n")
+    session["event_seq"] = seq
+    return log
+
+
+def append_pool_event(session, log):
+    """Locked wrapper for the pool append-and-stamp choke point."""
+    with session["io_lock"]:
+        return _append_pool_event_unlocked(session, log)
+
+
 TIMER_DURATIONS = {1: 900, 2: 900, 3: 900, 4: 900, 5: 900}
 
 CONCURRENT_QUEUE_CAP = 3  # Max in-flight (injected, unresolved) scenarios
@@ -141,8 +179,20 @@ def create_session():
         "scenario_start_time": None,
         "last_active": datetime.now(timezone.utc),
         # Stage 1 endpoint snapshots (io_lock guards it). started_at is the
-        # frozen session timestamp every generated world time derives from.
+        # frozen session timestamp every generated world time derives from
+        # (the Stage 4 A1 simulation epoch, set at start_simulator).
         "world": {"hosts": {}, "started_at": None},
+        # Stage 4 A1: the dedicated authored-gap RNG stream (set at
+        # start_simulator; None means bare/unstarted -> global-RNG fallback).
+        "gap_rng": None,
+        # Stage 4 P1.2: the pool event_seq counter, advanced only inside the
+        # append-and-stamp choke point (unique, strictly increasing,
+        # contiguous within the session).
+        "event_seq": 0,
+        # Stage 4 P3: the per-session snapshot-token secret (HMAC key). Held
+        # only in session memory; rotated on reset and start, so Reset,
+        # Practice Another, and restart invalidate every outstanding token.
+        "snapshot_secret": os.urandom(32),
         # Stage 2 detections feed (io_lock guards it). Instances carry
         # server-side dispositions; benign_hosts tracks which hosts already
         # got their ambient benign detections.
@@ -2222,20 +2272,24 @@ def _raw_chain_ndjson(scenario_label, emp):
     return base_logs, gaps
 
 
-def _raw_chain_yaml(scenario_label, emp):
+def _raw_chain_yaml(scenario_label, emp, rng=None):
     """Phase 1 source: resolved base logs + authored per-step offset from YAML.
     Produces the same base-log keys the NDJSON path yields (label +
-    threat_pattern + step fields + key_value_pairs)."""
+    threat_pattern + step fields + key_value_pairs). Authored [lo, hi] gap
+    ranges draw from the given rng (the session's dedicated epoch-seeded
+    stream, Stage 4 A1) or fall back to the global random module for bare
+    harness sessions (parity_check_v2 seeds the global RNG itself)."""
     scenario = yaml_catalog.get(scenario_label)
     if not scenario:
         return None
     resolved = scenario_loader.resolve_entities(
         scenario, EMPLOYEES, SERVERS, rng=_ForcedChoice(emp)
     )
+    r = rng or random
     base_logs, gaps = [], []
     for i, step in enumerate(scenario["chain"]):
         off = step.get("offset", 0)
-        gap = 0 if i == 0 else (random.randint(off[0], off[1]) if isinstance(off, list) else off)
+        gap = 0 if i == 0 else (r.randint(off[0], off[1]) if isinstance(off, list) else off)
         gaps.append(gap)
         log = scenario_loader.substitute_deep(
             {k: v for k, v in step.items() if k != "offset"}, resolved
@@ -2389,14 +2443,24 @@ def build_attack_chain_logs(session, scenario_entry, employee=None):
     emp = employee or random.choice(EMPLOYEES)
 
     producer = _raw_chain_yaml if SCENARIO_SOURCE in ("yaml", "yaml_v2") else _raw_chain_ndjson
-    raw = producer(scenario_label, emp)
+    if producer is _raw_chain_yaml:
+        # Active path: authored gap ranges resolve from the session's dedicated
+        # epoch-seeded stream (Stage 4 A1). The NDJSON revert path is frozen
+        # and keeps its original signature.
+        raw = producer(scenario_label, emp, rng=session.get("gap_rng"))
+    else:
+        raw = producer(scenario_label, emp)
     if raw is None:
         return None
     base_logs, gaps = raw
 
     scenario_id = generate_scenario_id()
     scenario_entry["scenario_id"] = scenario_id
-    base_time = datetime.now(timezone.utc)
+    # Stage 4 A1: occurrence-time base = simulation epoch + per-queue-position
+    # spacing, never the wall clock. Falls back to SIM_BASE for bare harness
+    # sessions (no id).
+    base_time = sim_epoch.authored_base(session.get("id"),
+                                        scenario_entry.get("queue_position"))
 
     while True:
         alert_id = f"INC-{random.randint(1000, 9999)}"
@@ -2466,12 +2530,12 @@ def build_attack_chain_logs(session, scenario_entry, employee=None):
                     session["world"], entry, concrete_env, threat_logs,
                     session["id"], RESERVED_PIDS, SERVERS,
                     supplemental=(sup_logs, sup_meta))
-                # supplemental logs join the pool immediately (raw append; we
-                # already hold io_lock, so append_ndjson would deadlock).
+                # supplemental logs join the pool immediately through the
+                # append-and-stamp choke point (unlocked variant: we already
+                # hold io_lock, so the locking wrapper would deadlock).
                 if sup_logs:
-                    with open(session["paths"]["generated_logs"], "a", encoding="utf-8") as f:
-                        for log in sup_logs:
-                            f.write(json.dumps(log) + "\n")
+                    for log in sup_logs:
+                        _append_pool_event_unlocked(session, log)
                 # Stage 2: this scenario's authored detections (triggering on
                 # attack or supplemental events), plus ambient benign
                 # detections for any host now seen for the first time.
@@ -2540,9 +2604,10 @@ def finalize_chain(session, scenario_id):
 
 def log_writer(session, interval=1):
     """Rolling-queue log writer: continuously emits normal traffic and drips
-    attack chains from session['alert_queue'] every 40-80 seconds.
-    No per-level pause; only pauses when all alerts are resolved or session
-    is explicitly paused.
+    attack chains from session['alert_queue'] 20-40 seconds apart (C7 doc
+    correction: the docstring previously said 40-80s; the code has always
+    dripped 20-40s). No per-level pause; only pauses when all alerts are
+    resolved or session is explicitly paused.
     """
     attack_queue = []  # pending attack log dicts to write, interleaved with normals
     logs_since_last_attack = 0
@@ -2601,7 +2666,7 @@ def log_writer(session, interval=1):
         # Write an attack log from the queue if gap satisfied
         if attack_queue and logs_since_last_attack >= next_attack_gap:
             attack_log = attack_queue.pop(0)
-            append_ndjson(session, "generated_logs", attack_log)
+            append_pool_event(session, attack_log)
             logs_since_last_attack = 0
             next_attack_gap = random.randint(2, 3)
 
@@ -2615,27 +2680,262 @@ def log_writer(session, interval=1):
                 if entry and not entry.get("chain_complete_at"):
                     entry["chain_complete_at"] = datetime.now(timezone.utc).isoformat()
         else:
-            # Normal traffic tick
+            # Normal traffic tick (occurrence time stamped from the epoch +
+            # event_seq at the append choke point)
             normal_log = generate_normal_event()
-            append_ndjson(session, "generated_logs", normal_log)
+            append_pool_event(session, normal_log)
             logs_since_last_attack += 1
 
         time.sleep(interval)
 
-@app.route('/api/fake-events', methods=['GET'])
-def get_fake_events():
-    """Simulated SIEM event feed. Every event is serialized server-side through
-    detection_templates.sanitize_feed_event: scenario wiring, category, label,
-    and every other answer-bearing field are stripped here (the frontend display
-    whitelist is a convenience, not the disclosure boundary)."""
+# /api/fake-events DELETED (Stage 4 P8.3, scaffold Section 3.5): the query
+# read below is the single event path. Every former consumer is migrated
+# (Siem.jsx -> P4 shell; Dashboard existence check -> game-state, P8.1;
+# backend tests -> the query read, P8.3).
+
+# ---------------------------------------------------------------------------
+# Stage 4 Phase 3: the SIEM Workbench query read (contract Section 17).
+# One server-side event-query path; deterministic snapshots; opaque
+# session-bound HMAC tokens. These helpers reference ONLY observable inputs
+# (the written pool, the world host list, the opaque incident scope) --
+# never scenario_grading, expected_actions, or answer keys (structural
+# guard in test_query_read.py, same technique as test_incident_scope.py).
+# ---------------------------------------------------------------------------
+
+_TIMEFRAME_SECONDS = {"15m": 900, "1h": 3600, "4h": 14400, "12h": 43200,
+                      "24h": 86400}
+_EVENT_CATALOG = None
+
+
+def _event_catalog():
+    """The repository-wide static catalog (fields, families, event types),
+    built lazily once. Hostnames are deliberately EMPTY here (fail-closed):
+    the query route always substitutes the session-observable hostname set
+    via with_hostnames(), so no repository hostname can leak through parser
+    errors or suggestions before the player has observed it."""
+    global _EVENT_CATALOG
+    if _EVENT_CATALOG is None:
+        _EVENT_CATALOG = lcql.build_field_catalog(
+            yaml_catalog, NORMAL_TRAFFIC_TEMPLATES, [], {})
+    return _EVENT_CATALOG
+
+
+def _visible_rows(s):
+    """Sanitized, id-deduped pool rows + current max event_seq + world
+    hostnames. Locked read; mutates nothing."""
+    with s["io_lock"]:
+        pool = _read_ndjson_unlocked(s["paths"]["generated_logs"])
+        world_hosts = set(((s.get("world") or {}).get("hosts") or {}).keys())
+    rows, seen, max_seq = [], set(), 0
+    for log in pool:
+        if log["id"] in seen:
+            continue
+        seen.add(log["id"])
+        seq = log.get("event_seq", 0)
+        if seq > max_seq:
+            max_seq = seq
+        rows.append(detection_templates.sanitize_feed_event(log))
+    return rows, max_seq, world_hosts
+
+
+def _observable_hostnames(rows, world_hosts):
+    """The hostname namespace the parser may accept and suggest: hosts on
+    visible pool rows plus materialized world endpoints. Never the full
+    repository roster."""
+    return {r["hostname"] for r in rows if r.get("hostname")} | world_hosts
+
+
+def _resolve_timeframe(tf, rows, session_id):
+    """(start_iso, end_iso), INCLUSIVE. Relative windows anchor to sim-now =
+    the maximum visible occurrence timestamp; `all` spans the minimum to the
+    maximum visible occurrence (corrected all-range, scaffold review
+    correction 1: authored negative supplemental offsets place events BEFORE
+    the epoch, so `all` must start at the visible minimum, never the epoch).
+    Empty pool: epoch..epoch."""
+    stamps = sorted(r["timestamp"] for r in rows if r.get("timestamp"))
+    if not stamps:
+        e = sim_epoch.epoch_iso(session_id)
+        return e, e
+    if tf == "all":
+        return stamps[0], stamps[-1]
+    end = stamps[-1]
+    start = (datetime.fromisoformat(end)
+             - timedelta(seconds=_TIMEFRAME_SECONDS[tf])).isoformat()
+    return start, end
+
+
+def _order_rows(rows):
+    """Canonical server order: occurrence timestamp descending, event_seq
+    descending, then id ascending as the final stable tie-break. Client
+    column sorting is view state and never re-enters the server."""
+    rows = sorted(rows, key=lambda r: r.get("id", ""))
+    rows.sort(key=lambda r: (r.get("timestamp", ""), r.get("event_seq", 0)),
+              reverse=True)
+    return rows
+
+
+def _match_rows(rows, query, resolved_range, scope_hosts, cutoff_seq):
+    """Filter the sanitized rows by cutoff, incident participant scope, and
+    the LCQL query over the resolved range. Pure."""
+    return [r for r in rows
+            if r.get("event_seq", 0) <= cutoff_seq
+            and (scope_hosts is None or r.get("hostname") in scope_hosts)
+            and lcql.matches(r, query, resolved_range=resolved_range)]
+
+
+def _mint_snapshot_token(s, identity):
+    """Opaque session-bound token: base64url(identity JSON) '.'
+    base64url(HMAC-SHA256 under the session secret). It identifies the
+    executed definition; it stores nothing server-side."""
+    payload = json.dumps(identity, sort_keys=True,
+                         separators=(",", ":")).encode()
+    mac = hmac.new(s["snapshot_secret"], payload, hashlib.sha256).digest()
+    b64 = base64.urlsafe_b64encode
+    return (b64(payload).decode().rstrip("=") + "."
+            + b64(mac).decode().rstrip("="))
+
+
+def _verify_snapshot_token(s, token):
+    """The identity dict for a valid token, else None. Malformed, altered,
+    foreign-session, and post-reset/post-restart tokens are all None -- the
+    caller returns ONE neutral body for every failure class."""
+    try:
+        p64, m64 = token.split(".", 1)
+
+        def unb64(x):
+            return base64.urlsafe_b64decode(x + "=" * (-len(x) % 4))
+
+        payload, mac = unb64(p64), unb64(m64)
+        expected = hmac.new(s["snapshot_secret"], payload,
+                            hashlib.sha256).digest()
+        if not hmac.compare_digest(mac, expected):
+            return None
+        ident = json.loads(payload)
+        if set(ident) != {"canonical_query", "scope", "resolved_scope_hosts",
+                          "resolved_range", "cutoff_seq"}:
+            return None
+        if set(ident["resolved_range"]) != {"start", "end"}:
+            return None
+        if not isinstance(ident["cutoff_seq"], int):
+            return None
+        if not isinstance(ident["resolved_scope_hosts"], list) or not all(
+                isinstance(h, str) for h in ident["resolved_scope_hosts"]):
+            return None
+        return ident
+    except Exception:
+        return None
+
+
+@app.route('/api/events/query', methods=['GET'])
+def query_events():
+    """The workbench's single event-query path (contract Section 17).
+    200: {token, identity{canonical_query, scope, resolved_range{start,
+    end}, cutoff_seq}, count, rows} in canonical server order.
+    400 parse failure: {error: {position, reason[, suggestions]}}.
+    404 unknown incident scope (indistinguishable from foreign). Pure read."""
     s = g.session
-    seen_ids = set()
-    unique_logs = []
-    for log in read_ndjson(s, "generated_logs"):
-        if log["id"] not in seen_ids:
-            seen_ids.add(log["id"])
-            unique_logs.append(detection_templates.sanitize_feed_event(log))
-    return jsonify(unique_logs)
+    q_text = request.args.get("q", "")
+    scope = request.args.get("scope") or "session"
+    if len(q_text) > 300:
+        return jsonify({"error": {"position": 300,
+                                  "reason": "query exceeds the 300 character cap"}}), 400
+
+    scope_hosts = None
+    resolved_scope_hosts = []
+    if scope != "session":
+        sc = _incident_observable_scope(s, scope)
+        if sc is None:
+            return jsonify({"error": "Unknown incident"}), 404
+        # Amendment E2 (P3.4): the participant-host set is RESOLVED AT
+        # EXECUTION and frozen into the identity (sorted, deduplicated).
+        # A pre-seal incident's observable host set can grow; replay and
+        # baseline reconstruction must use this frozen list, never the
+        # incident's current set. Session-wide: empty list, no constraint.
+        scope_hosts = set(sc["hosts"])
+        resolved_scope_hosts = sorted(scope_hosts)
+
+    rows, max_seq, world_hosts = _visible_rows(s)
+    catalog = _event_catalog().with_hostnames(
+        _observable_hostnames(rows, world_hosts))
+    try:
+        query = lcql.parse(q_text, catalog=catalog)
+    except lcql.LcqlError as e:
+        err = {"position": e.position, "reason": e.reason}
+        if e.suggestions:
+            err["suggestions"] = e.suggestions
+        return jsonify({"error": err}), 400
+
+    start, end = _resolve_timeframe(query.timeframe, rows, s["id"])
+    matched = _order_rows(
+        _match_rows(rows, query, (start, end), scope_hosts, max_seq))
+    identity = {
+        "canonical_query": lcql.canonical(query),
+        "scope": scope,
+        "resolved_scope_hosts": resolved_scope_hosts,
+        "resolved_range": {"start": start, "end": end},
+        "cutoff_seq": max_seq,
+    }
+    return jsonify({"token": _mint_snapshot_token(s, identity),
+                    "identity": identity,
+                    "count": len(matched),
+                    "rows": matched})
+
+
+@app.route('/api/events/query/new-count', methods=['GET'])
+def query_new_count():
+    """Refresh-now new-count (contract R16/OD-6), bound to the executed
+    snapshot token: the request carries ONLY the token, so edited bar text
+    structurally cannot influence the count. new_count = rows a Refresh
+    executed now would add (same canonical query and scope, TIMEFRAME
+    re-resolved at count time, cutoff = current max event_seq, counted by
+    id absence from the token's snapshot); pool_growth = current max
+    event_seq minus the token's cutoff. Every invalid-token class --
+    malformed, altered, foreign-session, post-reset, post-restart -- gets
+    the byte-identical neutral 400. Pure read."""
+    s = g.session
+    ident = _verify_snapshot_token(s, request.args.get("token", ""))
+    if ident is None:
+        return jsonify({"error": "Unknown token"}), 400
+    rows, cur_max, world_hosts = _visible_rows(s)
+    scope = ident["scope"]
+    # Amendment E2 (P3.4): two DIFFERENT host constraints, deliberately.
+    # The displayed-baseline reconstruction uses the identity's FROZEN
+    # resolved_scope_hosts (never the incident's current set -- a pre-seal
+    # scope can grow, and replaying with the grown set would pollute the
+    # baseline with sub-cutoff rows from newly joined hosts). The
+    # prospective Refresh side resolves the incident's CURRENT observable
+    # set, because pressing Refresh now includes newly revealed
+    # participant hosts.
+    frozen_hosts = None
+    current_hosts = None
+    if scope != "session":
+        sc = _incident_observable_scope(s, scope)
+        if sc is None:
+            # A MAC-valid token with an unresolvable scope cannot arise
+            # in-session (rotation kills cross-generation tokens); neutral
+            # anyway, never a distinct error.
+            return jsonify({"error": "Unknown token"}), 400
+        frozen_hosts = set(ident["resolved_scope_hosts"])
+        current_hosts = set(sc["hosts"])
+    catalog = _event_catalog().with_hostnames(
+        _observable_hostnames(rows, world_hosts))
+    try:
+        query = lcql.parse(ident["canonical_query"], catalog=catalog)
+    except lcql.LcqlError:
+        # Unreachable for genuine tokens (the observable namespace only
+        # grows within a session generation); neutral, not distinct.
+        return jsonify({"error": "Unknown token"}), 400
+    stored_range = (ident["resolved_range"]["start"],
+                    ident["resolved_range"]["end"])
+    displayed_ids = {r["id"] for r in _match_rows(
+        rows, query, stored_range, frozen_hosts, ident["cutoff_seq"])}
+    now_range = _resolve_timeframe(query.timeframe, rows, s["id"])
+    refresh = _match_rows(rows, query, now_range, current_hosts, cur_max)
+    return jsonify({
+        "new_count": sum(1 for r in refresh if r["id"] not in displayed_ids),
+        "pool_growth": cur_max - ident["cutoff_seq"],
+    })
+
 
 @app.route('/api/endpoints', methods=['GET'])
 def get_endpoints():
@@ -2834,6 +3134,11 @@ def reset_simulator():
     s["next_drip_at"] = None
     s["scenario_start_time"] = None
     s["scenario_history"] = []
+    s["gap_rng"] = None
+    s["event_seq"] = 0
+    # Stage 4 P3.2: rotating the secret invalidates every outstanding
+    # snapshot token (Reset / Practice Another / restart all fail neutral).
+    s["snapshot_secret"] = os.urandom(32)
 
     with s["io_lock"]:
         s["world"] = {"hosts": {}, "started_at": None}
@@ -3601,21 +3906,42 @@ def list_incidents():
     presentation data + the seal flag + observable readiness (roster total/
     triaged withheld pre-seal, A2). Completed cards carry the post-boundary
     Incident Grade summary + Assisted flag from the immutable stored record. No
-    scenario_id, category, answer key, or required-action count is serialized."""
+    scenario_id, category, answer key, or required-action count is serialized.
+
+    Stage 4 P8.2 (scaffold Section 3.5): also serializes the Dashboard's
+    severity stats, relocated from the retiring /api/grouped-alerts. Exact
+    field: "stats": {"severity_breakdown": {"low": <int>, "medium": <int>,
+    "high": <int>, "critical": <int>}} -- per-event severity counts summed
+    over chain-complete incidents' own events, computed UNIFORMLY in every
+    mode (the analyst trigger-only reduction retires with its route; OD-4
+    uniform visibility). Counts only; no per-scenario answer-bearing field."""
     s = g.session
     sev_name = {1: "Low", 2: "Medium", 3: "High", 4: "Critical"}
     sev_rank = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+    severity_breakdown = {"low": 0, "medium": 0, "high": 0, "critical": 0}
     with s["io_lock"]:
         subs = s.get("submissions", {})
         written = _read_ndjson_unlocked(s["paths"]["generated_logs"])
         sev_of = {}
+        sev_counts = {}
+        chain_done = set()
         for l in written:
             sid = l.get("scenario_id")
             if not sid or l.get("label") == "normal_traffic":
                 continue
-            r = sev_rank.get((l.get("severity") or "medium").lower(), 2)
+            sev = (l.get("severity") or "medium").lower()
+            r = sev_rank.get(sev, 2)
             if r > sev_of.get(sid, 0):
                 sev_of[sid] = r
+            counts = sev_counts.setdefault(
+                sid, {"low": 0, "medium": 0, "high": 0, "critical": 0})
+            if sev in counts:
+                counts[sev] += 1
+            if l.get("chain_complete"):
+                chain_done.add(sid)
+        for sid in chain_done:
+            for k, v in sev_counts.get(sid, {}).items():
+                severity_breakdown[k] += v
         active, completed = [], []
         for e in s.get("alert_queue", []):
             inc = e.get("incident_id")
@@ -3648,7 +3974,8 @@ def list_incidents():
                 active.append(card)
     return jsonify({"active": active, "completed": completed,
                     "queue_length": s.get("queue_length", 0),
-                    "resolved_count": s.get("resolved_count", 0)})
+                    "resolved_count": s.get("resolved_count", 0),
+                    "stats": {"severity_breakdown": severity_breakdown}})
 
 
 # --- Guided catalog (Stage 3.9B Step 3) ------------------------------------
@@ -4348,159 +4675,11 @@ def resume_generation():
     return jsonify({"status": "action logged", "action": action})
 
 
-def _sanitize_alert_group(grp):
-    """Client-safe grouped-alerts group. Only the opaque incident id and the
-    observable submission-readiness fields survive; every answer-bearing field
-    (category, scenario_id, label, threat_pattern, storyline, ticket_title,
-    analyst_category, level, pivot_values) and the raw event `logs` are dropped.
-    Built explicitly from a whitelist so nothing leaks by pass-through, now or
-    if the internal group shape gains fields later."""
-    return {
-        # incident_id is the opaque INC-#### the Incidents UI and the submission
-        # boundary already key on -- NOT the internal scenario_id.
-        "incident_id": grp.get("incident_id", ""),
-        # Observable submission readiness (Stage 3.9A; no answer-key info).
-        "detections_sealed": grp.get("detections_sealed", False),
-        "open_detections": grp.get("open_detections", 0),
-        "submission_ready": grp.get("submission_ready", False),
-    }
-
-
-@app.route('/api/grouped-alerts', methods=['GET'])
-def get_grouped_alerts():
-    s = g.session
-    logs = read_ndjson(s, "generated_logs")
-
-    grouped = {}
-
-    for log in logs:
-        scenario_id = log.get("scenario_id")
-        threat_pattern = log.get("threat_pattern", "Suspicious Activity")
-
-        if not scenario_id or log.get("label") == "normal_traffic":
-            continue
-
-        group_key = scenario_id
-
-        if group_key not in grouped:
-            grouped[group_key] = {
-                "scenario_id": scenario_id,
-                "threat_pattern": threat_pattern,
-                "label": log.get("label", "Unknown"),
-                "status": log.get("status", "unknown"),
-                "severity": log.get("severity", "unknown"),
-                "category": log.get("category", ""),
-                "ticket_title": log.get("level_name", ""),
-                "storyline": log.get("storyline", ""),
-                "analyst_category": log.get("analyst_category", ""),
-                "alert_id": log.get("alert_id", ""),
-                # Opaque client-facing incident id (== alert_id by construction);
-                # the submission boundary keys on this.
-                "incident_id": log.get("alert_id", ""),
-                "level": log.get("level"),
-                "log_count": 0,
-                "logs": [],
-                "severity_breakdown": {"low": 0, "medium": 0, "high": 0, "critical": 0}
-            }
-        else:
-            # Update analyst_category if it exists in this log
-            if log.get("analyst_category"):
-                grouped[group_key]["analyst_category"] = log.get("analyst_category")
-
-        grouped[group_key]["logs"].append(log)
-        grouped[group_key]["log_count"] += 1
-        sev = log.get("severity", "medium").lower()
-        if sev in grouped[group_key]["severity_breakdown"]:
-            grouped[group_key]["severity_breakdown"][sev] += 1
-
-    # Only return groups where the full attack chain has been injected
-    result = [grp for grp in grouped.values() if any(log.get("chain_complete") for log in grp["logs"])]
-
-    # Analyst mode: reveal only the trigger step(s); the rest of the chain is
-    # found by pivoting on the entity in the Events stream. Everything derived
-    # below (group severity, breakdowns, aggregate stats) then reflects only
-    # the revealed logs, so nothing leaks the hidden chain's composition.
-    analyst_mode = s.get("game_mode") == "analyst"
-    # Infra host/IP values are shared by unrelated network noise, so pivoting on
-    # them returns the whole domain's traffic rather than this chain. Excluded
-    # from pivot chips (matching fairness_check's pivot_values rule); external
-    # destinations like C2/exfil IPs are kept — those are useful pivots.
-    infra_values = set()
-    for srv in SERVERS.values():
-        infra_values.add(srv["ip"])
-        infra_values.add(srv["hostname"])
-    for grp in result:
-        grp["total_log_count"] = grp["log_count"]
-        if analyst_mode:
-            visible = [l for l in grp["logs"] if l.get("trigger")]
-            if visible:  # safety: if no trigger flagged, fall back to full chain
-                grp["logs"] = visible
-            grp["log_count"] = len(grp["logs"])
-            sb = {"low": 0, "medium": 0, "high": 0, "critical": 0}
-            for l in grp["logs"]:
-                sev = l.get("severity", "medium").lower()
-                if sev in sb:
-                    sb[sev] += 1
-            grp["severity_breakdown"] = sb
-            # Distinguishing entity values on the trigger log(s), infra excluded
-            pivots = []
-            for l in grp["logs"]:
-                candidates = [l.get("source_ip"), l.get("destination_ip"), l.get("hostname")]
-                candidates.append((l.get("key_value_pairs") or {}).get("account_name"))
-                for v in candidates:
-                    if v and v not in ("-", "—") and v not in infra_values and v not in pivots:
-                        pivots.append(v)
-            grp["pivot_values"] = pivots
-        grp["hidden_count"] = grp["total_log_count"] - grp["log_count"]
-
-    # Compute unified group severity (highest in the group)
-    severity_order = {"critical": 4, "high": 3, "medium": 2, "low": 1}
-    for grp in result:
-        highest = max(severity_order.get(log.get("severity", "medium").lower(), 2) for log in grp["logs"])
-        grp["group_severity"] = {4: "Critical", 3: "High", 2: "Medium", 1: "Low"}[highest]
-
-    # Stage 3.9A submission readiness (observable only, no answer-key info): the
-    # frontend blocks Submit until the roster is sealed and every scoped
-    # detection is dispositioned. Computed over the AUTHORITATIVE server roster,
-    # not the UI-visible feed.
-    with s["io_lock"]:
-        for grp in result:
-            sid = grp["scenario_id"]
-            grading_rec = _grading_record_for(s, sid)
-            state, open_n = incident_submission_readiness(s, sid, grading_rec)
-            grp["detections_sealed"] = state != "sealing"
-            grp["open_detections"] = open_n
-            grp["submission_ready"] = state == "ready"
-
-    # Compute aggregate stats
-    total_alerts = len(result)
-    closed_alerts = sum(1 for grp in result if grp["status"] in ["classified", "resolved"])
-    open_alerts = total_alerts - closed_alerts
-    severity_totals = {"low": 0, "medium": 0, "high": 0, "critical": 0}
-    source_totals = {}
-    for grp in result:
-        # Sum per-log severities (not per-scenario), so the donut reflects
-        # the real distribution of event severities, not just chain peaks.
-        for sev_key, sev_count in grp["severity_breakdown"].items():
-            if sev_key in severity_totals:
-                severity_totals[sev_key] += sev_count
-        for log in grp["logs"]:
-            src = log.get("source_type") or "Unknown"
-            source_totals[src] = source_totals.get(src, 0) + 1
-
-    return jsonify({
-        # Every group serialized through the whitelist: the raw event logs and
-        # all answer-bearing group fields are stripped server-side. `stats` is an
-        # aggregate of counts only (no per-scenario category/label/id).
-        "alerts": [_sanitize_alert_group(grp) for grp in result],
-        "stats": {
-            "total_alerts": total_alerts,
-            "closed_alerts": closed_alerts,
-            "open_alerts": open_alerts,
-            "severity_breakdown": severity_totals,
-            "source_breakdown": source_totals
-        }
-    })
+# /api/grouped-alerts and _sanitize_alert_group DELETED (Stage 4 P8.3,
+# scaffold Section 3.5), and the analyst trigger-only reveal branch retired
+# with them (OD-4 uniform written-pool visibility, contract Sections 5/15).
+# Surviving consumers: the Dashboard severity stats ride on /api/incidents
+# ("stats", P8.2); readiness fields ride on the /api/incidents cards (3.9B).
 
 
 @app.route("/api/reports", methods=["POST"])
@@ -4692,9 +4871,11 @@ def start_simulator():
     s["scenario_history"] = []
     now = datetime.now(timezone.utc)
     with s["io_lock"]:
-        # fresh run, fresh endpoint world; freeze the session timestamp all
-        # generated world times derive from (nothing reads the live clock)
-        s["world"] = {"hosts": {}, "started_at": now.replace(microsecond=0).isoformat()}
+        # fresh run, fresh endpoint world; the frozen session timestamp all
+        # generated world times derive from is the deterministic simulation
+        # epoch (Stage 4 A1) -- never the live clock. The response-action
+        # clock inherits it through started_at unchanged.
+        s["world"] = {"hosts": {}, "started_at": sim_epoch.epoch_iso(s["id"])}
         s["detections"] = []
         s["detection_index"] = {}
         s["benign_hosts"] = set()
@@ -4706,6 +4887,11 @@ def start_simulator():
         s["submissions"] = {}
         s["incident_index"] = {}
         s["assisted"] = set()
+    # Stage 4 A1: dedicated per-session stream for authored [lo, hi] gap
+    # ranges, seeded from the epoch digest (never the shared global RNG).
+    s["gap_rng"] = sim_epoch.gap_rng(s["id"])
+    # Stage 4 P3.2: a fresh run invalidates outstanding snapshot tokens.
+    s["snapshot_secret"] = os.urandom(32)
     s["timer_start"] = now
     s["next_drip_at"] = now  # First alert drips immediately
     s["scenario_start_time"] = time.time() * 1000

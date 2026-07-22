@@ -31,12 +31,10 @@ INC = "INC-7777"
 HOST = "ACME-WS12"
 MARKER = "ZZZ_ANSWER_KEY_MARKER_ZZZ"
 
-# The client-safe field sets, sourced from the server code itself so the test
-# tracks the whitelist rather than duplicating it.
+# The client-safe field set, sourced from the server code itself so the test
+# tracks the whitelist rather than duplicating it. (The GROUP/STATS whitelists
+# retired with /api/grouped-alerts in P8.3.)
 FEED = set(dt.FEED_EVENT_WHITELIST)
-GROUP = {"incident_id", "detections_sealed", "open_detections", "submission_ready"}
-STATS = {"total_alerts", "closed_alerts", "open_alerts",
-         "severity_breakdown", "source_breakdown"}
 
 # Answer-bearing / scenario-wiring / internal keys that must never surface on an
 # event or a group (exact top-level keys; SIEM detail inside key_value_pairs is
@@ -160,16 +158,32 @@ def _seed(s, with_marker=False):
     s["detection_index"] = {}
 
 
+# P8.3: the single event path. Rows are fetched through the query read; the
+# legacy /api/fake-events and /api/grouped-alerts routes are deleted.
+_Q_ALL = "/api/events/query?q=all%20%7C%20*%20%7C%20*%20%7C%20*&scope=session"
+
+
+def _query_rows(client, sid):
+    r = client.get(_Q_ALL, headers={"X-Session-ID": sid})
+    assert r.status_code == 200, r.get_data(as_text=True)
+    return r.get_json()["rows"]
+
+
 # --- unit --------------------------------------------------------------------
 
 def test_sanitize_feed_event_strips_all_but_whitelist():
-    out = dt.sanitize_feed_event(_attack_event())
+    ev = _attack_event()
+    out = dt.sanitize_feed_event(ev)
     assert set(out) <= FEED, f"leaked keys: {set(out) - FEED}"
     assert not (FORBIDDEN & set(out)), f"forbidden key: {FORBIDDEN & set(out)}"
     assert out["id"] == "atk-1"                     # opaque row id retained
     assert out["message"] == "suspicious encryption activity"
     assert out["key_value_pairs"]["process_id"] == "8844"   # kvp blob preserved
-    assert out["protocol"] == "tcp"                 # benign filter field retained
+    # OD-10: protocol never serializes top-level; it lands inside a COPIED kvp
+    assert "protocol" not in out
+    assert out["key_value_pairs"]["protocol"] == "tcp"
+    assert "protocol" not in ev["key_value_pairs"], \
+        "the stored log's kvp must never be mutated by serialization"
 
 
 def test_generated_background_traffic_is_sanitized():
@@ -180,18 +194,91 @@ def test_generated_background_traffic_is_sanitized():
     out = dt.sanitize_feed_event(normal)
     assert set(out) <= FEED
     for k in ("scenario_id", "label", "user", "detected_by",
-              "process_id", "parent_process_id", "flagged"):
+              "process_id", "parent_process_id", "flagged", "protocol"):
         assert k not in out
+    # OD-10: the canonical account field is present on background events too
+    assert out["user_account"] == normal["user"]
+    # OD-10: a background protocol value serializes inside key_value_pairs
+    if normal.get("protocol") not in (None, ""):
+        assert out["key_value_pairs"]["protocol"] == normal["protocol"]
 
 
-# --- /api/fake-events --------------------------------------------------------
+def test_shape_parity_no_population_exclusive_top_level_field():
+    """OD-10 acceptance (contract Section 18 'Shape parity'): no serialized
+    row carries top-level `protocol`, and every row whose internal shape has
+    account data (authored `user_account` or background `user`) serializes
+    the canonical `user_account` -- so top-level field presence never marks a
+    row as authored or background.
 
-def test_fake_events_serializes_only_the_whitelist():
+    The authored-side proof is deterministic (a built chain, no drip race:
+    malware_usb authors both `user_account` and a kvp-nested protocol); the
+    live-drip sweep then proves uniformity over both real populations without
+    depending on WHICH random scenario dripped or how far its chain got."""
+    # authored side, deterministic
+    emp = next(e for e in app.EMPLOYEES if e["name"] == "nkhan")
+    chain = app.build_attack_chain_logs(
+        {"used_alert_ids": set()},
+        {"scenario_label": "malware_usb", "queue_position": 1,
+         "ticket_title": "T", "storyline": "S", "category": "C"},
+        employee=emp)
+    authored = [dt.sanitize_feed_event(l) for l in chain]
+    assert all("protocol" not in e for e in authored)
+    assert any(e.get("user_account") for e in authored), \
+        "authored population must carry the canonical account field"
+
+    # live drip, both real populations
+    client, sid, s = _api_session()
+    try:
+        r = client.post("/api/start-simulator",
+                        headers={"X-Session-ID": sid,
+                                 "Content-Type": "application/json"},
+                        data=json.dumps({"game_mode": "guided",
+                                         "catalog_id": "random",
+                                         "analyst_name": "Probe"}))
+        assert r.status_code == 200
+        hdr = {"X-Session-ID": sid}
+        deadline = time.time() + 25
+        raw, feed = [], []
+        while time.time() < deadline:
+            raw = app.read_ndjson(s, "generated_logs")
+            feed = _query_rows(client, sid)
+            has_bg = any(l.get("label") == "normal_traffic" for l in raw)
+            has_atk = any(l.get("label") not in (None, "normal_traffic")
+                          for l in raw)
+            if has_bg and has_atk and len(feed) >= 6:
+                break
+            time.sleep(0.3)
+        assert raw and feed, "no live drip captured"
+        by_id = {e["id"]: e for e in feed}
+        saw_bg_account = False
+        for l in raw:
+            e = by_id.get(l["id"])
+            assert e is not None, "every pool row must serialize"
+            assert "protocol" not in e, \
+                "top-level protocol is a population discriminator (OD-10)"
+            internal_account = l.get("user_account") or l.get("user")
+            if internal_account:
+                assert e.get("user_account") == internal_account
+                if l.get("label") == "normal_traffic":
+                    saw_bg_account = True
+            if l.get("protocol") not in (None, ""):
+                assert e["key_value_pairs"]["protocol"] == l["protocol"]
+        assert saw_bg_account, \
+            "background rows always carry `user`; the canonical mapping " \
+            "must have produced user_account on at least one"
+    finally:
+        _stop(sid, s)
+
+
+# --- the query read (P8.3 retarget of the fake-events guards) ----------------
+
+def test_query_rows_serialize_only_the_whitelist():
+    """P8.3 retarget (was test_fake_events_serializes_only_the_whitelist):
+    identical assertions over rows from the single event path."""
     client, sid, s = _api_session()
     try:
         _seed(s)
-        events = client.get("/api/fake-events",
-                            headers={"X-Session-ID": sid}).get_json()
+        events = _query_rows(client, sid)
         assert len(events) == 2
         for e in events:
             extra = set(e) - FEED
@@ -202,12 +289,13 @@ def test_fake_events_serializes_only_the_whitelist():
         _stop(sid, s)
 
 
-def test_fake_events_unknown_future_field_does_not_pass_through():
+def test_query_rows_unknown_future_field_does_not_pass_through():
+    """P8.3 retarget (was test_fake_events_unknown_future_field_does_not_
+    pass_through): identical assertions over the single event path."""
     client, sid, s = _api_session()
     try:
         _seed(s, with_marker=True)
-        events = client.get("/api/fake-events",
-                            headers={"X-Session-ID": sid}).get_json()
+        events = _query_rows(client, sid)
         for e in events:
             assert "__future_internal__" not in e
             assert set(e) <= FEED
@@ -215,46 +303,75 @@ def test_fake_events_unknown_future_field_does_not_pass_through():
         _stop(sid, s)
 
 
-# --- /api/grouped-alerts -----------------------------------------------------
-
-def test_grouped_alerts_serializes_only_the_whitelist():
-    client, sid, s = _api_session()
-    try:
-        _seed(s)
-        body = client.get("/api/grouped-alerts",
-                          headers={"X-Session-ID": sid}).get_json()
-        assert set(body) == {"alerts", "stats"}
-        assert set(body["stats"]) <= STATS
-        assert body["alerts"], "expected the sealed incident group"
-        for grp in body["alerts"]:
-            extra = set(grp) - GROUP
-            assert not extra, f"group leaked keys: {extra}"
-        # every nested key across the whole response is answer-free
-        leaked = FORBIDDEN & _all_keys(body)
-        assert not leaked, f"forbidden key nested in grouped-alerts: {leaked}"
-        # observable readiness still present and correct (Stage 3.9A contract)
-        grp = next(g for g in body["alerts"] if g["incident_id"] == INC)
-        assert grp["detections_sealed"] is True
-        assert grp["open_detections"] == 0
-        assert grp["submission_ready"] is True
-    finally:
-        _stop(sid, s)
+# test_grouped_alerts_serializes_only_the_whitelist RETIRED with its route
+# (P8.3, scaffold Section 3.5 map): the group whitelist has no serialization
+# to guard. Readiness disclosure on the surviving surface is guarded by
+# test_submission_gate.py::test_incident_cards_surface_incident_scoped_
+# readiness; /api/incidents card fields are guarded by the 3.9B suites.
 
 
 # --- planted marker (recursive) ---------------------------------------------
 
-def test_no_planted_answer_marker_in_either_response():
+def test_no_planted_answer_marker_in_query_or_count_response():
+    """P8.3 retarget (was test_no_planted_answer_marker_in_either_response,
+    over the two retired routes): the marker scan now covers the query read
+    (rows + identity, the whole response) and the token-bound count read."""
     client, sid, s = _api_session()
     try:
         _seed(s, with_marker=True)
         hdr = {"X-Session-ID": sid}
-        feed = client.get("/api/fake-events", headers=hdr).get_json()
-        grouped = client.get("/api/grouped-alerts", headers=hdr).get_json()
-        for name, resp in (("fake-events", feed), ("grouped-alerts", grouped)):
+        q = client.get(_Q_ALL, headers=hdr).get_json()
+        count = client.get("/api/events/query/new-count?token=" + q["token"],
+                           headers=hdr).get_json()
+        for name, resp in (("events-query", q), ("new-count", count)):
             hits = [v for v in _all_strings(resp) if MARKER in v]
             assert not hits, f"planted marker leaked in {name}: {hits}"
     finally:
         _stop(sid, s)
+
+
+def test_planted_marker_absent_in_query_and_count_in_every_mode():
+    """Phase 9 closure gap-fill: the recursive planted-marker scan, PER MODE.
+    The scan above proves the serializer strips markers on a seeded modeless
+    session; this runs the same scan through a REAL session started in each
+    player mode (Guided / SOC Queue [internal key `analyst`] / Hardcore),
+    planting a marker-laden pool event through the live append-and-stamp
+    choke point and scanning the full query + new-count responses
+    recursively. The presence assertion keeps the scan non-vacuous."""
+    for mode in ("guided", "analyst", "hardcore"):
+        client, sid, s = _api_session()
+        try:
+            body = {"game_mode": mode, "analyst_name": "Probe"}
+            if mode == "guided":
+                body["catalog_id"] = "random"
+            r = client.post("/api/start-simulator",
+                            headers={"X-Session-ID": sid,
+                                     "Content-Type": "application/json"},
+                            data=json.dumps(body))
+            assert r.status_code == 200, (mode, r.get_data(as_text=True))
+            app.append_pool_event(s, {
+                "id": "mark-1", "timestamp": STARTED, "scenario_id": SID,
+                "chain_complete": True, "label": "malware_ransomware",
+                "category": MARKER, "storyline": MARKER,
+                "threat_pattern": MARKER, "level_name": MARKER,
+                "alert_id": INC, "analyst_category": MARKER,
+                "__future_internal__": MARKER,
+                "message": "benign-looking message", "severity": "low",
+                "hostname": HOST, "source_type": "Sysmon",
+                "source_ip": "10.0.1.24", "key_value_pairs": {}})
+            hdr = {"X-Session-ID": sid}
+            q = client.get(_Q_ALL, headers=hdr).get_json()
+            count = client.get("/api/events/query/new-count?token="
+                               + q["token"], headers=hdr).get_json()
+            assert any(e.get("id") == "mark-1" for e in q["rows"]), \
+                f"{mode}: the marker-laden row must be visible (sanitized), " \
+                "else the scan is vacuous"
+            for name, resp in (("events-query", q), ("new-count", count)):
+                hits = [v for v in _all_strings(resp) if MARKER in v]
+                assert not hits, \
+                    f"{mode}: planted marker leaked in {name}: {hits}"
+        finally:
+            _stop(sid, s)
 
 
 # --- incident scoping must not reintroduce hidden fields ---------------------
@@ -297,7 +414,7 @@ def test_live_drip_feed_is_clean_across_modes():
             events = []
             deadline = time.time() + 20
             while time.time() < deadline:
-                events = client.get("/api/fake-events", headers=hdr).get_json()
+                events = _query_rows(client, sid)
                 if len(events) >= 5:
                     break
                 time.sleep(0.3)
@@ -306,11 +423,13 @@ def test_live_drip_feed_is_clean_across_modes():
                 extra = set(e) - FEED
                 assert not extra, f"{mode}: feed leaked keys {extra}"
                 assert not (FORBIDDEN & set(e)), f"{mode}: forbidden key present"
-            grouped = client.get("/api/grouped-alerts", headers=hdr).get_json()
-            for grp in grouped.get("alerts", []):
-                extra = set(grp) - GROUP
-                assert not extra, f"{mode}: group leaked keys {extra}"
-            assert not [v for v in _all_strings(grouped) if MARKER in v]
+            # P8.3: the surviving aggregate surface is /api/incidents -- the
+            # forbidden-vocabulary and marker scans continue there (the group
+            # whitelist retired with the grouped-alerts route)
+            inc = client.get("/api/incidents", headers=hdr).get_json()
+            leaked = FORBIDDEN & _all_keys(inc)
+            assert not leaked, f"{mode}: /api/incidents leaked {leaked}"
+            assert not [v for v in _all_strings(inc) if MARKER in v]
         finally:
             _stop(sid, s)
 

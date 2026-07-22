@@ -1,39 +1,79 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { apiFetch } from '../api';
 import SiemTable from './SiemTable';
 import SiemCards from './SiemCards';
+import FieldSidebar from './FieldSidebar';
+import EventInspector from './EventInspector';
 import {
-  parseEventQuery, alertFieldValue, platformOf,
-  TIME_PRESETS, withinPreset, poolAnchorMs,
-} from './siemUtils';
+  refineFilter, splitSegments, pivotHost, pivotAccount, pivotProcessImage,
+  pivotFile, pivotIp, pivotDomainProxy, pivotDomainDns, pivotEventType,
+  pivotSensorFamily, descentHost, descentSessionAll, descentAccount,
+} from './lcqlPivots';
 
-// SIEM tab (Stage 1.5). Fetches the session event pool on the existing feed
-// cadence; every filter, search, preset, and sort operates client-side on
-// the cached pool. Time presets anchor to the pool's own latest timestamp
-// (the frozen scenario clock), never wall time.
+// SIEM Investigation Workbench shell (Stage 4 Phase 4). Analyst-driven:
+// the shell submits LCQL text to the server's single query read and renders
+// the returned frozen snapshot exactly as served. No polling, no client-side
+// filtering, no client-side query execution of any kind (contract P8): rows
+// never insert, remove, or reorder until the analyst runs a query again.
 
-const Siem = ({ setSiemCount, resetTrigger, pivotQuery, onHostPivot }) => {
-  const [alerts, setAlerts] = useState([]);
+// The placeholder is one canonical conforming LCQL example (never key=value).
+export const QUERY_PLACEHOLDER =
+  '1h | Sysmon | ProcessCreate | command_line contains "powershell"';
+
+export const QUERY_HELP_EXAMPLES = [
+  'all | * | * | *',
+  '24h | Windows Security | 4625 | user_account == "spatel" and source_ip contains "10.0."',
+];
+
+export const TF_TOKENS = ['15m', '1h', '4h', '12h', '24h', 'all'];
+
+// The TIMEFRAME control derives its value FROM the text (single source of
+// truth), so control and text can never disagree: the text's first segment
+// is the control's value when it is a known token, a neutral placeholder
+// otherwise, and the documented default (1h) only while the bar is empty.
+const firstSegmentToken = (text) => {
+  const idx = text.indexOf('|');
+  const head = (idx === -1 ? text : text.slice(0, idx)).trim().toLowerCase();
+  return TF_TOKENS.includes(head) ? head : null;
+};
+
+const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
+                descentRequest, onNavigate }) => {
   const [org, setOrg] = useState({});
   const [view, setView] = useState('cards');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sourceFilter, setSourceFilter] = useState('all');
-  const [platformFilter, setPlatformFilter] = useState('all');
-  const [typeFilter, setTypeFilter] = useState('all');
-  const [preset, setPreset] = useState('all');
-
-  const fetchAlerts = useCallback(() => {
-    apiFetch('/api/fake-events')
-      .then(res => res.json())
-      .then(data => setAlerts([...data].reverse()))
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    fetchAlerts();
-    const interval = setInterval(fetchAlerts, 2000);
-    return () => clearInterval(interval);
-  }, [fetchAlerts]);
+  const [queryText, setQueryText] = useState('');
+  const [snapshot, setSnapshot] = useState(null);   // {token, identity, count, rows}
+  const [error, setError] = useState(null);         // {position, reason, suggestions?}
+  const [running, setRunning] = useState(false);
+  // Scope state machine (contract Section 6, revised scope-error behavior):
+  // {kind:'session'} | {kind:'incident', id, status:'loading'|'ready'|'error', sealed}
+  const [scope, setScope] = useState({ kind: 'session' });
+  // P5.1: ONE inspector selection, keyed by event id, owned by the shell so
+  // it persists across view toggles and Refresh (when the id survives).
+  const [selectedId, setSelectedId] = useState(null);
+  const [selectionNotice, setSelectionNotice] = useState(null);
+  // P6.1/6.2: the OR-fallback notice from a sidebar/inspector refinement
+  // (distinct lifecycle from selectionNotice -- set only when refineFilter
+  // reports `fresh`, cleared by any subsequent plain Run/Refresh).
+  const [queryNotice, setQueryNotice] = useState(null);
+  // P5.2: the new-events indicator (contract Section 8, R16 refresh-now).
+  // Token-bound: the poll carries ONLY the executed snapshot's token, so
+  // edited bar text structurally cannot influence the count. countHalted
+  // stops the poll neutrally after a token invalidation (reset/restart).
+  const [newCount, setNewCount] = useState(0);
+  const [poolGrowth, setPoolGrowth] = useState(0);
+  const [countHalted, setCountHalted] = useState(false);
+  // P7.1: cross-host investigation (contract Section 14). The last focused
+  // incident backs the one-click "Back to INC-…" return chip after an entity
+  // pivot's Session-wide flip. UI/query state only -- reads, never mutations.
+  const [lastIncident, setLastIncident] = useState(null);
+  // P7.2: the evidence-timeline context ({kind:'descent', origin, backView,
+  // host, query}). Pure UI provenance (contract Section 12: the breadcrumb
+  // "implies nothing about any row"); the banner and the ascending display
+  // render ONLY while the displayed snapshot's canonical query is the
+  // timeline's own query, so they can never mislabel another snapshot.
+  const [timeline, setTimeline] = useState(null);
+  const focusSeqRef = useRef(0);
 
   useEffect(() => {
     apiFetch('/api/endpoints')
@@ -42,58 +82,280 @@ const Siem = ({ setSiemCount, resetTrigger, pivotQuery, onHostPivot }) => {
       .catch(() => {});
   }, [resetTrigger]);
 
+  // Session reset clears every piece of workbench state (scaffold S6-S13).
   useEffect(() => {
-    setAlerts([]);
-    setSearchTerm('');
-    setSourceFilter('all');
-    setPlatformFilter('all');
-    setTypeFilter('all');
-    setPreset('all');
-    fetchAlerts();
-  }, [resetTrigger, fetchAlerts]);
+    setQueryText('');
+    setSnapshot(null);
+    setError(null);
+    setRunning(false);
+    setScope({ kind: 'session' });
+    setSelectedId(null);
+    setSelectionNotice(null);
+    setQueryNotice(null);
+    setLastIncident(null);
+    setTimeline(null);
+  }, [resetTrigger]);
 
-  // Entity pivot from the Alerts tab: prefill the search with the value.
   useEffect(() => {
-    if (pivotQuery?.value) setSearchTerm(pivotQuery.value);
-  }, [pivotQuery]);
+    setSiemCount?.(snapshot ? snapshot.count : 0);
+  }, [snapshot, setSiemCount]);
 
-  // Dropdown values derive from the cached pool, never hardcoded.
-  const sources = [...new Set(alerts.map(a => a.source_type || a.detected_by).filter(Boolean))].sort();
-  const platforms = [...new Set(alerts.map(platformOf))].sort();
-  const eventTypes = [...new Set(alerts.map(a => a.event_type).filter(Boolean))].sort();
+  const loadIncidentScope = (id) => {
+    setLastIncident(id);
+    setScope({ kind: 'incident', id, status: 'loading' });
+    apiFetch(`/api/incidents/${id}/scope`)
+      .then((res) => { if (!res.ok) throw new Error('scope'); return res.json(); })
+      .then((sc) => setScope({ kind: 'incident', id, status: 'ready',
+                               sealed: !!sc.sealed }))
+      // Revised scope-error behavior: keep the chip, preserve the prior
+      // snapshot, disable Run; NEVER fall back to Session-wide silently.
+      .catch(() => setScope({ kind: 'incident', id, status: 'error' }));
+  };
 
-  const anchorMs = poolAnchorMs(alerts);
-  const { fieldFilters, free } = parseEventQuery(searchTerm);
-  const filtered = alerts.filter(alert => {
-    if (sourceFilter !== 'all' && (alert.source_type || alert.detected_by) !== sourceFilter) return false;
-    if (platformFilter !== 'all' && platformOf(alert) !== platformFilter) return false;
-    if (typeFilter !== 'all' && alert.event_type !== typeFilter) return false;
-    if (!withinPreset(alert, preset, anchorMs)) return false;
-    for (const [field, val] of fieldFilters) {
-      if (!String(alertFieldValue(alert, field)).toLowerCase().includes(val)) return false;
+  const selectScope = (value) => {
+    if (value === 'session') setScope({ kind: 'session' });
+    else loadIncidentScope(value);
+  };
+
+  const scopeBlocked = scope.kind === 'incident' && scope.status !== 'ready';
+  const scopeParam = scope.kind === 'incident' ? scope.id : 'session';
+
+  const setTimeframe = (tok) => {
+    setQueryText((t) => {
+      if (t.trim() === '') return `${tok} | * | * | *`;
+      const idx = t.indexOf('|');
+      // the text up to the first pipe IS the first segment; replace it in
+      // place (no pipe: the whole text is the first segment)
+      if (idx === -1) return tok;
+      return `${tok} ${t.slice(idx)}`;
+    });
+  };
+  const tfValue = firstSegmentToken(queryText) ||
+    (queryText.trim() === '' ? '1h' : '');
+
+  // Atomic replacement: the new snapshot object swaps in whole; a failed
+  // run leaves the prior snapshot untouched. Selection survival (P5.1):
+  // when the inspected id is present in the new rows, selection and the
+  // open inspector persist; otherwise the inspector closes with a one-line
+  // notice and nothing else is lost.
+  const applySnapshot = (body) => {
+    setSnapshot(body);
+    setError(null);
+    // The bar shows the executed snapshot's canonical text (contract S6
+    // Active state) -- clicks and runs teach the canonical form.
+    setQueryText(body.identity.canonical_query);
+    // A new snapshot means a new cutoff and token: the indicator resets.
+    setNewCount(0);
+    setPoolGrowth(0);
+    setCountHalted(false);
+    // Functional update so the survival check sees the selection as of
+    // REPLACEMENT time (a click during an in-flight run must not be lost).
+    setSelectedId((sel) => {
+      if (sel && !body.rows.some((r) => r.id === sel)) {
+        setSelectionNotice('The inspected event is not in the new snapshot.');
+        return null;
+      }
+      setSelectionNotice(null);
+      return sel;
+    });
+  };
+
+  // `noticeAfter`: the OR-fallback text to show once THIS run lands (null
+  // clears any stale notice from an earlier refinement -- plain Run/Refresh
+  // always pass none).
+  const execute = (q, scopeValue, noticeAfter = null) => {
+    if (running) return;
+    setRunning(true);
+    apiFetch(`/api/events/query?q=${encodeURIComponent(q)}&scope=${encodeURIComponent(scopeValue)}`)
+      .then(async (res) => {
+        const body = await res.json().catch(() => null);
+        if (res.ok && body) {
+          applySnapshot(body);
+          setQueryNotice(noticeAfter);
+        } else if (body && body.error && typeof body.error === 'object') {
+          setError(body.error);
+        } else {
+          setError({ position: 0, reason: 'The query could not be executed.' });
+        }
+      })
+      .catch(() => setError({ position: 0, reason: 'The query could not be executed.' }))
+      .finally(() => setRunning(false));
+  };
+
+  const runQuery = () => {
+    if (running || scopeBlocked) return;
+    execute(queryText, scopeParam);
+  };
+
+  // Refresh re-executes the DISPLAYED snapshot's definition (its canonical
+  // query and executed scope), never the editable bar text (contract S7).
+  const refresh = () => {
+    if (!snapshot || running) return;
+    execute(snapshot.identity.canonical_query, snapshot.identity.scope);
+  };
+
+  const selectRow = (id) => {
+    setSelectedId(id);
+    setSelectionNotice(null);
+  };
+
+  // Sidebar value clicks and inspector ==/!= actions ROUTE ONLY through the
+  // approved generator (lcqlPivots.refineFilter); the resulting query is
+  // executed immediately as a new snapshot (contract Section 13: "Every
+  // pivot ... executes it as a new snapshot").
+  const refineAndRun = (field, op, value) => {
+    if (!snapshot || running || scopeBlocked) return;
+    const { query, fresh, notice } = refineFilter(snapshot.identity.canonical_query, field, op, value);
+    setQueryText(query);
+    execute(query, scopeParam, fresh ? notice : null);
+  };
+
+  // P7.1 entity pivots (contract Sections 13/14): every pivot mints its
+  // documented query from the EXECUTED snapshot's TIMEFRAME token through
+  // the one generator, then ALWAYS executes Session-wide -- the scope
+  // control flips on screen as part of the pivot (never a silent side
+  // effect), and the incident being left stays one click away (return chip).
+  const PIVOT_FORMS = {
+    host: pivotHost, account: pivotAccount, process: pivotProcessImage,
+    file: pivotFile, ip: pivotIp, domain_proxy: pivotDomainProxy,
+    domain_dns: pivotDomainDns, event_type: pivotEventType,
+    sensor: pivotSensorFamily,
+  };
+  const pivotAndRun = (kind, value) => {
+    if (!snapshot || running) return;
+    const tf = splitSegments(snapshot.identity.canonical_query)[0];
+    const query = PIVOT_FORMS[kind](tf, value);
+    setScope({ kind: 'session' });
+    setQueryText(query);
+    execute(query, 'session');
+  };
+
+  // P7.3 surrounding events (contract Section 13 row: `all | H | * | *`,
+  // occurrence ascending, viewport centered on the source event). A context
+  // view around one event, NOT an entity pivot -- Section 14's Session-wide
+  // rule does not apply, so it runs under the CURRENT scope. The generated
+  // string is the documented host-timeline form (the one generator).
+  const surroundingAndRun = (hostname, eventId) => {
+    if (!snapshot || running || scopeBlocked) return;
+    const query = descentHost(hostname);
+    focusSeqRef.current += 1;
+    setQueryText(query);
+    setTimeline({ kind: 'surrounding', host: hostname, focusId: eventId,
+                  focusSeq: focusSeqRef.current, query });
+    execute(query, scopeParam);
+  };
+
+  // The return chip (Section 14 "Returning"): re-run the query currently in
+  // the bar under the last focused incident's participant scope. Uses the
+  // same scope-read + revised error behavior as the scope control (never a
+  // silent fallback).
+  const returnToIncident = (id) => {
+    if (running) return;
+    setLastIncident(id);
+    setScope({ kind: 'incident', id, status: 'loading' });
+    apiFetch(`/api/incidents/${id}/scope`)
+      .then((res) => { if (!res.ok) throw new Error('scope'); return res.json(); })
+      .then((sc) => {
+        setScope({ kind: 'incident', id, status: 'ready', sealed: !!sc.sealed });
+        execute(queryText, id);
+      })
+      .catch(() => setScope({ kind: 'incident', id, status: 'error' }));
+  };
+
+  // P7.2/P7.4 Open Evidence Timeline descent (contract Sections 13/16; R17
+  // uniform control): descent explicitly establishes scope for this entry
+  // and anchors to the OBSERVABLE ENTITY. An account-entity detection
+  // descends account-anchored (all | * | * | user_account == "A"); one
+  // participant host anchors that host's timeline (all | H | * | *);
+  // several -- or none known yet -- anchor the scoped session query
+  // (all | * | * | *) under the incident's participant scope. Scope
+  // follows ONE rule for every anchor kind: the player-selected incident
+  // context when the entry carries one, Session-wide otherwise -- identity
+  // descent is deliberately NOT special-cased, so an incident-scoped
+  // account timeline may honestly show zero rows when the account's events
+  // lack participant hostnames; the visible scope control is the designed
+  // path out. The request carries ONLY observable data from the origin
+  // surface; the query is generated HERE through the one generator.
+  useEffect(() => {
+    if (!descentRequest) return;
+    const { origin, hosts, account, scopeIncidentId, backView } = descentRequest;
+    const host = !account && hosts && hosts.length === 1 ? hosts[0] : null;
+    const query = account ? descentAccount(account)
+      : host ? descentHost(host) : descentSessionAll();
+    setQueryText(query);
+    setTimeline({ kind: 'descent', origin, backView, host,
+                  account: account || null, query });
+    if (scopeIncidentId) {
+      setLastIncident(scopeIncidentId);
+      setScope({ kind: 'incident', id: scopeIncidentId, status: 'loading' });
+      apiFetch(`/api/incidents/${scopeIncidentId}/scope`)
+        .then((res) => { if (!res.ok) throw new Error('scope'); return res.json(); })
+        .then((sc) => {
+          setScope({ kind: 'incident', id: scopeIncidentId, status: 'ready', sealed: !!sc.sealed });
+          execute(query, scopeIncidentId);
+        })
+        .catch(() => setScope({ kind: 'incident', id: scopeIncidentId, status: 'error' }));
+    } else {
+      setScope({ kind: 'session' });
+      execute(query, 'session');
     }
-    if (free && !JSON.stringify(alert).toLowerCase().includes(free)) return false;
-    return true;
-  });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [descentRequest]);
 
+  // P5.2 indicator poll: token-bound only; passive (the snapshot never
+  // changes); stops neutrally when the token is invalidated (a 400 after
+  // Reset / Practice Another / restart) -- no error surface, the indicator
+  // simply disappears until the next run mints a fresh token.
   useEffect(() => {
-    setSiemCount?.(filtered.length);
-  }, [filtered.length, setSiemCount]);
+    if (!snapshot || countHalted) return undefined;
+    let cancelled = false;
+    const token = snapshot.token;
+    const tick = () => {
+      apiFetch(`/api/events/query/new-count?token=${encodeURIComponent(token)}`)
+        .then((res) => { if (!res.ok) throw new Error('token'); return res.json(); })
+        .then((d) => {
+          if (!cancelled) {
+            setNewCount(d.new_count);
+            setPoolGrowth(d.pool_growth);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setNewCount(0);
+            setPoolGrowth(0);
+            setCountHalted(true);
+          }
+        });
+    };
+    const interval = setInterval(tick, 3000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [snapshot, countHalted]);
 
-  const selectClass =
-    'px-2.5 py-2 text-xs rounded-md border border-[#d0d7de] bg-white text-[#1a2332] focus:outline-none focus:ring-2 focus:ring-[#16436b]/30';
+  // De-emphasis (contract Section 8): the indicator describes the LAST RUN;
+  // when the bar or scope control differs from the executed identity, it
+  // dims and says so rather than implying it tracks the edited text.
+  const indicatorStale = !!snapshot
+    && (queryText !== snapshot.identity.canonical_query
+        || scopeParam !== snapshot.identity.scope);
 
-  const filterSelect = (label, value, onChange, options) => (
-    <label className="flex items-center gap-1.5 text-xs text-[#6e7781]">
-      {label}
-      <select value={value} onChange={e => onChange(e.target.value)} className={selectClass} aria-label={`Filter by ${label}`}>
-        <option value="all">All</option>
-        {options.map(o => <option key={o} value={o}>{o}</option>)}
-      </select>
-    </label>
-  );
+  const simTime = (iso) => {
+    const t = Date.parse(iso || '');
+    return Number.isNaN(t)
+      ? ''
+      : new Date(t).toLocaleTimeString('en-GB', { hour12: false });
+  };
 
-  const noPool = alerts.length === 0;
+  // Timeline presentation (contract Section 13: "sorted occurrence
+  // ascending"): active only while the displayed snapshot IS the timeline's
+  // query. The ascending order is client view state over the frozen row set
+  // -- applied at display time, before the components' own column sorting.
+  const timelineActive = !!(timeline && snapshot
+    && snapshot.identity.canonical_query === timeline.query);
+  const occAsc = (a, b) =>
+    String(a.timestamp || '').localeCompare(String(b.timestamp || ''))
+    || (a.event_seq || 0) - (b.event_seq || 0);
+  const displayRows = !snapshot ? []
+    : timelineActive ? [...snapshot.rows].sort(occAsc) : snapshot.rows;
 
   return (
     <div>
@@ -109,10 +371,12 @@ const Siem = ({ setSiemCount, resetTrigger, pivotQuery, onHostPivot }) => {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332]">SIEM</h2>
-              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-[#57606a]">{filtered.length}</span>
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-[#57606a]">
+                {snapshot ? snapshot.count : 0}
+              </span>
             </div>
             <p className="text-sm text-[#57606a] truncate">
-              {org.name || 'ACME Corp'}: endpoint telemetry and scenario event data
+              {org.name || 'ACME Corp'}: investigation workbench over the session event pool
             </p>
           </div>
           <div className="ml-auto flex items-center rounded-md border border-[#d0d7de] overflow-hidden" role="group" aria-label="View">
@@ -132,70 +396,267 @@ const Siem = ({ setSiemCount, resetTrigger, pivotQuery, onHostPivot }) => {
         </div>
       </div>
 
-      {/* Toolbar: search, dropdown filters, time presets */}
-      <div className="mb-3 flex flex-col gap-2.5">
-        <div className="relative">
+      {/* Scope + TIMEFRAME + query bar */}
+      <div className="mb-3 flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <label className="flex items-center gap-1.5 text-[#6e7781]">
+            Scope
+            <select
+              value={scope.kind === 'incident' ? scope.id : 'session'}
+              onChange={(e) => selectScope(e.target.value)}
+              aria-label="Scope"
+              className="px-2.5 py-1.5 rounded-md border border-[#d0d7de] bg-white text-[#1a2332]"
+            >
+              <option value="session">Session-wide</option>
+              {activeIncidentId && (
+                <option value={activeIncidentId}>{`Focused on ${activeIncidentId}`}</option>
+              )}
+              {scope.kind === 'incident' && scope.id !== activeIncidentId && (
+                <option value={scope.id}>{`Focused on ${scope.id}`}</option>
+              )}
+            </select>
+          </label>
+          {scope.kind === 'incident' && (
+            <span
+              data-testid="scope-chip"
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-[#eef1f4] text-[#1a2332]"
+            >
+              <span className="log-mono text-[#16436b] font-medium">{scope.id}</span>
+              {scope.status === 'loading' && <span className="text-[#6e7781]">loading scope</span>}
+              {scope.status === 'error' && <span className="text-[#b26666]">scope unavailable</span>}
+              <button
+                type="button"
+                aria-label="Clear scope"
+                onClick={() => selectScope('session')}
+                className="text-[#6e7781] hover:text-[#1a2332]"
+              >
+                x
+              </button>
+            </span>
+          )}
+          {lastIncident && scopeParam !== lastIncident && (
+            <button
+              type="button"
+              data-testid="return-chip"
+              onClick={() => returnToIncident(lastIncident)}
+              disabled={running}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-[#16436b]/40 text-[#16436b] text-xs hover:bg-[#16436b]/5 disabled:opacity-50"
+            >
+              Back to {lastIncident}
+            </button>
+          )}
+          <label className="flex items-center gap-1.5 text-[#6e7781] ml-auto">
+            Timeframe
+            <select
+              value={tfValue}
+              onChange={(e) => setTimeframe(e.target.value)}
+              aria-label="Timeframe"
+              className="px-2.5 py-1.5 rounded-md border border-[#d0d7de] bg-white text-[#1a2332]"
+            >
+              {tfValue === '' && <option value="">custom</option>}
+              {TF_TOKENS.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </label>
+        </div>
+
+        {scope.kind === 'incident' && scope.status === 'error' && (
+          <div className="px-3 py-2 rounded-md border border-[#e2e6ea] bg-[#faf6f0] text-xs text-[#1a2332]" role="alert">
+            Incident scope could not be loaded.
+            <button
+              type="button"
+              onClick={() => loadIncidentScope(scope.id)}
+              className="ml-2 px-2 py-0.5 rounded border border-[#d0d7de] bg-white text-[#1a2332]"
+            >
+              Retry
+            </button>
+            <button
+              type="button"
+              onClick={() => selectScope('session')}
+              className="ml-2 px-2 py-0.5 rounded border border-[#d0d7de] bg-white text-[#57606a]"
+            >
+              Use Session-wide
+            </button>
+          </div>
+        )}
+        {scope.kind === 'incident' && scope.status === 'ready' && scope.sealed === false && (
+          <div className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a]">
+            Incident telemetry is still loading.
+          </div>
+        )}
+
+        <div className="flex gap-2">
           <input
             type="text"
-            placeholder="Search events, e.g. source_ip=10.0.1.24 event_type=4625"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder={QUERY_PLACEHOLDER}
+            value={queryText}
+            onChange={(e) => setQueryText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') runQuery(); }}
+            readOnly={running}
             maxLength={300}
-            className="w-full pl-4 pr-10 py-2 rounded-md bg-white border border-[#e2e6ea] text-[#1a2332] text-sm placeholder-[#8b949e] focus:border-[#8b949e] focus:outline-none transition-colors"
+            aria-label="LCQL query"
+            className="log-mono flex-1 pl-4 pr-4 py-2 rounded-md bg-white border border-[#e2e6ea] text-[#1a2332] text-sm placeholder-[#8b949e] focus:border-[#8b949e] focus:outline-none transition-colors"
           />
-          {searchTerm ? (
-            <button
-              onClick={() => setSearchTerm('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6e7781] hover:text-[#1a2332]"
-              aria-label="Clear search"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          ) : (
-            <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6e7781]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          )}
+          <button
+            type="button"
+            onClick={runQuery}
+            disabled={running || scopeBlocked}
+            className="px-4 py-2 text-xs font-medium rounded-md bg-[#101218] text-white disabled:opacity-50"
+          >
+            {running ? 'Running' : 'Run Query'}
+          </button>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {filterSelect('Source', sourceFilter, setSourceFilter, sources)}
-          {filterSelect('Platform', platformFilter, setPlatformFilter, platforms)}
-          {filterSelect('Event Type', typeFilter, setTypeFilter, eventTypes)}
-          <div className="flex items-center gap-1 ml-auto" role="group" aria-label="Time range">
-            {TIME_PRESETS.map(p => (
-              <button
-                key={p.key}
-                type="button"
-                onClick={() => setPreset(p.key)}
-                className={`px-2 py-1 text-xs rounded-md border transition ${
-                  preset === p.key
-                    ? 'bg-[#101218] text-white border-transparent'
-                    : 'bg-white text-[#57606a] border-[#d0d7de] hover:bg-[#eef1f4]'
-                }`}
+
+        {error && (
+          <div className="px-3 py-2 rounded-md border border-[#e2e6ea] bg-[#faf6f0] text-xs text-[#1a2332]" role="alert">
+            <span className="font-medium">Parse error at position {error.position}:</span>{' '}
+            {error.reason}
+            {error.suggestions && error.suggestions.length > 0 && (
+              <span className="text-[#57606a]"> Did you mean: {error.suggestions.join(', ')}?</span>
+            )}
+          </div>
+        )}
+
+        {snapshot && (
+          <div className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a] flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span>
+              Snapshot: <span className="font-medium text-[#1a2332]">{snapshot.count} events</span>
+            </span>
+            <span>as of seq #{snapshot.identity.cutoff_seq}</span>
+            <span>{simTime(snapshot.identity.resolved_range.end)} sim</span>
+            <span className="log-mono">{snapshot.identity.canonical_query}</span>
+            {newCount > 0 && (
+              <span
+                data-testid="new-events-indicator"
+                className={`px-2 py-0.5 rounded-full text-white bg-[#16436b] font-medium ${indicatorStale ? 'opacity-50' : ''}`}
               >
-                {p.label}
+                {newCount} new{indicatorStale ? ' (last run)' : ''}
+              </span>
+            )}
+            {poolGrowth > 0 && (
+              <span data-testid="pool-growth" className="text-[#8b949e]">
+                pool: +{poolGrowth}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={refresh}
+              disabled={running}
+              title={poolGrowth > 0 ? `pool: +${poolGrowth} events` : undefined}
+              className="ml-auto px-2.5 py-1 text-xs font-medium rounded-md border border-[#d0d7de] bg-white text-[#1a2332] hover:bg-[#eef1f4] disabled:opacity-50"
+            >
+              Refresh
+            </button>
+          </div>
+        )}
+
+        {timelineActive && (
+          <div
+            data-testid="descent-banner"
+            role="status"
+            className="px-3 py-1.5 rounded-md border border-[#16436b]/30 bg-[#16436b]/5 text-xs text-[#1a2332] flex flex-wrap items-center gap-x-2 gap-y-1"
+          >
+            {timeline.kind === 'surrounding' ? (
+              <span>
+                Surrounding events for <span className="log-mono font-medium">{timeline.host}</span>,
+                centered on the selected event
+              </span>
+            ) : (
+              <span>
+                Evidence timeline
+                {timeline.host || timeline.account
+                  ? <> for <span className="log-mono font-medium">{timeline.host || timeline.account}</span></>
+                  : ' (all participant hosts)'}
+                , from <span className="log-mono text-[#16436b]">{timeline.origin}</span>
+              </span>
+            )}
+            <span className="text-[#8b949e]">occurrence ascending</span>
+            {timeline.kind === 'descent' && timeline.backView && onNavigate && (
+              <button
+                type="button"
+                onClick={() => onNavigate(timeline.backView)}
+                className="ml-auto text-[#16436b] hover:underline"
+              >
+                Back to {timeline.backView === 'incidents' ? 'Incidents' : 'Detections'}
+              </button>
+            )}
+          </div>
+        )}
+        {selectionNotice && (
+          <div role="status" className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a]">
+            {selectionNotice}
+          </div>
+        )}
+        {queryNotice && (
+          <div role="status" data-testid="query-notice" className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a]">
+            {queryNotice}
+          </div>
+        )}
+      </div>
+
+      {/* Results */}
+      {!snapshot ? (
+        <div
+          className="p-6 rounded-xl py-12"
+          style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+        >
+          <p className="text-sm font-medium text-[#1a2332] mb-1">Run a query to begin.</p>
+          <p className="text-xs text-[#57606a] mb-3">
+            LCQL has four segments: TIMEFRAME | SENSOR | EVENT TYPE | FILTERS. Try one of these:
+          </p>
+          <div className="flex flex-col gap-1.5 mb-4">
+            {QUERY_HELP_EXAMPLES.map((ex) => (
+              <button
+                key={ex}
+                type="button"
+                onClick={() => setQueryText(ex)}
+                className="log-mono text-left text-xs px-3 py-1.5 rounded-md border border-[#d0d7de] bg-[#f6f8fa] text-[#1a2332] hover:bg-[#eef1f4]"
+              >
+                {ex}
               </button>
             ))}
           </div>
+          <p className="text-xs text-[#6e7781]">
+            Values containing spaces or any of{' '}
+            <span className="log-mono">&quot; &#39; = ! | *</span> must be quoted, and the bare
+            words and, or, not, contains must be quoted to match literally. Double-quoted and
+            unquoted values match case-insensitively; single quotes match exactly.
+          </p>
         </div>
-      </div>
-
-      {noPool ? (
-        <div
-          className="p-6 rounded-xl flex flex-col items-center justify-center py-16"
-          style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
-        >
-          <svg className="w-8 h-8 text-[#8b949e] mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17V7m4 10V11m4 6V9M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z" />
-          </svg>
-          <p className="text-sm text-[#6e7781]">No events yet. Start a simulation to begin.</p>
+      ) : snapshot.count === 0 ? (
+        <div className="flex flex-col lg:flex-row gap-4">
+          <FieldSidebar snapshot={snapshot} running={running} onValueClick={refineAndRun} />
+          <div
+            className="flex-1 min-w-0 p-6 rounded-xl flex flex-col items-center justify-center py-14"
+            style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+          >
+            <p className="text-sm text-[#1a2332] mb-1">0 events match</p>
+            <p className="text-xs text-[#6e7781] log-mono">{snapshot.identity.canonical_query}</p>
+          </div>
         </div>
-      ) : view === 'cards' ? (
-        <SiemCards alerts={filtered} resetTrigger={resetTrigger} onHostPivot={onHostPivot} />
       ) : (
-        <SiemTable alerts={filtered} resetTrigger={resetTrigger} onHostPivot={onHostPivot} />
+        <div className="flex flex-col lg:flex-row gap-4">
+          <FieldSidebar snapshot={snapshot} running={running} onValueClick={refineAndRun} />
+          <div data-testid="workbench-results" className="flex-1 min-w-0">
+            {view === 'cards' ? (
+              <SiemCards alerts={displayRows} resetTrigger={resetTrigger}
+                         selectedId={selectedId} onSelect={selectRow}
+                         focus={timelineActive && timeline.kind === 'surrounding'
+                           ? { id: timeline.focusId, seq: timeline.focusSeq } : null} />
+            ) : (
+              <SiemTable alerts={displayRows} resetTrigger={resetTrigger}
+                         selectedId={selectedId} onSelect={selectRow}
+                         focus={timelineActive && timeline.kind === 'surrounding'
+                           ? { id: timeline.focusId, seq: timeline.focusSeq } : null} />
+            )}
+            <EventInspector
+              event={snapshot.rows.find((r) => r.id === selectedId) || null}
+              onFilter={refineAndRun}
+              onHostPivot={onHostPivot}
+              onPivot={pivotAndRun}
+              onSurrounding={surroundingAndRun}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

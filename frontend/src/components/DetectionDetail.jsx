@@ -76,7 +76,8 @@ const ProcessCard = ({ title, name, cmdline, path, pid, ppid, signer, sha256, us
   );
 };
 
-const DetectionDetail = ({ detId, onBack, onAction, onHostPivot }) => {
+const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
+                           onEvidenceDescent, descentScopeIncidentId }) => {
   const [det, setDet] = useState(null);
   const [notFound, setNotFound] = useState(false);
 
@@ -133,6 +134,31 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot }) => {
             )}
           </div>
           <h2 className="mt-2 text-xl sm:text-2xl font-semibold text-[#1a2332]">{det.rule_name}</h2>
+          {/* P7.2/P7.4 Open Evidence Timeline (contract Section 13; OD-9
+              naming ruling -- never "View Triggering Evidence"; R17 uniform
+              control). Descent anchors to the detection's OBSERVABLE
+              ENTITY: host-entity detections descend host-anchored,
+              identity (account-entity) detections descend account-anchored.
+              One control, one request grammar for every detection kind --
+              presence and content depend only on the visible entity, never
+              on disposition, scenario membership, or any answer-key state. */}
+          {(det.entity?.host || det.entity?.account) && onEvidenceDescent && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => onEvidenceDescent({
+                  origin: det.id,
+                  hosts: det.entity.host ? [det.entity.host] : [],
+                  account: det.entity.host ? null : det.entity.account,
+                  scopeIncidentId: descentScopeIncidentId || null,
+                  backView: 'detections',
+                })}
+                className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#16436b] hover:bg-[#eef1f4]"
+              >
+                Open Evidence Timeline
+              </button>
+            </div>
+          )}
           <p className="mt-1 text-sm text-[#57606a] font-mono">
             {det.time ? det.time.slice(0, 19).replace('T', ' ') : '-'}
             {' '}&middot;{' '}

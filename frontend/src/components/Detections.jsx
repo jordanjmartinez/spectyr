@@ -85,7 +85,7 @@ const shortTime = (iso) =>
   iso ? new Date(iso).toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
 
 const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot,
-                      activeIncidentId = null }) => {
+                      activeIncidentId = null, onEvidenceDescent }) => {
   const [feed, setFeed] = useState([]);
   const [counts, setCounts] = useState({ open: 0, promoted: 0, dismissed: 0 });
   const [view, setView] = useState('feed'); // 'feed' | 'threats' | 'log'
@@ -180,6 +180,11 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot,
         onBack={() => { setSelected(null); fetchFeed(); }}
         onAction={act}
         onHostPivot={onHostPivot}
+        onEvidenceDescent={onEvidenceDescent}
+        // Section 16: descent opens the relevant incident scope for THIS
+        // entry -- the player-selected incident context while the feed is
+        // scoped to it; Session-wide otherwise. Observable UI state only.
+        descentScopeIncidentId={activeIncidentId && scoped && scopeIds ? activeIncidentId : null}
       />
     );
   }

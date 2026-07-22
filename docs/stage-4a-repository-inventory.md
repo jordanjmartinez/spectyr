@@ -52,6 +52,10 @@ backend (per the BACKLOG note added in this task).
   (total 60), **2.65** environment hosts/scenario. **30 event types** across
   **8 source families**. Runtime totals additionally include normal traffic and
   are runtime-duration-dependent (Section 10).
+  *[Headline correction 2026-07-19: this document's own type table
+  (Sections 4.2/16.3) in fact lists **29** authored types; the queryable
+  catalog additionally carries 12 background-template-only types, a
+  data-derived union of **41** -- see the Stage 4A contract's Erratum E1.]*
 
 ---
 

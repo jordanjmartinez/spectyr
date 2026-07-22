@@ -326,7 +326,11 @@ deleted with its tests replaced in the same commit.
 
 - **Current:** none.
 - **Target:** **added** in `backend/app.py` (route layer): identity dict
-  `{canonical_query, scope, resolved_range: {start, end}, cutoff_seq}`
+  `{canonical_query, scope, resolved_scope_hosts (Amendment E2, P3.4:
+  the participant-host set resolved at execution, sorted + deduplicated,
+  [] for session-wide; frozen so replay and the new-count baseline never
+  re-resolve a pre-seal incident's grown host set), resolved_range:
+  {start, end}, cutoff_seq}`
   computed at execution: canonical query from the parser; scope validated
   (`session` or known incident id); TIMEFRAME resolved against sim-now
   (max visible occurrence timestamp). **`all` resolution (review
@@ -559,8 +563,15 @@ Session binding: the standard session middleware (`X-Session-ID` header /
 {
   "token":    <string, opaque snapshot token>,
   "identity": {
-    "canonical_query": <string>,
-    "scope":           <string: "session" or the incident id>,
+    "canonical_query":      <string>,
+    "scope":                <string: "session" or the incident id>,
+    "resolved_scope_hosts": [ <hostname string>, ... ],
+                            // Amendment E2 (P3.4): the participant-host
+                            // set resolved at execution, sorted and
+                            // deduplicated; [] for session-wide (no
+                            // implicit constraint). MAC-covered. Frozen:
+                            // replay and the new-count baseline use THIS
+                            // list, never the incident's current set.
     "resolved_range":  { "start": <ISO-8601 string>, "end": <ISO-8601 string> },
     "cutoff_seq":      <integer>
   },
@@ -979,10 +990,20 @@ Stop condition: owner + reviewer approve this scaffold. Rollback: n/a.
   the same commits.
 - **Endpoint/field changes:** none (consumes Phase 3 routes).
 - **Commits:** (4.1) shell + Run Query + snapshot status + minimal frozen
-  results + state tests; (4.2) scope control incl. the revised
+  results + state tests -- the empty-state/hint query help MUST include
+  the GD-5a unquoted-value rules (contract post-lock amendment, owner
+  rider at Phase 2 acceptance); (4.2) scope control incl. the revised
   scope-error behavior (chip retained, prior snapshot preserved, Run
   disabled, no silent fallback) + TIMEFRAME segment editor (control and
   text can never disagree).
+- **Accepted process deviation (recorded at Phase 4 closure, owner
+  ruling):** the client TIMEFRAME helpers (`TIME_PRESETS`,
+  `withinPreset`, `poolAnchorMs`) and their old `siem.test.js` cases were
+  removed in commit 4.1 (`1694217`), while the replacement
+  TIMEFRAME-control coverage landed in commit 4.2 (`0fd08b4`) -- a
+  cross-commit replacement inside one phase, accepted without rewriting
+  history because the replacement control itself was a 4.2 deliverable.
+  **Same-concern replacement remains the rule going forward.**
 - **Tests before commit:** frontend suite (`CI=true npx react-scripts
   test --watchAll=false`) via `run_gates.py --frontend`.
 - **Chrome evidence:** run a valid query, see frozen results; parse error
@@ -1092,7 +1113,9 @@ Stop condition: owner + reviewer approve this scaffold. Rollback: n/a.
 - **Commits:** (8.1) Dashboard existence check -> `game-state`; (8.2)
   stats relocation + IncidentDashboard migration + its test; (8.3) route
   deletions + trigger-branch removal + every retargeted backend test +
-  final route-audit assertion + nav key rename; (8.4) docs pass.
+  final route-audit assertion + nav key rename; (8.4) docs pass, incl.
+  the GD-5a unquoted-value rules in the Docs-page query help (owner
+  rider at Phase 2 acceptance).
 - **Tests before commit:** full battery both sides (`run_gates.py --all`).
 - **Chrome evidence:** Dashboard severity widget still renders; network
   tab shows zero calls to retired routes across all tabs.
@@ -1277,7 +1300,16 @@ relocation). Specifically re-checked against the amendment triggers:
   owner review of 2026-07-19**: digest-derived epoch (Section 2.4);
   spacing constants (120s/position; background spacing revised 2s -> 3s
   under the quantified coherence check, Section 6) — **subject to the
-  quantified coherence bound test**; HMAC snapshot token and neutral
+  quantified coherence bound test**. **K2 tuning authority exercised
+  (recorded per the Phase 2 rider):** the reference model over the live
+  catalog (n_model = 309 seq steps = 270 drip-gap ticks + 21 drain ticks
+  for the longest chain + 18 worst-case supplemental appends; authored
+  max = 9 x 120s + 138s max hi-offset span = 1218s) measured 2 s/step at
+  background max 618s -> gap **600s, failing** the 300s bound, and
+  3 s/step at background max 927s -> gap **291s, passing**; the knob was
+  exercised once, 2s -> 3s, at scaffold correction, and
+  `test_event_seq.py::test_authored_background_gap_within_bound` now
+  recomputes exactly this model from the live catalog permanently; HMAC snapshot token and neutral
   failure response (Section 2.8); corrected `all`-range semantics
   (minimum visible occurrence, Section 2.7); stats relocation venue
   (fields on `/api/incidents`, Section 3.4.2) — **subject to preserving
@@ -1341,3 +1373,57 @@ commits on the branch; merge to `main` after Phase 9 evidence review.
 *End of scaffold. Implementation is not authorized by this document;
 it begins only after explicit owner and reviewer approval of this
 scaffold, on the named branch, in the phase order above.*
+
+---
+
+## Appendix: Phase 8 completion record (2026-07-21, append-only)
+
+Phase 8 (migration and retirement) is complete per this scaffold's
+plan. Consumer migrations landed before deletions per the Section 3.5
+map (`ebd2e5f` Dashboard existence check -> game-state; `bdb09f8`
+severity stats relocated to `/api/incidents` as
+`stats.severity_breakdown`); the route deletions, analyst
+trigger-branch removal, final route-audit tightening, and the
+`grouped` -> `incidents` nav key rename landed atomically (`c263fb5`);
+the docs pass landed as `3ddf1fe`. `/api/fake-events` and
+`/api/grouped-alerts` are retired; `/api/events/query` and
+`/api/events/query/new-count` are the sole event-query paths. The K9
+repo-wide grep found zero live consumers; one consumer outside the
+Section 3.5 map (`test_event_seq.py`) was caught by the grep and
+retargeted in `c263fb5`. Phase 9 remains pending.
+
+---
+
+## Appendix: Amendment and Stage 4 completion record (2026-07-22, append-only)
+
+Matching record for the locked-contract amendment of the same date;
+every section above stands unchanged.
+
+**Final descent forms (as shipped and amended into the contract):**
+
+- Host detections descend through `all | <hostname> | * | *`.
+- Identity detections descend through
+  `all | * | * | user_account == "<account>" or UserPrincipalName == "<account>"`.
+- Both forms depend only on the detection's visible entity; an
+  explicitly selected incident context is retained; identity descent
+  never silently broadens to Session-wide when the incident
+  participant-host filter produces zero results; without an incident
+  context, descent uses Session-wide.
+- Surrounding events execute under the current scope as a context view
+  (the ratified interpretation of the previously unstated surrounding
+  scope).
+
+**Phase 9 completion:**
+
+- The reviewed Phase 9 artifact tip is commit `ba556c5`
+  (`docs/stage-4-implementation-report.md` including the closure
+  addendum). The artifact cannot record its own commit hash without
+  changing that hash, so the tip is recorded here.
+- Complete Phase 9 commit list:
+  - `c4a0f2f` — original Stage 4 implementation report
+  - `6ca2105` — per-mode planted-marker guard
+  - `ba556c5` — Phase 9 closure addendum and reviewed artifact tip
+
+**Stage 4 status:** product implementation and certification have
+passed review. Merge remains pending the final docs-only correction
+review.

@@ -1,28 +1,45 @@
-import React, { useEffect, useState } from 'react';
-import { sevColor, sourceColor, sanitizeEvent } from './siemUtils';
+import React, { useEffect, useRef, useState } from 'react';
+import { sevColor, sourceColor } from './siemUtils';
 
-// SIEM card view (Stage 1.5, default view): event cards color-coded by
-// source family, expandable to the sanitized raw-log JSON. Presentational
-// only; receives the already-filtered cached pool.
+// SIEM card view: event cards color-coded by source family. Presentational
+// only; renders the frozen snapshot rows. Selection is CONTROLLED by the
+// workbench shell (Stage 4 P5.1: one inspector, selection keyed by event
+// id, persisting across view toggles and surviving Refresh when the id
+// survives). The selected card's full detail renders in the shared
+// EventInspector below the results (Stage 4 P6.3) -- this component only
+// highlights which card is selected; it has no inline expansion.
 
 const PER_PAGE = 12;
 
 const timeOf = (iso) =>
   iso ? new Date(iso).toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
 
-const SiemCards = ({ alerts, resetTrigger, onHostPivot }) => {
+const SiemCards = ({ alerts, resetTrigger, selectedId, onSelect, focus }) => {
   const [page, setPage] = useState(1);
-  const [expanded, setExpanded] = useState({});
+  const focusRef = useRef(null);
 
   useEffect(() => {
     setPage(1);
-    setExpanded({});
   }, [resetTrigger]);
 
   useEffect(() => {
     const maxPage = Math.max(1, Math.ceil(alerts.length / PER_PAGE));
     if (page > maxPage) setPage(maxPage);
   }, [alerts.length, page]);
+
+  // P7.3 surrounding-events centering: jump to the focus event's page, then
+  // scroll its card into the viewport center. Display-only view state.
+  useEffect(() => {
+    if (!focus || !focus.id) return;
+    const idx = alerts.findIndex((a) => a.id === focus.id);
+    if (idx !== -1) setPage(Math.floor(idx / PER_PAGE) + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus && focus.seq]);
+  useEffect(() => {
+    if (focus && focusRef.current && typeof focusRef.current.scrollIntoView === 'function') {
+      focusRef.current.scrollIntoView({ block: 'center' });
+    }
+  }, [focus && focus.seq, page]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalPages = Math.max(1, Math.ceil(alerts.length / PER_PAGE));
   const current = alerts.slice((page - 1) * PER_PAGE, page * PER_PAGE);
@@ -64,16 +81,20 @@ const SiemCards = ({ alerts, resetTrigger, onHostPivot }) => {
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
         {current.map((alert) => {
           const source = alert.source_type || alert.detected_by || 'Unknown';
-          const isOpen = !!expanded[alert.id];
+          const isOpen = alert.id === selectedId;
           return (
             <div
               key={alert.id}
-              className="bg-white rounded-xl border border-[#e2e6ea] overflow-hidden flex flex-col"
+              ref={focus && alert.id === focus.id ? focusRef : undefined}
+              data-focused={focus && alert.id === focus.id ? 'true' : undefined}
+              className={`bg-white rounded-xl border overflow-hidden flex flex-col ${
+                isOpen ? 'border-[#16436b] ring-1 ring-[#16436b]' : 'border-[#e2e6ea]'
+              }`}
               style={{ borderLeft: `3px solid ${sevColor(alert.severity)}`, boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
             >
               <button
                 type="button"
-                onClick={() => setExpanded(prev => ({ ...prev, [alert.id]: !prev[alert.id] }))}
+                onClick={() => onSelect?.(isOpen ? null : alert.id)}
                 className="text-left p-4 flex-1 hover:bg-[#f6f8fa] transition-colors"
               >
                 <div className="flex items-center gap-2">
@@ -100,26 +121,6 @@ const SiemCards = ({ alerts, resetTrigger, onHostPivot }) => {
                   {alert.message || '-'}
                 </p>
               </button>
-              {isOpen && (
-                <div className="border-t border-[#eef1f4]">
-                  {alert.hostname && onHostPivot && (
-                    <div className="px-4 pt-3 text-xs">
-                      <button
-                        type="button"
-                        onClick={() => onHostPivot(alert.hostname)}
-                        className="text-[#16436b] hover:underline font-mono"
-                        title={`Open ${alert.hostname} in Endpoints`}
-                      >
-                        {alert.hostname}
-                      </button>
-                      <span className="text-[#8b949e]"> in Endpoints</span>
-                    </div>
-                  )}
-                  <pre className="m-3 p-3 rounded-lg bg-[#f6f8fa] border border-[#eef1f4] text-[11px] leading-relaxed font-mono text-[#1a2332] overflow-x-auto">
-{JSON.stringify(sanitizeEvent(alert), null, 2)}
-                  </pre>
-                </div>
-              )}
             </div>
           );
         })}

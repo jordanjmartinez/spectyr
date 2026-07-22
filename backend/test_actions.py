@@ -354,8 +354,11 @@ def test_api_immutable_evidence_after_kill():
         assert all(p["pid"] != pid for p in detail["processes"])
         assert all(c["pid"] != pid for c in detail["network"]["connections"])
 
-        events = client.get("/api/fake-events",
-                            headers={"X-Session-ID": sid}).get_json()
+        # P8.3: the historical record is re-read through the single event
+        # path (the legacy feed is deleted)
+        events = client.get(
+            "/api/events/query?q=all%20%7C%20*%20%7C%20*%20%7C%20*&scope=session",
+            headers={"X-Session-ID": sid}).get_json()["rows"]
         assert any(e["id"] == "ev-1" for e in events), "historical record changed"
         assert any(p["pid"] == pid for p in snap["processes"]), "base world changed"
     finally:

@@ -28,15 +28,16 @@ const IncidentDashboard = ({
 }) => {
   const [data, setData] = useState({ active: [], completed: [], queue_length: 0, resolved_count: 0 });
   const [session, setSession] = useState(null);
-  const [stats, setStats] = useState(null);          // grouped-alerts stats (severity)
+  const [stats, setStats] = useState(null);          // /api/incidents stats (severity)
   const [coverage, setCoverage] = useState(null);    // attack_coverage
   const [env, setEnv] = useState(null);              // endpoints summary
   const [detCounts, setDetCounts] = useState({ open: 0 });
 
+  // P8.2 (scaffold Section 3.5): severity stats ride on /api/incidents
+  // (`stats.severity_breakdown`); the legacy /api/grouped-alerts read is gone.
   const fetchAll = useCallback(() => {
-    apiFetch('/api/incidents').then(r => r.json()).then(setData).catch(() => {});
+    apiFetch('/api/incidents').then(r => r.json()).then(d => { setData(d); setStats(d.stats || null); }).catch(() => {});
     apiFetch('/api/analytics/report_card').then(r => r.json()).then(setSession).catch(() => {});
-    apiFetch('/api/grouped-alerts').then(r => r.json()).then(d => setStats(d.stats)).catch(() => {});
     apiFetch('/api/analytics/attack_coverage').then(r => r.json()).then(setCoverage).catch(() => {});
     apiFetch('/api/endpoints').then(r => r.json()).then(d => setEnv(d.endpoints || [])).catch(() => {});
     apiFetch('/api/detections').then(r => r.json()).then(d => setDetCounts(d.counts || { open: 0 })).catch(() => {});
@@ -57,7 +58,7 @@ const IncidentDashboard = ({
   const offline = (env || []).length - online;
 
   // Navigation-level actions only (D7): deep-link into the Incidents workspace.
-  const openInIncidents = (incidentId) => { onSelectIncident?.(incidentId); onNavigate?.('grouped'); };
+  const openInIncidents = (incidentId) => { onSelectIncident?.(incidentId); onNavigate?.('incidents'); };
 
   return (
     <div className="space-y-6">

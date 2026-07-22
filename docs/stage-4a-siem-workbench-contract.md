@@ -6,6 +6,39 @@ the lock require an explicit owner-approved amendment. No code lands from
 this contract until its implementation scaffold is approved
 (scaffold -> approve -> implement).**
 
+**Post-lock amendments (owner-approved 2026-07-19, recorded at Phase 2
+acceptance):**
+
+- **Erratum E1 (event-type counts):** Sections 10.1 and 11 say "30" event
+  types. The binding definition is the data-derived, payload-bounded
+  catalog measured at implementation Phase 2.2: **29 authored types** (the
+  inventory's own Section 4.2/16.3 table in fact lists 29) **plus 12
+  background-template-only types** (`4634, 4647, 4648, 4672, 4688, 4768,
+  ALLOWED, DNSQuery, ImageLoaded, NXDOMAIN, ProcessTerminate,
+  SESSION_END`) **= 41 queryable types**. The catalog is built from
+  repository data at boot; the literal "30" is an erratum, not a cap.
+- **GD-5a (unquoted-value lexical rules, retroactively ratified as a
+  GD-5-adjacent grammar completion):** an unquoted FILTERS value may not
+  be a bare reserved word (`and`, `or`, `not`, `contains` -- quote it to
+  match it literally), and unquoted values end at whitespace or at any of
+  `" ' = ! | *` -- values containing those characters must be quoted.
+  These rules MUST surface in the player-facing query help: the Phase 4
+  workbench empty-state/hint copy and the Phase 8 Docs-page pass.
+- **Amendment E2 (pre-seal scope determinism; narrow, owner-authorized at
+  the Phase 3 review):** the snapshot identity gains
+  `resolved_scope_hosts: [<hostname strings>]` -- the incident
+  participant-host set RESOLVED AT EXECUTION, sorted and deduplicated;
+  `[]` for Session-wide (which carries no implicit hostname constraint).
+  Rationale: a pre-seal incident's observable host set can grow, and
+  identifying scope only by the opaque incident id made replay re-resolve
+  the grown set, breaking byte-identical replay and corrupting the
+  new-count baseline with sub-cutoff background events of newly joined
+  hosts. The frozen list governs original-snapshot reconstruction and
+  token replay; the prospective Refresh side of new-count and any actual
+  Refresh resolve the incident's CURRENT observable set and freeze it
+  into the new identity. The hostnames are observable at execution (no
+  answer-key or grading disclosure); the token MAC covers the field.
+
 Revision 2 incorporated: the owner/reviewer contract review (items 1-10),
 seven ratified owner rulings, the completed event-disclosure hotfix
 (reconciled), and the factual inspection report on event-shape parity,
@@ -535,7 +568,8 @@ acceptable.
 `id` (opaque event id; searchable, enabling exact-event queries),
 `event_seq` (arrival order; inspector display and cutoff; searchable is
 unnecessary and it is excluded from FILTERS in v1), `timestamp` (occurrence
-time), `event_type` (30 types), `source_type` (the 8 families), `severity`,
+time), `event_type` (30 types; Erratum E1: 41 data-derived), `source_type`
+(the 8 families), `severity`,
 `hostname`, `source_ip`, `destination_ip` (event-type-dependent),
 `user_account` (canonical account field per OD-10), `message`.
 
@@ -611,7 +645,8 @@ occurrence timestamp, then freezing into the snapshot identity;
 SENSOR_SELECTOR = a source family (`Sysmon`, `Windows Security`, `Proxy`,
 `DNS`, `Firewall`, `Azure AD`, `Veeam`, `Defender`), a known hostname, or
 `*`, matched case-insensitively as one trimmed token, spaces permitted
-unquoted; EVENT_TYPE = one of the 30 types or `*`; FILTERS = predicates
+unquoted; EVENT_TYPE = one of the catalog types (Erratum E1: the
+data-derived union, 41 at measurement) or `*`; FILTERS = predicates
 joined by `and`/`or` under GD-3, or `*`. `==`/`!=` whole-string,
 `contains`/`not contains` substring. Canonical formatting: single spaces
 around `|` and operators, operators lowercased, field names in catalog
@@ -819,9 +854,10 @@ observable-only and uses opaque identifiers.
 - `GET /api/events/query` with `q` (LCQL, 300-char cap; the cap was
   re-validated against measured descent needs, inspection report C) and
   `scope` (`session` or opaque incident id).
-  - 200: `{ token, identity: { canonical_query, scope, resolved_range:
-    {start, end}, cutoff_seq }, count, rows }` (rows in the Section 7
-    canonical order; sort is client view state).
+  - 200: `{ token, identity: { canonical_query, scope,
+    resolved_scope_hosts (Amendment E2), resolved_range: {start, end},
+    cutoff_seq }, count, rows }` (rows in the Section 7 canonical order;
+    sort is client view state).
   - 400 parse failure: `{ error: { position, reason } }`; nothing executes.
   - 404 unknown incident (indistinguishable from foreign, matching the
     actions-API convention).
@@ -981,3 +1017,51 @@ As enumerated in Section 19.
 flow, Section 1; (5) decision register, Section 20; (6) acceptance
 criteria, Section 18; (7) hotfix reconciliation, folded into Sections 2, 5,
 10, and 17 (no pending items remain).*
+
+---
+
+## Appendix: Phase 8 milestone record (2026-07-21, append-only)
+
+Recorded at owner direction at the Phase 8 checkpoint. Every section
+above stands unchanged: Section 5 and Section 17 remain the historical
+record of the pre-retirement surface they describe.
+
+- `/api/fake-events` retired (deleted in P8.3, commit `c263fb5`).
+- `/api/grouped-alerts` retired, including the analyst trigger-only
+  reveal branch (deleted in P8.3, commit `c263fb5`).
+- `/api/events/query` and `/api/events/query/new-count` are now the sole
+  event-query paths (final route audit pinned in the same commit).
+- `/api/incidents` now carries `stats.severity_breakdown` (relocated in
+  P8.2, commit `bdb09f8`; uniform full-chain computation per OD-4).
+- The internal nav key is `incidents` (renamed from `grouped` in P8.3).
+- Phase 8 is complete (`ebd2e5f`, `bdb09f8`, `c263fb5`, `3ddf1fe`);
+  Phase 9 remains pending.
+
+---
+
+## Appendix: Amendment — detection evidence-descent forms and surrounding-events scope (2026-07-22, append-only)
+
+Owner-approved amendment recorded at the Stage 4 product and
+certification review. Every section above stands unchanged; where this
+appendix and earlier text differ, this appendix is the ratified record
+of the shipped behavior.
+
+- Host detections descend through:
+
+  `all | <hostname> | * | *`
+
+- Identity detections descend through:
+
+  `all | * | * | user_account == "<account>" or UserPrincipalName == "<account>"`
+
+- Both descent forms depend only on the detection's visible entity.
+- An explicitly selected incident context is retained.
+- Identity descent must not silently broaden to Session-wide when the
+  incident participant-host filter produces zero results.
+- Without an incident context, descent uses Session-wide.
+- Surrounding events execute under the current scope as a context view
+  (ratified interpretation; the contract previously left surrounding
+  scope unstated).
+- Implementation commits:
+  - `25ace9c` — identity-detection descent control
+  - `b4475e2` — uniform account/UPN two-field OR form

@@ -21,11 +21,12 @@ const INCIDENTS = {
   completed: [
     { incident_id: 'INC-3000', title: 'Done Incident', severity: 'Medium', state: 'submitted', assisted: true, submitted_at: '2026-07-19T12:00:00Z', incident_grade: { grade: 'B', accuracy: 84.0 } },
   ],
+  // P8.2 (scaffold Section 3.5): severity stats ride on /api/incidents.
+  stats: { severity_breakdown: { critical: 2, high: 1, medium: 0, low: 3 } },
 };
 const routeJson = (path) => {
   if (path === '/api/incidents') return INCIDENTS;
   if (path === '/api/analytics/report_card') return { state: 'submitted', grading: { composite: { grade: 'C', accuracy: 71.0 } } };
-  if (path === '/api/grouped-alerts') return { stats: { severity_breakdown: { critical: 1, high: 1, medium: 0, low: 0 } } };
   if (path === '/api/analytics/attack_coverage') return { tactics_covered: 2, total_tactics: 13, completed: 1 };
   if (path === '/api/endpoints') return { endpoints: [{ hostname: 'H1', status: 'online' }] };
   if (path === '/api/detections') return { counts: { open: 4 } };
@@ -65,6 +66,20 @@ test('issues no state-changing (POST) call on render', async () => {
   await waitFor(() => expect(apiFetch).toHaveBeenCalledWith('/api/incidents'));
   const posts = apiFetch.mock.calls.filter(([, o]) => o && o.method && o.method !== 'GET');
   expect(posts).toHaveLength(0);
+});
+
+// P8.2 migration guard: the severity widget renders from /api/incidents
+// stats.severity_breakdown, and the retiring /api/grouped-alerts is NEVER
+// called by the Dashboard.
+test('severity widget renders from /api/incidents stats; grouped-alerts is never called', async () => {
+  render(<IncidentDashboard gameMode="training" />);
+  const label = await screen.findByText('Severity distribution');
+  const widget = label.parentElement;
+  expect(widget.textContent).toContain('critical2');
+  expect(widget.textContent).toContain('high1');
+  expect(widget.textContent).toContain('medium0');
+  expect(widget.textContent).toContain('low3');
+  expect(apiFetch.mock.calls.some(([p]) => p === '/api/grouped-alerts')).toBe(false);
 });
 
 test('SOC Queue band shows the mode label and the queue denominator', async () => {
