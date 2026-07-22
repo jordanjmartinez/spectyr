@@ -330,3 +330,208 @@ edits, untouched by Stage 4:
 
 *Stopped at the Phase 9 checkpoint. NOT merged to `main`; awaiting owner and
 reviewer approval. Phase 9 changed no product behavior.*
+
+---
+
+# Phase 9 closure addendum (owner direction review, 2026-07-21)
+
+Append-only. Closes the final certification items from the Phase 9
+direction review. No product behavior changed; the only new commit
+besides this addendum is one test-only guard (P9.1, below). Console and
+network captures were cleared before each re-run workflow.
+
+## A1. Workflow 1 — complete live Session-wide investigation transcript
+
+Fresh runtime (backend restarted, captures cleared). SOC Queue run
+started as "Jordan".
+
+1. **Ordinary SIEM navigation opens Session-wide.** Clicking the SIEM
+   nav tab landed on the workbench with the Scope control reading
+   **"Session-wide"** (default), no query executed, the "Run a query to
+   begin." empty state with the two example queries and the GD-5a
+   quoting-rules line.
+2. **Valid LCQL execution.** Typed and ran the scaffold query. Wire:
+   `GET /api/events/query?q=1h | Sysmon | ProcessCreate | command_line contains "powershell"&scope=session` → 200.
+   Header: `Snapshot: 0 events · as of seq #22 · 04:53:06 sim` with the
+   canonical echo (honest empty result). Then ran `all | * | * | *` →
+   **`Snapshot: 41 events · as of seq #41 · 04:55:23 sim`**, top row
+   FileCreate 04:55:23 ACME-WS29; DOM fingerprint of the header, the
+   full results pane, and the full field sidebar stored.
+3. **65-second hold during live drip — zero row movement.** After 65 s
+   (drip live; the Incidents badge climbed 2→3 behind the snapshot),
+   the header, results pane, and sidebar compared **byte-identical** to
+   the stored fingerprint:
+   `{"header_identical":true,"results_identical":true,"sidebar_identical":true}`.
+4. **new_count and pool_growth update.** The indicator read
+   **`85 new`** with **`pool: +85`** at the 65-second mark (climbing
+   from 0 across poll ticks — token-bound; no snapshot change).
+5. **Deliberate Refresh — atomic replacement.** One click replaced the
+   snapshot 41 → **`Snapshot: 142 events · as of seq #142 · 04:59:06
+   sim`** (`replaced: true` vs the stored header), sidebar re-derived,
+   indicator reset (the next poll tick minted a fresh `3 new · pool:
+   +3`). Zero console errors.
+
+## A2. Workflow 6 — live scope failure via request/fetch blocking
+
+Method: the Phase 4 fetch-monkeypatch (reject every request whose URL
+contains `/scope`), the request-blocking equivalent executable under
+browser automation. Guided run, incident **INC-2403** (sealed);
+active-incident context established through the Incidents workspace;
+baseline snapshot present (`Snapshot: 6 events · seq #14 · all |
+ACME-WS16 | * | *`, the surrounding-events timeline). Console cleared at
+workflow start.
+
+1. **Failure.** With the block installed, selecting "Focused on
+   INC-2403" in the Scope control produced, verified by DOM inspection
+   and screenshot:
+   `{"select_shows":"Focused on INC-2403","chip_text":"INC-2403 scope
+   unavailable ×","error_notice":true,"retry_present":true,
+   "use_sessionwide_present":true,"run_disabled":true,
+   "snapshot_unchanged":true}` — i.e. **chip retained** ("INC-2403
+   scope unavailable"), the notice "Incident scope could not be
+   loaded." with Retry and Use Session-wide, **previous snapshot
+   preserved untouched** (all six ACME-WS16 rows + banner), **Run Query
+   disabled**, and **no silent Session-wide fallback** (the select still
+   showed the incident).
+2. **Retry while still blocked** → `{"still_error":true,
+   "run_still_disabled":true}` (fails again, state unchanged).
+3. **Recovery through Retry.** Block removed; Retry →
+   `{"recovered":true,"chip_text":"INC-2403 ×","run_enabled":true}`;
+   Run Query then fired
+   `GET /api/events/query?q=all | ACME-WS16 | * | *&scope=INC-2403` → 200.
+4. **Recovery through explicit Use Session-wide.** Block re-installed;
+   incident scope re-selected → error state again (`error_again:
+   true`); clicking **Use Session-wide** →
+   `{"scope_now":"Session-wide","error_gone":true,"run_enabled":true}`
+   with the "Back to INC-2403" return chip appearing (explicit flip,
+   not silent).
+5. **Console.** The error-console read covering the ENTIRE workflow
+   (cleared at start, read at end — including both blocked windows):
+   **"No console errors or exceptions found for this tab."** Zero
+   steady-state (and in fact zero transient) console errors.
+
+## A3. The two missing workflow excerpts — run and recorded
+
+Neither proof was present in the original §5 (the certification W3
+spot-checked two host-anchored detections; surrounding events was
+live-verified in Phase 7.3 but not re-run in Phase 9). Both were run
+live for this addendum:
+
+**W3 supplement — identity-detection descent (two-field OR, live).**
+Guided run of the identity-telemetry scenario. The Detections feed
+carried two identity detections whose entity is the **account with no
+host** (`slopez@acme.com`, unlinked — the identity-entity rule live).
+Opened "Entra Impossible-Travel Risk Detection" (`det-6c916a327126`):
+same uniform detail layout and the same **Open Evidence Timeline**
+control as host detections. Descent wire (decoded):
+
+```
+GET /api/events/query?q=all | * | * | user_account == "slopez@acme.com"
+    or UserPrincipalName == "slopez@acme.com"&scope=session   → 200
+```
+
+Banner: "Evidence timeline for slopez@acme.com, from det-6c916a327126 —
+occurrence ascending"; 3 Azure AD events rendered occurrence-ascending
+(SigninLogs 04:50:45 → SigninLogs 04:52:47 → AADUserRiskEvents
+04:53:00). The OR earned its keep on the wire: the rows serialize
+`user_account` as `ACME\slopez` (sidebar: `user_account (1)
+ACME\slopez ×3`), so the **UserPrincipalName disjunct** is what matched
+all three events — the exact live failure P7.5 was ruled to fix.
+
+**W5 supplement — Surrounding events (ascending + centered, live).**
+From that timeline, selected the SigninLogs 04:52:47 event and clicked
+the inspector's **Surrounding events**. Wire:
+`GET /api/events/query?q=all | ACME-WS16 | * | *&scope=session` → 200
+(the host form under the CURRENT scope). Banner: **"Surrounding events
+for ACME-WS16, centered on the selected event — occurrence ascending"**.
+Snapshot 6 events (seq #14), rendered strictly occurrence-ascending:
+04:50:45 SigninLogs → 04:52:00 HTTP_GET → 04:52:06 HTTP_POST → 04:52:21
+ALLOW → **04:52:47 SigninLogs (the source event — highlighted/selected,
+scrolled to the viewport center via the P7.3 `scrollIntoView({block:
+'center'})` path)** → 04:53:00 AADUserRiskEvents, with the source
+event's inspector persisting beneath ("arrived as event #10").
+
+## A4. Final closure record
+
+**Phase 9 commits (complete enumeration):**
+
+| Commit | Subject |
+|---|---|
+| `c4a0f2f` | Stage 4 P9.2: closing evidence report (docs/stage-4-implementation-report.md) |
+| `6ca2105` | Stage 4 P9.1: per-mode planted-marker leak guard (test-only) |
+| *(this addendum)* | Stage 4 P9 closure addendum (docs-only) |
+
+The Section 18 matrix audit found **no prose-only criterion, so no 9.1
+gap-fill commits were needed for the acceptance matrix**. One 9.1
+test-only commit (`6ca2105`) was added at the closure direction review
+to make the per-mode planted-marker result directly quotable (below);
+it changes no product behavior and landed through the enforced gate
+(`[gate] ALL GREEN`; `test_event_disclosure` 8 → 9 tests).
+
+**`c4a0f2f` confirmation:** `git show --stat c4a0f2f` =
+`Stage 4 P9.2: closing evidence report (docs/stage-4-implementation-report.md)`,
+touching exactly `docs/stage-4-implementation-report.md | 332 insertions`.
+It is the committed tip of the original report; the branch tip after
+this addendum supersedes it as the review tip.
+
+**K8 latency (fresh run, 400-event pool, 50 samples per route, pasted):**
+
+```
+query      : {"n": 50, "min_ms": 4.3, "p50_ms": 4.4, "p95_ms": 4.5, "max_ms": 4.9, "mean_ms": 4.5, "samples_above_250ms": 0}
+new_count  : {"n": 50, "min_ms": 3.2, "p50_ms": 3.3, "p95_ms": 3.3, "max_ms": 3.4, "mean_ms": 3.3, "samples_above_250ms": 0}
+halt_condition_250ms_sustained_breached: False
+```
+
+Per route over 50 samples: query p50 4.4 ms / p95 4.5 ms / max 4.9 ms /
+**0 samples above 250 ms**; new-count p50 3.3 ms / p95 3.3 ms / max
+3.4 ms / **0 samples above 250 ms**.
+
+**Planted-marker result in Guided, SOC Queue, and Hardcore (pasted):**
+the new guard `test_event_disclosure.py::
+test_planted_marker_absent_in_query_and_count_in_every_mode` starts a
+REAL session in each mode (`guided` / `analyst` [SOC Queue] /
+`hardcore`), plants a marker-laden event through the live
+append-and-stamp choke point, asserts the sanitized row is present
+(non-vacuous), and recursively scans the full query + new-count
+responses:
+
+```
+  ok  test_planted_marker_absent_in_query_and_count_in_every_mode
+[test_event_disclosure] all 9 passed
+```
+
+**Named final no-mutation results (pasted):**
+
+```
+backend  (test_query_read.py):
+  ok  test_new_count_does_not_mutate
+  ok  test_query_read_does_not_mutate
+[test_query_read] all 21 passed
+
+frontend (scope-no-mutation.test.js):
+PASS src/__tests__/scope-no-mutation.test.js
+  √ select A, switch to B, clear to Session-wide across scoped tabs issues reads only
+  √ P7 descent, pivot, scope switch, and return-to-incident issue reads only
+  √ P7.4 identity descent issues reads only
+Tests:       3 passed, 3 total
+```
+
+**Evidence references/screenshots — record correction (disclosed):**
+the `ss_*` identifiers cited in §5 are Chrome-extension capture IDs,
+**ephemeral to the capture session — they are NOT durable on-disk
+artifacts and should not be treated as stable references**. The §5
+phrase "stable evidence IDs" was inaccurate and is corrected here (the
+original text is left in place per append-only discipline). The durable
+evidence record is: (a) the certification-session transcripts (this
+report's §5 and this addendum's A1–A3, which quote the wire URLs,
+snapshot headers, DOM byte-comparisons, and banner/notice text
+verbatim), and (b) the automated suites that pin each behavior. All
+wire URLs and DOM-comparison results quoted in this addendum were
+captured live in the closure session.
+
+---
+
+*Phase 9 closure complete. Stopped at the checkpoint. NOT merged to
+`main`; no further stage begun. This report now goes to owner and
+reviewers for the row-by-row acceptance walk against the locked
+contract; the merge ruling follows that walk.*
