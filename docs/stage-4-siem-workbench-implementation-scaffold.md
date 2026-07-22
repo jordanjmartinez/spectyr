@@ -1373,3 +1373,21 @@ commits on the branch; merge to `main` after Phase 9 evidence review.
 *End of scaffold. Implementation is not authorized by this document;
 it begins only after explicit owner and reviewer approval of this
 scaffold, on the named branch, in the phase order above.*
+
+---
+
+## Appendix: Phase 8 completion record (2026-07-21, append-only)
+
+Phase 8 (migration and retirement) is complete per this scaffold's
+plan. Consumer migrations landed before deletions per the Section 3.5
+map (`ebd2e5f` Dashboard existence check -> game-state; `bdb09f8`
+severity stats relocated to `/api/incidents` as
+`stats.severity_breakdown`); the route deletions, analyst
+trigger-branch removal, final route-audit tightening, and the
+`grouped` -> `incidents` nav key rename landed atomically (`c263fb5`);
+the docs pass landed as `3ddf1fe`. `/api/fake-events` and
+`/api/grouped-alerts` are retired; `/api/events/query` and
+`/api/events/query/new-count` are the sole event-query paths. The K9
+repo-wide grep found zero live consumers; one consumer outside the
+Section 3.5 map (`test_event_seq.py`) was caught by the grep and
+retargeted in `c263fb5`. Phase 9 remains pending.

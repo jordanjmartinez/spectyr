@@ -1017,3 +1017,22 @@ As enumerated in Section 19.
 flow, Section 1; (5) decision register, Section 20; (6) acceptance
 criteria, Section 18; (7) hotfix reconciliation, folded into Sections 2, 5,
 10, and 17 (no pending items remain).*
+
+---
+
+## Appendix: Phase 8 milestone record (2026-07-21, append-only)
+
+Recorded at owner direction at the Phase 8 checkpoint. Every section
+above stands unchanged: Section 5 and Section 17 remain the historical
+record of the pre-retirement surface they describe.
+
+- `/api/fake-events` retired (deleted in P8.3, commit `c263fb5`).
+- `/api/grouped-alerts` retired, including the analyst trigger-only
+  reveal branch (deleted in P8.3, commit `c263fb5`).
+- `/api/events/query` and `/api/events/query/new-count` are now the sole
+  event-query paths (final route audit pinned in the same commit).
+- `/api/incidents` now carries `stats.severity_breakdown` (relocated in
+  P8.2, commit `bdb09f8`; uniform full-chain computation per OD-4).
+- The internal nav key is `incidents` (renamed from `grouped` in P8.3).
+- Phase 8 is complete (`ebd2e5f`, `bdb09f8`, `c263fb5`, `3ddf1fe`);
+  Phase 9 remains pending.
