@@ -330,6 +330,50 @@ def test_no_planted_answer_marker_in_query_or_count_response():
         _stop(sid, s)
 
 
+def test_planted_marker_absent_in_query_and_count_in_every_mode():
+    """Phase 9 closure gap-fill: the recursive planted-marker scan, PER MODE.
+    The scan above proves the serializer strips markers on a seeded modeless
+    session; this runs the same scan through a REAL session started in each
+    player mode (Guided / SOC Queue [internal key `analyst`] / Hardcore),
+    planting a marker-laden pool event through the live append-and-stamp
+    choke point and scanning the full query + new-count responses
+    recursively. The presence assertion keeps the scan non-vacuous."""
+    for mode in ("guided", "analyst", "hardcore"):
+        client, sid, s = _api_session()
+        try:
+            body = {"game_mode": mode, "analyst_name": "Probe"}
+            if mode == "guided":
+                body["catalog_id"] = "random"
+            r = client.post("/api/start-simulator",
+                            headers={"X-Session-ID": sid,
+                                     "Content-Type": "application/json"},
+                            data=json.dumps(body))
+            assert r.status_code == 200, (mode, r.get_data(as_text=True))
+            app.append_pool_event(s, {
+                "id": "mark-1", "timestamp": STARTED, "scenario_id": SID,
+                "chain_complete": True, "label": "malware_ransomware",
+                "category": MARKER, "storyline": MARKER,
+                "threat_pattern": MARKER, "level_name": MARKER,
+                "alert_id": INC, "analyst_category": MARKER,
+                "__future_internal__": MARKER,
+                "message": "benign-looking message", "severity": "low",
+                "hostname": HOST, "source_type": "Sysmon",
+                "source_ip": "10.0.1.24", "key_value_pairs": {}})
+            hdr = {"X-Session-ID": sid}
+            q = client.get(_Q_ALL, headers=hdr).get_json()
+            count = client.get("/api/events/query/new-count?token="
+                               + q["token"], headers=hdr).get_json()
+            assert any(e.get("id") == "mark-1" for e in q["rows"]), \
+                f"{mode}: the marker-laden row must be visible (sanitized), " \
+                "else the scan is vacuous"
+            for name, resp in (("events-query", q), ("new-count", count)):
+                hits = [v for v in _all_strings(resp) if MARKER in v]
+                assert not hits, \
+                    f"{mode}: planted marker leaked in {name}: {hits}"
+        finally:
+            _stop(sid, s)
+
+
 # --- incident scoping must not reintroduce hidden fields ---------------------
 
 def test_incident_scope_carries_no_hidden_fields():
