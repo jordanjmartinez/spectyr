@@ -1391,3 +1391,39 @@ the docs pass landed as `3ddf1fe`. `/api/fake-events` and
 repo-wide grep found zero live consumers; one consumer outside the
 Section 3.5 map (`test_event_seq.py`) was caught by the grep and
 retargeted in `c263fb5`. Phase 9 remains pending.
+
+---
+
+## Appendix: Amendment and Stage 4 completion record (2026-07-22, append-only)
+
+Matching record for the locked-contract amendment of the same date;
+every section above stands unchanged.
+
+**Final descent forms (as shipped and amended into the contract):**
+
+- Host detections descend through `all | <hostname> | * | *`.
+- Identity detections descend through
+  `all | * | * | user_account == "<account>" or UserPrincipalName == "<account>"`.
+- Both forms depend only on the detection's visible entity; an
+  explicitly selected incident context is retained; identity descent
+  never silently broadens to Session-wide when the incident
+  participant-host filter produces zero results; without an incident
+  context, descent uses Session-wide.
+- Surrounding events execute under the current scope as a context view
+  (the ratified interpretation of the previously unstated surrounding
+  scope).
+
+**Phase 9 completion:**
+
+- The reviewed Phase 9 artifact tip is commit `ba556c5`
+  (`docs/stage-4-implementation-report.md` including the closure
+  addendum). The artifact cannot record its own commit hash without
+  changing that hash, so the tip is recorded here.
+- Complete Phase 9 commit list:
+  - `c4a0f2f` — original Stage 4 implementation report
+  - `6ca2105` — per-mode planted-marker guard
+  - `ba556c5` — Phase 9 closure addendum and reviewed artifact tip
+
+**Stage 4 status:** product implementation and certification have
+passed review. Merge remains pending the final docs-only correction
+review.

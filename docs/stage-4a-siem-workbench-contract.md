@@ -1036,3 +1036,32 @@ record of the pre-retirement surface they describe.
 - The internal nav key is `incidents` (renamed from `grouped` in P8.3).
 - Phase 8 is complete (`ebd2e5f`, `bdb09f8`, `c263fb5`, `3ddf1fe`);
   Phase 9 remains pending.
+
+---
+
+## Appendix: Amendment — detection evidence-descent forms and surrounding-events scope (2026-07-22, append-only)
+
+Owner-approved amendment recorded at the Stage 4 product and
+certification review. Every section above stands unchanged; where this
+appendix and earlier text differ, this appendix is the ratified record
+of the shipped behavior.
+
+- Host detections descend through:
+
+  `all | <hostname> | * | *`
+
+- Identity detections descend through:
+
+  `all | * | * | user_account == "<account>" or UserPrincipalName == "<account>"`
+
+- Both descent forms depend only on the detection's visible entity.
+- An explicitly selected incident context is retained.
+- Identity descent must not silently broaden to Session-wide when the
+  incident participant-host filter produces zero results.
+- Without an incident context, descent uses Session-wide.
+- Surrounding events execute under the current scope as a context view
+  (ratified interpretation; the contract previously left surrounding
+  scope unstated).
+- Implementation commits:
+  - `25ace9c` — identity-detection descent control
+  - `b4475e2` — uniform account/UPN two-field OR form
