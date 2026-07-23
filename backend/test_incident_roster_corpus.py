@@ -19,8 +19,11 @@ the retired environment-host ambient join (diagnosis Section 12 fixture 2).
 Run: python test_incident_roster_corpus.py
 """
 import os
+import re
 import shutil
 from datetime import datetime, timezone
+
+import yaml
 
 os.environ.setdefault("SPECTYR_SCENARIO_SOURCE", "yaml_v2")
 import app  # noqa: E402
@@ -138,9 +141,48 @@ def test_corpus_every_scenario_has_one_roster():
           f"this seed: {[l for l, _, _ in changed]}")
 
 
+def test_robocopy_file_server_hostname_is_not_an_ip():
+    """M2 pre-lock regression (Stage 5A F7 / ratified OD-10): the
+    false_positive_robocopy 4663 step (s2) is generated ON the file server,
+    so its authored hostname must be the {infra.file.hostname} placeholder,
+    never an IP. Before the correction, {infra.file.ip} put the literal
+    10.0.1.201 into the observable host set, Related hosts, endpoint pivots,
+    and evidence-descent anchors; no other suite guards this (v1/v2 parity
+    shared the defect and no hostname-shape invariant exists). Proven at
+    both layers: the authored value, and a real drip's observable scope and
+    written-event anchor."""
+    with open(os.path.join("scenarios", "v2", "false_positive_robocopy.yaml"),
+              encoding="utf-8") as f:
+        doc = yaml.safe_load(f)
+    step = doc["attack"][1]
+    assert step["id"] == "s2", step.get("id")
+    assert step["hostname"] == "{infra.file.hostname}", step["hostname"]
+
+    ip_shaped = re.compile(r"^\d{1,3}(\.\d{1,3}){3}$")
+    client, sid, s, entry = _drip_one("false_positive_robocopy")
+    try:
+        inc, scen = entry["incident_id"], entry["scenario_id"]
+        with s["io_lock"]:
+            obs = app._incident_observable_scope(s, inc)
+            written = app._read_ndjson_unlocked(s["paths"]["generated_logs"])
+        # observable host set (feeds Related hosts and the incident scope):
+        # the file server appears by name, and no IP-shaped hostname exists
+        assert "ACME-SVR02" in obs["hosts"], obs["hosts"]
+        assert not any(ip_shaped.match(h) for h in obs["hosts"]), obs["hosts"]
+        # the written 4663 event's hostname is the descent/pivot anchor
+        s2_events = [l for l in written if l.get("scenario_id") == scen
+                     and l.get("event_type") == "4663"]
+        assert s2_events, "the s2 (4663) event was not written"
+        assert all(l.get("hostname") == "ACME-SVR02" for l in s2_events), (
+            [l.get("hostname") for l in s2_events])
+    finally:
+        _cleanup(sid, s)
+
+
 def _run_all():
     test_corpus_every_scenario_has_one_roster()
-    print("\n1/1 incident-roster corpus tests passed")
+    test_robocopy_file_server_hostname_is_not_an_ip()
+    print("\n2/2 incident-roster corpus tests passed")
 
 
 if __name__ == "__main__":

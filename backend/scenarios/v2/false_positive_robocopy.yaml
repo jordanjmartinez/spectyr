@@ -108,7 +108,7 @@ attack:
     source_type: "Windows Security"
     log_source: "Windows Security"
     severity: "high"
-    hostname: "{infra.file.ip}"
+    hostname: "{infra.file.hostname}"
     source_ip: "{victim.ip}"
     user_account: "ACME\\{victim.username}"
     message: "An attempt was made to access an object."
