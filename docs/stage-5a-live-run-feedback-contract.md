@@ -1,20 +1,57 @@
 # Stage 5A Contract — Live Run Feedback, Teaching, and Player Trust
 
-**Status: DRAFT for owner and reviewer review. Not locked. No implementation
-scaffold exists; no product code lands from this document until the contract
-is locked and its scaffold is separately approved (scaffold -> approve ->
-implement, the standing cadence).**
+**Status: FINALIZED DRAFT (Revision 2) — approved in direction at the owner
+review of 2026-07-22; all 16 owner decisions RATIFIED as recommended,
+subject to the seven required corrections folded into this revision. NOT
+LOCKED. Lock sequence, per the review ruling: the two ratified pre-lock
+micro-fixes (F9 scope truth; robocopy hostname) land as separate merges
+first; this contract's baseline and factual line references are then
+updated; the contract returns for final lock review. No implementation
+scaffold exists; no product code lands from this document until the lock
+and the separately approved scaffold (scaffold -> approve -> implement).**
 
 **Repository baseline:** `main` at `a204995` ("Pre-Stage-5 hotfix closure:
 merge one-shared-incident-roster fix (57368f5..2e52dcb)"); merged-main gates
 ALL GREEN (backend 27 suites; frontend 17 suites / 164 tests). Branch:
 `stage-5a-live-run-feedback-contract`. Repository claims in this contract
-cite `path:line` at this baseline.
+cite `path:line` at this baseline. **This baseline block and every cited
+line number will be re-verified and updated after the two pre-lock
+micro-fixes merge, before final lock review.**
 
-Decision markers, matching the Stage 4A convention: **[Ratified]** (an
-inherited recorded ruling), **[Recommendation]** (this contract's proposal,
-requiring the owner's lock to become binding), **[Owner Decision]** (open —
-enumerated in Section 21), **[Deferred]**.
+Decision markers, matching the Stage 4A convention: **[Ratified]** (a
+recorded owner ruling — including the sixteen Section 21 rulings of
+2026-07-22), **[Recommendation]** (superseded in this revision: every
+recommendation was ratified), **[Deferred]**.
+
+**Changelog from Revision 1 (the seven review corrections):**
+
+1. F9 scope-truth and robocopy hostname defects ratified as **two separate
+   pre-lock micro-fixes** (Sections 3, 21, 23); post-merge baseline update
+   + final lock review sequence recorded; confirmed the robocopy correction
+   changes **no Section 14 count** (Section 14).
+2. `response_review` reworked to one-primary-bucket teaching entries with a
+   separate stable `reason_code` axis, exact `source_action_seq` semantics
+   (null only for never-executed required actions), and a separately
+   labeled seq-keyed attempt history that never duplicates a teaching
+   entry (Section 7.1).
+3. Count-reconciliation acceptance criterion added, with the exact
+   entry-to-scorer-count mapping stated explicitly — including the
+   inaction-unit fold-in and the order-violation subset rule (Sections 17,
+   19).
+4. Generic rationale templates constrained to action purpose only, never
+   scenario-specific facts; the foothold example replaced with a factually
+   narrow template (Section 7.3).
+5. Exact scope loading/error/refresh behavior specified per surface for
+   Detections and Endpoints, including the honesty statement for stale
+   scoped rows and a defined Endpoints refresh trigger (Sections 3-F9,
+   11.1).
+6. Option A freeze completeness: the entire teaching breakdown (buckets,
+   reason codes, labels, rendered why text, detection correctness, seq
+   references) freezes into the record at submission; template/YAML
+   changes reach future submissions only (Sections 7.2, 13).
+7. The two canonical copy strings containing em dashes rewritten (Sections
+   10.1, 11.3); recorded that Section 6's journey narrative is not a copy
+   source of truth (Section 6).
 
 ---
 
@@ -55,8 +92,10 @@ No scoring function, weight, readiness rule, roster semantics, LCQL grammar,
 snapshot/token semantics, or submission-record grading changes — with one
 narrow, explicitly surfaced exception class: *post-submission* serialization
 of answer-bearing content for the submitted incident only, which inherited
-boundary 3 permits and Section 7 specifies. Every open product choice is in
-the Section 21 owner decision register, not silently made.
+boundary 3 permits and Section 7 specifies. Every product choice was
+surfaced in the Section 21 owner decision register; all sixteen are now
+RATIFIED (owner review 2026-07-22), subject to the seven corrections this
+revision folds in.
 
 ---
 
@@ -198,12 +237,19 @@ focus.
    attack step `s2` authors `hostname: '{infra.file.ip}'` (resolving to
    `10.0.1.201`), so an IP string enters the observable host set (and the
    Related-hosts line, endpoint pivots, and descent host anchors).
-   **[Recommendation]** venue: a **separate content micro-fix** before
-   Stage 5B — a one-line YAML correction to `{infra.file.hostname}` through
-   the standing correction-registry + parity-divergence process
-   (`scenario_corrections.py`), because it touches frozen scenario content
-   (v1/v2 parity) and no Stage 5 presentation work depends on it. It is NOT
-   folded into any 5A workstream. [Owner Decision 10]
+   **[Ratified, OD-10]** venue: a **separate content micro-fix landing
+   BEFORE this contract is locked** — a one-line YAML correction to
+   `{infra.file.hostname}` through the standing correction-registry +
+   parity-divergence process (`scenario_corrections.py`), because it
+   touches frozen scenario content (v1/v2 parity) and no Stage 5
+   presentation work depends on it. It is NOT folded into any 5A
+   workstream, and it is NOT implemented by this contract task.
+   **Section 14 impact, confirmed:** the correction changes one hostname
+   placeholder in chain content only; it touches no `answer_key.actions`
+   entry, no `triage_review.response_actions` step, and no `detections`
+   entry, so every Section 14 count is unchanged. If the fix as actually
+   landed changes any Section 14 count, that change must be REPORTED at
+   the baseline update, never silently edited in.
 2. **Transient "0 of 0 reviewed" on a completed incident — PRESENTATION
    DEFECT.** Root cause found: completed cards from `/api/incidents` carry
    `incident_grade` but no `triage` field (app.py:3959-3963), and
@@ -211,10 +257,10 @@ focus.
    `sealed` forced true, so `PhaseStrip` falls back to
    `{total: 0, triaged: 0}` (`Incidents.jsx:21`) — displaying "Triage 0 of 0
    reviewed … Submit pending" on a submitted incident. Frontend-only; the
-   scope API serves correct post-submit counts. **[Recommendation]** venue:
-   resolved **inside workstream 5.4** (it is precisely a progress-state
-   presentation defect and its fix must use the same completed-state
-   vocabulary 5.4 defines), not a separate micro-fix. [Owner Decision 11]
+   scope API serves correct post-submit counts. **[Ratified, OD-11]**
+   venue: resolved **inside workstream 5.4** (it is precisely a
+   progress-state presentation defect and its fix must use the same
+   completed-state vocabulary 5.4 defines), not a separate micro-fix.
 
 ### F8 — investigation context is hard to follow (verified layering)
 
@@ -271,14 +317,16 @@ sees exactly the reported contradiction. Classification under the F7 scheme:
 - **A transient loading/race state:** YES — the in-flight window is the
   guaranteed reproduction; the fetch-failure case makes it persistent.
 
-**[Recommendation]** Because the defect misrepresents which data the player
-is looking at (a trust defect of exactly the class the hotfix just closed on
-the server side), fix it as a **separate pre-5B presentation micro-fix**
-(derive all three signals from one state value + explicit loading/error
-presentation, plus scope re-fetch on the existing poll cadence), with the
-full single-source-of-truth architecture landing in workstream 5.6. The
-micro-fix is small, testable, and should not wait for the 5.6 design.
-[Owner Decision 16]
+**[Ratified, OD-16]** Because the defect misrepresents which data the
+player is looking at (a trust defect of exactly the class the hotfix just
+closed on the server side), it is fixed as a **separate presentation
+micro-fix landing BEFORE this contract is locked** (derive all three
+signals from one state value + explicit loading/error presentation + the
+per-surface scope refresh triggers), with the full single-source-of-truth
+architecture landing in workstream 5.6. The micro-fix implements exactly
+the Section 11.1 loading/error/refresh behavior table (review correction
+5) — that table, not this paragraph, is the binding specification. It is
+NOT implemented by this contract task.
 
 ---
 
@@ -404,6 +452,12 @@ only accent, color reserved for severity meaning; minimal error treatments).
 7. **Repeat.** Practice Another; the first-run explainers do not reappear
    (persistence per 5.5); Hardcore runs never see any of them.
 
+**Copy authority note (review correction 7):** this journey narrative is
+illustrative and is NOT a copy source of truth. The scaffold pulls
+player-facing strings ONLY from the Section 10.1 canonical vocabulary and
+the Section 8.2 canonical transition forms; any string appearing here that
+differs from those sections has no standing.
+
 ---
 
 ## 7. Post-Incident Review data and UI contract (workstream 5.1)
@@ -411,112 +465,189 @@ only accent, color reserved for severity meaning; minimal error treatments).
 ### 7.1 The teaching payload (new, post-boundary, per submitted incident)
 
 A new server-computed **response breakdown** for a SUBMITTED incident,
-answering the three acceptance questions with identities, not counts:
+answering the three acceptance questions with identities, not counts.
+Structure per review correction 2: **flat teaching entries, one primary
+bucket each**, with classification bucket and reason code as two separate
+axes, plus a separately labeled seq-keyed attempt history:
 
 ```
 "response_review": {
-  "completed":  [ { "action", "target_label", "why" } ],   // required, achieved (incl. order-ok)
-  "missed":     [ { "action", "target_label", "why" } ],   // required, not achieved (or order-violated, flagged)
-  "collateral": [ { "action", "target_label", "why" } ],   // successful, matched neither list, in scope
-  "acceptable": [ { "action", "target_label", "why" } ],   // executed acceptable (existing acceptable_taken, enriched)
-  "not_executed": [...], "no_effect": [...],               // existing factual blocks, unchanged
-  "inaction": { "expected": bool, "clean": bool, "why" }   // for no-required scenarios
+  "entries": [
+    {
+      "bucket":  "completed" | "missed" | "collateral" | "acceptable" | "inaction",
+      "reason_code": <one stable code from the registry below>,
+      "action":  <verb, or null on an inaction entry>,
+      "target_label": <display label, or null on an inaction entry>,
+      "why": <frozen rendered rationale text>,
+      "source_action_seq": <int | null>,
+      "expected_ref": <stable expected-action identity | null>
+    }, ...
+  ],
+  "attempt_history": [
+    { "seq": <int>, "action", "target_label", "outcome",
+      "reason_code": "failed_precondition" | "no_effect_repeat" }
+  ],
+  "detections": [
+    { "rule_name", "entity_label", "your_call", "correct": <bool> }
+  ]
 }
 ```
 
-plus a **detection breakdown**: for each roster detection (ids from the
-frozen `inputs.detection_dispositions`), `{rule_name, entity_label,
-your_call, correct: bool}` — the per-detection disposition correctness the
-record already implies (`compute_detection_score` consumes
-`disposition` x `player_action`; correctness per detection is
-`promote==TP / dismiss==FP / dismiss==benign`).
+**Entry model (binding):**
+
+- A teaching entry represents **either an expected action or an executed
+  action occurrence** — never an unanchored composite of both. Its subject
+  determines its identity fields:
+  - Entries whose subject is an **expected action** (buckets `completed`,
+    `missed`, `acceptable`-with-execution, `inaction`) carry
+    `expected_ref`: the stable expected-action identity — the answer key's
+    `(action, composite target)` pair, which the loader guarantees unique
+    per scenario (duplicate pairs are a load error). A `completed`,
+    `out_of_order`, or `released_after_isolation` entry ALSO carries the
+    `source_action_seq` of the executed occurrence that satisfied (or
+    failed to credit) it.
+  - Entries whose subject is an **executed action occurrence** (bucket
+    `collateral`) carry their exact `source_action_seq` and
+    `expected_ref: null`.
+  - **`source_action_seq` is null ONLY for required actions that were never
+    successfully executed** (`required_not_attempted`,
+    `required_attempt_failed`) and for the scenario-level `inaction` entry.
+- **Every entry carries exactly one bucket and exactly one stable
+  `reason_code`.** Distinguishing cases never relies on prose alone; the
+  `why` text is teaching prose, the `reason_code` is the machine-stable
+  discriminator. The reason-code registry (binding set; additions are a
+  contract amendment):
+
+  | bucket | reason_code | Meaning |
+  |---|---|---|
+  | completed | `required_completed` | required action achieved (order satisfied where declared) |
+  | missed | `required_not_attempted` | no attempt of any outcome exists for the required composite |
+  | missed | `required_attempt_failed` | attempts exist but no successful occurrence (the attempts live in attempt_history) |
+  | missed | `out_of_order` | successful occurrence exists but a declared `after` ordering was violated (seq carried) |
+  | missed | `released_after_isolation` | required isolation executed but released before submission (end-state forfeit; seq of the isolate occurrence carried) |
+  | acceptable | `acceptable_completed` | authored-acceptable action executed (neutral; factual) |
+  | collateral | `collateral_in_scope` | successful action matching neither list, target in this incident's grading scope |
+  | inaction | `inaction_correct` | no-required scenario, clean hands: the correct response was investigation without action |
+  | inaction | `inaction_spoiled` | no-required scenario with at least one collateral in its scope (the collateral actions are their own entries) |
+  | (attempt history only) | `failed_precondition` | attempt that did not execute; factual, score-neutral |
+  | (attempt history only) | `no_effect_repeat` | repeat of an already-effective action; factual, score-neutral |
+
+- **Attempt history is not a teaching bucket.** No-effect and repeated
+  attempts remain ONLY in the separately labeled, seq-keyed
+  `attempt_history` (the same entries today's `not_executed` / `no_effect`
+  factual blocks carry) **unless an occurrence independently qualifies for
+  a teaching bucket** (e.g. the first success that is collateral is a
+  `collateral` entry; its later `no_op` repeats stay in history). An
+  occurrence never appears both as a primary teaching entry and as an
+  attempt-history row; the history row for a failed attempt of a missed
+  required action coexists with (does not duplicate) the expected-side
+  `missed` entry.
+
+The **detection breakdown** lists each roster detection (ids from the
+frozen `inputs.detection_dispositions`): `{rule_name, entity_label,
+your_call, correct}` — the per-detection disposition correctness the record
+already implies (`compute_detection_score` consumes `disposition` x
+`player_action`; correct = promote==TP / dismiss==FP / dismiss==benign).
 
 Rules:
 
 - **Join semantics** (from the scorer, reused not reimplemented): required
   and acceptable match on `(action, full composite target)`; occurrence =
   FIRST successful log entry (duplicates collapse to one credited
-  occurrence; later repeats are `no_op` and stay in the factual block);
-  isolation completed-ness is END-STATE (a released required isolation lists
-  under `missed` with a why naming the release); order-violated actions list
-  under `missed` flagged `out of order`. Target labels use the registry's
+  occurrence; later repeats are `no_effect_repeat` history rows);
+  isolation completed-ness is END-STATE (`released_after_isolation`);
+  order violations are `out_of_order`. Target labels use the registry's
   existing display labels (`target_label`, action_overlay.py:441-459) and
-  for missed actions a server-rendered label from the expected composite in
-  the same display grammar (host name; "name (PID n) on host"; file path on
-  host; DOMAIN\user; persistence entry on host).
-- **Shared actions across incidents:** one successful action can appear in
-  several submitted incidents' breakdowns (completed in one, collateral in
-  another) — each incident's review describes that incident's scope,
-  factually; the entry's `why` names the scope relationship. No
-  cross-incident deduplication.
+  for never-executed required actions a server-rendered label from the
+  expected composite in the same display grammar (host name; "name (PID n)
+  on host"; file path on host; DOMAIN\user; persistence entry on host).
+- **Shared actions across incidents:** one successful action occurrence can
+  appear in several submitted incidents' breakdowns (completed in one,
+  collateral in another) — each incident's review describes that incident's
+  scope, factually; the entry's `why` names the scope relationship. No
+  cross-incident deduplication; the `source_action_seq` is the same in
+  both, which is the honest cross-reference.
 - **Empty states**, each with designed copy: no response required (the
-  inaction block: "No response action was required. Correct response here
-  was investigation without action." / with collateral: "…but N actions
-  landed in this incident's scope"); all correct; no actions taken (missed
-  list only); no collateral.
+  `inaction_correct` entry: "No response action was required. The correct
+  response here was investigation without action."; spoiled:
+  `inaction_spoiled` plus the collateral entries themselves); all correct
+  (no missed entries); no actions taken (missed entries only, empty
+  history); no collateral (no collateral entries).
 - **Loading/error states:** the review modal already fetches score +
   triage-review; the breakdown rides the same fetch pattern; a failed fetch
   renders the existing grade rows with a one-line "The detailed breakdown
   could not be loaded" and a retry.
 
-### 7.2 Where the breakdown is computed and stored [Owner Decision 2]
+### 7.2 Where the breakdown is computed and stored [Ratified, OD-2: Option A]
 
-Two implementable options, surfaced not decided:
+The weighed alternative is kept for the record:
 
-- **Option A — computed at submit, stored in the immutable record.** The
-  breakdown becomes part of `report_card` (or a sibling record field) at
-  `submit_incident` time. Byte-identical reads for free; but it **adds
-  fields to the submission-record schema**, which is a frozen boundary that
-  only an explicit owner approval may cross (this decision is that request).
-- **Option B — derived at read time from frozen inputs.** A pure function of
-  (the immutable record's `inputs`, the incident's expected-action
-  composites, the action log truncated at `inputs.action_seq_cutoff`).
-  Deterministic because expected actions are fixed at drip and the log is
-  append-only with the cutoff frozen; no record-schema change; but
-  byte-identity now rests on a derivation invariant instead of storage, and
-  that invariant needs its own permanent test.
+- **Option A — computed at submit, stored in the immutable record**
+  (RATIFIED). The breakdown becomes part of the stored record at
+  `submit_incident` time. Byte-identical reads by storage; it **adds fields
+  to the submission-record schema**, a frozen boundary crossed here by this
+  explicit owner ratification.
+- **Option B — derived at read time from frozen inputs** (rejected; kept as
+  the recorded fallback): deterministic but rests byte-identity on a
+  derivation invariant instead of storage.
 
-**[Recommendation]** Option A. The record is the product's "what you were
-graded on" artifact; teaching content about that grading belongs in it, and
-the schema change is small, additive, and disclosed. Serving venue: extend
+**Freeze completeness (review correction 6, binding):** at submission the
+COMPLETE teaching breakdown freezes into the immutable record — every
+entry's classification bucket, `reason_code`, target label, **rendered why
+text** (the final prose, not a template reference), the detection labels
+and per-detection correctness, and every `source_action_seq` reference
+(null exactly where the entry represents a never-executed required action
+or the inaction unit). The submitted score view SERVES the frozen result
+and never rebuilds any part of it from later mutable content: subsequent
+changes to generic templates or YAML rationale text reach **future
+submissions only**. A permanent test submits, mutates the template/YAML
+sources in memory, re-reads, and asserts byte-identical teaching content.
+
+Serving venue (ratified with OD-2): extend
 `GET /api/incidents/<id>/score`'s submitted `grading` (already the review's
 data source, already submitted-gated) rather than minting a new endpoint —
-one boundary, one gate. [Owner Decision 2 covers both the storage and the
-venue.]
+one boundary, one gate.
 
-### 7.3 Rationale content ("why") [Owner Decisions 1, 3, 4]
+### 7.3 Rationale content ("why") [Ratified, OD-1, OD-3, OD-4]
 
 Measured authoring baseline (Section 14): 39 required + 20 acceptable = 59
 authored answer-key actions; no rationale-like field exists anywhere in
 schema v2; 106 generic per-scenario playbook steps already exist
 (`triage_review.response_actions`). Three content tiers:
 
-- **Tier 1 — deterministic generic rationale (zero authoring).** Server
-  templates per (verb, status, outcome-class), e.g. missed required
-  isolate: "This host was the compromise's foothold; isolating it cuts the
-  attacker's access while you investigate." — generic per verb, composed
-  with the target label. Collateral why is likewise deterministic: "This
-  target was not implicated by the evidence; acting on it disrupted a clean
-  asset." ~10 templates total.
+- **Tier 1 — deterministic generic rationale (zero authoring).**
+  **Template constraint (review correction 4, binding): a generic template
+  may explain the ACTION'S PURPOSE but may never invent scenario-specific
+  facts.** Scenario-specific causality (what this host was to this attack,
+  what the account did) lives ONLY in the Tier 2 scenario paragraph.
+  Factually narrow examples of the required form:
+  - missed required `isolate_host`: "Isolating an implicated host cuts an
+    attacker's access to it while the investigation continues. This host
+    required isolation and was not isolated at submission."
+  - `collateral_in_scope`: "This action was not part of the expected
+    response for this incident. Acting on targets the evidence does not
+    implicate disrupts clean assets."
+  ~10 templates total, one per (verb, reason-code class), each composed
+  with the target label only — no template may assert why the target
+  mattered in the scenario.
 - **Tier 2 — scenario-level rationale (moderate authoring).** One authored
   "expected response and why" paragraph per scenario (~20 entries; the 6
   inaction scenarios need the "why nothing" lesson — `brute_force_attack`'s
   is already written in docs/action-scoring.md), plus rendering the existing
-  `response_actions` playbook in the review.
-- **Tier 3 — full per-action rationale (highest fidelity).** One authored
-  `why` per answer-key action: **59 new entries**, plus the ~10 generic
-  templates for collateral (collateral targets are unbounded; per-action
-  authoring cannot enumerate them).
+  `response_actions` playbook in the review. Scenario causality lives here
+  and only here.
+- **Tier 3 — full per-action rationale (highest fidelity, DEFERRED).** One
+  authored `why` per answer-key action: **59 new entries**, plus the ~10
+  generic templates for collateral (collateral targets are unbounded;
+  per-action authoring cannot enumerate them).
 
-**[Recommendation]** Ship Tier 1 + Tier 2 in Stage 5: render the existing
-playbook (free), author the ~20 scenario paragraphs, use deterministic
-per-action templates — and defer Tier 3 unless the owner wants per-action
-voice. Where rationale content lives [Owner Decision 3]: **[Recommendation]**
-scenario YAML for the scenario-level paragraph (schema v2 addition,
-loader-validated, review-gated like all content) and code constants for the
-generic verb templates (engine voice, not per-scenario content). Collateral
-explanations [Owner Decision 4]: **[Recommendation]** deterministic generic
-rules (Tier 1), since the target space is unbounded.
+**[Ratified, OD-1]** Tier 1 + Tier 2 ship in Stage 5; Tier 3 deferred.
+**[Ratified, OD-3]** rationale content lives in scenario YAML for the
+scenario-level paragraph (schema v2 addition, loader-validated,
+review-gated like all content) and in code constants for the generic verb
+templates (engine voice, not per-scenario content). **[Ratified, OD-4]**
+collateral explanations are deterministic generic rules (Tier 1), since
+the target space is unbounded.
 
 ### 7.4 Answer-key boundary and guards
 
@@ -541,7 +672,9 @@ What did I do correctly? What should I have done but missed? What did I do
 that was unnecessary or harmful? Why? — with every required response
 displayed exactly once as Completed or Missed, every collateral action taken
 displayed exactly once, dispositions itemized with correctness, empty states
-designed, and zero pre-submission leakage (Section 19 criteria).
+designed, zero pre-submission leakage, and the teaching-entry counts
+reconciling exactly against the frozen score section per the Section 19
+count-reconciliation criterion (review correction 3).
 
 ---
 
@@ -629,8 +762,8 @@ Evaluation against the required axes:
 | One-inspector invariant | Preserved — the recursive leak-guard and kvp-order fixtures keep ONE surface to prove | Weakened: N potential inspector instances; the leak-guard surface multiplies |
 | Existing tests/state | `workbench-inspector`, `workbench-snapshot` extend | Significant rewrite of inspector + snapshot suites |
 
-**[Recommendation — Option A**, exactly as the preferred initial direction,
-Owner Decision 5.] Binding behavior: selecting a row (either view) applies
+**[Ratified, OD-5 — Option A**, exactly as the preferred initial
+direction.] Binding behavior: selecting a row (either view) applies
 the strong selected treatment (cards' existing ring pattern; table gets an
 equivalent left-accent + background, severity color untouched), scrolls the
 inspector into view (`block: 'nearest'` so the selected row stays visible
@@ -654,7 +787,7 @@ verbatim and re-asserted in tests.
 | Promoted / Dismissed / Reopened | "Promoted" / "Dismissed" / "Reopened (needs review again)" | `player_action` |
 | Response actions taken | "Response actions taken: {n}" | successful log entries in the incident's observable scope (see 10.3) |
 | Ready | "Ready to submit" | `ready` (all roster detections reviewed + sealed) |
-| Submitted | "Submitted — grade locked" | record existence |
+| Submitted | "Submitted. Grade locked." | record existence |
 | Completed strip | "Reviewed {total} of {total} · Submitted" | the frozen record's roster size |
 
 Forbidden pre-submission on every surface, permanently: "correct", "wrong",
@@ -667,23 +800,22 @@ surfaces (extending the copy-scan pattern).
 
 Incident card rows ("N left" → "N to review"), Dashboard active rows
 (already "N to review"), phase strip, Incidents readiness line, Detections
-counters line, Threats/Feed toggle subcopy (Owner Decision 9: whether
-explanatory subcopy ships — **[Recommendation]** yes, one line each: "Feed:
-every detection, including reviewed" / "Threats: detections you promoted"),
-Submit modal, Metrics in-progress banner, per-incident `/score` progress,
-completed states, Post-Incident Review header.
+counters line, Threats/Feed toggle subcopy (**[Ratified, OD-9]** yes, one
+line each: "Feed: every detection, including reviewed" / "Threats:
+detections you promoted"), Submit modal, Metrics in-progress banner,
+per-incident `/score` progress, completed states, Post-Incident Review
+header.
 
-### 10.3 The "Respond" count [Owner Decision 8]
+### 10.3 The "Respond" count [Ratified, OD-8: keep, server-computed]
 
 The phase strip's "Respond: N related" is currently a fuzzy label-substring
-join (`Incidents.jsx:84-88`). Options: (a) keep a response count in the
-strip but compute it honestly — successful actions whose registry target
-resolves to a scope host/account (the server can serialize a per-incident
-observable `related_actions` count on the card, a non-answer-bearing
-observable count); (b) drop the count from the strip and leave response
-activity to the existing Related-response list. **[Recommendation]** (a),
-with the fuzzy client join replaced by the server count; "Response actions
-taken: N" phrasing.
+join (`Incidents.jsx:84-88`). The weighed alternative (dropping the count)
+is kept for the record. **[Ratified, OD-8]** option (a): the strip keeps a
+response count computed honestly — successful actions whose registry target
+resolves to a scope host/account, serialized as a per-incident observable
+`related_actions` count on the card (a non-answer-bearing count of the
+player's own actions); the fuzzy client join is replaced; phrasing
+"Response actions taken: N".
 
 ### 10.4 The "0 of 0 reviewed" resolution (F7 item 2)
 
@@ -717,16 +849,38 @@ Rules:
    the control's selected state, and the row filter derive from **one state
    value** (plus an explicit fetch status), never from parallel derivations.
    The F9 pattern (highlight reads `scoped`, label/data read `scopeActive`)
-   is prohibited; the micro-fix (Section 3 F9) lands first, and 5.6
-   completes the architecture: scope resolution states are explicit
-   (`loading` / `ready` / `error`), rendered honestly ("Loading incident
-   scope…"), and scope data refreshes on the surface's existing poll cadence
-   so a pre-seal roster cannot go stale.
+   is prohibited. The ratified pre-lock micro-fix (Section 3 F9, OD-16)
+   implements the exact behavior below; 5.6 completes the architecture.
+
+   **Exact scope loading/error/refresh behavior (review correction 5,
+   binding for Detections and Endpoints):**
+
+   | Situation ("This incident" selected) | Required behavior |
+   |---|---|
+   | Initial incident-scope load | A loading state ("Loading incident scope"), **never Session-wide rows** rendered under the This-incident selection |
+   | Scope refresh succeeds with scoped rows already displayed | The displayed scoped rows are retained until the new scope resolves, then replaced atomically (no flash of unfiltered or empty data) |
+   | Scope refresh fails with prior scoped rows present | Prior scoped rows preserved; error shown; the surface states: "Displayed rows are from the last successful scope read." (the same honesty rule as the SIEM parse-failure statement) |
+   | Scope load fails with no prior scoped rows | An empty error state (error + retry + explicit Use Session-wide), zero rows |
+   | Any failure or in-flight state | **Never silently display Session-wide rows while This incident is selected**; broadening happens only through the explicit Use Session-wide control |
+
+   **Refresh triggers, per surface (explicit, since the surfaces differ):**
+   - **Detections:** scope refetch rides the surface's EXISTING 2.5s feed
+     poll (`Detections.jsx:134-140`) — the scope read joins that interval
+     while an incident scope is selected.
+   - **Endpoints:** the surface deliberately has NO poll (fetch on tab
+     open, reset, and pivot — `Endpoints.jsx:5-7,78-88`). No poll is
+     introduced: the scope is refetched **on every tab-visibility change**
+     (each time the Endpoints view becomes visible), plus the existing
+     reset and pivot triggers. This bounds staleness to the current visit
+     without changing the surface's no-polling design.
+   - **SIEM:** unchanged (its scope state machine already implements the
+     load/error pattern; snapshots are explicit-run only).
 2. **Atomic scope change:** changing scope updates label, control, and data
    in one state transition; while the scope read is in flight the surface
    says so; on failure the SIEM's revised-error pattern (keep control state,
-   show error, offer retry/Session-wide, never silently broaden) becomes the
-   uniform pattern on all three surfaces.
+   show error, offer retry/Session-wide, never silently broaden) is the
+   uniform pattern on all three surfaces, with the stale-rows honesty
+   statement above.
 3. When current case and data scope differ, both render, labeled:
    "Current case: INC-8541 · Data scope: Session-wide."
 
@@ -747,12 +901,11 @@ Results from: all | * | * | user_account == "ACME\dpark"   (the executed snapsho
   (shared vocabulary with Section 8); active timeline mode; the executed
   snapshot's canonical query (the existing status-line echo, now labeled
   "Results from").
-- Placement and persistence [Owner Decisions 12, 13]:
-  **[Recommendation]** on the SIEM always (it subsumes the current status
-  line + banner stack into one coherent block, collapsible to one line);
-  on Endpoints and Detections a one-line reduction (case + data scope only,
-  which is exactly the corrected F9 header). Always-visible vs collapsible:
-  **[Recommendation]** one-line summary always visible, expandable.
+- Placement and persistence: **[Ratified, OD-13]** on the SIEM the full
+  summary (it subsumes the current status line + banner stack into one
+  coherent block); on Endpoints and Detections a one-line reduction (case +
+  data scope only, which is exactly the corrected F9 header).
+  **[Ratified, OD-12]** one-line summary always visible, expandable.
 - The summary is read-only presentation over existing state; it issues no
   requests of its own.
 
@@ -760,8 +913,8 @@ Results from: all | * | * | user_account == "ACME\dpark"   (the executed snapsho
 
 - The query bar (editable) and "Results from" (executed) are visually
   distinguished; when the bar text differs from the executed query the
-  existing indicator de-emphasis extends to a one-line note: "Edited —
-  results below are from the last run."
+  existing indicator de-emphasis extends to a one-line note: "Edited.
+  Results below are from the last run."
 - **On parse failure:** the error box gains the explicit statement:
   "Displayed results are from the previous successful query." (The prior
   snapshot is already preserved; the statement makes the preservation
@@ -769,7 +922,7 @@ Results from: all | * | * | user_account == "ACME\dpark"   (the executed snapsho
 
 ### 11.4 Return controls: two names for two destinations
 
-"Back" must never ambiguously mean two things [Owner Decision 14]:
+"Back" must never ambiguously mean two things:
 
 - **"Return to current case: INC-8541"** — re-scopes the current query to
   the *focused* incident (exists today as the return chip when the focus and
@@ -779,8 +932,11 @@ Results from: all | * | * | user_account == "ACME\dpark"   (the executed snapsho
   this role; F8's confusion).
 - When both would name the same incident, ONE control renders (no
   duplicates); when they differ, both render, each naming its target
-  incident. **[Recommendation]** contextual rendering (only applicable
-  controls appear) over always-both.
+  incident. **[Ratified, OD-14]** contextual rendering (only applicable
+  controls appear), never one vague Back for both.
+- **[Ratified, OD-15]** starting a pivot from a non-focused incident's
+  timeline PRESERVES the existing focus; the origin is tracked and named
+  by the pivot-origin control. Focus changes only by explicit selection.
 
 ### 11.5 Tests (binding for this workstream)
 
@@ -815,9 +971,9 @@ Review.
   submit-ready -> Ready + what submission locks; first review -> what the
   review teaches). Each is one short paragraph, dismissible individually
   and collectively ("Don't show tips").
-- **First-run only** unless manually reopened; reopenable from the Docs
-  page and a "Show tips again" affordance [Owner Decision 7:
-  **[Recommendation]** reopenable via Docs + a Help entry, not a nav item].
+- **First-run only** unless manually reopened; **[Ratified, OD-7 reopen
+  path]** reopenable via the Docs page + a "Show tips again" Help
+  affordance, not a nav item.
 - **Guided mode only by default; never in Hardcore** — gated by allow-list
   (`ONBOARDING_MODES = {"guided"}` mirroring the GUIDED_MODES pattern;
   Hardcore and SOC Queue excluded by default; SOC Queue inclusion is a
@@ -827,15 +983,14 @@ Review.
   (correctness phrasing, scenario answers, category names tied to the
   active scenario).
 - Not a separate tutorial mode; no new mode is created.
-- First-use tooltip vs guided callout [Owner Decision 6]:
-  **[Recommendation]** anchored callouts for the five load-bearing moments,
+- **[Ratified, OD-6]** anchored callouts for the five load-bearing moments,
   plain tooltips for `==`/`!=`/Pivot buttons (augmenting the existing title
   attributes with accessible tooltips).
 
-### 12.3 Persistence [Owner Decision 7]
+### 12.3 Persistence [Ratified, OD-7]
 
-Options: localStorage; session state (server); account/profile (does not
-exist). **[Recommendation]** `localStorage` keyed
+Options weighed: localStorage; session state (server); account/profile
+(does not exist). **[Ratified, OD-7]** `localStorage` keyed
 `spectyr_onboarding_v1` (per-browser, per-device): survives Reset, Practice
 Another, and backend restart — all deliberate ("seen once" should not
 re-trigger on every practice run); Reset does NOT clear it; "Show tips
@@ -851,16 +1006,16 @@ Every addition is post-boundary or observable; each lands with its guard.
 
 | # | Change | Axis | Venue |
 |---|---|---|---|
-| D1 | `response_review` breakdown (7.1) — completed/missed/collateral/acceptable identities + whys; detection per-roster-item correctness | **Post-submission only**, per submitted incident | Submitted branch of `/api/incidents/<id>/score` (grading), stored in the record per Owner Decision 2 |
-| D2 | Scenario-level rationale text (Tier 2) | Content, post-boundary render | schema v2 `triage_review` sibling field (loader-validated) per Owner Decision 3 |
+| D1 | `response_review` breakdown (7.1) — one-bucket teaching entries with reason codes, seq references, frozen rendered why text; attempt history; detection per-roster-item correctness. **Frozen INTO the record at submission (7.2, correction 6): the score view serves the stored result and never rebuilds it; template/YAML changes reach future submissions only** | **Post-submission only**, per submitted incident | Submitted branch of `/api/incidents/<id>/score` (grading), stored in the record [Ratified, OD-2] |
+| D2 | Scenario-level rationale text (Tier 2) — consumed at SUBMIT time into D1's frozen why text, never re-read for an existing record | Content, post-boundary render | schema v2 `triage_review` sibling field (loader-validated) [Ratified, OD-3] |
 | D3 | Completed-card `triage` totals OR completed strip fed from score view (10.4) | Observable (frozen record counts) | `/api/incidents` completed cards (disclosed) or none (frontend-only) |
-| D4 | Per-incident observable `related_actions` count (10.3, if ruled in) | Observable activity count | `/api/incidents` active cards (disclosed) |
+| D4 | Per-incident observable `related_actions` count (10.3) [Ratified, OD-8] | Observable activity count | `/api/incidents` active cards (disclosed) |
 | D5 | Onboarding persistence | Client-only | localStorage; no server field |
 | D6 | NO changes | — | Event payloads, LCQL, snapshot identity/tokens, readiness rules, scoring functions/weights, detection generation, world, answer-key grammar (except the D2 content field), pre-submission shapes |
 
 Every serialized-field change above is disclosed in the implementation
 report per the standing rule; pre-submission progress shapes gain **no**
-fields beyond D4's observable count (if ruled in).
+fields beyond D4's observable count.
 
 ---
 
@@ -908,8 +1063,17 @@ six of them "why inaction was correct") + zero for the playbook render;
 Tier 3 ≈ **59 authored per-action entries** + the Tier 1 collateral
 templates (collateral is unbounded and cannot be per-action authored).
 Every Tier 2/3 entry is answer-bearing content and must live in a
-review-gated, loader-validated source (Owner Decision 3), landing under the
+review-gated, loader-validated source [Ratified, OD-3], landing under the
 per-scenario commit discipline.
+
+**Pre-lock micro-fix impact on this section (review correction 1):** the
+ratified robocopy correction (OD-10) rewrites one hostname placeholder in
+`false_positive_robocopy.yaml` chain step `s2`. It touches no
+`answer_key.actions` entry, no `triage_review.response_actions` step, and
+no `detections` entry, so **every count in this section is unchanged by
+it**. This will be re-verified at the post-merge baseline update; if the
+landed fix changes any count here, that change is REPORTED to the owner at
+final lock review, never silently edited into this table.
 
 ---
 
@@ -933,7 +1097,7 @@ per-scenario commit discipline.
   progress surfaces (10.1). The full existing batteries (submission gate,
   event disclosure, detection indistinguishability, guided catalog) run
   green untouched.
-- **No new pre-submission observables** except (if ruled in) the D4
+- **No new pre-submission observables** except the ratified D4
   related-actions count — a count of the player's own successful actions,
   observable by definition (the player performed them); it carries no
   required-total or correctness signal.
@@ -970,12 +1134,12 @@ per-scenario commit discipline.
 
 | Workstream | Backend | Frontend |
 |---|---|---|
-| 5.1 Review teaching | New suite (`test_response_review.py`): breakdown correctness vs the scorer's verdicts on fixture incidents (completed/missed/collateral/acceptable/inaction, order-violation flag, released-isolation case, shared-target multi-incident case); immutability (byte-identical re-reads; Option A: stored-record equality / Option B: derivation-invariant test); 404s for unsubmitted/foreign; planted-marker extension; empty-state shapes. Corpus test: every scenario's Tier 2 rationale present + loader-validated (if D2 ships). | Review modal renders every breakdown section + playbook + empty states; no breakdown UI reachable pre-submission. |
+| 5.1 Review teaching | New suite (`test_response_review.py`): every reason-code row of the 7.1 registry pinned to the scorer's verdict on fixture incidents (required_completed, required_not_attempted, required_attempt_failed, out_of_order, released_after_isolation, acceptable_completed, collateral_in_scope, inaction_correct, inaction_spoiled); one-bucket-per-entry and no-teaching-entry-duplicated-in-attempt-history structural asserts; `source_action_seq` exactness (null only on never-executed required + inaction entries); the Section 19 **count-reconciliation criterion** as a permanent test over fixtures AND a real-drip corpus pass; **freeze test (correction 6): submit, mutate template/YAML sources in memory, re-read, assert byte-identical teaching content**; byte-identical re-reads; 404s for unsubmitted/foreign; planted-marker extension; empty-state shapes. Corpus test: every scenario's Tier 2 rationale present + loader-validated; template-purity test: no generic template output contains scenario-specific tokens beyond the target label. | Review modal renders every bucket + attempt history + playbook + empty states; no breakdown UI reachable pre-submission. |
 | 5.2 Pivot clarity | Generator fixtures unchanged (no query changes). | Banner content per pivot form (clue naming, transition statement, origin, no-results persistence); OR-notice folding; banner dies with its snapshot (identity guard); first-use gating. |
 | 5.3 Inspector | — | Scroll-into-view called once per selection change; emphasis once; reduced-motion path; selection persistence re-asserted across views/sort/refresh; chevron affordance replaced; recursive leak-guard and kvp-order fixtures still green (one inspector). |
-| 5.4 Progress vocabulary | D3/D4 field tests if ruled in (observable-only shape). | Canonical-copy assertions per surface; forbidden-phrase scan; completed strip replaces active strip for submitted (0-of-0 regression test); "N to review" everywhere. |
+| 5.4 Progress vocabulary | D3/D4 field tests (observable-only shape; D4 ratified). | Canonical-copy assertions per surface; forbidden-phrase scan; completed strip replaces active strip for submitted (0-of-0 regression test); "N to review" everywhere. |
 | 5.5 Onboarding | — | First-run-once per concept; dismiss/dismiss-all; reopen path; localStorage persistence across reset/practice-another; **Hardcore-never** and SOC-Queue-never assertions (allow-list test); copy denylist. |
-| 5.6 Scope truth | Structural guard extension over any new reader. | The Section 11.5 three-way synchronization battery on all three surfaces; F9 micro-fix regression (mocked in-flight + failed scope read); parse-failure notice; dual return controls; context summary == executed query. |
+| 5.6 Scope truth | Structural guard extension over any new reader. | The Section 11.5 three-way synchronization battery on all three surfaces; the Section 11.1 behavior table row by row (initial load never shows Session-wide rows; atomic scoped-row replacement on refresh; stale-rows honesty statement on failure-with-prior-rows; empty error state on failure-without; no silent broadening); per-surface refresh triggers (Detections 2.5s poll join; Endpoints tab-visibility refetch); parse-failure notice; dual return controls; context summary == executed query. |
 | Cross-cutting | Full existing batteries green every commit (never-land-red); `run_gates.py` suite lists extended. | copy-emdash; scope-no-mutation extended over new interactions (all reads). |
 
 ---
@@ -1063,6 +1227,34 @@ rule: batteries never run against the live backend's `backend/logs`):
     structurally impossible); it renders the completed vocabulary.
 15. The full inherited batteries stay green untouched; every new serialized
     field is disclosed; all-tab console sweep zero errors.
+16. **Count reconciliation (review correction 3, permanently tested).** For
+    every submitted incident's frozen breakdown:
+    - `len(entries where bucket == completed) == response.correct`, and
+    - `len(entries where bucket == missed) == response.missed`, and
+    - `len(entries where bucket == collateral) == response.collateral`, and
+    - acceptable entries reconcile separately:
+      `len(entries where bucket == acceptable) == acceptable_taken.count`,
+      and acceptable entries are never included in the required-action
+      equalities above,
+    **with the exact mapping for the two scorer fold-ins stated here so no
+    equality is left implicit:**
+    - *Inaction fold-in:* `compute_action_score` folds each reviewed
+      no-required scenario into `required`/`correct`/`missed` as one
+      weight-1 unit (app.py:4395-4403). Per incident this means: for an
+      incident whose scenario HAS required actions, the completed/missed
+      entries are required-action entries and the equalities above hold
+      directly (the incident has no inaction entry). For an inaction
+      incident, the completed/missed required-entry sets are EMPTY and the
+      single `inaction` entry carries the unit: `inaction_correct`
+      reconciles against `response.correct == 1`, `inaction_spoiled`
+      against `response.missed == 1`. The test asserts whichever case
+      applies; the two cases are mutually exclusive per incident.
+    - *Order-violation mapping:* `out_of_order` entries sit in the `missed`
+      bucket and are counted inside `response.missed`;
+      `response.order_violations` is a SUBSET ANNOTATION
+      (`len(entries where reason_code == out_of_order) ==
+      response.order_violations`), never a separate bucket, so the missed
+      equality remains exact.
 
 ---
 
@@ -1083,26 +1275,30 @@ timeline-coherent Response Log display (the recorded Stage 4 note).
 
 ---
 
-## 21. Owner decision register (open — to surface, not silently make)
+## 21. Owner decision register — ALL 16 RATIFIED (owner review, 2026-07-22)
 
-| # | Decision | Options | This contract's recommendation |
+Every decision below was ratified as recommended, subject to the seven
+review corrections folded into this revision (the Ruling column is the
+binding form). The weighed options are retained for the record.
+
+| # | Decision | Options weighed | RULING [Ratified] |
 |---|---|---|---|
-| 1 | Rationale fidelity | Tier 1 generic / Tier 2 scenario-level / Tier 3 full per-action (59 entries) | Tier 1 + Tier 2 (Section 7.3) |
-| 2 | Where the breakdown lives + serving venue | In-record at submit (schema addition) vs derived-at-read; score-view extension vs new endpoint | In-record; served on the score view's submitted grading (7.2) |
-| 3 | Where rationale content lives | scenario YAML / separate teaching catalog / code constants | YAML for scenario paragraphs; code constants for generic verb templates (7.3) |
-| 4 | Collateral explanations | authored text vs deterministic generic rules | Deterministic generic (7.3) |
+| 1 | Rationale fidelity | Tier 1 generic / Tier 2 scenario-level / Tier 3 full per-action (59 entries) | Tier 1 + Tier 2; Tier 3 deferred. Templates purpose-only per correction 4 (7.3) |
+| 2 | Where the breakdown lives + serving venue | In-record at submit (schema addition) vs derived-at-read; score-view extension vs new endpoint | In-record at submit, COMPLETE freeze per correction 6; served on the score view's submitted grading (7.2) |
+| 3 | Where rationale content lives | scenario YAML / separate teaching catalog / code constants | YAML for scenario paragraphs (scenario causality lives ONLY there); code constants for generic verb templates (7.3) |
+| 4 | Collateral explanations | authored text vs deterministic generic rules | Deterministic generic, purpose-only (7.3) |
 | 5 | Inspector connection | Option A scroll-to-shared-inspector vs Option B inline expansion | Option A (Section 9) |
 | 6 | First-use help form | tooltips vs anchored callouts | Callouts for the five load-bearing moments; tooltips for ==/!=/Pivot (12.2) |
 | 7 | Onboarding persistence + reopen | localStorage / session state / profile; reopen path | localStorage `spectyr_onboarding_v1`; reopen via Docs + Help affordance (12.3) |
-| 8 | Response-action count in the phase strip | keep (server-computed observable count) vs drop | Keep, server-computed (10.3) |
+| 8 | Response-action count in the phase strip | keep (server-computed observable count) vs drop | Keep, server-computed `related_actions` (10.3) |
 | 9 | Threats/Feed explanatory subcopy | yes/no | Yes, one line each (10.2) |
-| 10 | robocopy hostname defect venue | separate content micro-fix vs in-Stage-5 | Separate content micro-fix (correction registry) before 5B (F7) |
+| 10 | robocopy hostname defect venue | separate content micro-fix vs in-Stage-5 | Separate content micro-fix (correction registry), landing BEFORE lock per correction 1; Section 14 counts confirmed unchanged (F7, 14) |
 | 11 | "0 of 0 reviewed" venue | inside 5.4 progress work vs separate micro-fix | Inside 5.4 (F7) |
-| 12 | Context summary visibility | always visible vs collapsible | One-line always, expandable (11.2) |
-| 13 | Context summary on Endpoints/Detections | full summary vs one-line case+scope vs SIEM-only | One-line reduction on both (11.2) |
-| 14 | Return controls | always both vs contextual | Contextual, each naming its target (11.4) |
-| 15 | Pivot from a non-focused incident | transfer focus to that incident vs preserve existing focus | Preserve focus; the origin is tracked and named by the pivot-origin control (11.4) — focus changes only by explicit selection |
-| 16 | F9 state defect venue | pre-5B presentation micro-fix vs inside 5.6 | Pre-5B micro-fix (minimal one-source derivation + honest loading/error + scope re-fetch), architecture completed in 5.6 (F9) |
+| 12 | Context summary visibility | always visible vs collapsible | One-line always visible, expandable (11.2) |
+| 13 | Context summary on Endpoints/Detections | full summary vs one-line case+scope vs SIEM-only | One-line reduction on both; full summary on SIEM (11.2) |
+| 14 | Return controls | always both vs contextual | Contextual, each naming its target; never one vague Back (11.4) |
+| 15 | Pivot from a non-focused incident | transfer focus vs preserve existing focus | Preserve focus; origin tracked and named by the pivot-origin control; focus changes only by explicit selection (11.4) |
+| 16 | F9 state defect venue | pre-5B presentation micro-fix vs inside 5.6 | Separate presentation micro-fix landing BEFORE lock per correction 1, implementing the 11.1 behavior table exactly; architecture completed in 5.6 (F9, 11.1) |
 
 ---
 
@@ -1131,22 +1327,28 @@ content defect land first and cheap; the review teaching layer is the
 largest single workstream and has the only data-model work, so it gets its
 own phase late enough to inherit the settled vocabulary.
 
-- **Pre-5B micro-fixes (if ruled as such; each its own concern commit):**
-  M1 F9 scope-truth presentation fix (Detections + Endpoints, with the
-  three-way sync tests); M2 robocopy content correction (correction
-  registry + parity divergence record).
+- **Pre-LOCK micro-fixes (RULED, review correction 1; two separate
+  merges, each its own concern commit; NOT implemented by this contract
+  task):** M1 F9 scope-truth presentation fix (Detections + Endpoints,
+  implementing the Section 11.1 behavior table with the three-way sync
+  tests); M2 robocopy content correction (correction registry + parity
+  divergence record; Section 14 counts confirmed unaffected). **Lock
+  sequence:** after both merge, this contract's baseline block and every
+  factual line reference are updated, then the contract returns for final
+  lock review. Any Section 14 count change caused by M2 is reported at
+  that review, never silently updated.
 - **Phase 1 — Scope truth and investigation context (5.6):** single-source
   scope state on all three surfaces; context summary; parse-failure
   truth; dual return controls. (F8/F9 closed architecturally.)
 - **Phase 2 — Neutral progress vocabulary (5.4):** one vocabulary
   everywhere; completed strip (0-of-0 resolved); server related-actions
-  count if ruled in; copy scans.
+  count (ratified); copy scans.
 - **Phase 3 — Pivot transition clarity (5.2):** transition banners on the
   generalized banner mechanism; shared clue vocabulary with the Phase 1
   summary.
 - **Phase 4 — Inspector continuity (5.3):** Option A behaviors.
 - **Phase 5 — Post-Incident Review teaching layer (5.1):** breakdown data
-  contract per Owner Decisions 1-4; review UI; playbook render; guards;
+  contract per the ratified OD-1 through OD-4; review UI; playbook render; guards;
   scenario rationale authoring under per-scenario commits.
 - **Phase 6 — Guided onboarding (5.5):** callouts/tooltips, persistence,
   reopen, mode gating.
@@ -1171,8 +1373,11 @@ the owner's discretion.
 
 ---
 
-*Deliverable mapping: contract draft (this document); repository inventory
-(Sections 3-4); authoring-cost totals (Section 14); unresolved owner
-decisions (Section 21); proposed phases and risks (Section 23); reference
-matrix (Section 22). This contract is NOT locked; no scaffold exists; no
-implementation or Stage 5B work begins from this document.*
+*Deliverable mapping: finalized contract draft, Revision 2 (this document);
+repository inventory (Sections 3-4); authoring-cost totals (Section 14);
+ratified owner decisions (Section 21); phases, lock sequence, and risks
+(Section 23); reference matrix (Section 22). This contract is NOT locked:
+the two ratified pre-lock micro-fixes must merge first, the baseline and
+line references then update, and the contract returns for final lock
+review. No scaffold exists; no implementation or Stage 5B work begins from
+this document.*
