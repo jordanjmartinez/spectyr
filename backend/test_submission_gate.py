@@ -50,19 +50,29 @@ def _cleanup(sid, s):
 
 
 def _add_incident(s, incident_id, scenario_id, host, category, label,
-                  det_specs, sealed=True, required_isolate=True, ent_id=None):
+                  det_specs, sealed=True, required_isolate=True, ent_id=None,
+                  extra_env_hosts=(), ambient_specs=()):
     """Append ONE incident to a fresh session WITHOUT the drip threads: a raw
     event, the incident index entry, a queue entry (chain_complete_at set iff
-    `sealed`), a reviewed grading record scoped to `host`, its detections
-    (`det_specs` = list of (id, disposition, player_action)), and optionally a
-    required-and-executed isolation. Appends, so several incidents coexist."""
+    `sealed`), a reviewed grading record scoped to `host` + `extra_env_hosts`,
+    its detections (`det_specs` = list of (id, disposition, player_action)),
+    ambient benign detections (`ambient_specs` = list of (id, player_action,
+    ambient_host) with scenario_id None), and optionally a required-and-executed
+    isolation. Appends, so several incidents coexist.
+
+    Pre-Stage-5 fixture-class note: the original fixture always set grading
+    hostnames == {the single observable event host}, so environment-declared ==
+    observed by construction and the roster-join divergence was unreachable.
+    `extra_env_hosts` exists to break that alignment on purpose: a host listed
+    there is environment-declared (grading scope) with NO written event —
+    exactly the escaped configuration."""
     logs = app._read_ndjson_unlocked(s["paths"]["generated_logs"])
     logs.append({
         "id": f"e-{incident_id}", "timestamp": STARTED, "scenario_id": scenario_id,
         "label": label, "category": category, "alert_id": incident_id,
         "level": 1, "level_name": "Test Incident", "status": "active",
         "chain_complete": sealed, "severity": "high",
-        "message": "seed event", "source_type": "Sysmon"})
+        "message": "seed event", "source_type": "Sysmon", "hostname": host})
     app._write_ndjson_unlocked(s["paths"]["generated_logs"], logs)
     s.setdefault("incident_index", {})[incident_id] = scenario_id
     q = s.setdefault("alert_queue", [])
@@ -76,10 +86,10 @@ def _add_incident(s, incident_id, scenario_id, host, category, label,
     s.setdefault("scenario_history", [])
     s.setdefault("scenario_grading", []).append({
         "scenario_id": scenario_id, "reviewed": True,
-        "hostnames": {host}, "accounts": set()})
+        "hostnames": {host, *extra_env_hosts}, "accounts": set()})
     # Mirror the real drip: the host's ambient benign is materialized once, then
     # the host is recorded in benign_hosts so no later drip re-attaches to it.
-    s.setdefault("benign_hosts", set()).add(host)
+    s.setdefault("benign_hosts", set()).update({host, *extra_env_hosts})
     dets = s.setdefault("detections", [])
     for did, disp, act in det_specs:
         dets.append({
@@ -89,6 +99,14 @@ def _add_incident(s, incident_id, scenario_id, host, category, label,
             "rule_name": f"Rule {did}", "rule_type": "sigma_behavioral",
             "severity": "high", "mitre": None, "yara_rule_name": None,
             "description": "seed detection", "time": STARTED, "sha256": None,
+            "triggering_events": []})
+    for did, act, amb_host in ambient_specs:
+        dets.append({
+            "id": did, "scenario_id": None, "disposition": "benign_expected",
+            "player_action": act, "entity": {"host": amb_host},
+            "rule_name": f"Rule {did}", "rule_type": "sigma_behavioral",
+            "severity": "low", "mitre": None, "yara_rule_name": None,
+            "description": "seed ambient benign", "time": STARTED, "sha256": None,
             "triggering_events": []})
     s["detection_index"] = {d["id"]: d for d in dets}
     if required_isolate:
@@ -525,8 +543,7 @@ def test_sealed_roster_finality_no_growth_on_poll_or_unrelated_activity():
                 ("r1", "true_positive", "promoted"),
                 ("r2", "false_positive", "dismissed")])
         hdr = {"X-Session-ID": sid}
-        grec = app._grading_record_for(s, SID_SCENARIO)
-        base = {d["id"] for d in app._incident_detections(s, SID_SCENARIO, grec)}
+        base = {d["id"] for d in app._incident_detections(s, SID_SCENARIO)}
         assert base == {"r1", "r2"}
         # the runtime guard: the host is in benign_hosts, so the drip's
         # ambient-benign step is a no-op for it (no re-attach)
@@ -537,7 +554,7 @@ def test_sealed_roster_finality_no_growth_on_poll_or_unrelated_activity():
         for _ in range(3):
             client.get("/api/detections", headers=hdr)
             client.get("/api/incidents", headers=hdr)
-        after_poll = {d["id"] for d in app._incident_detections(s, SID_SCENARIO, grec)}
+        after_poll = {d["id"] for d in app._incident_detections(s, SID_SCENARIO)}
         assert after_poll == base
 
         # an unrelated incident's detections (other scenario, other host) never
@@ -546,7 +563,7 @@ def test_sealed_roster_finality_no_growth_on_poll_or_unrelated_activity():
             _add_incident(s, "INC-0002", "scenario-b", "ACME-WS20", "Phishing",
                           "phishing_1",
                           det_specs=[("b1", "true_positive", "open")], sealed=True)
-        still = {d["id"] for d in app._incident_detections(s, SID_SCENARIO, grec)}
+        still = {d["id"] for d in app._incident_detections(s, SID_SCENARIO)}
         assert still == base
     finally:
         _cleanup(sid, s)
@@ -595,11 +612,201 @@ def test_every_sealed_roster_detection_is_dispositionable_in_feed():
                 ("d2", "false_positive", "open"),
                 ("d3", "benign_expected", "open")])
         hdr = {"X-Session-ID": sid}
-        grec = app._grading_record_for(s, SID_SCENARIO)
-        roster = {d["id"] for d in app._incident_detections(s, SID_SCENARIO, grec)}
+        roster = {d["id"] for d in app._incident_detections(s, SID_SCENARIO)}
         feed_ids = {d["id"] for d in
                     client.get("/api/detections", headers=hdr).get_json()["detections"]}
         assert roster and roster <= feed_ids, "a sealed-roster detection is not in the feed"
+    finally:
+        _cleanup(sid, s)
+
+
+# --- pre-Stage-5 hotfix: ONE shared incident roster ------------------------------
+# The escaped INC-1310 configuration and its class: display, "X of Y", Ready,
+# Submit enablement, submit-time readiness, and grading must all consume the
+# SAME observable roster (_incident_roster). These fixtures deliberately break
+# the environment==observed alignment every 3.9 fixture silently assumed.
+
+ENV_ONLY = "ACME-WS27"
+
+
+def test_env_only_host_ambient_never_gates_grades_or_blocks_submit():
+    """The exact escaped defect: the scenario's environment declares an extra
+    host with NO written event, and an OPEN ambient benign sits on it. The
+    incident-scoped display excludes it; displayed roster, readiness roster,
+    and grading roster are identical; the unrelated Session-wide detection
+    stays visible session-wide and does NOT block submission. (Red on the
+    pre-hotfix environment-host ambient join.)"""
+    client, sid, s = _api_session()
+    try:
+        with s["io_lock"]:
+            _add_incident(s, INC, SID_SCENARIO, WS, "Malware", "malware_usb",
+                          det_specs=[("det-tp", "true_positive", "promoted"),
+                                     ("det-fp", "false_positive", "promoted")],
+                          extra_env_hosts=(ENV_ONLY,),
+                          ambient_specs=[("det-envonly", "open", ENV_ONLY)])
+        hdr = {"X-Session-ID": sid}
+        card = next(c for c in client.get("/api/incidents", headers=hdr)
+                    .get_json()["active"] if c["incident_id"] == INC)
+        assert card["ready"] is True and card["open_detections"] == 0
+        assert card["triage"] == {"total": 2, "triaged": 2}
+        scope = client.get(f"/api/incidents/{INC}/scope", headers=hdr).get_json()
+        assert set(scope["detection_ids"]) == {"det-tp", "det-fp"}
+        assert ENV_ONLY not in scope["hosts"]
+        # the grading-side progress view agrees with the card in the same cycle
+        prog = client.get(f"/api/incidents/{INC}/score",
+                          headers=hdr).get_json()["progress"]
+        assert prog["detections_open"] == 0 and prog["submission_ready"] is True
+        # session-wide feed still carries the unrelated detection (triage material)
+        feed = {d["id"] for d in client.get("/api/detections", headers=hdr)
+                .get_json()["detections"]}
+        assert "det-envonly" in feed
+        # submit succeeds despite the open env-only ambient
+        r = client.post(f"/api/incidents/{INC}/submit", headers=hdr,
+                        json={"verdict": "threat", "category": "Malware"})
+        assert r.status_code == 200 and r.get_json()["state"] == "submitted"
+        rec = s["submissions"][INC]
+        assert set(rec["inputs"]["detection_dispositions"]) == {"det-tp", "det-fp"}
+        assert rec["report_card"]["detection"]["graded"] == 2
+        env = next(d for d in s["detections"] if d["id"] == "det-envonly")
+        assert env["player_action"] == "open"  # untouched, never demanded
+    finally:
+        _cleanup(sid, s)
+
+
+def test_ambient_on_observable_host_gates_and_one_disposition_satisfies_all():
+    """The accepted rule is preserved: an ambient benign on a genuinely
+    observable participant host appears in the displayed incident roster,
+    raises the displayed total, and blocks submission until dispositioned. Two
+    incidents sharing that observable host both carry it, and ONE disposition
+    satisfies every roster in which it legitimately appears."""
+    client, sid, s = _api_session()
+    try:
+        with s["io_lock"]:
+            _add_incident(s, INC, SID_SCENARIO, WS, "Malware", "malware_usb",
+                          det_specs=[("a1", "true_positive", "promoted")],
+                          required_isolate=False,
+                          ambient_specs=[("amb-ws", "open", WS)])
+            _add_incident(s, "INC-0002", "scenario-b", WS, "Phishing",
+                          "phishing_1",
+                          det_specs=[("b1", "true_positive", "promoted")],
+                          required_isolate=False)
+        hdr = {"X-Session-ID": sid}
+        sa = client.get(f"/api/incidents/{INC}/scope", headers=hdr).get_json()
+        sb = client.get("/api/incidents/INC-0002/scope", headers=hdr).get_json()
+        assert "amb-ws" in sa["detection_ids"] and "amb-ws" in sb["detection_ids"]
+        assert sa["triage"] == sb["triage"] == {"total": 2, "triaged": 1}
+        ra = client.post(f"/api/incidents/{INC}/submit", headers=hdr,
+                         json={"verdict": "threat", "category": "Malware"})
+        assert ra.status_code == 409 and ra.get_json()["open_detections"] == 1
+        rb = client.post("/api/incidents/INC-0002/submit", headers=hdr,
+                         json={"verdict": "threat", "category": "Phishing"})
+        assert rb.status_code == 409 and rb.get_json()["open_detections"] == 1
+        # one disposition, through the real triage API, unblocks both
+        assert client.post("/api/detections/amb-ws/disposition", headers=hdr,
+                           json={"action": "dismiss"}).status_code == 200
+        assert client.post(f"/api/incidents/{INC}/submit", headers=hdr,
+                           json={"verdict": "threat",
+                                 "category": "Malware"}).status_code == 200
+        assert client.post("/api/incidents/INC-0002/submit", headers=hdr,
+                           json={"verdict": "threat",
+                                 "category": "Phishing"}).status_code == 200
+    finally:
+        _cleanup(sid, s)
+
+
+def test_all_surfaces_consume_the_shared_roster_and_agree():
+    """Surface agreement: the card triage counts (the "X of Y" phase strip),
+    the incident-scoped Detections view (scope.detection_ids), the Ready label
+    + Submit enablement (card.ready), the /score progress view, and submit-time
+    validation all consume the SAME shared roster and agree — in a mixed triage
+    state and again after the displayed roster is fully reviewed."""
+    client, sid, s = _api_session()
+    try:
+        with s["io_lock"]:
+            _add_incident(s, INC, SID_SCENARIO, WS, "Malware", "malware_usb",
+                          det_specs=[("t1", "true_positive", "promoted"),
+                                     ("t2", "false_positive", "open")],
+                          required_isolate=False,
+                          extra_env_hosts=(ENV_ONLY,),
+                          ambient_specs=[("amb-ws", "open", WS),
+                                         ("amb-env", "open", ENV_ONLY)])
+        hdr = {"X-Session-ID": sid}
+
+        def surfaces():
+            card = next(c for c in client.get("/api/incidents", headers=hdr)
+                        .get_json()["active"] if c["incident_id"] == INC)
+            scope = client.get(f"/api/incidents/{INC}/scope",
+                               headers=hdr).get_json()
+            prog = client.get(f"/api/incidents/{INC}/score",
+                              headers=hdr).get_json()["progress"]
+            return card, scope, prog
+
+        card, scope, prog = surfaces()
+        # roster = t1 + t2 + amb-ws; amb-env (env-only host) excluded everywhere
+        assert set(scope["detection_ids"]) == {"t1", "t2", "amb-ws"}
+        assert card["triage"] == scope["triage"] == {"total": 3, "triaged": 1}
+        assert card["open_detections"] == 2 and card["ready"] is False
+        assert prog["detections_triaged"] == 1 and prog["detections_open"] == 2
+        assert prog["submission_ready"] is False
+        r = client.post(f"/api/incidents/{INC}/submit", headers=hdr,
+                        json={"verdict": "threat", "category": "Malware"})
+        assert r.status_code == 409 and r.get_json()["open_detections"] == 2
+
+        # review exactly the displayed roster -> every surface flips together
+        for did in ("t2", "amb-ws"):
+            assert client.post(f"/api/detections/{did}/disposition", headers=hdr,
+                               json={"action": "dismiss"}).status_code == 200
+        card, scope, prog = surfaces()
+        assert card["triage"] == scope["triage"] == {"total": 3, "triaged": 3}
+        assert card["ready"] is True and prog["submission_ready"] is True
+        assert client.post(f"/api/incidents/{INC}/submit", headers=hdr,
+                           json={"verdict": "threat",
+                                 "category": "Malware"}).status_code == 200
+    finally:
+        _cleanup(sid, s)
+
+
+def test_submitted_record_grades_exactly_the_displayed_roster_and_stays_frozen():
+    """Submitted-record protection: the record is graded against EXACTLY the
+    roster displayed at submission (same ids, same count), and later attaches —
+    a tagged detection, an ambient on the observable host, an ambient on the
+    env-only host — never change the frozen record or its served grading."""
+    client, sid, s = _api_session()
+    try:
+        with s["io_lock"]:
+            _add_incident(s, INC, SID_SCENARIO, WS, "Malware", "malware_usb",
+                          det_specs=[("t1", "true_positive", "promoted")],
+                          required_isolate=False,
+                          extra_env_hosts=(ENV_ONLY,),
+                          ambient_specs=[("amb-ws", "dismissed", WS),
+                                         ("amb-env", "open", ENV_ONLY)])
+        hdr = {"X-Session-ID": sid}
+        displayed = set(client.get(f"/api/incidents/{INC}/scope", headers=hdr)
+                        .get_json()["detection_ids"])
+        assert displayed == {"t1", "amb-ws"}
+        r = client.post(f"/api/incidents/{INC}/submit", headers=hdr,
+                        json={"verdict": "threat", "category": "Malware"})
+        assert r.status_code == 200
+        rec = s["submissions"][INC]
+        assert set(rec["inputs"]["detection_dispositions"]) == displayed
+        assert rec["report_card"]["detection"]["graded"] == len(displayed)
+        before = client.get(f"/api/incidents/{INC}/score", headers=hdr).data
+        with s["io_lock"]:
+            for late in (
+                {"id": "late-tagged", "scenario_id": SID_SCENARIO,
+                 "disposition": "true_positive", "player_action": "open",
+                 "entity": {"host": WS}},
+                {"id": "late-amb-ws", "scenario_id": None,
+                 "disposition": "benign_expected", "player_action": "open",
+                 "entity": {"host": WS}},
+                {"id": "late-amb-env", "scenario_id": None,
+                 "disposition": "benign_expected", "player_action": "open",
+                 "entity": {"host": ENV_ONLY}},
+            ):
+                s["detections"].append(late)
+        after = client.get(f"/api/incidents/{INC}/score", headers=hdr).data
+        assert after == before, "submitted grading changed after late attaches"
+        assert set(s["submissions"][INC]["inputs"]["detection_dispositions"]) == displayed
     finally:
         _cleanup(sid, s)
 

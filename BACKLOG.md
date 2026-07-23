@@ -115,6 +115,22 @@ Non-blocking items left for a later reviewed change:
 - **Dormant `inputs.classification.report` field** (from 3.9A) cleanup remains a
   separately reviewed migration, untouched by 3.9B.
 
+## Stage 5 flags from the pre-Stage-5 hotfix (recorded 2026-07-22)
+
+**Target: Stage 5.**
+
+1. **Content flag — `false_positive_robocopy` carries an IP address in the
+   hostname field.** Observed during the hotfix corpus sweep: one of the
+   scenario's events has the literal string `10.0.1.201` in its `hostname`
+   field, so the IP enters the incident's observable host set. A content
+   correction (registry + parity divergence record) should put a hostname
+   there.
+2. **Cosmetic flag — a completed incident can transiently display "0 of 0
+   reviewed" in the residual phase strip.** Frontend-only rendering state on
+   the completed-incident detail pane (the scope API serves the correct
+   triaged counts post-submit; verified during hotfix Chrome verification).
+   Pre-existing before the hotfix and unchanged by it.
+
 ## Dev-harness gotcha: gate battery vs a live dev backend (recorded 2026-07-19)
 
 Do not run the backend gate battery against a live development backend sharing
