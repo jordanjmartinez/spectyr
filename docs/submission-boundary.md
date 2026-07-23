@@ -88,19 +88,37 @@ Two conditions, both required (`incident_submission_readiness`):
    is correct.
 
 The incident's roster is its authoritative server-side set (`_incident_detections`
-= its scenario-tagged detections plus ambient-benign detections on its hosts),
-NOT whatever the UI currently shows. Detections from other incidents never
-affect readiness (per-incident scoping; a shared host's ambient benign is
-dispositioned once and counts for every incident that scopes it). **Response
-actions never gate submission** — a required-action count is hidden answer-key
-information and must never be revealed.
+= its scenario-tagged detections plus ambient-benign detections on its
+**observable participant hosts**), NOT whatever the UI currently happens to
+render. **Pre-Stage-5 hotfix (one shared roster):** display, "X of Y reviewed",
+Ready, Submit enablement, submit-time readiness, progress, and grading ALL
+consume the single shared derivation `_incident_roster` (hostnames on the
+incident's written non-normal events + entity hosts of its tagged detections),
+so they are equal **by construction**. Before the hotfix, readiness/grading
+joined ambient over the scenario's *environment-declared* host set
+(`scenario_grading.hostnames`) while every display surface used observable
+hosts — an environment-declared host with no observable telemetry (e.g.
+`password_spray`'s victim workstation) admitted ambient detections that gated
+and graded the incident invisibly (the INC-1310 defect). An ambient detection
+on a host the incident never observably touched now stays session-wide triage
+material: it neither gates nor grades that incident. `scenario_grading` remains
+in place for its actual purpose (response-action collateral scoping and
+isolation end-state), never for the detection roster. Detections from other
+incidents never affect readiness (per-incident scoping; a shared host's
+ambient benign is dispositioned once and counts for every incident whose
+observable scope includes that host). **Response actions never gate
+submission** — a required-action count is hidden answer-key information and
+must never be revealed.
 
 `submit_incident` returns a discriminated dict: `unknown` (404), `sealing`
 (409), `open_detections` with a count (409), `idempotent` (200), or `created`
-(200). The grouped-alerts group carries observable readiness
-(`detections_sealed`, `open_detections`, `submission_ready`) so the frontend can
-block Submit before the round-trip; the backend enforces the same rule
-authoritatively, so a stale client count still 409s.
+(200). The incident card carries observable readiness (`sealed`,
+`open_detections`, `ready`) so the frontend can block Submit before the
+round-trip; the backend enforces the same rule authoritatively — literally the
+same `_incident_roster` derivation, guarded by
+`test_incident_scope.py::test_observable_roster_matches_readiness_roster` and
+the corpus gate `test_incident_roster_corpus.py` — so a stale client count
+still 409s.
 
 Because readiness guarantees all detections are dispositioned and every scenario
 is reviewed (so response always has a graded unit) and classification is always

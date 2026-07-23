@@ -18,6 +18,7 @@ os.environ.setdefault("SPECTYR_SCENARIO_SOURCE", "yaml_v2")
 import app  # noqa: E402
 
 WS = "ACME-WS12"
+ENV_ONLY = "ACME-WS27"   # environment-declared, never observable (no event)
 STARTED = "2026-07-17T12:00:00+00:00"
 INC = "INC-0001"
 SID = "scenario-x"
@@ -36,8 +37,12 @@ def _cleanup(sid, s):
 
 def _seed(s, sealed=True, dispositioned=True):
     """One incident on WS: a written attack event (observable host), a
-    scenario-tagged TP + an ambient benign on WS, a grading record scoped to WS
-    (readiness), and a queue entry sealed iff `sealed`."""
+    scenario-tagged TP + an ambient benign on WS, a grading record scoped to
+    {WS, ENV_ONLY} the way the real drip records it (ALL environment-declared
+    hosts, including one that never appears in any written event), an OPEN
+    ambient benign on that environment-only host (the pre-Stage-5 escaped
+    configuration: it must never enter this incident's roster), and a queue
+    entry sealed iff `sealed`."""
     act = "dismissed" if dispositioned else "open"
     app._write_ndjson_unlocked(s["paths"]["generated_logs"], [{
         "id": "e1", "timestamp": STARTED, "scenario_id": SID, "label": "malware_usb",
@@ -52,13 +57,17 @@ def _seed(s, sealed=True, dispositioned=True):
                          "scenario_label": "malware_usb"}]
     s["queue_length"] = 1
     s["scenario_grading"] = [{"scenario_id": SID, "reviewed": True,
-                              "hostnames": {WS}, "accounts": set()}]
+                              "hostnames": {WS, ENV_ONLY}, "accounts": set()}]
     s["detections"] = [
         {"id": "det-tp", "scenario_id": SID, "disposition": "true_positive",
          "player_action": act, "entity": {"host": WS}},
         {"id": "det-amb", "scenario_id": None, "disposition": "benign_expected",
          "player_action": act, "entity": {"host": WS}},
-        # unrelated ambient on a different host: must NOT be in this roster
+        # ambient on the environment-only host: declared by this scenario's
+        # environment but never observable -> must NOT be in this roster
+        {"id": "det-envonly", "scenario_id": None, "disposition": "benign_expected",
+         "player_action": "open", "entity": {"host": ENV_ONLY}},
+        # unrelated ambient on a foreign host: must NOT be in this roster
         {"id": "det-other", "scenario_id": None, "disposition": "benign_expected",
          "player_action": "open", "entity": {"host": "ACME-WS99"}},
     ]
@@ -104,27 +113,42 @@ def test_scope_withholds_roster_total_before_seal():
 
 def test_scope_structural_no_grading_or_expected_actions():
     """C1: the scope-read implementation references no answer-key / grading
-    input. Structural guard over the source, complementing the field leak check."""
+    input. Structural guard over the source, complementing the field leak check.
+    Pre-Stage-5 hotfix: the guard also covers the shared roster derivation AND
+    the readiness chain (_incident_roster, _incident_detections,
+    _incident_open_detections, incident_submission_readiness) — the entire
+    roster/readiness path must be observable-only, closing the class where a
+    grading-side consumer silently joins over a different host set."""
     src = inspect.getsource(app._incident_observable_scope)
     src += inspect.getsource(app.incident_scope_route)
+    src += inspect.getsource(app._incident_roster)
+    src += inspect.getsource(app._incident_detections)
+    src += inspect.getsource(app._incident_open_detections)
+    src += inspect.getsource(app.incident_submission_readiness)
     for forbidden in ("expected_actions", "scenario_grading", "_grading_record_for",
                       "grading_rec", "answer_key"):
-        assert forbidden not in src, f"scope read references {forbidden!r}"
+        assert forbidden not in src, f"scope/roster read references {forbidden!r}"
 
 
 def test_observable_roster_matches_readiness_roster():
     """The observable roster equals the readiness roster (`_incident_detections`),
-    so the Triage 'X of Y' is consistent with the submission gate; the unrelated
-    ambient on another host is excluded from both."""
+    so the Triage 'X of Y' is consistent with the submission gate. The escaped
+    pre-Stage-5 configuration is now IN the fixture: the grading record carries
+    an environment-declared host (ENV_ONLY) with an open ambient benign and no
+    written event — that detection must be excluded from BOTH rosters, exactly
+    like the unrelated foreign-host ambient. (Red on the pre-hotfix join, which
+    admitted det-envonly into readiness/grading while every display excluded it.)"""
     client, sid, s = _api_session()
     try:
         with s["io_lock"]:
             _seed(s)
-            grec = app._grading_record_for(s, SID)
-            readiness = {d["id"] for d in app._incident_detections(s, SID, grec)}
+            readiness = {d["id"] for d in app._incident_detections(s, SID)}
+            open_ids = {d["id"] for d in app._incident_open_detections(s, SID)}
             observable = set(app._incident_observable_scope(s, INC)["roster_ids"])
         assert observable == readiness == {"det-tp", "det-amb"}
+        assert "det-envonly" not in readiness and "det-envonly" not in observable
         assert "det-other" not in observable
+        assert open_ids == set()  # the open env-only ambient never blocks
     finally:
         _cleanup(sid, s)
 

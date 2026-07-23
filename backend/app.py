@@ -3355,17 +3355,43 @@ def _grading_record_for(s, scenario_id):
                  if g["scenario_id"] == scenario_id), None)
 
 
-def _incident_detections(s, scenario_id, grading_rec):
+def _incident_roster(s, scenario_id, written=None):
+    """THE single shared incident-roster derivation (pre-Stage-5 hotfix): the
+    incident's scenario-tagged detections plus ambient benign detections on its
+    OBSERVABLE participant hosts (hostnames on its written non-normal events +
+    entity hosts of its tagged detections). Consumed by BOTH the display scope
+    (_incident_observable_scope) and readiness/progress/grading
+    (_incident_detections), so the displayed roster, "X of Y reviewed", Ready,
+    Submit enablement, submit-time readiness, and the grade are equal BY
+    CONSTRUCTION. Observable inputs only — never environment-declared host
+    sets, so a declared host with no observable telemetry admits no ambient
+    detections into the roster (they stay session-wide triage material).
+    Caller holds io_lock. Returns {"events", "tagged", "hosts", "roster"}."""
+    if written is None:
+        written = _read_ndjson_unlocked(s["paths"]["generated_logs"])
+    events = [l for l in written
+              if l.get("scenario_id") == scenario_id
+              and l.get("label") != "normal_traffic"]
+    detections = s.get("detections", [])
+    tagged = [d for d in detections if d.get("scenario_id") == scenario_id]
+    hosts = {l.get("hostname") for l in events if l.get("hostname")}
+    hosts |= {(d.get("entity") or {}).get("host") for d in tagged}
+    hosts.discard(None)
+    ambient = [d for d in detections
+               if d.get("scenario_id") is None
+               and (d.get("entity") or {}).get("host") in hosts]
+    return {"events": events, "tagged": tagged, "hosts": hosts,
+            "roster": tagged + ambient}
+
+
+def _incident_detections(s, scenario_id, written=None):
     """This incident's detections: its own scenario-tagged detections plus the
-    ambient benign detections on its hosts. Server-side only."""
-    hosts = grading_rec["hostnames"] if grading_rec else set()
-    out = []
-    for d in s.get("detections", []):
-        if d.get("scenario_id") == scenario_id:
-            out.append(d)
-        elif d.get("scenario_id") is None and (d.get("entity") or {}).get("host") in hosts:
-            out.append(d)
-    return out
+    ambient benign detections on its OBSERVABLE participant hosts — the shared
+    _incident_roster derivation the display scope also consumes (pre-Stage-5
+    hotfix: previously this joined ambient over the environment-declared host
+    set, which admitted detections invisible to every incident-scoped surface).
+    Server-side only."""
+    return _incident_roster(s, scenario_id, written=written)["roster"]
 
 
 def _incident_expected(s, scenario_id):
@@ -3403,7 +3429,7 @@ def _incident_report_card(s, scenario_id, grading_rec, payload, all_logs):
     classification = _classification_grade(
         payload.get("verdict"), payload.get("category"), actual_category)
 
-    dets = _incident_detections(s, scenario_id, grading_rec)
+    dets = _incident_detections(s, scenario_id, written=all_logs)
     detection = compute_detection_score(dets)
 
     overlay = s.get("overlay") or action_overlay.new_overlay()
@@ -3466,9 +3492,9 @@ def _incident_roster_sealed(s, scenario_id):
     return bool(entry and entry.get("chain_complete_at"))
 
 
-def _incident_open_detections(s, scenario_id, grading_rec):
+def _incident_open_detections(s, scenario_id):
     """The incident's sealed-roster detections still awaiting a disposition."""
-    return [d for d in _incident_detections(s, scenario_id, grading_rec)
+    return [d for d in _incident_detections(s, scenario_id)
             if d.get("player_action", "open") == "open"]
 
 
@@ -3486,15 +3512,17 @@ def _valid_classification(payload):
     return True
 
 
-def incident_submission_readiness(s, scenario_id, grading_rec):
+def incident_submission_readiness(s, scenario_id):
     """Observable submission readiness (never answer-key-derived). Returns one
     of: ('sealing', 0) while the roster is still attaching, ('open', n) with n
     detections from the finalized roster still awaiting a disposition, or
-    ('ready', 0). Response actions never gate submission (a required-action
-    count is hidden answer-key information)."""
+    ('ready', 0). The roster is the shared observable derivation
+    (_incident_roster), so readiness never demands work invisible to the
+    incident's own display. Response actions never gate submission (a
+    required-action count is hidden answer-key information)."""
     if not _incident_roster_sealed(s, scenario_id):
         return "sealing", 0
-    open_dets = _incident_open_detections(s, scenario_id, grading_rec)
+    open_dets = _incident_open_detections(s, scenario_id)
     if open_dets:
         return "open", len(open_dets)
     return "ready", 0
@@ -3527,7 +3555,7 @@ def submit_incident(s, incident_id, payload):
             return {"status": "invalid_classification"}
 
         grading_rec = _grading_record_for(s, scenario_id)
-        state, open_n = incident_submission_readiness(s, scenario_id, grading_rec)
+        state, open_n = incident_submission_readiness(s, scenario_id)
         if state == "sealing":
             return {"status": "sealing"}
         if state == "open":
@@ -3537,7 +3565,7 @@ def submit_incident(s, incident_id, payload):
         overlay = s.get("overlay") or action_overlay.new_overlay()
         rc = _incident_report_card(s, scenario_id, grading_rec, payload, all_logs)
 
-        dets = _incident_detections(s, scenario_id, grading_rec)
+        dets = _incident_detections(s, scenario_id, written=all_logs)
         isolated = sorted(h for h in overlay.get("isolated", ())
                           if grading_rec and h in grading_rec["hostnames"])
         record = {
@@ -3615,13 +3643,13 @@ def submit_incident(s, incident_id, payload):
 def _incident_progress(s, scenario_id, grading_rec):
     """Observable activity only — never required-action counts or any
     answer-key-derived total. Served for an unsubmitted incident."""
-    dets = _incident_detections(s, scenario_id, grading_rec)
+    dets = _incident_detections(s, scenario_id)
     triaged = sum(1 for d in dets if d.get("player_action") != "open")
     overlay = s.get("overlay") or action_overlay.new_overlay()
     registry = s.get("entity_index", {})
     scoped = [e for e in overlay.get("log", []) if _entry_in_scope(e, grading_rec, registry)]
     executed = sum(1 for e in scoped if e["outcome"] == action_overlay.SUCCESS)
-    state, open_n = incident_submission_readiness(s, scenario_id, grading_rec)
+    state, open_n = incident_submission_readiness(s, scenario_id)
     return {
         "detections_triaged": triaged,
         "detections_open": len(dets) - triaged,
@@ -3836,14 +3864,16 @@ def incident_score_route(incident_id):
 
 # ---------------------------------------------------------------------------
 # Stage 3.9B: incident presentation scope, from OBSERVABLE ATTRIBUTION ONLY.
-# This function and its route are deliberately self-contained and reference
-# ONLY observable inputs: the opaque incident->scenario id map, the written
-# event pool, the player-visible detection list, and the chain-complete seal
-# marker. They NEVER read scenario_grading, expected_actions, answer keys, or
-# grading config (enforced by test_incident_scope.py's structural guard). The
-# authoritative detection roster is attributed by each detection's own tag
-# (scenario_id) plus ambient-benign detections on the incident's observable
-# participant hosts; a shared host's ambient benign appears honestly under
+# This function and its route reference ONLY observable inputs: the opaque
+# incident->scenario id map, the written event pool, the player-visible
+# detection list, and the chain-complete seal marker. They NEVER read
+# scenario_grading, expected_actions, answer keys, or grading config (enforced
+# by test_incident_scope.py's structural guard, which also covers the shared
+# _incident_roster derivation). The authoritative detection roster is
+# attributed by each detection's own tag (scenario_id) plus ambient-benign
+# detections on the incident's observable participant hosts — via
+# _incident_roster, the SAME derivation readiness/progress/grading consume
+# (pre-Stage-5 hotfix); a shared host's ambient benign appears honestly under
 # every incident whose observable scope includes that host.
 # ---------------------------------------------------------------------------
 
@@ -3858,18 +3888,11 @@ def _incident_observable_scope(s, incident_id):
     if scenario_id is None:
         return None
     sealed = _incident_roster_sealed(s, scenario_id)
-    written = _read_ndjson_unlocked(s["paths"]["generated_logs"])
-    events = [l for l in written
-              if l.get("scenario_id") == scenario_id
-              and l.get("label") != "normal_traffic"]
-    detections = s.get("detections", [])
-    tagged = [d for d in detections if d.get("scenario_id") == scenario_id]
-
-    # observable participant hosts/accounts: written event participants + the
-    # entities of this incident's own (tagged) detections.
-    hosts = {l.get("hostname") for l in events if l.get("hostname")}
-    hosts |= {(d.get("entity") or {}).get("host") for d in tagged}
-    hosts.discard(None)
+    # Shared derivation (pre-Stage-5 hotfix): hosts + roster come from
+    # _incident_roster, the SAME function readiness/progress/grading consume,
+    # so every surface is equal by construction.
+    ro = _incident_roster(s, scenario_id)
+    events, tagged, hosts = ro["events"], ro["tagged"], ro["hosts"]
     accounts = set()
     for l in events:
         acct = (l.get("key_value_pairs") or {}).get("account_name")
@@ -3880,12 +3903,7 @@ def _incident_observable_scope(s, incident_id):
         if acct:
             accounts.add(acct)
 
-    # authoritative roster: tagged detections + ambient benign (untagged) on the
-    # incident's observable hosts (honest shared visibility).
-    ambient = [d for d in detections
-               if d.get("scenario_id") is None
-               and (d.get("entity") or {}).get("host") in hosts]
-    roster = tagged + ambient
+    roster = ro["roster"]
     roster_ids = [d["id"] for d in roster]
     triaged = sum(1 for d in roster if d.get("player_action", "open") != "open")
     return {
