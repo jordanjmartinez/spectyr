@@ -1,15 +1,18 @@
 # Stage 5A Contract — Live Run Feedback, Teaching, and Player Trust
 
-**Status: FINAL DRAFT (Revision 3) — pending final lock review. All 16
-owner decisions RATIFIED as recommended at the owner review of 2026-07-22,
-subject to the seven required corrections folded in at Revision 2. NOT
-LOCKED. Lock-sequence progress: the two ratified pre-lock micro-fixes are
-MERGED — M1 F9 scope truth (merge `38ee145`) and M2 robocopy hostname
-(merge `09eea3b`) — and this revision is the post-merge baseline and
-line-reference update; the contract now returns for final lock review. No
-implementation scaffold exists; no product code lands from this document
-until the lock and the separately approved scaffold (scaffold -> approve
--> implement).**
+**Status: LOCKED (owner final lock review PASSED, 2026-07-24). Revision 3
+is the locked text; the lock applies at repository baseline `main`
+`09eea3b`. All 16 owner decisions RATIFIED (owner review 2026-07-22, the
+seven corrections folded in at Revision 2; zero decisions open); both
+ratified pre-lock micro-fixes are MERGED and in the baseline — M1 F9
+scope truth (merge `38ee145`) and M2 robocopy hostname (merge `09eea3b`).
+From this lock, the contract changes ONLY through an explicit
+owner-approved amendment — never a new general review cycle, never silent
+drift; reason-code registry additions (Section 7.1) are contract
+amendments. Everything Section 20 defers stays deferred until separately
+authorized. No implementation scaffold exists; no product code lands from
+this document until the separately approved scaffold (scaffold ->
+approve -> implement).**
 
 **Repository baseline:** `main` at `09eea3b` ("Pre-lock micro-fix M2: merge
 robocopy s2 hostname fix (c510c50, ratified OD-10)"), whose ancestry
@@ -31,7 +34,15 @@ recorded owner ruling — including the sixteen Section 21 rulings of
 2026-07-22), **[Recommendation]** (superseded in this revision: every
 recommendation was ratified), **[Deferred]**.
 
-**Changelog from Revision 2 (this baseline update; docs-only):**
+**Lock record (2026-07-24):** the owner's final lock review PASSED; the
+contract is LOCKED with Revision 3 as the locked text, at baseline `main`
+`09eea3b`. This lock-record edit changes the status block, this entry,
+and the two statements of lock state (Section 23 and the closing
+deliverable mapping) only — no substantive content changed. From this
+point the contract changes only through explicit owner-approved
+amendments (including reason-code registry additions, Section 7.1).
+
+**Changelog from Revision 2 (the pre-lock baseline update; docs-only):**
 
 1. The two ratified pre-lock micro-fixes recorded as MERGED: M1 F9
    scope-truth fix (branch commit `0fef8ae`, merge `38ee145`) and M2
@@ -1422,8 +1433,8 @@ own phase late enough to inherit the settled vocabulary.
   MERGED** — M1 at `38ee145` (with the `scope-truth.test.js` three-way
   sync battery), M2 at `09eea3b` (with the roster-corpus hostname
   regression test); the baseline and line references are updated in this
-  revision; Section 14 re-verified with no count change to report. The
-  contract is now at the final-lock-review step of the sequence.
+  revision; Section 14 re-verified with no count change to report. Final
+  lock review PASSED 2026-07-24: the contract is LOCKED.
 - **Phase 1 — Scope truth and investigation context (5.6):** single-source
   scope state on all three surfaces; context summary; parse-failure
   truth; dual return controls. (F8/F9 closed architecturally.)
@@ -1460,12 +1471,12 @@ the owner's discretion.
 
 ---
 
-*Deliverable mapping: final contract draft, Revision 3 (this document);
+*Deliverable mapping: locked contract, Revision 3 (this document);
 repository inventory (Sections 3-4); authoring-cost totals (Section 14);
 ratified owner decisions (Section 21); phases, lock sequence, and risks
-(Section 23); reference matrix (Section 22). This contract is NOT locked:
-both ratified pre-lock micro-fixes are merged (M1 `38ee145`, M2
-`09eea3b`) and the baseline and line references are updated in this
-revision; the contract is now presented for final lock review. No
-scaffold exists; no implementation or Stage 5B work begins from this
+(Section 23); reference matrix (Section 22). This contract is LOCKED
+(owner final lock review PASSED, 2026-07-24, at baseline `main`
+`09eea3b`); changes require explicit owner-approved amendments. No
+scaffold exists; the implementation scaffold is the next separately
+approved artifact; no implementation or Stage 5B work begins from this
 document.*
