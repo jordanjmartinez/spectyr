@@ -1,27 +1,56 @@
 # Stage 5A Contract — Live Run Feedback, Teaching, and Player Trust
 
-**Status: FINALIZED DRAFT (Revision 2) — approved in direction at the owner
-review of 2026-07-22; all 16 owner decisions RATIFIED as recommended,
-subject to the seven required corrections folded into this revision. NOT
-LOCKED. Lock sequence, per the review ruling: the two ratified pre-lock
-micro-fixes (F9 scope truth; robocopy hostname) land as separate merges
-first; this contract's baseline and factual line references are then
-updated; the contract returns for final lock review. No implementation
-scaffold exists; no product code lands from this document until the lock
-and the separately approved scaffold (scaffold -> approve -> implement).**
+**Status: FINAL DRAFT (Revision 3) — pending final lock review. All 16
+owner decisions RATIFIED as recommended at the owner review of 2026-07-22,
+subject to the seven required corrections folded in at Revision 2. NOT
+LOCKED. Lock-sequence progress: the two ratified pre-lock micro-fixes are
+MERGED — M1 F9 scope truth (merge `38ee145`) and M2 robocopy hostname
+(merge `09eea3b`) — and this revision is the post-merge baseline and
+line-reference update; the contract now returns for final lock review. No
+implementation scaffold exists; no product code lands from this document
+until the lock and the separately approved scaffold (scaffold -> approve
+-> implement).**
 
-**Repository baseline:** `main` at `a204995` ("Pre-Stage-5 hotfix closure:
-merge one-shared-incident-roster fix (57368f5..2e52dcb)"); merged-main gates
-ALL GREEN (backend 27 suites; frontend 17 suites / 164 tests). Branch:
-`stage-5a-live-run-feedback-contract`. Repository claims in this contract
-cite `path:line` at this baseline. **This baseline block and every cited
-line number will be re-verified and updated after the two pre-lock
-micro-fixes merge, before final lock review.**
+**Repository baseline:** `main` at `09eea3b` ("Pre-lock micro-fix M2: merge
+robocopy s2 hostname fix (c510c50, ratified OD-10)"), whose ancestry
+includes M1 at `38ee145` ("Pre-lock micro-fix M1: merge F9 scope-truth fix
+(0fef8ae, ratified OD-16)"). **Both pre-lock micro-fixes are IN this
+baseline: the F9 split-derivation defect and the robocopy IP-in-hostname
+defect no longer exist at baseline** (their findings below are retained as
+historical evidence, marked FIXED). Merged-main gates ALL GREEN
+(`run_gates.py --all`, 2026-07-24: backend 27 suites; frontend 18 suites /
+173 tests — M1 added `scope-truth.test.js`). Branch:
+`stage-5a-live-run-feedback-contract`, brought to this tip by merge (no
+history rewrite); both micro-fix merge commits verified as ancestors.
+Repository claims in this contract cite `path:line` at this baseline;
+every citation was re-verified at the Revision 3 baseline update and those
+the two micro-fix diffs moved were updated.
 
 Decision markers, matching the Stage 4A convention: **[Ratified]** (a
 recorded owner ruling — including the sixteen Section 21 rulings of
 2026-07-22), **[Recommendation]** (superseded in this revision: every
 recommendation was ratified), **[Deferred]**.
+
+**Changelog from Revision 2 (this baseline update; docs-only):**
+
+1. The two ratified pre-lock micro-fixes recorded as MERGED: M1 F9
+   scope-truth fix (branch commit `0fef8ae`, merge `38ee145`) and M2
+   robocopy hostname correction (branch commit `c510c50`, merge
+   `09eea3b`). Baseline moved from `a204995` to `09eea3b`; gates re-run
+   and suite/test counts recorded.
+2. Every `path:line` citation re-verified at the new baseline; the
+   Detections/Endpoints citations M1 moved were updated (Sections 3-F5,
+   3-F8, 3-F9, 4.2, 11.1); F9 and the F7 robocopy defect marked FIXED
+   with their merge hashes, diagnoses retained as historical evidence;
+   several Rev 2 `app.py` citation ranges corrected for accuracy
+   (`app.py` itself is unchanged since `a204995`; the old ranges were
+   inexact at authoring).
+3. Section 14 counts confirmed against the corrected corpus by script
+   re-run: every per-scenario row and every total unchanged; no count
+   change to report at final lock review.
+4. Section 7.1 editorial fix from owner review: `acceptable_completed`
+   added to the enumeration of entries that also carry
+   `source_action_seq`, matching the null-only rule.
 
 **Changelog from Revision 1 (the seven review corrections):**
 
@@ -85,7 +114,8 @@ unchanged engine. Its six workstreams:
   explanation of the concepts the first playthrough stumbled on (Section 12).
 - **5.6 Investigation context and scope truth** — one source of truth for
   "current case" and "data scope"; the F9 contradictory-signals defect is
-  diagnosed to its root cause in this contract (Section 11).
+  diagnosed to its root cause in this contract and fixed at baseline by
+  pre-lock micro-fix M1 (Sections 3, 11).
 
 Scope discipline: presentation, disclosure-timing, and teaching content only.
 No scoring function, weight, readiness rule, roster semantics, LCQL grammar,
@@ -131,8 +161,12 @@ contract is designed inside them.
 
 ## 3. First-playthrough evidence, verified against the repository
 
-Each finding was re-diagnosed against the code at baseline `a204995`. Where
-the finding named a suspected defect, the root cause is identified here.
+Each finding was re-diagnosed against the code at the Revision 2 baseline
+`a204995`. Where the finding named a suspected defect, the root cause is
+identified here. **Revision 3 note:** the two defects ratified as pre-lock
+micro-fixes (F7 item 1, F9) are FIXED at the current baseline `09eea3b`
+and are marked so below, their diagnoses retained as historical evidence;
+every other citation in this section was re-verified at `09eea3b`.
 
 ### F1 — submission roster mismatch (FIXED, inherited invariant)
 
@@ -158,7 +192,7 @@ Repository truth of the current review path:
 - The response section of the immutable record serializes **counts only**:
   `{required, correct, missed, collateral, order_violations, graded,
   accuracy, grade}` (`compute_action_score`, app.py:4425-4437) plus three
-  factual entry lists added by `_incident_report_card` (app.py:3423-3431):
+  factual entry lists added by `_incident_report_card` (app.py:3449-3457):
   `acceptable_taken`, `not_executed`, `no_effect` — each entry a sanitized
   action-log row. **Nothing identifies which required actions were missed or
   which executed actions were collateral.** Expected composites never
@@ -210,10 +244,10 @@ remedies and recommends one.
 
 The established meanings are all repository truth: Promote and Dismiss both
 count as reviewed (`triaged` counts `player_action != 'open'`,
-app.py:3917-3918); Reopen returns a detection to unresolved
+app.py:3908); Reopen returns a detection to unresolved
 (`set_detection_disposition`, app.py:3018-3033); response actions never
 review detections and never gate submission (app.py readiness; CLAUDE.md);
-Threats shows promoted detections only (`Detections.jsx:193`); Feed shows
+Threats shows promoted detections only (`Detections.jsx:195`); Feed shows
 all. The current copy is scattered and partially misleading — full surface
 inventory in Section 10, including the phase strip's "Respond N related"
 count, which is derived by fuzzy substring matching of action-log labels
@@ -232,27 +266,36 @@ focus.
 
 ### F7 — Stage 5 backlog items (classified, per the required scheme)
 
-1. **`false_positive_robocopy` IP in the hostname field — CONTENT DEFECT.**
-   Root cause found: `backend/scenarios/v2/false_positive_robocopy.yaml`
-   attack step `s2` authors `hostname: '{infra.file.ip}'` (resolving to
-   `10.0.1.201`), so an IP string enters the observable host set (and the
-   Related-hosts line, endpoint pivots, and descent host anchors).
-   **[Ratified, OD-10]** venue: a **separate content micro-fix landing
-   BEFORE this contract is locked** — a one-line YAML correction to
-   `{infra.file.hostname}` through the standing correction-registry +
-   parity-divergence process (`scenario_corrections.py`), because it
-   touches frozen scenario content (v1/v2 parity) and no Stage 5
-   presentation work depends on it. It is NOT folded into any 5A
-   workstream, and it is NOT implemented by this contract task.
-   **Section 14 impact, confirmed:** the correction changes one hostname
-   placeholder in chain content only; it touches no `answer_key.actions`
-   entry, no `triage_review.response_actions` step, and no `detections`
-   entry, so every Section 14 count is unchanged. If the fix as actually
-   landed changes any Section 14 count, that change must be REPORTED at
-   the baseline update, never silently edited in.
+1. **`false_positive_robocopy` IP in the hostname field — CONTENT DEFECT,
+   FIXED at baseline** (micro-fix M2, branch commit `c510c50`, merge
+   `09eea3b`). Historical root cause (diagnosed at `a204995`):
+   `backend/scenarios/v2/false_positive_robocopy.yaml` attack step `s2`
+   authored `hostname: '{infra.file.ip}'` (resolving to `10.0.1.201`), so
+   an IP string entered the observable host set (and the Related-hosts
+   line, endpoint pivots, and descent host anchors). **[Ratified, OD-10]**
+   venue: a **separate content micro-fix landing BEFORE this contract is
+   locked** through the standing correction-registry + parity-divergence
+   process — landed exactly as ruled, not folded into any 5A workstream.
+   At this baseline the step authors `hostname: '{infra.file.hostname}'`
+   (scenarios/v2/false_positive_robocopy.yaml:38, rendering `ACME-SVR02`);
+   the registered correction record in `scenario_corrections.py` is the
+   approved v1/v2 parity-divergence record (parity_check_v2 CLEAN,
+   robocopy at 2 approved divergences, 24 total); the frozen v1 corpus is
+   untouched; targeted regression `test_incident_roster_corpus.py::`
+   `test_robocopy_file_server_hostname_is_not_an_ip` proves the IP-free
+   observable host set with `ACME-SVR02` present on a real drip.
+   **Section 14 impact, re-confirmed post-merge:** the landed correction
+   touched no `answer_key.actions` entry, no
+   `triage_review.response_actions` step, and no `detections` entry;
+   every Section 14 count is unchanged (re-verified by script at
+   `09eea3b`, Section 14). Backlog observation from M2's report, flagged
+   there rather than silently changed: the same step's kvp `computer`
+   field still carries the IP placeholder (outside the ruled one-line
+   correction; UNC-path IP usages in `command_line`/`object_name` are
+   correct and deliberate).
 2. **Transient "0 of 0 reviewed" on a completed incident — PRESENTATION
    DEFECT.** Root cause found: completed cards from `/api/incidents` carry
-   `incident_grade` but no `triage` field (app.py:3959-3963), and
+   `incident_grade` but no `triage` field (app.py:3976-3981), and
    `Incidents.jsx:240` renders the phase strip for submitted incidents with
    `sealed` forced true, so `PhaseStrip` falls back to
    `{total: 0, triaged: 0}` (`Incidents.jsx:21`) — displaying "Triage 0 of 0
@@ -271,7 +314,7 @@ aware of the others:
 |---|---|---|
 | Focused incident ("current case") | `Dashboard.jsx:24` `activeIncidentId` | Global banner "Focused on incident INC-####" on every non-dashboard tab (`Dashboard.jsx:303-313`) |
 | SIEM data scope + pivot origin | `Siem.jsx:50` `scope` state machine, `Siem.jsx:69` `lastIncident`, `Siem.jsx:75` `timeline` | Scope select, scope chip, return chip, descent/surrounding banner |
-| Detections/Endpoints data scope | `Detections.jsx:101-102` / `Endpoints.jsx:64-65` (`scopeIds`/`scopeHosts` + `scoped`) | Per-tab scope label + This-incident/Session-wide toggle |
+| Detections/Endpoints data scope | `Detections.jsx:103` / `Endpoints.jsx:67` — the shared `useIncidentScope` hook (post-M1: ONE selection + fetch-status state per surface) | Per-tab `IncidentScopeBar` (scope label + This-incident/Session-wide toggle, rendered from that same state) |
 
 Verified consequences: the header can honestly show one focused incident
 while the SIEM scope is Session-wide (two different concepts, never labeled
@@ -286,10 +329,17 @@ query** (`Siem.jsx:509-517`; the snapshot object is deliberately preserved).
 Section 11 defines the Investigation Context summary and the labeling that
 separates "current case" from "data scope".
 
-### F9 — scope controls and labels contradict each other (ROOT CAUSE FOUND)
+### F9 — scope controls and labels contradict each other (ROOT CAUSE FOUND; FIXED at baseline)
 
-**This is a real presentation-state defect, not just unclear wording.** In
-both `Detections.jsx` and `Endpoints.jsx`:
+**FIXED at baseline by pre-lock micro-fix M1** (branch commit `0fef8ae`,
+merge `38ee145`), which implements the Section 11.1 behavior table. The
+diagnosis below is retained as historical evidence; its `path:line`
+citations are at the pre-fix baseline `a204995` and **those lines no
+longer exist** — the current implementation is cited at the end of this
+finding.
+
+**This was a real presentation-state defect, not just unclear wording.** In
+both `Detections.jsx` and `Endpoints.jsx` (as of `a204995`):
 
 - The **toggle highlight** reads the raw preference `scoped`
   (`Detections.jsx:218-224`, `Endpoints.jsx:145-152`).
@@ -319,14 +369,39 @@ sees exactly the reported contradiction. Classification under the F7 scheme:
 
 **[Ratified, OD-16]** Because the defect misrepresents which data the
 player is looking at (a trust defect of exactly the class the hotfix just
-closed on the server side), it is fixed as a **separate presentation
+closed on the server side), it was fixed as a **separate presentation
 micro-fix landing BEFORE this contract is locked** (derive all three
 signals from one state value + explicit loading/error presentation + the
 per-surface scope refresh triggers), with the full single-source-of-truth
 architecture landing in workstream 5.6. The micro-fix implements exactly
 the Section 11.1 loading/error/refresh behavior table (review correction
-5) — that table, not this paragraph, is the binding specification. It is
-NOT implemented by this contract task.
+5) — that table, not this paragraph, is the binding specification.
+
+**Landed as ruled (M1, in baseline).** The current implementation derives
+all three signals from ONE state value:
+
+- `frontend/src/components/useIncidentScope.js` — the per-surface hook:
+  single `selection` + explicit fetch `status`; scoped data retained
+  through in-flight refreshes and failures and replaced atomically;
+  dropped on incident change; the row policy
+  (`all`/`scoped`/`loading`/`error`) derives from that one state
+  (useIncidentScope.js:76-78).
+- `frontend/src/components/IncidentScopeBar.jsx` — label, toggle
+  (`aria-pressed`), and loading/error notices, including the stale-rows
+  honesty statement "Displayed rows are from the last successful scope
+  read." (IncidentScopeBar.jsx:37) and the explicit Retry / Use
+  Session-wide controls, all rendered from the same state.
+- Consumers: `Detections.jsx:103` (rows derive at `Detections.jsx:192-198`;
+  the scope refetch joins the existing 2.5s feed poll,
+  `Detections.jsx:131-138`) and `Endpoints.jsx:67` (rows derive at
+  `Endpoints.jsx:106-112`; refetch on every tab-visibility change,
+  `Endpoints.jsx:86-93`, no poll introduced).
+- Permanent guard: `frontend/src/__tests__/scope-truth.test.js` (the
+  three-way label/control/rows synchronization battery, in the frontend
+  gate suite).
+
+The stale-scoped-filter consequence diagnosed above (one-shot fetch, never
+re-polled) is likewise gone: the per-surface refresh triggers are live.
 
 ---
 
@@ -336,16 +411,16 @@ NOT implemented by this contract task.
 
 | Surface | Repository truth |
 |---|---|
-| Submission record | `session["submissions"][id]` = `{incident_id, assisted, submitted_at, inputs: {classification {verdict, category, report}, detection_dispositions {det_id: action}, action_seq_cutoff, isolation_end_state}, report_card}` (app.py:3543-3556). Immutable; byte-identical reads. |
-| Per-incident report card | `report_card` = `{classification, detection, response, composite, _response_raw, _inaction_collateral}` (app.py:3439-3447); leading-underscore keys stripped at serialization (app.py:3647-3649). |
-| Response section fields | counts + grade (app.py:4425-4437) + `acceptable_taken` / `not_executed` / `no_effect` `{count, entries}` blocks of sanitized log rows (app.py:3423-3431). No missed/collateral identities. |
+| Submission record | `session["submissions"][id]` = `{incident_id, assisted, submitted_at, inputs: {classification {verdict, category, report}, detection_dispositions {det_id: action}, action_seq_cutoff, isolation_end_state}, report_card}` (app.py:3571-3584). Immutable; byte-identical reads. |
+| Per-incident report card | `report_card` = `{classification, detection, response, composite, _response_raw, _inaction_collateral}` (app.py:3465-3473); leading-underscore keys stripped at serialization (app.py:3676-3677). |
+| Response section fields | counts + grade (app.py:4425-4437) + `acceptable_taken` / `not_executed` / `no_effect` `{count, entries}` blocks of sanitized log rows (app.py:3449-3457). No missed/collateral identities. |
 | Expected actions | `session["expected_actions"]` materialized composites per drip: `{scenario_id, eid, action, status, target composite, after}` (`materialize_expected_actions`, app.py:2340). Server-side only; never serialized anywhere today. Append-only per drip; an incident's set is fixed once dripped. |
 | Response log | `GET /api/actions` = every attempt, sanitized `{seq, timestamp, action, outcome, reason, target {id, kind, label}}` (app.py:3110-3117; `sanitize_action_entry`, action_overlay.py:485-498). |
-| Readiness / progress | `incident_submission_readiness` (app.py) and `_incident_progress` (app.py:3641-3661) — both consume the shared `_incident_roster`. Progress = observable counts only. |
-| Incident cards | `/api/incidents`: active sealed cards carry `triage {total, triaged}`, `open_detections`, `ready`; completed cards carry `incident_grade` + `assisted` and **no triage** (app.py:3951-3974). Plus `stats.severity_breakdown`. |
-| Incident scope | `/api/incidents/<id>/scope`: `{incident_id, sealed, hosts, accounts, detection_ids, triage?}` (app.py:4112-4134); observable-only; structurally guarded. |
+| Readiness / progress | `incident_submission_readiness` (app.py) and `_incident_progress` (app.py:3643-3663) — both consume the shared `_incident_roster`. Progress = observable counts only. |
+| Incident cards | `/api/incidents`: active sealed cards carry `triage {total, triaged}`, `open_detections`, `ready`; completed cards carry `incident_grade` + `assisted` and **no triage** (app.py:3963-3993). Plus `stats.severity_breakdown`. |
+| Incident scope | `/api/incidents/<id>/scope`: `{incident_id, sealed, hosts, accounts, detection_ids, triage?}` (app.py:4102-4125); observable-only; structurally guarded. |
 | Post-Incident Review content | `/api/incidents/<id>/triage-review`: submitted-only 404 gate; serializes the scenario's `mitre`, `what_is_it`, `response_actions`, label stripped (app.py:4611-4628). |
-| Check Answer | Guided allow-list; classification correctness only; marks Assisted (app.py:4137+). |
+| Check Answer | Guided allow-list; classification correctness only; marks Assisted (app.py:4127+). |
 | Guided catalog / intake | `/api/guided-catalog` answer-neutral picker; `build_guided_queue` single-incident run (app.py:4070). |
 | Score endpoints | `/api/incidents/<id>/score`, `/api/analytics/report_card` / `action_score` / `detection_score` — discriminated `{state, progress|grading}` shapes, submission-gated. |
 
@@ -355,9 +430,10 @@ NOT implemented by this contract task.
 |---|---|
 | `Dashboard.jsx` | Tab shell; global `activeIncidentId` focus + banner; `descentRequest` plumbing; mode/reset/practice-another flows. |
 | `Incidents.jsx` | Workspace: Active/Ready/Completed views; `PhaseStrip` (Triage "X of Y reviewed" / Investigate / Respond "N related" / Submit ready-pending); readiness copy ("N detections still need review.", "Incident telemetry is still loading."); Submit -> classifier -> confirm; Check Answer; Post-Incident Review modal (grades + what_is_it only); Practice Another warning; fuzzy Related-response matching (`:84-88`). |
-| `Detections.jsx` | Feed/Threats/Response Log toggle; scope toggle + one-shot `scopeIds` fetch (F9); "N open · N promoted · N dismissed" line; Promote/Dismiss/Reopen; identity response actions on Threats. |
+| `Detections.jsx` | Feed/Threats/Response Log toggle; incident scope via the shared `useIncidentScope` state (post-M1; the scope refetch joins the existing 2.5s feed poll); "N open · N promoted · N dismissed" line; Promote/Dismiss/Reopen; identity response actions on Threats. |
 | `DetectionDetail.jsx` | Rule-evidence trigger cards; Open Evidence Timeline (entity-anchored); triage buttons. |
-| `Endpoints.jsx` | List + one-shot `scopeHosts` scope filter (F9); Isolate/Release in detail. |
+| `Endpoints.jsx` | List + incident scope via `useIncidentScope` (post-M1; refetch on tab visibility, reset, and pivot — no poll); Isolate/Release in detail. |
+| `useIncidentScope.js` / `IncidentScopeBar.jsx` | New in M1: the per-surface single scope-truth state (selection + fetch status + derived row policy) and its label/toggle/notice bar — the seed 5.6's single-source architecture completes. |
 | `Siem.jsx` | Workbench shell: query text vs executed snapshot; scope state machine (loading/ready/error, no silent fallback); return chip (`lastIncident`); descent/surrounding `timeline` banner; new-count indicator + stale de-emphasis; parse-error box (no stale-results statement); snapshot status line (echoes executed canonical query). |
 | `SiemTable.jsx` / `SiemCards.jsx` | Frozen-row renderers; pagination; client sort (table); subtle row highlight + misleading chevron (table) / ring highlight (cards); surrounding-focus scroll centering exists for the focus row only. |
 | `EventInspector.jsx` | One shared lens below results; ==/!=/pivot per-field actions; Surrounding events; no scroll-into-view on selection. |
@@ -503,9 +579,9 @@ axes, plus a separately labeled seq-keyed attempt history:
     `expected_ref`: the stable expected-action identity — the answer key's
     `(action, composite target)` pair, which the loader guarantees unique
     per scenario (duplicate pairs are a load error). A `completed`,
-    `out_of_order`, or `released_after_isolation` entry ALSO carries the
-    `source_action_seq` of the executed occurrence that satisfied (or
-    failed to credit) it.
+    `acceptable_completed`, `out_of_order`, or `released_after_isolation`
+    entry ALSO carries the `source_action_seq` of the executed occurrence
+    that satisfied (or failed to credit) it.
   - Entries whose subject is an **executed action occurrence** (bucket
     `collateral`) carry their exact `source_action_seq` and
     `expected_ref: null`.
@@ -557,7 +633,7 @@ Rules:
   occurrence; later repeats are `no_effect_repeat` history rows);
   isolation completed-ness is END-STATE (`released_after_isolation`);
   order violations are `out_of_order`. Target labels use the registry's
-  existing display labels (`target_label`, action_overlay.py:441-459) and
+  existing display labels (`target_label`, action_overlay.py:445-459) and
   for never-executed required actions a server-rendered label from the
   expected composite in the same display grammar (host name; "name (PID n)
   on host"; file path on host; DOMAIN\user; persistence entry on host).
@@ -849,8 +925,10 @@ Rules:
    the control's selected state, and the row filter derive from **one state
    value** (plus an explicit fetch status), never from parallel derivations.
    The F9 pattern (highlight reads `scoped`, label/data read `scopeActive`)
-   is prohibited. The ratified pre-lock micro-fix (Section 3 F9, OD-16)
-   implements the exact behavior below; 5.6 completes the architecture.
+   is prohibited. The merged pre-lock micro-fix M1 (`38ee145`; Section 3
+   F9, OD-16) implements the exact behavior below through the shared
+   `useIncidentScope` state + `IncidentScopeBar`; 5.6 completes the
+   architecture.
 
    **Exact scope loading/error/refresh behavior (review correction 5,
    binding for Detections and Endpoints):**
@@ -865,14 +943,16 @@ Rules:
 
    **Refresh triggers, per surface (explicit, since the surfaces differ):**
    - **Detections:** scope refetch rides the surface's EXISTING 2.5s feed
-     poll (`Detections.jsx:134-140`) — the scope read joins that interval
-     while an incident scope is selected.
+     poll (implemented by M1: `Detections.jsx:131-138`) — the scope read
+     joins that interval while an incident scope is selected.
    - **Endpoints:** the surface deliberately has NO poll (fetch on tab
-     open, reset, and pivot — `Endpoints.jsx:5-7,78-88`). No poll is
-     introduced: the scope is refetched **on every tab-visibility change**
-     (each time the Endpoints view becomes visible), plus the existing
-     reset and pivot triggers. This bounds staleness to the current visit
-     without changing the surface's no-polling design.
+     open and reset — `Endpoints.jsx:82-84`; pivot —
+     `Endpoints.jsx:95-101`). No poll is introduced: the scope is
+     refetched **on every tab-visibility change** (each time the
+     Endpoints view becomes visible; implemented by M1:
+     `Endpoints.jsx:86-93`), plus the existing reset and pivot triggers.
+     This bounds staleness to the current visit without changing the
+     surface's no-polling design.
    - **SIEM:** unchanged (its scope state machine already implements the
      load/error pattern; snapshots are explicit-run only).
 2. **Atomic scope change:** changing scope updates label, control, and data
@@ -1066,14 +1146,16 @@ Every Tier 2/3 entry is answer-bearing content and must live in a
 review-gated, loader-validated source [Ratified, OD-3], landing under the
 per-scenario commit discipline.
 
-**Pre-lock micro-fix impact on this section (review correction 1):** the
-ratified robocopy correction (OD-10) rewrites one hostname placeholder in
-`false_positive_robocopy.yaml` chain step `s2`. It touches no
-`answer_key.actions` entry, no `triage_review.response_actions` step, and
-no `detections` entry, so **every count in this section is unchanged by
-it**. This will be re-verified at the post-merge baseline update; if the
-landed fix changes any count here, that change is REPORTED to the owner at
-final lock review, never silently edited into this table.
+**Pre-lock micro-fix impact on this section (review correction 1) —
+RE-VERIFIED at the Revision 3 baseline update (2026-07-24):** the landed
+robocopy correction (OD-10, merge `09eea3b`) rewrote one hostname
+placeholder in `false_positive_robocopy.yaml` chain step `s2`. It touched
+no `answer_key.actions` entry, no `triage_review.response_actions` step,
+and no `detections` entry. The counting script was re-run over the
+corrected corpus at `09eea3b`: **every per-scenario row and every total
+above is UNCHANGED** (robocopy row 0/0/0/5/3; 39 required + 20 acceptable
+= 59; 3 `after` orderings; 106 playbook steps; 6 inaction scenarios).
+There is no count change to report to the owner at final lock review.
 
 ---
 
@@ -1336,7 +1418,12 @@ own phase late enough to inherit the settled vocabulary.
   sequence:** after both merge, this contract's baseline block and every
   factual line reference are updated, then the contract returns for final
   lock review. Any Section 14 count change caused by M2 is reported at
-  that review, never silently updated.
+  that review, never silently updated. **Status at Revision 3: BOTH
+  MERGED** — M1 at `38ee145` (with the `scope-truth.test.js` three-way
+  sync battery), M2 at `09eea3b` (with the roster-corpus hostname
+  regression test); the baseline and line references are updated in this
+  revision; Section 14 re-verified with no count change to report. The
+  contract is now at the final-lock-review step of the sequence.
 - **Phase 1 — Scope truth and investigation context (5.6):** single-source
   scope state on all three surfaces; context summary; parse-failure
   truth; dual return controls. (F8/F9 closed architecturally.)
@@ -1373,11 +1460,12 @@ the owner's discretion.
 
 ---
 
-*Deliverable mapping: finalized contract draft, Revision 2 (this document);
+*Deliverable mapping: final contract draft, Revision 3 (this document);
 repository inventory (Sections 3-4); authoring-cost totals (Section 14);
 ratified owner decisions (Section 21); phases, lock sequence, and risks
 (Section 23); reference matrix (Section 22). This contract is NOT locked:
-the two ratified pre-lock micro-fixes must merge first, the baseline and
-line references then update, and the contract returns for final lock
-review. No scaffold exists; no implementation or Stage 5B work begins from
-this document.*
+both ratified pre-lock micro-fixes are merged (M1 `38ee145`, M2
+`09eea3b`) and the baseline and line references are updated in this
+revision; the contract is now presented for final lock review. No
+scaffold exists; no implementation or Stage 5B work begins from this
+document.*
