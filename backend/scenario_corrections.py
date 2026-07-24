@@ -227,6 +227,44 @@ CORRECTIONS += [
 ]
 
 
+# Stage 5A pre-lock micro-fix M2 (ratified OD-10, owner review 2026-07-22):
+# false_positive_robocopy step s2 (chain index 1, the 4663 file-server read)
+# authored the {infra.file.ip} placeholder in the TOP-LEVEL hostname field,
+# so the literal 10.0.1.201 entered every surface that expects a host NAME:
+# the observable host set, the Related-hosts line, endpoint pivots, and
+# evidence-descent anchors (Stage 5A contract F7 finding). The event is
+# generated ON the file server; every other file-server-hosted step in the
+# corpus authors {infra.file.hostname} here. The UNC-path IP usages in the
+# same scenario (command_line, object_name) are CORRECT and untouched. The
+# kvp `computer` field on the same step also carries {infra.file.ip}; it is
+# outside this ruled one-line correction and is flagged in the M2 report as
+# a backlog observation, not silently changed.
+CORRECTIONS += [
+    {
+        "label": "false_positive_robocopy",
+        "kind": "step",
+        "step": 1,
+        "field": "hostname",
+        "v1": "{infra.file.ip}",
+        "v2": "{infra.file.hostname}",
+        "rendered_v1": "10.0.1.201",
+        "rendered_v2": "ACME-SVR02",
+        "old_line": '    hostname: "{infra.file.ip}"',
+        "new_line": '    hostname: "{infra.file.hostname}"',
+        "reason": (
+            "The top-level hostname field carries the generating host's "
+            "name; authoring {infra.file.ip} rendered the IP 10.0.1.201 "
+            "into the observable host set, Related hosts, endpoint pivots, "
+            "and evidence-descent anchors. The file server is ACME-SVR02, "
+            "and {infra.file.hostname} is the corpus-standard placeholder "
+            "for this field. UNC paths keep the IP correctly."
+        ),
+        "approved": "Stage 5A pre-lock micro-fix M2, ratified OD-10 "
+                    "(owner review 2026-07-22)",
+    },
+]
+
+
 def for_label(label):
     return [c for c in CORRECTIONS if c["label"] == label]
 

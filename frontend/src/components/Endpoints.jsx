@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch } from '../api';
 import EndpointDetail from './EndpointDetail';
+import IncidentScopeBar from './IncidentScopeBar';
+import useIncidentScope from './useIncidentScope';
 
 // Endpoints tab (Stage 1). The data is a fixed session snapshot: it is
 // fetched when the tab opens, on reset, and on pivot. No polling, no
@@ -58,11 +60,13 @@ const Endpoints = ({ isVisible, resetTrigger, setEndpointCount, pivotHost,
   const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState({ key: 'hostname', dir: 'asc' });
-  // Stage 3.9B active-incident scope: the observable participant hosts of the
-  // active incident (from /scope). Never locks the tab; a Session-wide toggle
-  // switches back. Read-only.
-  const [scopeHosts, setScopeHosts] = useState(null);
-  const [scoped, setScoped] = useState(true);
+  // Stage 3.9B active-incident scope, rebuilt by micro-fix M1 (Stage 5A
+  // contract Section 11.1): ONE scope state drives the label, the toggle,
+  // and the row filter. Never locks the tab; Session-wide is an explicit
+  // control. Read-only.
+  const scope = useIncidentScope(activeIncidentId, resetTrigger);
+  const scopeRefetchRef = useRef(scope.refetch);
+  scopeRefetchRef.current = scope.refetch;
 
   const fetchList = useCallback(() => {
     apiFetch('/api/endpoints')
@@ -79,30 +83,34 @@ const Endpoints = ({ isVisible, resetTrigger, setEndpointCount, pivotHost,
     if (isVisible) fetchList();
   }, [isVisible, resetTrigger, fetchList]);
 
+  // M1 (contract 11.1): this surface deliberately has NO poll. The scope
+  // refetches on every tab-visibility change (each time the view becomes
+  // visible), plus the existing reset trigger (inside the hook) and the
+  // pivot trigger below. No interval is introduced.
+  useEffect(() => {
+    if (isVisible) scopeRefetchRef.current();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isVisible]);
+
   // Pivot from an event view: open the named host directly.
   useEffect(() => {
     if (pivotHost?.value) {
       setSelected(pivotHost.value);
       fetchList();
+      scopeRefetchRef.current();
     }
   }, [pivotHost, fetchList]);
 
   useEffect(() => { setSelected(null); }, [resetTrigger]);
 
-  useEffect(() => {
-    if (!activeIncidentId) { setScopeHosts(null); return; }
-    let cancelled = false;
-    apiFetch(`/api/incidents/${activeIncidentId}/scope`)
-      .then(res => res.json())
-      .then(data => { if (!cancelled) setScopeHosts(new Set(data.hosts || [])); })
-      .catch(() => { if (!cancelled) setScopeHosts(null); });
-    return () => { cancelled = true; };
-  }, [activeIncidentId, resetTrigger]);
-
+  // M1 (contract 11.1): rows derive from the ONE scope state. 'loading' and
+  // 'error' render zero rows; Session-wide rows never render while the
+  // This-incident control is selected.
   const q = search.trim().toLowerCase();
-  const scopeActive = !!(activeIncidentId && scoped && scopeHosts);
-  const filtered = rows.filter(r =>
-    (!scopeActive || scopeHosts.has(r.hostname)) &&
+  const scopeRows = scope.rowPolicy === 'all' ? rows
+    : scope.rowPolicy === 'scoped' ? rows.filter(r => scope.data.hosts.has(r.hostname))
+      : [];
+  const filtered = scopeRows.filter(r =>
     (!q || r.hostname.toLowerCase().includes(q) || r.ip.includes(q)
       || r.external_ip.includes(q) || r.os.toLowerCase().includes(q))
   );
@@ -133,25 +141,10 @@ const Endpoints = ({ isVisible, resetTrigger, setEndpointCount, pivotHost,
 
   return (
     <div>
-      {/* Stage 3.9B: active-incident scope toggle (never locks the tab). */}
+      {/* Stage 3.9B active-incident scope toggle (never locks the tab),
+          rendered by the shared M1 bar so label, control, and rows agree. */}
       {activeIncidentId && (
-        <div className="mb-3 flex items-center justify-between rounded-lg border border-[#d0d7de] bg-white px-3 py-2 text-xs">
-          <span className="text-[#57606a]">
-            {scopeActive
-              ? <>Scoped to incident <span className="log-mono text-[#16436b]">{activeIncidentId}</span></>
-              : <>Session-wide view</>}
-          </span>
-          <div className="inline-flex rounded-md border border-[#d0d7de] overflow-hidden" role="group" aria-label="Endpoint scope">
-            <button type="button" onClick={() => setScoped(true)}
-              className={`px-2.5 py-1 font-medium transition ${scoped ? 'bg-[#101218] text-white' : 'bg-white text-[#57606a] hover:bg-[#eef1f4]'}`}>
-              This incident
-            </button>
-            <button type="button" onClick={() => setScoped(false)}
-              className={`px-2.5 py-1 font-medium transition ${!scoped ? 'bg-[#101218] text-white' : 'bg-white text-[#57606a] hover:bg-[#eef1f4]'}`}>
-              Session-wide
-            </button>
-          </div>
-        </div>
+        <IncidentScopeBar scope={scope} incidentId={activeIncidentId} groupLabel="Endpoint scope" />
       )}
 
       {/* Header card */}
@@ -205,7 +198,9 @@ const Endpoints = ({ isVisible, resetTrigger, setEndpointCount, pivotHost,
           <tbody>
             {sorted.length === 0 && (
               <tr><td colSpan={COLUMNS.length} className="px-4 py-8 text-center text-[#8b949e]">
-                {rows.length === 0 ? 'No endpoints yet. Hosts appear as scenarios reach the queue.' : 'No endpoints match the search.'}
+                {scope.rowPolicy === 'loading' ? 'Loading incident scope'
+                  : scope.rowPolicy === 'error' ? 'Incident scope could not be loaded.'
+                    : rows.length === 0 ? 'No endpoints yet. Hosts appear as scenarios reach the queue.' : 'No endpoints match the search.'}
               </td></tr>
             )}
             {sorted.map(r => (

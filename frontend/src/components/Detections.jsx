@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch } from '../api';
 import DetectionDetail from './DetectionDetail';
 import ConfirmDialog from './ConfirmDialog';
+import IncidentScopeBar from './IncidentScopeBar';
+import useIncidentScope from './useIncidentScope';
 
 // Detections tab (Stage 2). Raw detections feed with promote / dismiss /
 // leave-open triage; promoted detections move to the Threats view. All
@@ -94,12 +96,15 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot,
   const [confirm, setConfirm] = useState(null); // {title, body, confirmLabel, action, target}
   const [busy, setBusy] = useState(false);
   const [actionNotice, setActionNotice] = useState(null);
-  // Stage 3.9B active-incident scope: the roster detection ids of the active
-  // incident (observable, from /scope), and whether the feed is scoped to it.
-  // Never locked; a Session-wide toggle switches back. Read-only; selecting an
-  // incident mutates nothing.
-  const [scopeIds, setScopeIds] = useState(null);
-  const [scoped, setScoped] = useState(true);
+  // Stage 3.9B active-incident scope, rebuilt by micro-fix M1 (Stage 5A
+  // contract Section 11.1): ONE scope state drives the label, the toggle,
+  // and the row filter. Never locked; Session-wide is an explicit control.
+  // Read-only; selecting an incident mutates nothing.
+  const scope = useIncidentScope(activeIncidentId, resetTrigger);
+  const scopeModeRef = useRef(scope.mode);
+  scopeModeRef.current = scope.mode;
+  const scopeRefetchRef = useRef(scope.refetch);
+  scopeRefetchRef.current = scope.refetch;
 
   const fetchFeed = useCallback(() => {
     apiFetch('/api/detections')
@@ -119,23 +124,18 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot,
       .catch(() => {});
   }, []);
 
-  // Fetch the active incident's observable roster ids so the feed can scope to
-  // it. Cleared when no incident is active (session-wide).
-  useEffect(() => {
-    if (!activeIncidentId) { setScopeIds(null); return; }
-    let cancelled = false;
-    apiFetch(`/api/incidents/${activeIncidentId}/scope`)
-      .then(res => res.json())
-      .then(data => { if (!cancelled) setScopeIds(new Set(data.detection_ids || [])); })
-      .catch(() => { if (!cancelled) setScopeIds(null); });
-    return () => { cancelled = true; };
-  }, [activeIncidentId, resetTrigger]);
-
   useEffect(() => {
     if (!isVisible) return;
     fetchFeed();
     fetchLog();
-    const interval = setInterval(() => { fetchFeed(); fetchLog(); }, 2500);
+    const interval = setInterval(() => {
+      fetchFeed();
+      fetchLog();
+      // M1 (contract 11.1): the scope read joins this existing 2.5s poll
+      // while an incident scope is selected, so a pre-seal roster cannot
+      // go stale. No extra interval exists for the scope.
+      if (scopeModeRef.current === 'incident') scopeRefetchRef.current();
+    }, 2500);
     return () => clearInterval(interval);
   }, [isVisible, fetchFeed, fetchLog]);
 
@@ -184,14 +184,18 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot,
         // Section 16: descent opens the relevant incident scope for THIS
         // entry -- the player-selected incident context while the feed is
         // scoped to it; Session-wide otherwise. Observable UI state only.
-        descentScopeIncidentId={activeIncidentId && scoped && scopeIds ? activeIncidentId : null}
+        descentScopeIncidentId={activeIncidentId && scope.mode === 'incident' && scope.data ? activeIncidentId : null}
       />
     );
   }
 
-  const scopeActive = !!(activeIncidentId && scoped && scopeIds);
+  // M1 (contract 11.1): rows derive from the ONE scope state. 'loading' and
+  // 'error' render zero rows; Session-wide rows never render while the
+  // This-incident control is selected.
   const baseRows = view === 'threats' ? feed.filter(d => d.player_action === 'promoted') : feed;
-  const rows = scopeActive ? baseRows.filter(d => scopeIds.has(d.id)) : baseRows;
+  const rows = scope.rowPolicy === 'all' ? baseRows
+    : scope.rowPolicy === 'scoped' ? baseRows.filter(d => scope.data.detectionIds.has(d.id))
+      : [];
   const headerCount = view === 'log' ? logEntries.length : rows.length;
   const logNewestFirst = [...logEntries].reverse();
 
@@ -206,25 +210,10 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot,
 
   return (
     <div>
-      {/* Stage 3.9B: active-incident scope toggle (never locks the tab). */}
+      {/* Stage 3.9B active-incident scope toggle (never locks the tab),
+          rendered by the shared M1 bar so label, control, and rows agree. */}
       {activeIncidentId && view !== 'log' && (
-        <div className="mb-3 flex items-center justify-between rounded-lg border border-[#d0d7de] bg-white px-3 py-2 text-xs">
-          <span className="text-[#57606a]">
-            {scopeActive
-              ? <>Scoped to incident <span className="log-mono text-[#16436b]">{activeIncidentId}</span></>
-              : <>Session-wide view</>}
-          </span>
-          <div className="inline-flex rounded-md border border-[#d0d7de] overflow-hidden" role="group" aria-label="Detection scope">
-            <button type="button" onClick={() => setScoped(true)}
-              className={`px-2.5 py-1 font-medium transition ${scoped ? 'bg-[#101218] text-white' : 'bg-white text-[#57606a] hover:bg-[#eef1f4]'}`}>
-              This incident
-            </button>
-            <button type="button" onClick={() => setScoped(false)}
-              className={`px-2.5 py-1 font-medium transition ${!scoped ? 'bg-[#101218] text-white' : 'bg-white text-[#57606a] hover:bg-[#eef1f4]'}`}>
-              Session-wide
-            </button>
-          </div>
-        </div>
+        <IncidentScopeBar scope={scope} incidentId={activeIncidentId} groupLabel="Detection scope" />
       )}
 
       {/* Header card */}
@@ -322,7 +311,9 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot,
             <tbody>
               {rows.length === 0 && (
                 <tr><td colSpan={view === 'threats' ? 7 : 6} className="px-4 py-8 text-center text-[#8b949e]">
-                  {view === 'threats' ? 'No promoted threats yet.' : 'No detections yet. They fire as scenarios reach the queue.'}
+                  {scope.rowPolicy === 'loading' ? 'Loading incident scope'
+                    : scope.rowPolicy === 'error' ? 'Incident scope could not be loaded.'
+                      : view === 'threats' ? 'No promoted threats yet.' : 'No detections yet. They fire as scenarios reach the queue.'}
                 </td></tr>
               )}
               {rows.map(d => (
