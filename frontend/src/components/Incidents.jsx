@@ -4,7 +4,8 @@ import ClassificationSelector from './ClassificationSelector';
 import CategorySelector from './CategorySelector';
 import {
   TELEMETRY_LOADING, detectionsReviewed, detectionsRemaining,
-  responseActionsTaken, READY_TO_SUBMIT, toReview,
+  responseActionsTaken, READY_TO_SUBMIT, toReview, completedStrip,
+  SUBMITTED_GRADE_LOCKED,
 } from './uiCopy';
 
 // Stage 3.9B: the Incidents operational workspace ("what do I need to work?").
@@ -89,6 +90,24 @@ const Incidents = ({
   }, [selectedId]);
 
   useEffect(() => { fetchScope(); const iv = setInterval(fetchScope, 3000); return () => clearInterval(iv); }, [fetchScope]);
+
+  // 2.3 completed strip (contract 10.4, scaffold decision D3): the total is
+  // the score view's frozen detection.total -- frontend-only source, no
+  // completed-card field added. Fetched once per selected submitted incident.
+  const [stripInfo, setStripInfo] = useState(null);   // {id, total}
+  const selectedState = (data.active.concat(data.completed)
+    .find(c => c.incident_id === selectedId) || {}).state;
+  useEffect(() => {
+    if (!selectedId || selectedState !== 'submitted') { setStripInfo(null); return; }
+    let cancelled = false;
+    apiFetch(`/api/incidents/${selectedId}/score`).then(r => r.json()).then(v => {
+      if (!cancelled && v?.state === 'submitted') {
+        setStripInfo({ id: selectedId, total: v.grading?.detection?.total ?? 0 });
+      }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, selectedState]);
 
   const all = [...data.active.map(c => ({ ...c })), ...data.completed.map(c => ({ ...c }))];
   const q = search.trim().toLowerCase();
@@ -247,8 +266,19 @@ const Incidents = ({
               </div>
 
               <div className="pt-2 border-t border-[#eef1f4]">
-                <PhaseStrip sealed={selected.state === 'submitted' ? true : selected.sealed}
-                  triage={selected.triage} related={selected.related_actions} ready={selected.ready} />
+                {/* 2.3: the active strip renders ONLY for in_progress; a
+                    submitted incident renders the completed vocabulary --
+                    the 0-of-0 contradiction is structurally impossible. */}
+                {selected.state === 'submitted' ? (
+                  <p className="text-xs text-[#57606a]">
+                    {stripInfo?.id === selected.incident_id
+                      ? completedStrip(stripInfo.total)
+                      : SUBMITTED_GRADE_LOCKED}
+                  </p>
+                ) : (
+                  <PhaseStrip sealed={selected.sealed}
+                    triage={selected.triage} related={selected.related_actions} ready={selected.ready} />
+                )}
               </div>
 
               {/* Related hosts / accounts (observable scope) */}

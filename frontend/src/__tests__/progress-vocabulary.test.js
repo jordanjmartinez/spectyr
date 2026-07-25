@@ -147,3 +147,34 @@ test('the phase strip renders the canonical vocabulary from card observables, D4
   // ruling A: the fuzzy related-activity LIST is gone; no such block renders
   expect(screen.queryByText(/Related response activity/)).toBeNull();
 });
+
+test('a completed incident renders the completed strip, never the active strip (0-of-0 structurally impossible)', async () => {
+  apiFetch.mockImplementation((path) => Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve(
+      path === '/api/incidents'
+        ? { active: [],
+            completed: [{ incident_id: 'INC-9', title: 'T', briefing: 'b',
+                          severity: 'High', state: 'submitted',
+                          submitted_at: 'x', assisted: false,
+                          incident_grade: { grade: 'A', accuracy: 100 } }],
+            queue_length: 1, resolved_count: 1 }
+        : path.endsWith('/score')
+          ? { state: 'submitted', assisted: false,
+              grading: { detection: { total: 5 }, classification: {},
+                         response: {}, composite: {} } }
+          : path.endsWith('/scope')
+            ? { incident_id: 'INC-9', sealed: true, hosts: [], accounts: [],
+                detection_ids: [] }
+            : {}),
+  }));
+  render(
+    <Incidents gameMode="soc_queue" activeIncidentId="INC-9"
+      onSelectIncident={() => {}} />
+  );
+  expect(await screen.findByText('Reviewed 5 of 5 · Submitted')).toBeInTheDocument();
+  // the active strip's vocabulary never renders for a submitted incident
+  expect(screen.queryByText(/Detections reviewed: 0 of 0/)).toBeNull();
+  expect(screen.queryByText('pending')).toBeNull();
+  expect(screen.queryByText('Incident telemetry is still loading.')).toBeNull();
+});
