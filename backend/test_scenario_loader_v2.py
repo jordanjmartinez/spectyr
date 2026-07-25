@@ -530,6 +530,7 @@ RATIONALE_SCENARIOS = {
     "malware_usb",
     "phishing_1",
     "defense_evasion",
+    "false_positive_pentest",
 }
 
 
