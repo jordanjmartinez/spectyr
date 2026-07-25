@@ -535,6 +535,7 @@ RATIONALE_SCENARIOS = {
     "c2_http",
     "brute_force_attack",
     "false_positive_robocopy",
+    "phishing_link",
 }
 
 
