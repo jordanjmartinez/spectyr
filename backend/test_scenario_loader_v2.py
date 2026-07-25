@@ -536,6 +536,7 @@ RATIONALE_SCENARIOS = {
     "brute_force_attack",
     "false_positive_robocopy",
     "phishing_link",
+    "data_exfil_archive",
 }
 
 
