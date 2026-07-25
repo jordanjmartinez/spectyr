@@ -66,9 +66,17 @@ test('an open (not-ready) incident shows the observable readiness message', asyn
   expect(await screen.findByText(/2 detections still need Promote or Dismiss/)).toBeInTheDocument();
 });
 
-test('a submitted incident offers the Post-Incident Review control', async () => {
-  render(<Incidents gameMode="training" activeIncidentId="INC-3000" />);
-  expect(await screen.findByRole('button', { name: 'View Post-Incident Review' })).toBeInTheDocument();
+test('a submitted incident renders the Case Closed summary with the Review what you learned path', async () => {
+  // 5.4 translation of the retired "View Post-Incident Review" control: the
+  // completed pane now renders the Case Closed summary inline (moment +
+  // grade + achievements) and the path into the Metrics Learning Review.
+  const onOpenLearningReview = jest.fn();
+  render(<Incidents gameMode="training" activeIncidentId="INC-3000"
+    onOpenLearningReview={onOpenLearningReview} />);
+  expect(await screen.findByText('Case Closed: INC-3000')).toBeInTheDocument();
+  const btn = await screen.findByRole('button', { name: 'Review what you learned' });
+  fireEvent.click(btn);
+  expect(onOpenLearningReview).toHaveBeenCalledWith('INC-3000');
 });
 
 test('completed detail shows the Assisted badge iff Check Answer was used', async () => {
@@ -108,12 +116,13 @@ test('Check Answer reads nested classification.correct and marks Assisted', asyn
 });
 
 test('Practice Another (Guided) warns, cancels back, and calls back on confirm', async () => {
+  // 5.4: Practice Another lives in the completed pane's Case Closed summary
+  // (the modal is the submit-success moment only).
   const onPracticeAnother = jest.fn();
   render(<Incidents gameMode="training" activeIncidentId="INC-3000" onPracticeAnother={onPracticeAnother} />);
-  fireEvent.click(await screen.findByRole('button', { name: 'View Post-Incident Review' }));
   fireEvent.click(await screen.findByText('Practice Another'));
   expect(screen.getByText(/clears the current Guided run/)).toBeInTheDocument();
-  fireEvent.click(screen.getByText('Cancel'));                       // cancel keeps the review
+  fireEvent.click(screen.getByText('Cancel'));                       // cancel keeps the summary
   expect(screen.queryByText(/clears the current Guided run/)).toBeNull();
   expect(onPracticeAnother).not.toHaveBeenCalled();
   fireEvent.click(screen.getByText('Practice Another'));

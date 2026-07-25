@@ -255,3 +255,12 @@ code {
 .inspector-emphasis {
   animation: inspectorPulse 0.6s ease-out 1;
 }
+
+/* Phase 5 commit 5.4 (A1-B.4.1): the Case Closed moment is restrained --
+   the one-shot modal entrance is dropped entirely under
+   prefers-reduced-motion (content renders immediately, no motion). */
+@media (prefers-reduced-motion: reduce) {
+  .animate-modalIn {
+    animation: none;
+  }
+}

@@ -46,6 +46,17 @@ const Dashboard = () => {
   // generator. seq retriggers identical consecutive descents.
   const [descentRequest, setDescentRequest] = useState(null);
   const descentSeqRef = useRef(0);
+  // Stage 5 commit 5.4: "Review what you learned" requests -- opens the
+  // Metrics Learning Review home with the incident preselected (B-OD-1
+  // Option 1). Pure navigation state; seq retriggers repeat requests.
+  const [reviewRequest, setReviewRequest] = useState(null);
+  const reviewSeqRef = useRef(0);
+
+  const handleOpenLearningReview = (incidentId) => {
+    reviewSeqRef.current += 1;
+    setReviewRequest({ id: incidentId, seq: reviewSeqRef.current });
+    setView('analytics');
+  };
 
   // Host pivot: a hostname link in an event view opens that endpoint page.
   const handleHostPivot = (hostname) => {
@@ -333,6 +344,7 @@ const Dashboard = () => {
             setGroupedAlertCount={setGroupedAlertCount}
             onPracticeAnother={handlePracticeAnother}
             onEvidenceDescent={handleEvidenceDescent}
+            onOpenLearningReview={handleOpenLearningReview}
           />
         </div>
 
@@ -349,7 +361,7 @@ const Dashboard = () => {
         </div>
 
         <div className={view === "analytics" ? "block" : "hidden"}>
-          <Analytics onReset={() => setShowResetModal(true)} analystName={analystName} setAnalyticsCount={setAnalyticsCount} isVisible={view === "analytics"} />
+          <Analytics onReset={() => setShowResetModal(true)} analystName={analystName} setAnalyticsCount={setAnalyticsCount} isVisible={view === "analytics"} reviewRequest={reviewRequest} />
         </div>
 
         <div className={view === "reports" ? "block" : "hidden"}>

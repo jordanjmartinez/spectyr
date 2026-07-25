@@ -7,8 +7,10 @@ import {
   responseActionsTaken, READY_TO_SUBMIT, toReview, completedStrip,
   SUBMITTED_GRADE_LOCKED, CLASSIFICATION_NOT_SELECTED,
   classificationSelected, CONSIDER_PROMPT, SUBMIT_PENDING,
+  caseClosed, REVIEW_WHAT_YOU_LEARNED,
 } from './uiCopy';
 import { toastReady } from './uiToasts';
+import { deriveAchievements } from './achievements';
 
 // Stage 3.9B: the Incidents operational workspace ("what do I need to work?").
 // Search + Active / Ready / Completed views, stable incident rows, and a
@@ -64,7 +66,7 @@ export const PhaseStrip = ({ sealed, triage, related, ready, classification,
 const Incidents = ({
   isVisible, resetTrigger, onHardcoreFailure, onReset, gameMode = 'training',
   activeIncidentId, onSelectIncident, onNavigate, setGroupedAlertCount, onPracticeAnother,
-  onEvidenceDescent,
+  onEvidenceDescent, onOpenLearningReview,
 }) => {
   const [data, setData] = useState({ active: [], completed: [], queue_length: 0, resolved_count: 0 });
   const [view, setView] = useState('active');    // 'active' | 'ready' | 'completed'
@@ -127,8 +129,10 @@ const Incidents = ({
 
   // 2.3 completed strip (contract 10.4, scaffold decision D3): the total is
   // the score view's frozen detection.total -- frontend-only source, no
-  // completed-card field added. Fetched once per selected submitted incident.
-  const [stripInfo, setStripInfo] = useState(null);   // {id, total}
+  // completed-card field added. Fetched once per selected submitted
+  // incident; 5.4 keeps the WHOLE served view so the completed pane can
+  // render the Case Closed summary (grade + achievements) inline.
+  const [stripInfo, setStripInfo] = useState(null);   // {id, total, view}
   const selectedState = (data.active.concat(data.completed)
     .find(c => c.incident_id === selectedId) || {}).state;
   useEffect(() => {
@@ -136,7 +140,7 @@ const Incidents = ({
     let cancelled = false;
     apiFetch(`/api/incidents/${selectedId}/score`).then(r => r.json()).then(v => {
       if (!cancelled && v?.state === 'submitted') {
-        setStripInfo({ id: selectedId, total: v.grading?.detection?.total ?? 0 });
+        setStripInfo({ id: selectedId, total: v.grading?.detection?.total ?? 0, view: v });
       }
     }).catch(() => {});
     return () => { cancelled = true; };
@@ -214,14 +218,15 @@ const Incidents = ({
     finally { setSubmitBusy(false); }
   };
 
-  // The single Post-Incident Review surface (D7): Incident Grade breakdown +
-  // the post-boundary educational triage review + Assisted badge.
+  // The Case Closed moment (5.4, A1-B.4.1): submit success opens ONE static
+  // summary naming the incident, with the earned achievements and the
+  // Incident Grade. Teaching content lives ONLY in the Metrics Learning
+  // Review (B-OD-1 Option 1, one venue): this modal never renders it.
   const openReview = async (incidentId) => {
     const scoreView = await apiFetch(`/api/incidents/${incidentId}/score`).then(r => r.json()).catch(() => null);
     if (scoreView?.state !== 'submitted') return;
-    const tr = await apiFetch(`/api/incidents/${incidentId}/triage-review`).then(r => (r.ok ? r.json() : null)).catch(() => null);
     const card = all.find(c => c.incident_id === incidentId);
-    setReview({ incidentId, title: card?.title, grading: scoreView.grading, assisted: scoreView.assisted, triage: tr });
+    setReview({ incidentId, title: card?.title, grading: scoreView.grading, assisted: scoreView.assisted, view: scoreView });
   };
 
   return (
@@ -348,13 +353,43 @@ const Incidents = ({
                 </div>
               )}
 
-              {/* Graded controls (single home, D7) */}
-              <div className="pt-3 border-t border-[#eef1f4] flex items-center gap-2 flex-wrap">
+              {/* Graded controls (single home, D7). A submitted incident
+                  renders the Case Closed summary inline (5.4: moment +
+                  grade + achievements) with the "Review what you learned"
+                  path into the Metrics Learning Review -- teaching content
+                  itself never renders in this workspace (one venue). */}
+              <div className="pt-3 border-t border-[#eef1f4]">
                 {selected.state === 'submitted' ? (
-                  <button onClick={() => openReview(selected.incident_id)}
-                    className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#1a2332] hover:bg-[#eef1f4]">View Post-Incident Review</button>
+                  <div className="space-y-3" data-testid="case-closed-summary">
+                    <p className="text-sm font-semibold text-[#1a2332]">{caseClosed(selected.incident_id)}</p>
+                    {stripInfo?.id === selected.incident_id && stripInfo.view && (
+                      <>
+                        <div className="flex flex-wrap gap-1.5">
+                          {deriveAchievements(stripInfo.view).map(a => (
+                            <span key={a.key} className="inline-flex items-baseline gap-1 px-2 py-0.5 rounded-full text-xs bg-[#eef1f4] text-[#1a2332] border border-[#d0d7de]">
+                              <span className="font-medium">{a.label}</span>
+                              {a.subtitle && <span className="text-[#6e7781]">{a.subtitle}</span>}
+                            </span>
+                          ))}
+                        </div>
+                        <p className="text-sm text-[#57606a]">Incident Grade:{' '}
+                          <span className="font-semibold" style={{ color: gradeColor(stripInfo.view.grading?.composite?.grade) }}>
+                            {stripInfo.view.grading?.composite?.grade || '-'} · {stripInfo.view.grading?.composite?.accuracy ?? '-'}%
+                          </span>
+                        </p>
+                      </>
+                    )}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button onClick={() => onOpenLearningReview?.(selected.incident_id)}
+                        className="px-3 py-1.5 text-sm rounded-md bg-[#101218] text-white hover:bg-[#1e2330]">{REVIEW_WHAT_YOU_LEARNED}</button>
+                      {isGuided && onPracticeAnother && (
+                        <button onClick={() => setPracticeWarn(true)}
+                          className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#1a2332] hover:bg-[#eef1f4]">Practice Another</button>
+                      )}
+                    </div>
+                  </div>
                 ) : (
-                  <>
+                  <div className="flex items-center gap-2 flex-wrap">
                     {selected.sealed && selected.ready ? (
                       <button onClick={beginSubmit}
                         className="px-3 py-1.5 text-sm rounded-md bg-[#101218] text-white hover:bg-[#1e2330]">Submit</button>
@@ -371,7 +406,7 @@ const Incidents = ({
                       <button onClick={beginCheck}
                         className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4]">Check Answer</button>
                     )}
-                  </>
+                  </div>
                 )}
               </div>
             </div>
@@ -444,15 +479,28 @@ const Incidents = ({
         </div>
       )}
 
-      {/* Post-Incident Review (single implementation, D7) */}
+      {/* The Case Closed moment (5.4, A1-B.4.1): one static summary per
+          submission -- incident name, earned achievements, Incident Grade.
+          Restrained: no looping animation, no sound; animate-modalIn is
+          one-shot and disabled under prefers-reduced-motion (index.css).
+          NEVER renders teaching content (one venue: the Metrics Learning
+          Review); "Review what you learned" is the path there. */}
       {review && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70" onClick={() => setReview(null)} />
-          <div className="relative bg-white border border-[#e2e6ea] rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 animate-modalIn">
+          <div className="relative bg-white border border-[#e2e6ea] rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 animate-modalIn" data-testid="case-closed-modal">
             <div className="flex items-center justify-between">
               <div><p className="text-[11px] uppercase tracking-wider text-[#6e7781]">Incident Grade</p>
-                <h2 className="text-lg font-semibold text-[#1a2332]">{review.incidentId}</h2></div>
+                <h2 className="text-lg font-semibold text-[#1a2332]">{caseClosed(review.incidentId)}</h2></div>
               {review.assisted && <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#eef1f4] text-[#57606a] border border-[#d0d7de]">Assisted</span>}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {deriveAchievements(review.view).map(a => (
+                <span key={a.key} className="inline-flex items-baseline gap-1 px-2 py-0.5 rounded-full text-xs bg-[#eef1f4] text-[#1a2332] border border-[#d0d7de]">
+                  <span className="font-medium">{a.label}</span>
+                  {a.subtitle && <span className="text-[#6e7781]">{a.subtitle}</span>}
+                </span>
+              ))}
             </div>
             <div className="mt-4 space-y-2 text-sm">
               {[['Classification', review.grading.classification], ['Detection dispositions', review.grading.detection], ['Response actions', review.grading.response]].map(([label, comp]) => (
@@ -466,18 +514,13 @@ const Incidents = ({
                 <span className="font-semibold" style={{ color: gradeColor(review.grading.composite?.grade) }}>{review.grading.composite?.grade || '-'} · {review.grading.composite?.accuracy ?? '-'}%</span>
               </div>
             </div>
-            {review.triage?.what_is_it && (
-              <div className="mt-4 pt-3 border-t border-[#eef1f4]">
-                {review.triage.mitre && <p className="text-xs text-[#16436b] font-medium mb-1">{review.triage.mitre.id} · {review.triage.mitre.name}</p>}
-                <p className="text-sm font-medium text-[#1a2332]">{review.triage.what_is_it.title}</p>
-                <p className="text-sm text-[#57606a] mt-1 break-words">{review.triage.what_is_it.description}</p>
-              </div>
-            )}
-            <div className="mt-5 flex justify-end gap-2">
+            <div className="mt-5 flex justify-end gap-2 flex-wrap">
               {isGuided && onPracticeAnother && (
                 <button onClick={() => setPracticeWarn(true)}
                   className="px-4 py-2 text-sm rounded-md border border-[#d0d7de] text-[#1a2332] hover:bg-[#eef1f4]">Practice Another</button>
               )}
+              <button onClick={() => { setReview(null); onOpenLearningReview?.(review.incidentId); }}
+                className="px-4 py-2 text-sm rounded-md border border-[#d0d7de] text-[#1a2332] hover:bg-[#eef1f4]">{REVIEW_WHAT_YOU_LEARNED}</button>
               <button onClick={() => setReview(null)} className="px-4 py-2 text-sm rounded-md bg-[#101218] text-white hover:bg-[#1e2330]">Close</button>
             </div>
           </div>

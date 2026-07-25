@@ -131,3 +131,40 @@ export const surroundingBanner = (host) =>
   `Activity around the selected event on ${host}`;
 export const OCCURRENCE_ASCENDING = 'Occurrence ascending';
 export const BACK_TO_PREVIOUS_RESULTS = 'Back to previous results';
+
+// === Phase 5 commit 5.4: Case Closed + Learning Review (A1-B.4) ============
+// The payoff vocabulary: the Case Closed moment, the six ratified
+// achievement labels (A1-B.4.3, frozen-record derivations only), the
+// Learning Review home labels (B-OD-1 Option 1; Incident Grade vs Session
+// Performance stay distinctly labelled per 3.9B), the review section
+// headers (7.5 framing), and the 7.1 loading/error strings.
+export const caseClosed = (incidentId) => `Case Closed: ${incidentId}`;
+export const REVIEW_WHAT_YOU_LEARNED = 'Review what you learned';
+export const LEARNING_REVIEW_TITLE = 'Learning Review';
+export const INCIDENT_GRADE_LABEL = 'Incident Grade';
+export const SESSION_PERFORMANCE_LABEL = 'Session Performance';
+export const ACHIEVEMENT_LABELS = {
+  case_closed: 'Case Closed',
+  clean_triage: 'Clean Triage',
+  response_ready: 'Response Ready',
+  no_collateral: 'No Collateral',
+  solo_close: 'Solo Close',
+  perfect_case: 'Perfect Case',
+};
+export const allDetectionsReviewed = (total) =>
+  `All ${total} detection${total === 1 ? '' : 's'} reviewed`;
+export const REVIEW_SECTION_CORRECT = 'What you did correctly';
+export const REVIEW_SECTION_MISSED = 'What you missed';
+export const REVIEW_SECTION_COLLATERAL = 'Unnecessary or harmful';
+export const REVIEW_SECTION_ACCEPTABLE = 'Additional defensible steps';
+export const REVIEW_SECTION_ATTEMPTS = 'Attempt history';
+export const REVIEW_SECTION_DETECTIONS = 'Detection calls';
+export const REVIEW_SECTION_PLAYBOOK = 'Response playbook';
+export const REVIEW_SECTION_TAKEAWAY = 'Key takeaway';
+export const REVIEW_NONE = 'None.';
+export const BREAKDOWN_LOAD_ERROR = 'The detailed breakdown could not be loaded';
+export const SELECT_REVIEW_INCIDENT = 'Select a submitted incident to review.';
+export const NO_SUBMITTED_INCIDENTS =
+  'No submitted incidents yet. Submit an incident to unlock its Learning Review.';
+export const CALL_CORRECT = 'Correct';
+export const CALL_WRONG = 'Wrong';
