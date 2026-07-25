@@ -4,6 +4,9 @@ import DetectionDetail from './DetectionDetail';
 import ConfirmDialog from './ConfirmDialog';
 import IncidentScopeBar from './IncidentScopeBar';
 import useIncidentScope from './useIncidentScope';
+import {
+  detectionsReviewed, detectionsRemaining, FEED_SUBCOPY, THREATS_SUBCOPY,
+} from './uiCopy';
 
 // Detections tab (Stage 2). Raw detections feed with promote / dismiss /
 // leave-open triage; promoted detections move to the Threats view. All
@@ -256,13 +259,32 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot,
         </div>
       </div>
 
+      {/* OD-9 explanatory subcopy, one line each; counters use the 10.1
+          vocabulary. With a case selected the counts are the CASE-SCOPED
+          rows (the same roster the strip and readiness read), so the line
+          and the rows can never disagree; All activity keeps the session
+          counts. */}
       {view === 'feed' && (
         <p className="text-sm text-[#57606a] mb-2">
-          {counts.open} open &middot; {counts.promoted} promoted &middot; {counts.dismissed} dismissed
+          <span className="text-[#8b949e]">{FEED_SUBCOPY}.</span>{' '}
+          {activeIncidentId && scope.rowPolicy === 'scoped' ? (
+            <>
+              {detectionsReviewed(
+                rows.filter(d => d.player_action !== 'open').length, rows.length)}
+              {rows.some(d => d.player_action === 'open') && (
+                <> &middot; {detectionsRemaining(rows.filter(d => d.player_action === 'open').length)}</>
+              )}
+            </>
+          ) : (
+            <>{counts.open} open &middot; {counts.promoted} promoted &middot; {counts.dismissed} dismissed</>
+          )}
         </p>
       )}
-      {view === 'threats' && actionNotice && (
-        <p className="text-sm text-[#57606a] mb-2">{actionNotice}</p>
+      {view === 'threats' && (
+        <p className="text-sm text-[#57606a] mb-2">
+          <span className="text-[#8b949e]">{THREATS_SUBCOPY}.</span>
+          {actionNotice && <> {actionNotice}</>}
+        </p>
       )}
 
       {view === 'log' ? (

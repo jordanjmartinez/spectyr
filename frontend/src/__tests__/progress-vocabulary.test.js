@@ -7,6 +7,9 @@
  * suite is the copy source of truth (risk R7: constants land BEFORE any
  * consumer).
  */
+import React from 'react';
+import { render, screen } from '@testing-library/react';
+import Incidents from '../components/Incidents';
 import {
   investigatingCase, ALL_ACTIVITY, caseEvidenceLabel, EXPANDED_SEARCH_TITLE,
   followingClue, expandedSearchExplanation, returnToCaseEvidence,
@@ -17,6 +20,9 @@ import {
   completedStrip, toReview, FEED_SUBCOPY, THREATS_SUBCOPY, filterAdded,
   excludedFilter,
 } from '../components/uiCopy';
+
+jest.mock('../api', () => ({ apiFetch: jest.fn() }));
+const { apiFetch } = require('../api');
 
 // --- byte-exact canonical strings (locked 10.1 + ratified A1-A.5 finals) ---
 
@@ -111,4 +117,33 @@ test('no canonical string contains an em dash', () => {
     expect({ name, emdash: /—/.test(value) })
       .toEqual({ name, emdash: false });
   }
+});
+
+// --- 2.2: surfaces render the constants (canonical-copy per surface) -------
+
+test('the phase strip renders the canonical vocabulary from card observables, D4 count included', async () => {
+  apiFetch.mockImplementation((path) => Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve(
+      path === '/api/incidents'
+        ? { active: [{ incident_id: 'INC-1', title: 'T', briefing: 'b',
+                       severity: 'High', state: 'in_progress', sealed: true,
+                       triage: { total: 5, triaged: 4 }, open_detections: 1,
+                       ready: false, related_actions: 6 }],
+            completed: [], queue_length: 1, resolved_count: 0 }
+        : path.endsWith('/scope')
+          ? { incident_id: 'INC-1', sealed: true, hosts: [], accounts: [],
+              detection_ids: [] }
+          : {}),
+  }));
+  render(
+    <Incidents gameMode="soc_queue" activeIncidentId="INC-1"
+      onSelectIncident={() => {}} />
+  );
+  expect(await screen.findByText('Detections reviewed: 4 of 5')).toBeInTheDocument();
+  expect(screen.getByText('Response actions taken: 6')).toBeInTheDocument();
+  expect(screen.getByText('1 to review')).toBeInTheDocument();
+  expect(screen.getByText(/1 detection still need Promote or Dismiss/)).toBeInTheDocument();
+  // ruling A: the fuzzy related-activity LIST is gone; no such block renders
+  expect(screen.queryByText(/Related response activity/)).toBeNull();
 });

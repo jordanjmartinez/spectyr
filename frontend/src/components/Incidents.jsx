@@ -2,6 +2,10 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch } from '../api';
 import ClassificationSelector from './ClassificationSelector';
 import CategorySelector from './CategorySelector';
+import {
+  TELEMETRY_LOADING, detectionsReviewed, detectionsRemaining,
+  responseActionsTaken, READY_TO_SUBMIT, toReview,
+} from './uiCopy';
 
 // Stage 3.9B: the Incidents operational workspace ("what do I need to work?").
 // Search + Active / Ready / Completed views, stable incident rows, and a
@@ -17,13 +21,16 @@ const CARD = { background: '#fff', border: '1px solid #e2e6ea', boxShadow: '0 1p
 const fmtTime = (iso) => { try { return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
 
 const PhaseStrip = ({ sealed, triage, related, ready }) => {
-  if (!sealed) return <p className="text-xs text-[#8b949e] italic">Incident telemetry is still loading.</p>;
+  // Phase 2 (10.1 canonical vocabulary): every line observable-only. The
+  // Respond count is the server's D4 related_actions field (ruling A:
+  // count only, the fuzzy label join is deleted).
+  if (!sealed) return <p className="text-xs text-[#8b949e] italic">{TELEMETRY_LOADING}</p>;
   const t = triage || { total: 0, triaged: 0 };
   const steps = [
-    ['Triage', `${t.triaged} of ${t.total} reviewed`, ready],
+    ['Triage', detectionsReviewed(t.triaged, t.total), ready],
     ['Investigate', 'evidence', false],
-    ['Respond', `${related} related`, false],
-    ['Submit', ready ? 'ready' : 'pending', false],
+    ['Respond', responseActionsTaken(related ?? 0), false],
+    ['Submit', ready ? READY_TO_SUBMIT : 'pending', false],
   ];
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
@@ -47,8 +54,6 @@ const Incidents = ({
   const [view, setView] = useState('active');    // 'active' | 'ready' | 'completed'
   const [search, setSearch] = useState('');
   const [scope, setScope] = useState(null);       // selected incident /scope
-  const [related, setRelated] = useState(0);      // Related response activity count
-  const [relatedList, setRelatedList] = useState([]);
 
   const [showClassifier, setShowClassifier] = useState(false);
   const [showCategory, setShowCategory] = useState(false);
@@ -74,19 +79,13 @@ const Incidents = ({
 
   useEffect(() => { fetchList(); const iv = setInterval(fetchList, 3000); return () => clearInterval(iv); }, [fetchList]);
 
-  // Selected incident scope + Related response activity.
+  // Selected incident scope (Related hosts/accounts + descent inputs). The
+  // fuzzy related-activity label join is DELETED (scaffold ruling A): the
+  // honest count is the server's D4 related_actions card field.
   const fetchScope = useCallback(() => {
-    if (!selectedId) { setScope(null); setRelated(0); setRelatedList([]); return; }
-    apiFetch(`/api/incidents/${selectedId}/scope`).then(r => r.json()).then(async (sc) => {
-      setScope(sc);
-      const log = await apiFetch('/api/actions').then(r => r.json()).catch(() => []);
-      const entries = Array.isArray(log) ? log : (log.entries || []);
-      const hosts = new Set(sc.hosts || []); const accts = new Set(sc.accounts || []);
-      const rel = entries.filter(e => e.outcome === 'success' && e.target?.label && (
-        [...hosts].some(h => e.target.label.includes(h)) || [...accts].some(a => e.target.label.includes(a))
-      ));
-      setRelated(rel.length); setRelatedList(rel);
-    }).catch(() => {});
+    if (!selectedId) { setScope(null); return; }
+    apiFetch(`/api/incidents/${selectedId}/scope`).then(r => r.json())
+      .then(setScope).catch(() => {});
   }, [selectedId]);
 
   useEffect(() => { fetchScope(); const iv = setInterval(fetchScope, 3000); return () => clearInterval(iv); }, [fetchScope]);
@@ -107,8 +106,8 @@ const Incidents = ({
 
   const beginSubmit = () => {
     if (!selected || selected.state !== 'in_progress') return;
-    if (!selected.sealed) { flash('Incident telemetry is still loading.'); return; }
-    if (!selected.ready) { const n = selected.open_detections ?? 0; flash(`${n} detection${n === 1 ? '' : 's'} still need review.`); return; }
+    if (!selected.sealed) { flash(TELEMETRY_LOADING); return; }
+    if (!selected.ready) { flash(detectionsRemaining(selected.open_detections ?? 0)); return; }
     setPendingSubmit({ incident_id: selected.incident_id, title: selected.title, action: 'submit' });
     setShowClassifier(true);
   };
@@ -209,7 +208,7 @@ const Incidents = ({
                 <span className="text-sm text-[#1a2332] truncate">{c.title}</span>
               </span>
               <span className="text-[11px] shrink-0 whitespace-nowrap" style={{ color: c.state === 'submitted' ? gradeColor(c.incident_grade?.grade) : '#8b949e' }}>
-                {c.state === 'submitted' ? (c.incident_grade?.grade || '-') : !c.sealed ? 'Loading' : c.ready ? 'Ready' : `${c.open_detections} left`}
+                {c.state === 'submitted' ? (c.incident_grade?.grade || '-') : !c.sealed ? 'Loading' : c.ready ? 'Ready' : toReview(c.open_detections)}
               </span>
             </button>
           ))}
@@ -249,7 +248,7 @@ const Incidents = ({
 
               <div className="pt-2 border-t border-[#eef1f4]">
                 <PhaseStrip sealed={selected.state === 'submitted' ? true : selected.sealed}
-                  triage={selected.triage} related={related} ready={selected.ready} />
+                  triage={selected.triage} related={selected.related_actions} ready={selected.ready} />
               </div>
 
               {/* Related hosts / accounts (observable scope) */}
@@ -282,16 +281,6 @@ const Incidents = ({
                 </div>
               )}
 
-              {/* Related response activity (C5, non-exclusive) */}
-              {relatedList.length > 0 && (
-                <div className="text-xs text-[#57606a]">
-                  <p className="text-[#8b949e] mb-1">Related response activity ({related})</p>
-                  <ul className="space-y-0.5">
-                    {relatedList.slice(0, 5).map(e => <li key={e.seq}>{e.action} · <span className="font-mono">{e.target?.label}</span></li>)}
-                  </ul>
-                </div>
-              )}
-
               {/* Graded controls (single home, D7) */}
               <div className="pt-3 border-t border-[#eef1f4] flex items-center gap-2 flex-wrap">
                 {selected.state === 'submitted' ? (
@@ -307,7 +296,7 @@ const Incidents = ({
                         <button onClick={() => { onSelectIncident?.(selected.incident_id); onNavigate?.('detections'); }}
                           className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#1a2332] hover:bg-[#eef1f4]">Triage detections</button>
                         <span className="text-xs text-[#8b949e]">
-                          {!selected.sealed ? 'Incident telemetry is still loading.' : `${selected.open_detections} detections still need review.`}
+                          {!selected.sealed ? TELEMETRY_LOADING : detectionsRemaining(selected.open_detections ?? 0)}
                         </span>
                       </>
                     )}

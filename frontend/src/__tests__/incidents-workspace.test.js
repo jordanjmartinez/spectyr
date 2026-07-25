@@ -51,7 +51,7 @@ test('renders the workspace: Active/Ready/Completed views + search + rows', asyn
 test('selecting a ready incident shows briefing + Submit control (graded control home)', async () => {
   render(<Incidents gameMode="training" activeIncidentId="INC-4000" />);
   expect(await screen.findByText('brief D')).toBeInTheDocument();          // detail-only content
-  expect(screen.getByText('3 of 3 reviewed')).toBeInTheDocument();
+  expect(screen.getByText('Detections reviewed: 3 of 3')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument();
 });
 
@@ -63,7 +63,7 @@ test('a pre-seal incident shows the A2 telemetry-loading line', async () => {
 
 test('an open (not-ready) incident shows the observable readiness message', async () => {
   render(<Incidents gameMode="training" activeIncidentId="INC-2000" />);
-  expect(await screen.findByText(/2 detections still need review\./)).toBeInTheDocument();
+  expect(await screen.findByText(/2 detections still need Promote or Dismiss/)).toBeInTheDocument();
 });
 
 test('a submitted incident offers the Post-Incident Review control', async () => {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '../api';
+import { toReview } from './uiCopy';
 
 // Stage 3.9B Dashboard: the SESSION-WIDE OVERVIEW ("what is happening?"). It
 // carries only compact, overview-level surfaces and navigation-level actions.
@@ -111,7 +112,7 @@ const IncidentDashboard = ({
                   <span className="text-sm text-[#1a2332] truncate">{c.title}</span>
                 </span>
                 <span className="text-xs text-[#8b949e] shrink-0 whitespace-nowrap">
-                  {!c.sealed ? 'Loading' : c.ready ? 'Ready' : `${c.open_detections} to review`}
+                  {!c.sealed ? 'Loading' : c.ready ? 'Ready' : toReview(c.open_detections)}
                 </span>
               </button>
             ))}

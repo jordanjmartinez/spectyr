@@ -3407,6 +3407,23 @@ def _entry_in_scope(entry, grading_rec, registry):
     return e.get("hostname") in grading_rec["hostnames"]
 
 
+def _entry_in_observable_scope(entry, obs_hosts, obs_account_ids, registry):
+    """Stage 5 Phase 2, D4 (ratified OD-8): does this action-log entry's
+    registry-resolved target sit in the incident's OBSERVABLE scope? A
+    deliberately separate join from _entry_in_scope's grading-record join
+    (scaffold ruling D: _incident_progress keeps its frozen 3.9A behavior;
+    D4 uses the observable sets). Reads ONLY the registry entity, the
+    observable host set, and account entity ids pre-resolved from the
+    observable account strings via the sanctioned resolver -- never grading
+    records, expected actions, or answer keys."""
+    e = registry.get(entry["target"]["id"])
+    if e is None:
+        return False
+    if e["kind"] == "account":
+        return entry["target"]["id"] in obs_account_ids
+    return e.get("hostname") in obs_hosts
+
+
 def _classification_grade(verdict, category, actual_category):
     """Unified classification correctness (matches the legacy classify rule).
     verdict false_positive maps the submitted category to 'False Positive'."""
@@ -3989,6 +4006,24 @@ def list_incidents():
                     card["triage"] = {"total": total, "triaged": triaged}
                     card["open_detections"] = total - triaged
                     card["ready"] = triaged == total
+                    # D4 (ratified OD-8): the honest related-actions COUNT --
+                    # successful log entries whose registry-resolved target is
+                    # an observable scope host/account. A count of the
+                    # player's own actions: observable by definition; no
+                    # required-total or correctness signal. Ruling A: count
+                    # only, never a list.
+                    registry = s.get("entity_index", {})
+                    obs_hosts = set(scope["hosts"])
+                    obs_account_ids = {
+                        action_overlay.resolve_account_key(a, registry)
+                        for a in scope["accounts"]}
+                    obs_account_ids.discard(None)
+                    log = (s.get("overlay") or {}).get("log", [])
+                    card["related_actions"] = sum(
+                        1 for le in log
+                        if le.get("outcome") == action_overlay.SUCCESS
+                        and _entry_in_observable_scope(
+                            le, obs_hosts, obs_account_ids, registry))
                 active.append(card)
     return jsonify({"active": active, "completed": completed,
                     "queue_length": s.get("queue_length", 0),
