@@ -544,6 +544,7 @@ RATIONALE_SCENARIOS = {
     "insider_shadow_it",
     "password_spray",
     "c2_dns_tunnel",
+    "false_positive_veeam",
 }
 
 
