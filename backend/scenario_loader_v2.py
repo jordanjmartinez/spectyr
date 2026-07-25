@@ -656,6 +656,10 @@ def _catalog_entry_v2(doc):
         "answer_key": doc["answer_key"],
         "attack_meta": attack_meta,
         "traps": doc["answer_key"].get("traps", []),
+        # Stage 5 D2: the optional Tier 2 rationale paragraph (None until a
+        # scenario's authored commit lands; ledger-ratcheted). Consumed only
+        # at submit time (frozen as scenario_rationale), never pre-boundary.
+        "expected_response": doc.get("expected_response"),
     }
 
 

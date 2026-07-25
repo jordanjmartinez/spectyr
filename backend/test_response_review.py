@@ -490,6 +490,8 @@ def test_planted_template_marker_never_leaks_pre_submission():
             _seed_review_incident(s)
         for k in rr._PURPOSE:
             rr._PURPOSE[k] = f"{canary} {rr._PURPOSE[k]}"
+        # 5.5: plant the rationale string too (the scaffold's second marker)
+        app.yaml_catalog["malware_usb"]["expected_response"] = canary
         surfaces = [
             "/api/incidents",
             f"/api/incidents/{INC}/score",
@@ -510,6 +512,58 @@ def test_planted_template_marker_never_leaks_pre_submission():
     finally:
         rr._PURPOSE.clear()
         rr._PURPOSE.update(saved_purpose)
+        app.yaml_catalog["malware_usb"].pop("expected_response", None)
+        _cleanup(sid, s)
+
+
+def test_rationale_freeze_wiring_and_ruling_h():
+    """5.5 (D2): scenario_rationale freezes FROM the scenario's top-level
+    expected_response at submit. Authored text freezes in; later edits to
+    the source never reach the stored record (correction 6, idempotent
+    resubmit included); and a record frozen null before its paragraph
+    exists stays null after authoring lands (ruling H)."""
+    entry_cat = app.yaml_catalog["malware_usb"]
+    assert entry_cat.get("expected_response") is None   # ledger-empty baseline
+
+    # authored at submit -> frozen into the record, immune to later edits
+    client, sid, s = _api_session()
+    try:
+        with s["io_lock"]:
+            _seed_review_incident(s)
+        entry_cat["expected_response"] = "RATIONALE-FROZEN-TEXT"
+        assert _submit(client, sid).status_code == 200
+        rev = s["submissions"][INC]["report_card"]["response_review"]
+        assert rev["scenario_rationale"] == "RATIONALE-FROZEN-TEXT"
+        view1 = client.get(f"/api/incidents/{INC}/score",
+                           headers={"X-Session-ID": sid}).get_json()
+        assert view1["grading"]["response_review"]["scenario_rationale"] \
+            == "RATIONALE-FROZEN-TEXT"
+        frozen = json.dumps(view1, sort_keys=True)
+        entry_cat["expected_response"] = "EDITED-AFTER-SUBMIT"
+        view2 = client.get(f"/api/incidents/{INC}/score",
+                           headers={"X-Session-ID": sid}).get_json()
+        assert json.dumps(view2, sort_keys=True) == frozen
+        assert _submit(client, sid).status_code == 200   # idempotent resubmit
+        assert s["submissions"][INC]["report_card"]["response_review"][
+            "scenario_rationale"] == "RATIONALE-FROZEN-TEXT"
+    finally:
+        entry_cat.pop("expected_response", None)
+        _cleanup(sid, s)
+
+    # ruling H: null at submit stays null after the paragraph lands
+    client, sid, s = _api_session()
+    try:
+        with s["io_lock"]:
+            _seed_review_incident(s)
+        assert _submit(client, sid).status_code == 200
+        assert s["submissions"][INC]["report_card"]["response_review"][
+            "scenario_rationale"] is None
+        entry_cat["expected_response"] = "AUTHORED-AFTER-THE-FACT"
+        view = client.get(f"/api/incidents/{INC}/score",
+                          headers={"X-Session-ID": sid}).get_json()
+        assert view["grading"]["response_review"]["scenario_rationale"] is None
+    finally:
+        entry_cat.pop("expected_response", None)
         _cleanup(sid, s)
 
 
@@ -675,7 +729,11 @@ def test_corpus_real_drip_review_reconciles_with_frozen_scores():
             assert sum(1 for d in det_block if d["correct"]) \
                 == rc["detection"]["correct"], label
             assert all(d["your_call"] == "dismissed" for d in det_block), label
-            assert rev["scenario_rationale"] is None, label
+            # 5.5 wiring invariant, ledger-agnostic: the frozen rationale
+            # equals the scenario's authored expected_response at submit
+            # (None while unauthored; the loader-suite ledger pins which)
+            assert rev["scenario_rationale"] == \
+                (app.yaml_catalog[label].get("expected_response") or None), label
         finally:
             _cleanup(sid, s)
     print(f"  corpus reconciliation: {len(_catalog_labels())} scenarios")

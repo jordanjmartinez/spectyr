@@ -3440,6 +3440,18 @@ def _classification_grade(verdict, category, actual_category):
     }
 
 
+def _scenario_rationale(label):
+    """The scenario's authored Tier 2 rationale paragraph (D2, schema v2
+    top-level expected_response), or None while unauthored / on non-v2
+    sources. Read ONLY at submit time -- the text freezes into the record
+    as scenario_rationale, so later YAML edits reach future submissions
+    only (correction 6) and a record frozen null stays null (ruling H)."""
+    if not label or not yaml_catalog:
+        return None
+    entry = yaml_catalog.get(label) or {}
+    return entry.get("expected_response") or None
+
+
 def _incident_report_card(s, scenario_id, grading_rec, payload, all_logs):
     """Compute this incident's per-incident report card at submit time. Calls
     the unchanged scoring functions over frozen per-incident inputs."""
@@ -3545,13 +3557,17 @@ def _incident_report_card(s, scenario_id, grading_rec, payload, all_logs):
         "correct": disposition_call_correct(
             d.get("disposition"), d.get("player_action", "open")),
     } for d in dets]
+    scenario_label = next((l.get("label") for l in all_logs
+                           if l.get("scenario_id") == scenario_id
+                           and l.get("label")), "")
     response_review_block = {
         "entries": entries,
         "attempt_history": attempt_history,
         "detections": det_block,
-        # Tier 2 scenario paragraph (D2): wired at 5.5; a record submitted
-        # before its paragraph exists freezes null permanently (ruling H).
-        "scenario_rationale": None,
+        # Tier 2 scenario paragraph (D2, wired at 5.5): frozen from the
+        # scenario's expected_response at submit; a record submitted before
+        # its paragraph exists freezes null permanently (ruling H).
+        "scenario_rationale": _scenario_rationale(scenario_label),
     }
 
     det_raw = (detection["correct"] / detection["graded"] * 100) if detection["graded"] else None
