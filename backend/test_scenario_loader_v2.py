@@ -586,6 +586,21 @@ def test_rationale_ledger_matches_expected_response_state():
     assert not unknown, f"rationale ledger names unknown scenarios: {sorted(unknown)}"
 
 
+def test_all_twenty_rationales_authored_gate():
+    """The 20/20 required-by-ledger flip (scaffold Section 3.4): the Tier 2
+    rollout completed 2026-07-25, so every corpus scenario must carry an
+    authored expected_response and the rationale ledger must be exactly the
+    corpus. A scenario added later needs its paragraph authored with it (or
+    this gate goes red) -- the ratchet never loosens."""
+    catalog, _ = _load_corpus()
+    assert RATIONALE_SCENARIOS == set(catalog), \
+        "the 20/20 gate: the rationale ledger must be exactly the corpus"
+    missing = [l for l, sc in catalog.items()
+               if not (isinstance(sc.get("expected_response"), str)
+                       and sc["expected_response"].strip())]
+    assert not missing, f"scenarios without an authored rationale: {sorted(missing)}"
+
+
 def test_rejects_authored_actions_without_reviewed_flag():
     """Authored actions and the reviewed marker flip together: an authored
     set without actions_reviewed: true is an inconsistent state. The
