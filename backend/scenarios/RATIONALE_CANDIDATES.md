@@ -237,7 +237,7 @@ Landed commits check off here as each scenario's field + ledger row lands:
 
 - [x] malware_usb
 - [x] phishing_1
-- [ ] defense_evasion
+- [x] defense_evasion
 - [ ] false_positive_pentest
 - [ ] lateral_movement_1
 - [ ] c2_http
@@ -248,7 +248,7 @@ Landed commits check off here as each scenario's field + ledger row lands:
 - [ ] insider_staging
 - [ ] malware_ransomware
 - [ ] lateral_movement_2
-- [ ] defense_evasion_log_clearing
+- [x] defense_evasion_log_clearing
 - [ ] insider_shadow_it
 - [ ] password_spray
 - [ ] c2_dns_tunnel

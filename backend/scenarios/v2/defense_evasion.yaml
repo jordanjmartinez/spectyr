@@ -329,3 +329,16 @@ triage_review:
     - "Preserve evidence and collect logs"
     - "Search for similar activity across other endpoints"
     - "Identify how the attacker gained access in the first place"
+
+# Stage 5 D2 (Tier 2 rationale; ledger-tracked): frozen into a
+# submission record as scenario_rationale, rendered only in the
+# post-boundary Learning Review Key takeaway.
+expected_response: >-
+  Security tooling on the victim workstation was tampered with and a
+  masquerading executable was dropped and set to persist. Required: isolate
+  the workstation, terminate the malicious process, and delete the dropped
+  binary, because the host is attacker-controlled and the payload would
+  otherwise survive. Removing the Run-key persistence and terminating the
+  secondary process are defensible additional steps; the graded core is the
+  host plus the payload. The account itself shows no credential theft, so
+  disabling it is collateral.

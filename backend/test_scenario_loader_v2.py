@@ -529,6 +529,7 @@ def test_all_twenty_scenarios_reviewed_gate():
 RATIONALE_SCENARIOS = {
     "malware_usb",
     "phishing_1",
+    "defense_evasion",
 }
 
 
