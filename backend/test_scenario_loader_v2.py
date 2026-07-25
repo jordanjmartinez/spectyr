@@ -539,6 +539,7 @@ RATIONALE_SCENARIOS = {
     "data_exfil_archive",
     "insider_staging",
     "malware_ransomware",
+    "lateral_movement_2",
 }
 
 
