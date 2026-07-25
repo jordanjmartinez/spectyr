@@ -292,3 +292,15 @@ triage_review:
     - "Identify which process on the workstation made the connection"
     - "Trace how the malware was delivered"
     - "Check for any post-compromise activity like credential theft or lateral movement"
+
+# Stage 5 D2 (Tier 2 rationale; ledger-tracked): frozen into a
+# submission record as scenario_rationale, rendered only in the
+# post-boundary Learning Review Key takeaway.
+expected_response: >-
+  A process on the victim workstation is beaconing to attacker
+  infrastructure over HTTP, which means the host is compromised and remotely
+  controllable. Required: isolate the workstation to cut the channel, and
+  terminate the beaconing process. The signed-in account is not shown to be
+  stolen, so disabling it is collateral, and the DNS server merely resolved
+  the lookups every client makes, so isolating shared infrastructure is the
+  classic over-reach.

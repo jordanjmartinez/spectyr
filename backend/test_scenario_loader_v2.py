@@ -532,6 +532,7 @@ RATIONALE_SCENARIOS = {
     "defense_evasion",
     "false_positive_pentest",
     "lateral_movement_1",
+    "c2_http",
 }
 
 
