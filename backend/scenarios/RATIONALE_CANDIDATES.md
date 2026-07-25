@@ -253,5 +253,5 @@ Landed commits check off here as each scenario's field + ledger row lands:
 - [x] password_spray
 - [x] c2_dns_tunnel
 - [x] false_positive_veeam
-- [ ] false_positive_oauth
+- [x] false_positive_oauth
 - [ ] false_positive_ssl_inspection

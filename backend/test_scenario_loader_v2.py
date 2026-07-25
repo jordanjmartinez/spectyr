@@ -545,6 +545,7 @@ RATIONALE_SCENARIOS = {
     "password_spray",
     "c2_dns_tunnel",
     "false_positive_veeam",
+    "false_positive_oauth",
 }
 
 

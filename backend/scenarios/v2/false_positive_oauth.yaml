@@ -210,3 +210,14 @@ triage_review:
     - "Confirm with the identity team if modern auth was recently enabled"
     - "Review the user's interactive sign-in history for actual anomalies"
     - "Tune the impossible travel policy to exclude non-interactive sign-ins"
+
+# Stage 5 D2 (Tier 2 rationale; ledger-tracked): frozen into a
+# submission record as scenario_rationale, rendered only in the
+# post-boundary Learning Review Key takeaway.
+expected_response: >-
+  The flagged sign-in anomalies come from a sanctioned application's
+  modern-auth consent flow, not a compromise: the grants, client, and scopes
+  match the rollout. The correct response is investigation without action.
+  Disabling the account or isolating the workstation would lock a legitimate
+  user out of tools the company just deployed: collateral harm with nothing
+  contained.
