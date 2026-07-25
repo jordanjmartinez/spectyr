@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   ALL_ACTIVITY, EXPANDED_SEARCH_TITLE, followingClue,
-  expandedSearchExplanation, returnToCaseEvidence,
+  expandedSearchExplanation, returnToCaseEvidence, returnSubcopy,
 } from './uiCopy';
 
 // Stage 5 Phase 1 commit 1.1 (consolidated scaffold; contract Amendment 1
@@ -53,6 +53,9 @@ const InvestigationContext = ({ incidentId, expandedSearch }) => (
         >
           {returnToCaseEvidence(incidentId)}
         </button>
+        <span className="w-full text-[11px] text-[#8b949e]">
+          {returnSubcopy(incidentId)}
+        </span>
       </div>
     )}
   </div>

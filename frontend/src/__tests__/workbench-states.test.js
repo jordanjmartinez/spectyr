@@ -203,6 +203,47 @@ test('search-all is disabled on an empty bar (nothing to run)', async () => {
   expect(screen.getByTestId('search-all').textContent).toBe(SEARCH_ALL_EVIDENCE);
 });
 
+test('11.3: an edited bar shows the edited note; a run that lands clears it', async () => {
+  await act(async () => { renderShell({ activeIncidentId: null }); });
+  await runQuery();
+  expect(screen.queryByTestId('edited-note')).toBeNull();
+  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | * draft' } });
+  expect(screen.getByTestId('edited-note').textContent)
+    .toBe('Edited. Results below are from the last run.');
+  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
+  expect(screen.queryByTestId('edited-note')).toBeNull();
+});
+
+test('11.3: a failed parse states the displayed results are from the previous successful query; absent with no snapshot', async () => {
+  apiFetch.mockImplementation((path) => {
+    if (path === '/api/endpoints') return ok({ org: {}, endpoints: [] });
+    if (path.startsWith(`/api/incidents/${INC}/scope`)) return scopeResponse();
+    if (path.startsWith('/api/events/query?')) {
+      const q = decodeURIComponent(path);
+      if (q.includes('broken')) {
+        return Promise.resolve({ ok: false, status: 400,
+          json: () => Promise.resolve({ error: { position: 0, reason: 'unknown TIMEFRAME' } }) });
+      }
+      return ok(snapWith('session'));
+    }
+    return ok({});
+  });
+  await act(async () => { renderShell({ activeIncidentId: null }); });
+  // first run fails with NO prior snapshot: error, no stale-results claim
+  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'broken | * | * | *' } });
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Run Query/ })); });
+  expect(screen.getByRole('alert').textContent).toContain('unknown TIMEFRAME');
+  expect(screen.queryByText('Displayed results are from the previous successful query.')).toBeNull();
+  // a successful run, then a failed parse: prior rows preserved + the statement
+  await runQuery();
+  expect(results().getByText(/nmap.exe launched/)).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'broken | * | * | *' } });
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Run Query/ })); });
+  expect(screen.getByRole('alert').textContent)
+    .toContain('Displayed results are from the previous successful query.');
+  expect(results().getByText(/nmap.exe launched/)).toBeInTheDocument();
+});
+
 test('TIMEFRAME control: text drives the control (control can never disagree)', async () => {
   await act(async () => { renderShell(); });
   const bar = screen.getByLabelText('LCQL query');

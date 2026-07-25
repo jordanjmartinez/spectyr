@@ -10,7 +10,10 @@ import {
   pivotSensorFamily, descentHost, descentSessionAll, descentAccount,
 } from './lcqlPivots';
 import InvestigationContext from './InvestigationContext';
-import { caseEvidenceLabel, SEARCH_ALL_EVIDENCE, RESULTS_FROM_LABEL } from './uiCopy';
+import {
+  caseEvidenceLabel, SEARCH_ALL_EVIDENCE, RESULTS_FROM_LABEL,
+  EDITED_NOTE, STALE_RESULTS_NOTE,
+} from './uiCopy';
 
 // SIEM Investigation Workbench shell (Stage 4 Phase 4). Analyst-driven:
 // the shell submits LCQL text to the server's single query read and renders
@@ -521,6 +524,18 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
             {error.suggestions && error.suggestions.length > 0 && (
               <span className="text-[#57606a]"> Did you mean: {error.suggestions.join(', ')}?</span>
             )}
+            {snapshot && (
+              // 11.3 honesty (locked contract, consumed verbatim): the prior
+              // snapshot is deliberately preserved; this states it.
+              <span className="block mt-1 text-[#57606a]">{STALE_RESULTS_NOTE}</span>
+            )}
+          </div>
+        )}
+        {snapshot && !error && queryText !== snapshot.identity.canonical_query && (
+          // 11.3 edited-query honesty: the bar no longer matches the
+          // executed snapshot; the results below belong to the last run.
+          <div role="status" data-testid="edited-note" className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a]">
+            {EDITED_NOTE}
           </div>
         )}
 
