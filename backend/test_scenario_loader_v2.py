@@ -546,6 +546,7 @@ RATIONALE_SCENARIOS = {
     "c2_dns_tunnel",
     "false_positive_veeam",
     "false_positive_oauth",
+    "false_positive_ssl_inspection",
 }
 
 

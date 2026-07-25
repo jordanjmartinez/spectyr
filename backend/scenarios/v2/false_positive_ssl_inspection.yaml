@@ -269,3 +269,14 @@ triage_review:
     - "Confirm the TLS failures correlate with the inspection policy rollout timeline"
     - "Push updated root certificates to affected workstations"
     - "Monitor for resolution as endpoints pick up the new trust chain"
+
+# Stage 5 D2 (Tier 2 rationale; ledger-tracked): frozen into a
+# submission record as scenario_rationale, rendered only in the
+# post-boundary Learning Review Key takeaway.
+expected_response: >-
+  The certificate anomalies are the proxy's SSL inspection expanding to new
+  categories: the issuer is the corporate inspection CA and the timing
+  matches the policy change. Classify as a false positive and stand down.
+  Killing the flagged process, isolating the workstation, or disabling the
+  account would disrupt normal browsing that is already being inspected by
+  design.
