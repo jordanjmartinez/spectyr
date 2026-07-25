@@ -27,6 +27,7 @@ BACKEND_SUITES = [
     "test_scenario_loader.py",
     "test_action_scoring.py",
     "test_incident_cards.py",
+    "test_response_review.py",
     "test_submission_gate.py",
     "test_incident_scope.py",
     "test_incident_roster_corpus.py",

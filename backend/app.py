@@ -19,6 +19,7 @@ import threading
 # the base. Imported unconditionally so revert paths keep working.
 import action_overlay
 import persistence
+import response_review
 
 # Stage 4 A1: the deterministic simulation epoch every occurrence timestamp
 # derives from (world["started_at"] IS the epoch; drip orchestration stays
@@ -3457,6 +3458,9 @@ def _incident_report_card(s, scenario_id, grading_rec, payload, all_logs):
                 if grading_rec and h in grading_rec["hostnames"]}
     response = compute_action_score(exp, executed, isolated,
                                     [grading_rec] if grading_rec else [])
+    # 5.2 (ruling B): pop the internal review detail at this call site; the
+    # 5.3 freeze consumes it into the stored response_review.
+    review_raw = response.pop("_review")
     acceptable_seqs = set(response.pop("acceptable_seqs"))
     resp_raw = response.pop("accuracy_raw")            # kept for the composite
     inaction_collateral = response.pop("inaction_collateral")
@@ -4196,6 +4200,15 @@ def check_answer_route(incident_id):
 # Disposition scoring: correct = promote a true positive, dismiss a false
 # positive, dismiss a benign_expected. Wrong = the inverse. Open detections
 # are pending, excluded from the grade.
+def disposition_call_correct(disposition, player_action):
+    """The ONE disposition-correctness rule, shared by compute_detection_score
+    (whose bucket arithmetic implements the same mapping, pinned equal by
+    test) and the 5.3 review detections block. Correct = promote a true
+    positive / dismiss a false positive / dismiss an expected-benign."""
+    return _DISPOSITION_CORRECT.get(disposition) == player_action \
+        if player_action in ("promoted", "dismissed") else False
+
+
 _DISPOSITION_CORRECT = {
     "true_positive": "promoted",
     "false_positive": "dismissed",
@@ -4373,6 +4386,13 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
     by_eid = {(x["scenario_id"], x["eid"]): x for x in required_exp
               if x.get("eid")}
 
+    # Stage 5 Phase 5 commit 5.2 (ruling B): the review detail is built
+    # INSIDE the scorer's own joins, in the same pass, and returned as the
+    # popped `_review` key (the acceptable_seqs pattern). Raw entries carry
+    # the reason code, the expected composite (for label rendering at the
+    # one consuming call site), and the occurrence seq; every call site
+    # removes the key before the public score result is used or served.
+    review_entries = []
     required = len(required_exp)
     correct = missed = order_violations = 0
     for exp in required_exp:
@@ -4390,10 +4410,31 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
                     break
         if achieved and order_ok:
             correct += 1
+            review_entries.append({
+                "reason_code": response_review.REQUIRED_COMPLETED,
+                "action": exp["action"], "expected": exp, "seq": seq})
         else:
             missed += 1
             if achieved and not order_ok:
                 order_violations += 1
+                review_entries.append({
+                    "reason_code": response_review.OUT_OF_ORDER,
+                    "action": exp["action"], "expected": exp, "seq": seq})
+            elif exp["action"] == "isolate_host" and seq is not None:
+                # executed but released before submission: the end-state
+                # forfeit, distinguishable from never-attempted by the seq
+                review_entries.append({
+                    "reason_code": response_review.RELEASED_AFTER_ISOLATION,
+                    "action": exp["action"], "expected": exp, "seq": seq})
+            else:
+                # never successfully executed; the consuming call site
+                # upgrades to required_attempt_failed when failed attempts
+                # of this composite exist in the overlay log (the scorer
+                # never sees failed attempts -- successful_executions
+                # filters to SUCCESS)
+                review_entries.append({
+                    "reason_code": response_review.REQUIRED_NOT_ATTEMPTED,
+                    "action": exp["action"], "expected": exp, "seq": None})
 
     required_keys = {(x["action"], _action_target_key(x["action"], x["target"]))
                      for x in required_exp}
@@ -4403,6 +4444,14 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
         seq for (action, key), (seq, target) in first.items()
         if (action, key) in acceptable_keys)
 
+    # acceptable executions: teaching entries with their occurrence seqs
+    for x in acceptable_exp:
+        hit = first.get((x["action"], _action_target_key(x["action"], x["target"])))
+        if hit:
+            review_entries.append({
+                "reason_code": response_review.ACCEPTABLE_COMPLETED,
+                "action": x["action"], "expected": x, "seq": hit[0]})
+
     collateral_hits = []
     for (action, key), (seq, target) in first.items():
         if action == "isolate_host":
@@ -4411,6 +4460,10 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
             continue
         if in_grading_scope(action, target):
             collateral_hits.append((action, target))
+            review_entries.append({
+                "reason_code": response_review.COLLATERAL_IN_SCOPE,
+                "action": action, "expected": None, "target": target,
+                "seq": seq})
     required_iso = {x["target"]["hostname"] for x in required_exp
                     if x["action"] == "isolate_host"}
     acceptable_iso = {x["target"]["hostname"] for x in acceptable_exp
@@ -4421,6 +4474,11 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
         target = {"hostname": hostname}
         if in_grading_scope("isolate_host", target):
             collateral_hits.append(("isolate_host", target))
+            iso_hit = first.get(("isolate_host", (hostname,)))
+            review_entries.append({
+                "reason_code": response_review.COLLATERAL_IN_SCOPE,
+                "action": "isolate_host", "expected": None, "target": target,
+                "seq": iso_hit[0] if iso_hit else None})
 
     # Intentional correct inaction: each reviewed scenario with no REQUIRED
     # actions (empty, or acceptable-only) is one graded unit, credited only
@@ -4434,8 +4492,14 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
         required += 1
         if any(claims(g, action, target) for action, target in collateral_hits):
             missed += 1
+            review_entries.append({
+                "reason_code": response_review.INACTION_SPOILED,
+                "action": None, "expected": None, "seq": None})
         else:
             correct += 1
+            review_entries.append({
+                "reason_code": response_review.INACTION_CORRECT,
+                "action": None, "expected": None, "seq": None})
 
     collateral = len(collateral_hits)
     # Stage 3d collateral pricing (owner ruling 2026-07-19): required credit is
@@ -4469,6 +4533,10 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
         "inaction_collateral": inaction_collateral,
         "grade": _letter_grade(accuracy, graded),
         "acceptable_seqs": acceptable_seqs,
+        # 5.2 (ruling B): the internal review detail -- popped at EVERY call
+        # site before the public score result is used; a structural test
+        # asserts no served payload anywhere contains it.
+        "_review": {"entries": review_entries},
     }
 
 
