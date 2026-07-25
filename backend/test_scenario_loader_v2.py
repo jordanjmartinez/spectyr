@@ -528,6 +528,7 @@ def test_all_twenty_scenarios_reviewed_gate():
 # land silently and a ledger row can never outrun its content.
 RATIONALE_SCENARIOS = {
     "malware_usb",
+    "phishing_1",
 }
 
 
