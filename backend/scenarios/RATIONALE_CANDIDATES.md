@@ -249,7 +249,7 @@ Landed commits check off here as each scenario's field + ledger row lands:
 - [x] malware_ransomware
 - [x] lateral_movement_2
 - [x] defense_evasion_log_clearing
-- [ ] insider_shadow_it
+- [x] insider_shadow_it
 - [ ] password_spray
 - [ ] c2_dns_tunnel
 - [ ] false_positive_veeam

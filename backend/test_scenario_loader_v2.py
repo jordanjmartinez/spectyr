@@ -541,6 +541,7 @@ RATIONALE_SCENARIOS = {
     "malware_ransomware",
     "lateral_movement_2",
     "defense_evasion_log_clearing",
+    "insider_shadow_it",
 }
 
 

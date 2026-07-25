@@ -308,3 +308,15 @@ triage_review:
     - "Remove the application and block the domain"
     - "Work with the employee to recover corporate files from the personal account or device"
     - "Document the policy violation and notify management"
+
+# Stage 5 D2 (Tier 2 rationale; ledger-tracked): frozen into a
+# submission record as scenario_rationale, rendered only in the
+# post-boundary Learning Review Key takeaway.
+expected_response: >-
+  An employee installed unsanctioned remote-access tooling, exposing the
+  workstation to outside control regardless of intent. Required: isolate the
+  workstation to cut the remote channel, and revoke the account's sessions
+  so any hijacked session dies with it. Disabling the account, terminating
+  the tool, and a password reset are all defensible steps of increasing
+  firmness. Shared infrastructure that carried the traffic is not the
+  problem, so isolating it is collateral.
