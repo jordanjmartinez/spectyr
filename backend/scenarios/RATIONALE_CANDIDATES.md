@@ -245,7 +245,7 @@ Landed commits check off here as each scenario's field + ledger row lands:
 - [x] false_positive_robocopy
 - [x] phishing_link
 - [x] data_exfil_archive
-- [ ] insider_staging
+- [x] insider_staging
 - [ ] malware_ransomware
 - [ ] lateral_movement_2
 - [x] defense_evasion_log_clearing

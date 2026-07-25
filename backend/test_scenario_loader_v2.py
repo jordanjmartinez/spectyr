@@ -537,6 +537,7 @@ RATIONALE_SCENARIOS = {
     "false_positive_robocopy",
     "phishing_link",
     "data_exfil_archive",
+    "insider_staging",
 }
 
 

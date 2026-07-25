@@ -312,3 +312,16 @@ triage_review:
     - "Engage HR and Legal before any direct employee contact"
     - "Verify whether the employee has a legitimate business need for the staged data"
     - "Monitor for exfiltration activity such as USB connections, personal email, or cloud uploads"
+
+# Stage 5 D2 (Tier 2 rationale; ledger-tracked): frozen into a
+# submission record as scenario_rationale, rendered only in the
+# post-boundary Learning Review Key takeaway.
+expected_response: >-
+  A trusted insider used their own valid account to stage sensitive files
+  from the file server onto their workstation. Because the actor is the
+  account, identity comes first: disable the insider's account and revoke
+  its sessions so no further access is possible, and isolate the workstation
+  holding the staged data. Terminating the staging process and resetting the
+  password are defensible additions. Isolating the file server is the
+  tempting wrong move: it takes a shared service down when the access has
+  already been cut at the account.
