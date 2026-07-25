@@ -239,7 +239,7 @@ Landed commits check off here as each scenario's field + ledger row lands:
 - [x] phishing_1
 - [x] defense_evasion
 - [x] false_positive_pentest
-- [ ] lateral_movement_1
+- [x] lateral_movement_1
 - [ ] c2_http
 - [ ] brute_force_attack
 - [ ] false_positive_robocopy

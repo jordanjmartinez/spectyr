@@ -531,6 +531,7 @@ RATIONALE_SCENARIOS = {
     "phishing_1",
     "defense_evasion",
     "false_positive_pentest",
+    "lateral_movement_1",
 }
 
 
