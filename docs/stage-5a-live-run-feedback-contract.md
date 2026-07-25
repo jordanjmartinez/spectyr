@@ -1484,9 +1484,13 @@ document.*
 ---
 ---
 
-# AMENDMENT 1 — CASE-CONSTANT SCOPE + LEARNING FEEDBACK (DRAFT, NOT RATIFIED)
+# AMENDMENT 1 — CASE-CONSTANT SCOPE + LEARNING FEEDBACK (RATIFIED)
 
-**Status: DRAFT FOR RATIFICATION. Nothing in this appendix is in force.**
+**Status: BOTH DELTAS RATIFIED — owner ruling 2026-07-25, recorded in
+A1-R: every drafted recommendation ratified as recommended, with two
+owner adjustments (B-OD-5 narrowed to Guided-only; the T1 sealed-roster
+count note). The A1-R record is the governing resolution of the
+surfaced owner decisions (A-OD-1..4, B-OD-1..5).**
 Drafted 2026-07-25 on branch `stage-5-amendment-1` at repository baseline
 `main` `2e74b86` (the Stage 5 scaffold-approval merge; gates verified ALL
 GREEN at this baseline: backend 27 suites, frontend 18 suites / 173
@@ -2330,8 +2334,62 @@ Phase 1 shrink.
 
 | Delta | State | Date | Notes |
 |---|---|---|---|
-| Delta A — case-constant scope | DRAFT | — | — |
-| Delta B — learning feedback | DRAFT | — | — |
+| Delta A — case-constant scope | **RATIFIED** | 2026-07-25 | As recommended; rulings in A1-R.1 |
+| Delta B — learning feedback | **RATIFIED** | 2026-07-25 | As recommended, two owner adjustments; rulings in A1-R.1 |
+
+### A1-R.1 Owner ratification rulings (2026-07-25)
+
+The owner ratified BOTH deltas with every drafted recommendation
+standing, plus two adjustments stated in the ratification directive.
+Resolution of each surfaced decision:
+
+- **A-OD-1 (naming):** the A1-A.5 proposed finals are RATIFIED as
+  canonical ("Investigating INC-####", "All activity", "INC-####
+  evidence", "Expanded search", "Searching all evidence. Your case
+  INC-#### stays open.", "Return to INC-#### evidence", "Search all
+  evidence", and the return subcopy).
+- **A-OD-2:** NO expand action on Detections or Endpoints — the SIEM is
+  the hunting surface; the pages stay single-purpose.
+- **A-OD-3:** the All Activity state contents per A1-A.3 row 1 are
+  CONFIRMED, and the surfaced error narrowing is CONFIRMED: the
+  case-evidence error-empty state offers Retry only (no broadening
+  control exists on the data pages; the explicit exit lives on
+  Incidents).
+- **A-OD-4:** search-all placement RATIFIED as recommended: the state
+  label adjacent to the query bar ("INC-#### evidence") with "Search
+  all evidence" beside it; the return action renders in the
+  expanded-search block.
+- **B-OD-1 (venue):** Option 1 RATIFIED — the Metrics/Analytics tab
+  becomes the per-incident Learning Review home with the one-venue
+  conditions of A1-B.4.4 (the in-workspace modal never renders teaching
+  content; the Incidents completed pane shows the Case Closed summary
+  and the "Review what you learned" path; Incident Grade vs Session
+  Performance labeling preserved with a per-incident selector).
+- **B-OD-2:** Level 3 scenario-specific hints DEFERRED (out of
+  Stage 5), consistent with the Tier 3 precedent.
+- **B-OD-3:** the deferred achievements remain DEFERRED with their
+  recorded tracking costs; no points, streaks, leaderboards, or
+  currency without a separate owner ruling.
+- **B-OD-4:** the local progression store is DEFERRED (out of Stage 5;
+  a final-polish candidate). No client store ships in Stage 5.
+- **B-OD-5 (OWNER ADJUSTMENT — narrower than drafted):** the
+  checklist's static consider-prompt ("Consider whether containment or
+  remediation is needed.") renders in **Guided ONLY** — suppressed in
+  SOC Queue AND Hardcore (the draft proposed Guided + SOC Queue). The
+  count line renders in all modes.
+- **T1 (OWNER ADJUSTMENT — the sealed-roster note):** the disposition
+  toast's remaining-count line derives from the shared roster and
+  renders only once the incident's roster is SEALED; before seal, or
+  for a disposition belonging to no sealed incident roster, the toast
+  confirms the disposition alone (the checklist's telemetry line
+  already announces loading). This binds A1-B.3.1 trigger T1.
+- **Section 19 numbering:** Delta B's three new criteria take
+  **19.17-19**, final per the owner-directed merge order (Amendment 1
+  before Amendment 2; the corresponding record lives in Amendment 2's
+  A2-R.2).
+- **Scaffold application:** this ratification authorizes applying
+  A1-A.8 and A1-B.8 (with the two adjustments above) to the
+  implementation scaffold in the consolidated scaffold update.
 
 *Amendment 1 drafted 2026-07-25 at baseline `2e74b86` on branch
 `stage-5-amendment-1`; gates ALL GREEN at baseline (backend 27 suites;
