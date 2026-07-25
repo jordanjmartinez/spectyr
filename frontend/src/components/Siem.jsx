@@ -100,6 +100,27 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
   const [heldView, setHeldView] = useState(null);
   const preserveHoldRef = useRef(false);
   const focusSeqRef = useRef(0);
+  // Phase 4 commit 4.1 (OD-5 Option A): selection visibly connects to the
+  // ONE shared inspector -- scroll-into-view (block nearest), a single
+  // emphasis run, and focus moved to the container exactly once per
+  // selection change; prefers-reduced-motion jumps with no animation.
+  const inspectorRef = useRef(null);
+  const [inspectorEmphasis, setInspectorEmphasis] = useState(false);
+  useEffect(() => {
+    if (!selectedId || !inspectorRef.current) return undefined;
+    const reduced = typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (typeof inspectorRef.current.scrollIntoView === 'function') {
+      inspectorRef.current.scrollIntoView({
+        block: 'nearest', behavior: reduced ? 'auto' : 'smooth',
+      });
+    }
+    inspectorRef.current.focus({ preventScroll: true });
+    if (reduced) return undefined;
+    setInspectorEmphasis(true);
+    const t = setTimeout(() => setInspectorEmphasis(false), 700);
+    return () => clearTimeout(t);
+  }, [selectedId]);
 
   useEffect(() => {
     apiFetch('/api/endpoints')
@@ -869,13 +890,20 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
                          focus={timelineActive && timeline.kind === 'surrounding'
                            ? { id: timeline.focusId, seq: timeline.focusSeq } : null} />
             )}
-            <EventInspector
-              event={snapshot.rows.find((r) => r.id === selectedId) || null}
-              onFilter={refineAndRun}
-              onHostPivot={onHostPivot}
-              onPivot={pivotAndRun}
-              onSurrounding={surroundingAndRun}
-            />
+            <div
+              ref={inspectorRef}
+              tabIndex={-1}
+              data-testid="inspector-container"
+              className={`outline-none rounded-xl ${inspectorEmphasis ? 'inspector-emphasis' : ''}`}
+            >
+              <EventInspector
+                event={snapshot.rows.find((r) => r.id === selectedId) || null}
+                onFilter={refineAndRun}
+                onHostPivot={onHostPivot}
+                onPivot={pivotAndRun}
+                onSurrounding={surroundingAndRun}
+              />
+            </div>
           </div>
         </div>
       )}

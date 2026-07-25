@@ -244,3 +244,14 @@ code {
 .dark-thead button:hover {
   color: #ffffff;
 }
+
+/* Phase 4 commit 4.1 (OD-5 Option A): one short emphasis run on the shared
+   inspector per selection change; disabled under prefers-reduced-motion by
+   the shell (the class is simply not applied). */
+@keyframes inspectorPulse {
+  0% { box-shadow: 0 0 0 2px rgba(22, 67, 107, 0.55); }
+  100% { box-shadow: 0 0 0 0 rgba(22, 67, 107, 0); }
+}
+.inspector-emphasis {
+  animation: inspectorPulse 0.6s ease-out 1;
+}
