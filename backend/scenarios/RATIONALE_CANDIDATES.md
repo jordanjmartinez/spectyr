@@ -235,7 +235,7 @@ reaches future submissions only (correction 6).
 
 Landed commits check off here as each scenario's field + ledger row lands:
 
-- [ ] malware_usb
+- [x] malware_usb
 - [ ] phishing_1
 - [ ] defense_evasion
 - [ ] false_positive_pentest

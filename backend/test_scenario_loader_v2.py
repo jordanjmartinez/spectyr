@@ -526,7 +526,9 @@ def test_all_twenty_scenarios_reviewed_gate():
 # flips to required-by-ledger at 20/20 -- the ratchet below enforces exact
 # correspondence in BOTH directions the whole way, so a paragraph can never
 # land silently and a ledger row can never outrun its content.
-RATIONALE_SCENARIOS = set()
+RATIONALE_SCENARIOS = {
+    "malware_usb",
+}
 
 
 def test_expected_response_validated_when_present():

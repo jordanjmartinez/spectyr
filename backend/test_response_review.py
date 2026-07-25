@@ -271,6 +271,13 @@ def _cleanup(sid, s):
     shutil.rmtree(s["session_dir"], ignore_errors=True)
 
 
+# A label deliberately OUTSIDE the real corpus: the review fixtures must
+# stay valid at every state of the Tier 2 rollout (an authored paragraph on
+# a real scenario would otherwise flip the fixture's null-rationale
+# baseline). Tests that need a catalog entry inject this one and remove it.
+FIXTURE_LABEL = "test_review_scenario"
+
+
 def _seed_review_incident(s):
     """One sealed, ready incident exercising every 5.3 join: a required
     isolation EXECUTED (completed entry, log label), a required kill with a
@@ -281,7 +288,7 @@ def _seed_review_incident(s):
     logs = app._read_ndjson_unlocked(s["paths"]["generated_logs"])
     logs.append({
         "id": f"e-{INC}", "timestamp": STARTED, "scenario_id": SCEN,
-        "label": "malware_usb", "category": "Malware", "alert_id": INC,
+        "label": FIXTURE_LABEL, "category": "Malware", "alert_id": INC,
         "level": 1, "level_name": "Test Incident", "status": "active",
         "chain_complete": True, "severity": "high",
         "message": "seed event", "source_type": "Sysmon", "hostname": WS})
@@ -291,7 +298,7 @@ def _seed_review_incident(s):
         "scenario_id": SCEN, "incident_id": INC, "queue_position": 1,
         "ticket_title": "Test Incident", "storyline": "",
         "injected_at": STARTED, "chain_complete_at": STARTED,
-        "scenario_label": "malware_usb"})
+        "scenario_label": FIXTURE_LABEL})
     s["queue_length"] = 1
     s.setdefault("scenario_history", [])
     s.setdefault("scenario_grading", []).append({
@@ -491,7 +498,8 @@ def test_planted_template_marker_never_leaks_pre_submission():
         for k in rr._PURPOSE:
             rr._PURPOSE[k] = f"{canary} {rr._PURPOSE[k]}"
         # 5.5: plant the rationale string too (the scaffold's second marker)
-        app.yaml_catalog["malware_usb"]["expected_response"] = canary
+        # on the fixture's own catalog entry
+        app.yaml_catalog[FIXTURE_LABEL] = {"expected_response": canary}
         surfaces = [
             "/api/incidents",
             f"/api/incidents/{INC}/score",
@@ -512,7 +520,7 @@ def test_planted_template_marker_never_leaks_pre_submission():
     finally:
         rr._PURPOSE.clear()
         rr._PURPOSE.update(saved_purpose)
-        app.yaml_catalog["malware_usb"].pop("expected_response", None)
+        app.yaml_catalog.pop(FIXTURE_LABEL, None)
         _cleanup(sid, s)
 
 
@@ -522,8 +530,8 @@ def test_rationale_freeze_wiring_and_ruling_h():
     the source never reach the stored record (correction 6, idempotent
     resubmit included); and a record frozen null before its paragraph
     exists stays null after authoring lands (ruling H)."""
-    entry_cat = app.yaml_catalog["malware_usb"]
-    assert entry_cat.get("expected_response") is None   # ledger-empty baseline
+    # inject the fixture's own catalog entry (rollout-state independent)
+    entry_cat = app.yaml_catalog.setdefault(FIXTURE_LABEL, {})
 
     # authored at submit -> frozen into the record, immune to later edits
     client, sid, s = _api_session()
@@ -563,7 +571,7 @@ def test_rationale_freeze_wiring_and_ruling_h():
                           headers={"X-Session-ID": sid}).get_json()
         assert view["grading"]["response_review"]["scenario_rationale"] is None
     finally:
-        entry_cat.pop("expected_response", None)
+        app.yaml_catalog.pop(FIXTURE_LABEL, None)
         _cleanup(sid, s)
 
 
