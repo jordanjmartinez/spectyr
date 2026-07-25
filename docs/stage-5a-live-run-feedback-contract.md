@@ -2408,10 +2408,10 @@ independently; this task ratifies nothing.*
 **Status: RATIFIED — owner rulings recorded in A2-R, 2026-07-25. The
 A2-R rulings are the governing finals wherever they differ from the
 drafted body below (three drafted string families are superseded there).
-The Section 19 criteria numbering assignment is PENDING, recorded in
-A2-R: at ratification time the Amendment 1 ratification pre-check had
-not resolved (no A1 ratification was committed), so the by-merge-order
-assignment cannot yet be final.**
+The Section 19 criteria numbering assignment is FINAL (A2-R.2): the
+Amendment 1 ratification was subsequently recorded (A1-R, merge
+`935f824`) and the appendices are ordered on one branch — Amendment 1
+Delta B = 19.17-19; Amendment 2 A2-AC-1..7 = 19.20-26.**
 Drafted 2026-07-25 on branch `stage-5-amendment-2` at repository baseline
 `main` `2e74b86` (the Stage 5 scaffold-approval merge; gates re-verified
 ALL GREEN on this branch at this baseline: backend 27 suites, frontend 18
@@ -3091,6 +3091,16 @@ everything locked for Phases 3 and 4. What it loses: nothing.
   the intended assignment and becomes final when the Amendment 1
   ratification is committed and the appendices are ordered on one
   branch.
+- **Assignment FINAL (2026-07-25, recorded after the fact):** the
+  Amendment 1 ratification was recorded (A1-R rulings commit `b6d11e7`,
+  merged to `main` at `935f824`) and the appendices are ordered on this
+  branch (Amendment 1 first, Amendment 2 second). The Section 19
+  numbers are therefore FINAL: **Amendment 1 Delta B = 19.17-19;
+  Amendment 2 A2-AC-1 through A2-AC-7 = 19.20-26.** The nine-control
+  tooltip set is likewise in force: Delta B's eight (Promote, Dismiss,
+  Reopen, Feed/Threats, `==`, `!=`, Pivot, Expanded search) plus
+  Surrounding events, with the ruled A2 finals governing `==`, `!=`,
+  Pivot, and Surrounding events.
 
 *Amendment 2 drafted 2026-07-25 at baseline `2e74b86` on branch
 `stage-5-amendment-2`; gates ALL GREEN at this baseline on this branch
