@@ -251,7 +251,7 @@ Landed commits check off here as each scenario's field + ledger row lands:
 - [x] defense_evasion_log_clearing
 - [x] insider_shadow_it
 - [x] password_spray
-- [ ] c2_dns_tunnel
+- [x] c2_dns_tunnel
 - [ ] false_positive_veeam
 - [ ] false_positive_oauth
 - [ ] false_positive_ssl_inspection
