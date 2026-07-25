@@ -540,6 +540,7 @@ RATIONALE_SCENARIOS = {
     "insider_staging",
     "malware_ransomware",
     "lateral_movement_2",
+    "defense_evasion_log_clearing",
 }
 
 
