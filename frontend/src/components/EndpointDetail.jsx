@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { apiFetch } from '../api';
+import { toastActionResult } from './uiToasts';
 import { StatusBadge, OsChip, IsolationBadge } from './Endpoints';
 import ConfirmDialog from './ConfirmDialog';
 
@@ -100,7 +101,6 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
   const [procSort, setProcSort] = useState({ key: 'pid', dir: 'asc' });
   const [confirm, setConfirm] = useState(null); // {title, body, confirmLabel, action, target}
   const [busy, setBusy] = useState(false);
-  const [actionNotice, setActionNotice] = useState(null);
 
   const fetchSnap = useCallback(() => {
     apiFetch(`/api/endpoints/${encodeURIComponent(hostname)}`)
@@ -114,7 +114,6 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
     setNotFound(false);
     setTab('overview');
     setConfirm(null);
-    setActionNotice(null);
     fetchSnap();
   }, [hostname, fetchSnap]);
 
@@ -127,7 +126,9 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
     })
       .then(res => res.json())
       .then(entry => {
-        setActionNotice(entry.outcome === 'success' ? null : (entry.reason || entry.error || null));
+        // T2/T3 (Phase 2 commit 2.4): the toast is the one announcement;
+        // the inline notice retires (one announcement per fact).
+        toastActionResult(entry);
         setConfirm(null);
         setBusy(false);
         fetchSnap();
@@ -306,7 +307,6 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
                       Isolate Host
                     </button>
                   )}
-                  {actionNotice && <p className="text-xs text-[#57606a]">{actionNotice}</p>}
                 </div>
               </div>
             </Card>
@@ -345,7 +345,6 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
                 className="w-full sm:w-72 px-3 py-2 text-sm rounded-md border border-[#d0d7de] bg-white text-[#1a2332] placeholder-[#8b949e] focus:outline-none focus:ring-2 focus:ring-[#16436b]/30"
               />
               <span className="text-sm text-[#57606a]">{processes.length} of {snap.processes.length}</span>
-              {actionNotice && <span className="text-xs text-[#57606a]">{actionNotice}</span>}
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
@@ -502,7 +501,6 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
           <Card>
             <div className="p-4 flex flex-wrap items-center gap-3">
               <SectionLabel>Persistence artifacts</SectionLabel>
-              {actionNotice && <span className="text-xs text-[#57606a]">{actionNotice}</span>}
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">

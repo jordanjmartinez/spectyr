@@ -15,6 +15,8 @@ import Endpoints from '../components/Endpoints';
 import EndpointDetail from '../components/EndpointDetail';
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
+jest.mock('react-toastify', () => ({ toast: jest.fn(), ToastContainer: () => null }));
+const { toast } = require('react-toastify');
 const { apiFetch } = require('../api');
 
 const LIST_FIXTURE = {
@@ -233,11 +235,15 @@ test('failed precondition surfaces the in-fiction reason', async () => {
   const { container } = render(
     <EndpointDetail hostname="ACME-WS12" org={{ name: 'ACME Corp' }} onBack={() => {}} />
   );
-  // the control stays enabled on an offline host; the server enforces
+  // the control stays enabled on an offline host; the server enforces.
+  // Phase 2 commit 2.4: the factual reason now surfaces as the T3 toast
+  // (the one announcement; the inline notice line retired).
   fireEvent.click(await screen.findByRole('button', { name: 'Isolate Host' }));
   fireEvent.click(screen.getByRole('button', { name: 'Isolate' }));
   await waitFor(() => {
-    expect(container.textContent).toMatch(/isolation command could not be delivered/);
+    expect(toast).toHaveBeenCalledWith(
+      expect.stringMatching(/isolation command could not be delivered/),
+      expect.anything());
   });
   assertCleanCopy(container);
 });

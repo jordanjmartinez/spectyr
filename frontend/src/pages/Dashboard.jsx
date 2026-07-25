@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
 import { apiFetch } from '../api';
 import Siem from '../components/Siem';
 import Incidents from '../components/Incidents';
@@ -462,6 +463,13 @@ const Dashboard = () => {
           onQuit={handleFailureRestart}
         />
       )}
+
+      {/* Live Progress and Reinforcement toasts (Phase 2 commit 2.4,
+          A1-B.3.1): factual confirmations only, announced politely
+          (role=status), never stealing focus. */}
+      <ToastContainer position="bottom-right" autoClose={4000} newestOnTop
+        closeOnClick pauseOnFocusLoss={false} limit={4} role="status"
+        theme="light" />
     </div>
   );
 };

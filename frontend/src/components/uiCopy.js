@@ -64,3 +64,38 @@ export const filterAdded = (field, value) =>
   `Filter added: ${field} == "${value}"`;
 export const excludedFilter = (field, value) =>
   `Excluded: ${field} != "${value}"`;
+
+// === Phase 2 commit 2.4: Live Progress and Reinforcement (A1-B.3) ==========
+// Toast + checklist strings. Factual and observable only: an action
+// executed, a detection was reviewed, a milestone was reached -- never that
+// a decision was right, expected, or harmful.
+
+// The ONE action display-label map (previously duplicated in Detections and
+// ScoreSections; centralized so nothing is defined twice).
+export const ACTION_LABELS = {
+  isolate_host: 'Isolate Host',
+  release_host: 'Release Host',
+  kill_process: 'Kill Process',
+  delete_file: 'Delete File',
+  disable_account: 'Disable Account',
+  revoke_sessions: 'Revoke Sessions',
+  force_password_reset: 'Force Password Reset',
+  remove_persistence: 'Remove Persistence',
+};
+
+// T4/T5 (ruled trigger list): readiness and triage-complete coincide by
+// construction (readiness == every roster detection reviewed on a sealed
+// roster), so ONE milestone toast carries both facts -- one announcement
+// per fact.
+export const allReviewedReady = (incidentId) =>
+  `All detections reviewed. ${incidentId} is ready to submit.`;
+
+// Checklist lines (A1-B.3.2). The consider-prompt is the ONE static prompt,
+// byte-identical for every incident; it renders in Guided only (ruled
+// B-OD-5) and never varies with hidden expectations.
+export const CLASSIFICATION_NOT_SELECTED = 'Classification: not selected';
+export const classificationSelected = (category) =>
+  `Classification: ${category}`;
+export const CONSIDER_PROMPT =
+  'Consider whether containment or remediation is needed.';
+export const SUBMIT_PENDING = 'Submit pending';

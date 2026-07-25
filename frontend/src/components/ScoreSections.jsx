@@ -1,4 +1,5 @@
 import React from 'react';
+import { ACTION_LABELS } from './uiCopy';
 
 // Stage 3d composite ruling: the 40/30/30 composite is the headline grade
 // (rendered by GradeCard); Classification, Detections, and Response render
@@ -13,15 +14,8 @@ import React from 'react';
 // nothing is shown until at least one incident is submitted (its parent only
 // mounts it once grading exists).
 
-const ACTION_LABELS = {
-  isolate_host: 'Isolate Host',
-  release_host: 'Release Host',
-  kill_process: 'Kill Process',
-  delete_file: 'Delete File',
-  disable_account: 'Disable Account',
-  revoke_sessions: 'Revoke Sessions',
-  force_password_reset: 'Force Password Reset',
-};
+// ACTION_LABELS centralized in uiCopy (Phase 2 commit 2.4) -- one
+// definition, consumed here, in Detections, and by the toast module.
 
 const Card = ({ children }) => (
   <div className="rounded-2xl" style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>

@@ -5,8 +5,10 @@ import CategorySelector from './CategorySelector';
 import {
   TELEMETRY_LOADING, detectionsReviewed, detectionsRemaining,
   responseActionsTaken, READY_TO_SUBMIT, toReview, completedStrip,
-  SUBMITTED_GRADE_LOCKED,
+  SUBMITTED_GRADE_LOCKED, CLASSIFICATION_NOT_SELECTED,
+  classificationSelected, CONSIDER_PROMPT, SUBMIT_PENDING,
 } from './uiCopy';
+import { toastReady } from './uiToasts';
 
 // Stage 3.9B: the Incidents operational workspace ("what do I need to work?").
 // Search + Active / Ready / Completed views, stable incident rows, and a
@@ -21,26 +23,39 @@ const gradeColor = (g) => (!g || g === '-') ? '#8b949e' : g === 'F' ? '#b45858' 
 const CARD = { background: '#fff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' };
 const fmtTime = (iso) => { try { return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
 
-const PhaseStrip = ({ sealed, triage, related, ready }) => {
-  // Phase 2 (10.1 canonical vocabulary): every line observable-only. The
-  // Respond count is the server's D4 related_actions field (ruling A:
-  // count only, the fuzzy label join is deleted).
+// The incident-progress checklist (Phase 2 commit 2.4, A1-B.3.2): the phase
+// strip EVOLVED -- one progress surface, never a second parallel one. Lines
+// are observable-only: seal state, roster triage counts, the player's own
+// local classification choice, the D4 action count, readiness. LEAK RULE
+// (binding, 19.18): the line set, order, and copy are constants, identical
+// for every incident regardless of the answer key; only observable numbers
+// and the player's own selection vary. The consider-prompt is the ONE static
+// prompt, byte-identical for every incident, rendered in Guided only
+// (ruled B-OD-5); it never carries a target count.
+export const PhaseStrip = ({ sealed, triage, related, ready, classification,
+                             showPrompt }) => {
   if (!sealed) return <p className="text-xs text-[#8b949e] italic">{TELEMETRY_LOADING}</p>;
   const t = triage || { total: 0, triaged: 0 };
-  const steps = [
-    ['Triage', detectionsReviewed(t.triaged, t.total), ready],
-    ['Investigate', 'evidence', false],
-    ['Respond', responseActionsTaken(related ?? 0), false],
-    ['Submit', ready ? READY_TO_SUBMIT : 'pending', false],
+  const lines = [
+    ['triage', detectionsReviewed(t.triaged, t.total),
+     t.total > 0 && t.triaged === t.total],
+    ['classification',
+     classification ? classificationSelected(classification) : CLASSIFICATION_NOT_SELECTED,
+     !!classification],
+    ['response', responseActionsTaken(related ?? 0), null],
+    ['ready', ready ? READY_TO_SUBMIT : SUBMIT_PENDING, !!ready],
   ];
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
-      {steps.map(([label, detail, done], i) => (
-        <span key={label} className="inline-flex items-center gap-1.5">
-          {i > 0 && <span className="text-[#d0d7de]">›</span>}
-          <span className={`font-medium ${done ? 'text-[#6fa868]' : 'text-[#57606a]'}`}>{label}</span>
-          <span className="text-[#8b949e]">{detail}</span>
-        </span>
+    <div className="space-y-0.5 text-[11px]" data-testid="incident-checklist">
+      {lines.map(([key, text, done]) => (
+        <div key={key} className="flex items-center gap-1.5">
+          <span aria-hidden="true"
+            className={`w-1.5 h-1.5 rounded-full shrink-0 ${done === null ? 'bg-[#d0d7de]' : done ? 'bg-[#6fa868]' : 'border border-[#8b949e]'}`} />
+          <span className={done ? 'text-[#57606a]' : 'text-[#57606a]'}>{text}</span>
+          {key === 'response' && showPrompt && (
+            <span className="text-[#8b949e]">{CONSIDER_PROMPT}</span>
+          )}
+        </div>
       ))}
     </div>
   );
@@ -59,6 +74,10 @@ const Incidents = ({
   const [showClassifier, setShowClassifier] = useState(false);
   const [showCategory, setShowCategory] = useState(false);
   const [pendingSubmit, setPendingSubmit] = useState(null);  // {..., action: 'submit' | 'check'}
+  // 2.4 checklist: the player's own tentative classification per incident
+  // (observable local input; feeds ONLY the checklist line).
+  const [chosen, setChosen] = useState({});
+  useEffect(() => { setChosen({}); prevReadyRef.current = {}; }, [resetTrigger]);
   const [submitBusy, setSubmitBusy] = useState(false);
   const [checkResult, setCheckResult] = useState(null);      // Guided Check Answer feedback
   const [checkBusy, setCheckBusy] = useState(false);
@@ -71,8 +90,23 @@ const Incidents = ({
   const isGuided = gameMode === 'guided' || gameMode === 'training';
   const flash = (m) => { setNotice(m); if (noticeTimer.current) clearTimeout(noticeTimer.current); noticeTimer.current = setTimeout(() => setNotice(''), 4500); };
 
+  // T4/T5 milestone watcher (2.4): readiness and triage-complete coincide
+  // by construction (readiness == full triage on a sealed roster), so the
+  // ONE milestone toast fires on the observable false -> true transition.
+  // First sight of an already-ready card never toasts (no transition seen).
+  const prevReadyRef = useRef({});
   const fetchList = useCallback(() => {
     apiFetch('/api/incidents').then(r => r.json()).then(d => {
+      const next = {};
+      for (const c of d.active || []) {
+        if (c.state === 'in_progress' && c.sealed) {
+          next[c.incident_id] = !!c.ready;
+          if (c.ready && prevReadyRef.current[c.incident_id] === false) {
+            toastReady(c.incident_id);
+          }
+        }
+      }
+      prevReadyRef.current = next;
       setData(d);
       setGroupedAlertCount?.((d.active || []).length);
     }).catch(() => {});
@@ -277,7 +311,10 @@ const Incidents = ({
                   </p>
                 ) : (
                   <PhaseStrip sealed={selected.sealed}
-                    triage={selected.triage} related={selected.related_actions} ready={selected.ready} />
+                    triage={selected.triage} related={selected.related_actions}
+                    ready={selected.ready}
+                    classification={chosen[selected.incident_id] || null}
+                    showPrompt={gameMode === 'guided'} />
                 )}
               </div>
 
@@ -352,6 +389,7 @@ const Incidents = ({
             if (id === 'false_positive') {
               const p = { ...pendingSubmit, verdict: 'false_positive', category: 'False Positive' };
               setPendingSubmit(p);
+              setChosen(c => ({ ...c, [p.incident_id]: 'False Positive' }));
               if (p.action === 'check') doCheck(p);
             } else { setPendingSubmit(p => ({ ...p, verdict: 'threat' })); setShowCategory(true); }
           }}
@@ -363,6 +401,7 @@ const Incidents = ({
             setShowCategory(false);
             const p = { ...pendingSubmit, category: clabel };
             setPendingSubmit(p);
+            setChosen(c => ({ ...c, [p.incident_id]: clabel }));
             if (p.action === 'check') doCheck(p);
           }}
           onCancel={() => { setShowCategory(false); setPendingSubmit(null); }} />

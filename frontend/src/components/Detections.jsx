@@ -6,7 +6,9 @@ import IncidentScopeBar from './IncidentScopeBar';
 import useIncidentScope from './useIncidentScope';
 import {
   detectionsReviewed, detectionsRemaining, FEED_SUBCOPY, THREATS_SUBCOPY,
+  ACTION_LABELS,
 } from './uiCopy';
+import { toastDisposition, toastActionResult } from './uiToasts';
 
 // Detections tab (Stage 2). Raw detections feed with promote / dismiss /
 // leave-open triage; promoted detections move to the Threats view. All
@@ -46,16 +48,6 @@ const ActionButton = ({ onClick, active, activeClass, disabled, children }) => (
     {children}
   </button>
 );
-
-const ACTION_LABELS = {
-  isolate_host: 'Isolate Host',
-  release_host: 'Release Host',
-  kill_process: 'Kill Process',
-  delete_file: 'Delete File',
-  disable_account: 'Disable Account',
-  revoke_sessions: 'Revoke Sessions',
-  force_password_reset: 'Force Password Reset',
-};
 
 const OUTCOME_CHIP = {
   success: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -98,7 +90,6 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot,
   const [logEntries, setLogEntries] = useState([]);
   const [confirm, setConfirm] = useState(null); // {title, body, confirmLabel, action, target}
   const [busy, setBusy] = useState(false);
-  const [actionNotice, setActionNotice] = useState(null);
   // Case-constant scope (Amendment 1 Delta A over the M1 foundation): ONE
   // scope state drives the pinned header, the honesty notices, and the row
   // filter. A selected case is ALWAYS case-scoped here (no toggle, no
@@ -145,7 +136,6 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot,
 
   useEffect(() => {
     setSelected(null);
-    setActionNotice(null);
     setConfirm(null);
     fetchFeed();
     fetchLog();
@@ -156,7 +146,24 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot,
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action }),
-    }).then(() => fetchFeed()).catch(() => {});
+    }).then(res => (res.ok ? res.json() : null)).then(view => {
+      if (view) {
+        // T1 (ruled sealed-roster note): the remaining-count line derives
+        // from the sealed case roster; a disposition outside any sealed
+        // case roster confirms alone. Count = case-open AFTER this action,
+        // from the same rows the surface renders.
+        let remaining = null;
+        if (activeIncidentId && scope.data?.sealed
+            && scope.data.detectionIds.has(id)) {
+          const openOthers = feed.filter(d =>
+            scope.data.detectionIds.has(d.id) && d.id !== id
+            && d.player_action === 'open').length;
+          remaining = openOthers + (view.player_action === 'open' ? 1 : 0);
+        }
+        toastDisposition(view.player_action, remaining);
+      }
+      fetchFeed();
+    }).catch(() => {});
   };
 
   const runResponse = (action, target) => {
@@ -168,7 +175,9 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot,
     })
       .then(res => res.json())
       .then(entry => {
-        setActionNotice(entry.outcome === 'success' ? null : (entry.reason || entry.error || null));
+        // T2/T3: the toast is the one announcement (the inline notice line
+        // retired -- one announcement per fact).
+        toastActionResult(entry);
         setConfirm(null);
         setBusy(false);
         fetchFeed();
@@ -283,7 +292,6 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot,
       {view === 'threats' && (
         <p className="text-sm text-[#57606a] mb-2">
           <span className="text-[#8b949e]">{THREATS_SUBCOPY}.</span>
-          {actionNotice && <> {actionNotice}</>}
         </p>
       )}
 
