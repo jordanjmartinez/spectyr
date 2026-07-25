@@ -12,6 +12,7 @@ import Detections from '../components/Detections';
 import DifficultySelector from '../components/DifficultySelector';
 import GameTimer from '../components/GameTimer';
 import FailureModal from '../components/FailureModal';
+import HintPanel from '../components/HintPanel';
 
 const Dashboard = () => {
   const [alertCount, setAlertCount] = useState(0);
@@ -482,6 +483,12 @@ const Dashboard = () => {
       <ToastContainer position="bottom-right" autoClose={4000} newestOnTop
         closeOnClick pauseOnFocusLoss={false} limit={4} role="status"
         theme="light" />
+
+      {/* Phase 6 commit 6.2 (A1-B.5.2): the Guided-only hint flow. The
+          component itself enforces the HINT_MODES allow-list (renders
+          null in Hardcore, SOC Queue, and any future mode) and reads only
+          static libraries; the active tab is the ONLY context passed. */}
+      {simActive && <HintPanel gameMode={gameMode} surface={view} />}
     </div>
   );
 };

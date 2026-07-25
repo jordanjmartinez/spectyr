@@ -11,6 +11,7 @@ import {
   OR_FALLBACK_NOTICE, sectionIndexAtPosition, listConjuncts, removeConjunct,
 } from './lcqlPivots';
 import InvestigationContext from './InvestigationContext';
+import { TOOLTIPS } from './helpContent';
 import {
   caseEvidenceLabel, SEARCH_ALL_EVIDENCE, RESULTS_FROM_LABEL,
   EDITED_NOTE, STALE_RESULTS_NOTE, filterAdded, excludedFilter,
@@ -572,7 +573,9 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
               data-testid="search-all"
               onClick={searchAll}
               disabled={running || queryText.trim() === ''}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-[#16436b]/40 text-[#16436b] text-xs hover:bg-[#16436b]/5 disabled:opacity-50"
+              title={TOOLTIPS.expanded_search}
+              data-help={TOOLTIPS.expanded_search}
+              className="help-tip inline-flex items-center gap-1 px-2 py-1 rounded-full border border-[#16436b]/40 text-[#16436b] text-xs hover:bg-[#16436b]/5 disabled:opacity-50"
             >
               {SEARCH_ALL_EVIDENCE}
             </button>

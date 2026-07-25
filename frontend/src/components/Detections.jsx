@@ -8,6 +8,7 @@ import {
   detectionsReviewed, detectionsRemaining, FEED_SUBCOPY, THREATS_SUBCOPY,
   ACTION_LABELS,
 } from './uiCopy';
+import { TOOLTIPS } from './helpContent';
 import { toastDisposition, toastActionResult } from './uiToasts';
 
 // Detections tab (Stage 2). Raw detections feed with promote / dismiss /
@@ -36,12 +37,14 @@ export const RuleTypeChip = ({ type }) => (
   </span>
 );
 
-const ActionButton = ({ onClick, active, activeClass, disabled, children }) => (
+const ActionButton = ({ onClick, active, activeClass, disabled, children, help }) => (
   <button
     type="button"
     disabled={disabled}
     onClick={(e) => { e.stopPropagation(); onClick(); }}
-    className={`px-2.5 py-1 text-xs font-medium rounded-md border transition disabled:opacity-50 disabled:cursor-default ${
+    title={help}
+    data-help={help}
+    className={`${help ? 'help-tip ' : ''}px-2.5 py-1 text-xs font-medium rounded-md border transition disabled:opacity-50 disabled:cursor-default ${
       active ? activeClass : 'bg-white text-[#57606a] border-[#d0d7de] hover:bg-[#eef1f4]'
     }`}
   >
@@ -257,7 +260,9 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot,
                 key={key}
                 type="button"
                 onClick={() => setView(key)}
-                className={`px-3 py-1.5 text-xs font-medium transition ${
+                title={key === 'log' ? undefined : TOOLTIPS.feed_threats}
+                data-help={key === 'log' ? undefined : TOOLTIPS.feed_threats}
+                className={`${key === 'log' ? '' : 'help-tip '}px-3 py-1.5 text-xs font-medium transition ${
                   view === key ? 'bg-[#101218] text-white' : 'bg-white text-[#57606a] hover:bg-[#eef1f4]'
                 }`}
               >
@@ -374,10 +379,10 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot,
                   <td className="px-3 sm:px-4 py-3 font-mono whitespace-nowrap text-[#57606a]">{shortTime(d.time)}</td>
                   <td className="px-3 sm:px-4 py-3">
                     <div className="flex items-center gap-1.5">
-                      <ActionButton onClick={() => act(d.id, 'promote')} active={d.player_action === 'promoted'} activeClass="bg-[#101218] text-white border-transparent">Promote</ActionButton>
-                      <ActionButton onClick={() => act(d.id, 'dismiss')} active={d.player_action === 'dismissed'} activeClass="bg-[#57606a] text-white border-transparent">Dismiss</ActionButton>
+                      <ActionButton onClick={() => act(d.id, 'promote')} active={d.player_action === 'promoted'} activeClass="bg-[#101218] text-white border-transparent" help={TOOLTIPS.promote}>Promote</ActionButton>
+                      <ActionButton onClick={() => act(d.id, 'dismiss')} active={d.player_action === 'dismissed'} activeClass="bg-[#57606a] text-white border-transparent" help={TOOLTIPS.dismiss}>Dismiss</ActionButton>
                       {d.player_action !== 'open' && (
-                        <ActionButton onClick={() => act(d.id, 'open')} active={false}>Reopen</ActionButton>
+                        <ActionButton onClick={() => act(d.id, 'open')} active={false} help={TOOLTIPS.reopen}>Reopen</ActionButton>
                       )}
                     </div>
                   </td>

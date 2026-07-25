@@ -264,3 +264,32 @@ code {
     animation: none;
   }
 }
+
+/* Phase 6 commit 6.2 (A1-B.5.1): permanent accessible control tooltips.
+   The native title serves pointer users and aria/text serves screen
+   readers; this ::after layer makes the SAME line keyboard-reachable by
+   rendering it on :focus-visible (and on hover for a styled pointer
+   affordance). Pure CSS, no timers, never steals focus. */
+.help-tip {
+  position: relative;
+}
+.help-tip:focus-visible::after,
+.help-tip:hover::after {
+  content: attr(data-help);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  width: max-content;
+  max-width: 260px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #101218;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.35;
+  text-align: left;
+  white-space: normal;
+  pointer-events: none;
+}

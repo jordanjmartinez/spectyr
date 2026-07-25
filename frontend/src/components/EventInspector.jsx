@@ -112,7 +112,8 @@ const EventInspector = ({ event, onFilter, onHostPivot, onPivot, onSurrounding }
           onClick={() => onFilter(field, '==', value)}
           aria-label={`Filter ${field} equals`}
           title={TOOLTIP_EQ}
-          className="px-1.5 py-0.5 text-[10px] rounded border border-[#d0d7de] hover:bg-[#eef1f4]"
+          data-help={TOOLTIP_EQ}
+          className="help-tip px-1.5 py-0.5 text-[10px] rounded border border-[#d0d7de] hover:bg-[#eef1f4]"
         >
           ==
         </button>
@@ -121,7 +122,8 @@ const EventInspector = ({ event, onFilter, onHostPivot, onPivot, onSurrounding }
           onClick={() => onFilter(field, '!=', value)}
           aria-label={`Filter ${field} not equals`}
           title={TOOLTIP_NEQ}
-          className="px-1.5 py-0.5 text-[10px] rounded border border-[#d0d7de] hover:bg-[#eef1f4]"
+          data-help={TOOLTIP_NEQ}
+          className="help-tip px-1.5 py-0.5 text-[10px] rounded border border-[#d0d7de] hover:bg-[#eef1f4]"
         >
           !=
         </button>
@@ -131,7 +133,8 @@ const EventInspector = ({ event, onFilter, onHostPivot, onPivot, onSurrounding }
             onClick={() => onPivot(piv.kind, value, field)}
             aria-label={`Pivot ${field}`}
             title={`${TOOLTIP_PIVOT} (${piv.label})`}
-            className="px-1.5 py-0.5 text-[10px] rounded border border-[#d0d7de] text-[#16436b] hover:bg-[#eef1f4]"
+            data-help={`${TOOLTIP_PIVOT} (${piv.label})`}
+            className="help-tip px-1.5 py-0.5 text-[10px] rounded border border-[#d0d7de] text-[#16436b] hover:bg-[#eef1f4]"
           >
             Pivot
           </button>
@@ -235,7 +238,8 @@ const EventInspector = ({ event, onFilter, onHostPivot, onPivot, onSurrounding }
             type="button"
             onClick={() => onSurrounding(event.hostname, event.id)}
             title={TOOLTIP_SURROUNDING}
-            className="px-2.5 py-1 text-xs rounded-md border border-[#d0d7de] text-[#16436b] hover:bg-[#eef1f4]"
+            data-help={TOOLTIP_SURROUNDING}
+            className="help-tip px-2.5 py-1 text-xs rounded-md border border-[#d0d7de] text-[#16436b] hover:bg-[#eef1f4]"
           >
             Surrounding events
           </button>

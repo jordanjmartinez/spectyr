@@ -49,7 +49,8 @@ const FieldSidebar = ({ snapshot, running, onValueClick }) => {
                   type="button"
                   onClick={() => onValueClick(field, '==', value)}
                   title={`${TOOLTIP_EQ} (${field} == "${value}")`}
-                  className="w-full flex items-center justify-between gap-2 text-xs text-[#57606a] hover:bg-[#eef1f4] px-1.5 py-0.5 rounded"
+                  data-help={`${TOOLTIP_EQ} (${field} == "${value}")`}
+                  className="help-tip w-full flex items-center justify-between gap-2 text-xs text-[#57606a] hover:bg-[#eef1f4] px-1.5 py-0.5 rounded"
                 >
                   <span className="truncate">{renderFieldValue(field, value)}</span>
                   <span className="text-[#8b949e] shrink-0">{count}</span>
