@@ -121,7 +121,7 @@ const EventInspector = ({ event, onFilter, onHostPivot, onPivot, onSurrounding }
         {piv && onPivot && (
           <button
             type="button"
-            onClick={() => onPivot(piv.kind, value)}
+            onClick={() => onPivot(piv.kind, value, field)}
             aria-label={`Pivot ${field}`}
             title={`Follow this clue across all available evidence. (${piv.label})`}
             className="px-1.5 py-0.5 text-[10px] rounded border border-[#d0d7de] text-[#16436b] hover:bg-[#eef1f4]"

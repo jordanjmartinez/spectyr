@@ -12,8 +12,9 @@ import {
 import InvestigationContext from './InvestigationContext';
 import {
   caseEvidenceLabel, SEARCH_ALL_EVIDENCE, RESULTS_FROM_LABEL,
-  EDITED_NOTE, STALE_RESULTS_NOTE,
+  EDITED_NOTE, STALE_RESULTS_NOTE, filterAdded, excludedFilter,
 } from './uiCopy';
+import { OR_FALLBACK_NOTICE } from './lcqlPivots';
 
 // SIEM Investigation Workbench shell (Stage 4 Phase 4). Analyst-driven:
 // the shell submits LCQL text to the server's single query read and renders
@@ -80,6 +81,12 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
   // render ONLY while the displayed snapshot's canonical query is the
   // timeline's own query, so they can never mislabel another snapshot.
   const [timeline, setTimeline] = useState(null);
+  // Phase 3 commit 3.1: the pivot transition provenance ({query, clue}).
+  // The clue line renders ONLY while the displayed snapshot IS the pivot's
+  // own query (the same identity guard the timeline banner uses), so it can
+  // never mislabel another snapshot; the expanded-search block itself is
+  // state-driven and persists across queries within the state.
+  const [transition, setTransition] = useState(null);
   const focusSeqRef = useRef(0);
 
   useEffect(() => {
@@ -100,6 +107,7 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
     setSelectionNotice(null);
     setQueryNotice(null);
     setTimeline(null);
+    setTransition(null);
   }, [resetTrigger]);
 
   useEffect(() => {
@@ -129,6 +137,7 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
     setError(null);
     setQueryText('');
     setTimeline(null);
+    setTransition(null);
     setQueryNotice(null);
     setSelectedId(null);
     setSelectionNotice(null);
@@ -235,13 +244,15 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
 
   // Sidebar value clicks and inspector ==/!= actions ROUTE ONLY through the
   // approved generator (lcqlPivots.refineFilter); the resulting query is
-  // executed immediately as a new snapshot (contract Section 13: "Every
-  // pivot ... executes it as a new snapshot").
+  // executed immediately as a new snapshot. Phase 3 (8.2/8.3): every refine
+  // announces itself with the canonical clue form, and the OR fresh-query
+  // sentence FOLDS INTO that one announcement (one notice, never two).
   const refineAndRun = (field, op, value) => {
     if (!snapshot || running || scopeBlocked) return;
-    const { query, fresh, notice } = refineFilter(snapshot.identity.canonical_query, field, op, value);
+    const { query, fresh } = refineFilter(snapshot.identity.canonical_query, field, op, value);
+    const clueLine = op === '!=' ? excludedFilter(field, value) : filterAdded(field, value);
     setQueryText(query);
-    execute(query, scopeParam, fresh ? notice : null);
+    execute(query, scopeParam, fresh ? `${clueLine} ${OR_FALLBACK_NOTICE}` : clueLine);
   };
 
   // P7.1 entity pivots (contract Sections 13/14; Amendment 1 Delta A):
@@ -256,10 +267,13 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
     domain_dns: pivotDomainDns, event_type: pivotEventType,
     sensor: pivotSensorFamily,
   };
-  const pivotAndRun = (kind, value) => {
+  const pivotAndRun = (kind, value, field) => {
     if (!snapshot || running) return;
     const tf = splitSegments(snapshot.identity.canonical_query)[0];
     const query = PIVOT_FORMS[kind](tf, value);
+    // 8.2 clue naming: the followed field + value ride the transition
+    // provenance; the block's clue line renders under the identity guard.
+    setTransition({ query, clue: field ? { field, value } : null });
     setScope({ kind: 'session' });
     setQueryText(query);
     execute(query, 'session');
@@ -438,7 +452,13 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
         <InvestigationContext
           incidentId={activeIncidentId || null}
           expandedSearch={expandedSearch
-            ? { clue: null, onReturn: () => returnToIncident(activeIncidentId) }
+            ? {
+                clue: (transition && snapshot
+                       && snapshot.identity.canonical_query === transition.query)
+                  ? transition.clue : null,
+                noResults: !!(snapshot && snapshot.count === 0),
+                onReturn: () => returnToIncident(activeIncidentId),
+              }
             : null}
         />
         <div className="flex flex-wrap items-center gap-2 text-xs">

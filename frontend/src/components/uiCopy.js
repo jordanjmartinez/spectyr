@@ -99,3 +99,9 @@ export const classificationSelected = (category) =>
 export const CONSIDER_PROMPT =
   'Consider whether containment or remediation is needed.';
 export const SUBMIT_PENDING = 'Submit pending';
+
+// === Phase 3 commit 3.1: the expanded-search transition surface ============
+// The 0-events state keeps the block visible with the two designed outs
+// (translated 8.2 no-results rule).
+export const NO_RESULTS_OUTS =
+  'No events matched. Broaden the Timeframe or return to the case evidence.';
