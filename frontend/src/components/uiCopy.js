@@ -33,3 +33,34 @@ export const RESULTS_FROM_LABEL = 'Results from:';
 export const EDITED_NOTE = 'Edited. Results below are from the last run.';
 export const STALE_RESULTS_NOTE =
   'Displayed results are from the previous successful query.';
+
+// === Phase 2 commit 2.1: the complete Section 10.1 canonical vocabulary ===
+// (locked contract 10.1/10.2; consolidated scaffold). Observable-only; the
+// forbidden class (correctness phrasing, answer-key totals) never appears
+// pre-submission -- progress-vocabulary.test.js scans every string below.
+
+export const TELEMETRY_LOADING = 'Incident telemetry is still loading.';
+export const detectionsReviewed = (triaged, total) =>
+  `Detections reviewed: ${triaged} of ${total}`;
+export const detectionsRemaining = (n) =>
+  `${n} detection${n === 1 ? '' : 's'} still need Promote or Dismiss`;
+export const PROMOTED_LABEL = 'Promoted';
+export const DISMISSED_LABEL = 'Dismissed';
+export const REOPENED_LABEL = 'Reopened (needs review again)';
+export const responseActionsTaken = (n) => `Response actions taken: ${n}`;
+export const READY_TO_SUBMIT = 'Ready to submit';
+export const SUBMITTED_GRADE_LOCKED = 'Submitted. Grade locked.';
+export const completedStrip = (total) =>
+  `Reviewed ${total} of ${total} · Submitted`;
+export const toReview = (n) => `${n} to review`;
+
+// Feed/Threats explanatory subcopy (ratified OD-9), one line each.
+export const FEED_SUBCOPY = 'Feed: every detection, including reviewed';
+export const THREATS_SUBCOPY = 'Threats: detections you promoted';
+
+// --- Section 8.2 canonical transition forms (consumed by the transition
+// surface and any context line -- the 8.4 one-vocabulary rule) --------------
+export const filterAdded = (field, value) =>
+  `Filter added: ${field} == "${value}"`;
+export const excludedFilter = (field, value) =>
+  `Excluded: ${field} != "${value}"`;

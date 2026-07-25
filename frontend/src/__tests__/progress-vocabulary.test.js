@@ -1,0 +1,114 @@
+/**
+ * Phase 2 commit 2.1 (Stage 5 consolidated scaffold; locked contract 10.1):
+ * the ONE canonical vocabulary. Every Section 10.1 string is a named
+ * constant/template in uiCopy.js, pinned byte-exact here, and the forbidden
+ * class (correctness phrasing, answer-key-derived totals) never appears in
+ * any pre-submission string. Surfaces adopt the constants in 2.2+; this
+ * suite is the copy source of truth (risk R7: constants land BEFORE any
+ * consumer).
+ */
+import {
+  investigatingCase, ALL_ACTIVITY, caseEvidenceLabel, EXPANDED_SEARCH_TITLE,
+  followingClue, expandedSearchExplanation, returnToCaseEvidence,
+  returnSubcopy, SEARCH_ALL_EVIDENCE, RESULTS_FROM_LABEL, EDITED_NOTE,
+  STALE_RESULTS_NOTE, TELEMETRY_LOADING, detectionsReviewed,
+  detectionsRemaining, PROMOTED_LABEL, DISMISSED_LABEL, REOPENED_LABEL,
+  responseActionsTaken, READY_TO_SUBMIT, SUBMITTED_GRADE_LOCKED,
+  completedStrip, toReview, FEED_SUBCOPY, THREATS_SUBCOPY, filterAdded,
+  excludedFilter,
+} from '../components/uiCopy';
+
+// --- byte-exact canonical strings (locked 10.1 + ratified A1-A.5 finals) ---
+
+test('the Section 10.1 canonical vocabulary is byte-exact', () => {
+  expect(TELEMETRY_LOADING).toBe('Incident telemetry is still loading.');
+  expect(detectionsReviewed(4, 5)).toBe('Detections reviewed: 4 of 5');
+  expect(detectionsRemaining(1)).toBe('1 detection still need Promote or Dismiss');
+  expect(detectionsRemaining(3)).toBe('3 detections still need Promote or Dismiss');
+  expect(PROMOTED_LABEL).toBe('Promoted');
+  expect(DISMISSED_LABEL).toBe('Dismissed');
+  expect(REOPENED_LABEL).toBe('Reopened (needs review again)');
+  expect(responseActionsTaken(6)).toBe('Response actions taken: 6');
+  expect(READY_TO_SUBMIT).toBe('Ready to submit');
+  expect(SUBMITTED_GRADE_LOCKED).toBe('Submitted. Grade locked.');
+  expect(completedStrip(5)).toBe('Reviewed 5 of 5 · Submitted');
+  expect(toReview(2)).toBe('2 to review');
+  expect(FEED_SUBCOPY).toBe('Feed: every detection, including reviewed');
+  expect(THREATS_SUBCOPY).toBe('Threats: detections you promoted');
+});
+
+test('the case-constant terms are the ratified A-OD-1 finals, byte-exact', () => {
+  expect(investigatingCase('INC-8541')).toBe('Investigating INC-8541');
+  expect(ALL_ACTIVITY).toBe('All activity');
+  expect(caseEvidenceLabel('INC-8541')).toBe('INC-8541 evidence');
+  expect(EXPANDED_SEARCH_TITLE).toBe('Expanded search');
+  expect(expandedSearchExplanation('INC-8541'))
+    .toBe('Searching all evidence. Your case INC-8541 stays open.');
+  expect(returnToCaseEvidence('INC-8541')).toBe('Return to INC-8541 evidence');
+  expect(SEARCH_ALL_EVIDENCE).toBe('Search all evidence');
+  expect(returnSubcopy('INC-8541'))
+    .toBe('Return to INC-8541 evidence runs this query over the case evidence again.');
+});
+
+test('the Section 8.2 clue-naming forms are byte-exact', () => {
+  expect(followingClue('user_account', 'ACME\\dpark'))
+    .toBe('Following clue: user_account = "ACME\\dpark"');
+  expect(filterAdded('hostname', 'ACME-WS10'))
+    .toBe('Filter added: hostname == "ACME-WS10"');
+  expect(excludedFilter('severity', 'low'))
+    .toBe('Excluded: severity != "low"');
+});
+
+// --- the forbidden-phrase scan (10.1, binding): pre-submission copy may
+// never state or imply correctness, nor carry an answer-key-derived total.
+// Enumerated BY NAME (the ruling-B discipline), never an unenumerated
+// "every": each pre-submission string in the module is listed here.
+
+// Word-boundary anchored so canonical verbs are never false positives
+// (e.g. "Dismissed" must not match "missed").
+const FORBIDDEN =
+  /\b(correct|incorrect|wrong|solved|missed|harmful|optimal)\b|right answer|required action/i;
+
+const PRE_SUBMISSION_STRINGS = [
+  ['investigatingCase', investigatingCase('INC-0001')],
+  ['ALL_ACTIVITY', ALL_ACTIVITY],
+  ['caseEvidenceLabel', caseEvidenceLabel('INC-0001')],
+  ['EXPANDED_SEARCH_TITLE', EXPANDED_SEARCH_TITLE],
+  ['followingClue', followingClue('user_account', 'x')],
+  ['expandedSearchExplanation', expandedSearchExplanation('INC-0001')],
+  ['returnToCaseEvidence', returnToCaseEvidence('INC-0001')],
+  ['returnSubcopy', returnSubcopy('INC-0001')],
+  ['SEARCH_ALL_EVIDENCE', SEARCH_ALL_EVIDENCE],
+  ['RESULTS_FROM_LABEL', RESULTS_FROM_LABEL],
+  ['EDITED_NOTE', EDITED_NOTE],
+  ['STALE_RESULTS_NOTE', STALE_RESULTS_NOTE],
+  ['TELEMETRY_LOADING', TELEMETRY_LOADING],
+  ['detectionsReviewed', detectionsReviewed(1, 2)],
+  ['detectionsRemaining', detectionsRemaining(2)],
+  ['PROMOTED_LABEL', PROMOTED_LABEL],
+  ['DISMISSED_LABEL', DISMISSED_LABEL],
+  ['REOPENED_LABEL', REOPENED_LABEL],
+  ['responseActionsTaken', responseActionsTaken(3)],
+  ['READY_TO_SUBMIT', READY_TO_SUBMIT],
+  ['SUBMITTED_GRADE_LOCKED', SUBMITTED_GRADE_LOCKED],
+  ['completedStrip', completedStrip(4)],
+  ['toReview', toReview(2)],
+  ['FEED_SUBCOPY', FEED_SUBCOPY],
+  ['THREATS_SUBCOPY', THREATS_SUBCOPY],
+  ['filterAdded', filterAdded('a', 'b')],
+  ['excludedFilter', excludedFilter('a', 'b')],
+];
+
+test('no pre-submission canonical string carries the forbidden class', () => {
+  for (const [name, value] of PRE_SUBMISSION_STRINGS) {
+    expect({ name, forbidden: FORBIDDEN.test(value) })
+      .toEqual({ name, forbidden: false });
+  }
+});
+
+test('no canonical string contains an em dash', () => {
+  for (const [name, value] of PRE_SUBMISSION_STRINGS) {
+    expect({ name, emdash: /—/.test(value) })
+      .toEqual({ name, emdash: false });
+  }
+});
