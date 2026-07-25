@@ -9,6 +9,8 @@ import {
   pivotFile, pivotIp, pivotDomainProxy, pivotDomainDns, pivotEventType,
   pivotSensorFamily, descentHost, descentSessionAll, descentAccount,
 } from './lcqlPivots';
+import InvestigationContext from './InvestigationContext';
+import { caseEvidenceLabel, SEARCH_ALL_EVIDENCE, RESULTS_FROM_LABEL } from './uiCopy';
 
 // SIEM Investigation Workbench shell (Stage 4 Phase 4). Analyst-driven:
 // the shell submits LCQL text to the server's single query read and renders
@@ -63,10 +65,12 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
   const [newCount, setNewCount] = useState(0);
   const [poolGrowth, setPoolGrowth] = useState(0);
   const [countHalted, setCountHalted] = useState(false);
-  // P7.1: cross-host investigation (contract Section 14). The last focused
-  // incident backs the one-click "Back to INC-…" return chip after an entity
-  // pivot's Session-wide flip. UI/query state only -- reads, never mutations.
-  const [lastIncident, setLastIncident] = useState(null);
+  // Stage 5 Phase 1 (Amendment 1 Delta A): the case-constant state pair.
+  // Case evidence = scope kind 'incident' anchored to the current case;
+  // Expanded search = scope kind 'session' WHILE a case is pinned (entered
+  // only through an entity pivot or the explicit search-all action). The
+  // case itself is the activeIncidentId prop -- selected on Incidents,
+  // never changeable from here (ratified OD-15, structural).
   // P7.2: the evidence-timeline context ({kind:'descent', origin, backView,
   // host, query}). Pure UI provenance (contract Section 12: the breadcrumb
   // "implies nothing about any row"); the banner and the ascending display
@@ -92,7 +96,6 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
     setSelectedId(null);
     setSelectionNotice(null);
     setQueryNotice(null);
-    setLastIncident(null);
     setTimeline(null);
   }, [resetTrigger]);
 
@@ -101,24 +104,52 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
   }, [snapshot, setSiemCount]);
 
   const loadIncidentScope = (id) => {
-    setLastIncident(id);
     setScope({ kind: 'incident', id, status: 'loading' });
     apiFetch(`/api/incidents/${id}/scope`)
       .then((res) => { if (!res.ok) throw new Error('scope'); return res.json(); })
       .then((sc) => setScope({ kind: 'incident', id, status: 'ready',
                                sealed: !!sc.sealed }))
-      // Revised scope-error behavior: keep the chip, preserve the prior
-      // snapshot, disable Run; NEVER fall back to Session-wide silently.
+      // Revised scope-error behavior (kept from M1/Stage 4): keep the state
+      // label, preserve the prior snapshot, disable Run; recovery is Retry
+      // only (ratified A-OD-3) -- or the deliberate Expanded search, which
+      // needs no case scope.
       .catch(() => setScope({ kind: 'incident', id, status: 'error' }));
   };
 
-  const selectScope = (value) => {
-    if (value === 'session') setScope({ kind: 'session' });
-    else loadIncidentScope(value);
-  };
+  // Case-constant anchor (Amendment 1 Delta A, A1-A.2): the SIEM re-anchors
+  // atomically when the current case changes -- case evidence for a case,
+  // All activity for none. The prior snapshot belonged to the prior anchor
+  // and is dropped; nothing in this component can change the case itself
+  // (ratified OD-15, structural: case selection lives on Incidents alone).
+  useEffect(() => {
+    setSnapshot(null);
+    setError(null);
+    setQueryText('');
+    setTimeline(null);
+    setQueryNotice(null);
+    setSelectedId(null);
+    setSelectionNotice(null);
+    if (activeIncidentId) loadIncidentScope(activeIncidentId);
+    else setScope({ kind: 'session' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeIncidentId]);
 
   const scopeBlocked = scope.kind === 'incident' && scope.status !== 'ready';
   const scopeParam = scope.kind === 'incident' ? scope.id : 'session';
+  // Expanded search is live exactly while a case is pinned and the executed
+  // scope is the session (entered ONLY via entity pivot or search-all).
+  const expandedSearch = !!(activeIncidentId && scope.kind === 'session');
+
+  // Enter Expanded search deliberately (A1-A.2 point 4; ratified A-OD-4
+  // placement): run the current query across ALL evidence while the case
+  // stays pinned. Deliberately NOT gated on the case-evidence read -- the
+  // expanded state needs no case scope and is the designed exploration
+  // path out of a failed scope read.
+  const searchAll = () => {
+    if (running || queryText.trim() === '') return;
+    setScope({ kind: 'session' });
+    execute(queryText, 'session');
+  };
 
   const setTimeframe = (tok) => {
     setQueryText((t) => {
@@ -210,11 +241,12 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
     execute(query, scopeParam, fresh ? notice : null);
   };
 
-  // P7.1 entity pivots (contract Sections 13/14): every pivot mints its
-  // documented query from the EXECUTED snapshot's TIMEFRAME token through
-  // the one generator, then ALWAYS executes Session-wide -- the scope
-  // control flips on screen as part of the pivot (never a silent side
-  // effect), and the incident being left stays one click away (return chip).
+  // P7.1 entity pivots (contract Sections 13/14; Amendment 1 Delta A):
+  // every pivot mints its documented query from the EXECUTED snapshot's
+  // TIMEFRAME token through the one generator, then ALWAYS executes across
+  // all evidence. With a case pinned that IS the Expanded search state:
+  // the block announces it on screen (never a silent side effect) and the
+  // single return action restores the case evidence.
   const PIVOT_FORMS = {
     host: pivotHost, account: pivotAccount, process: pivotProcessImage,
     file: pivotFile, ip: pivotIp, domain_proxy: pivotDomainProxy,
@@ -245,13 +277,13 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
     execute(query, scopeParam);
   };
 
-  // The return chip (Section 14 "Returning"): re-run the query currently in
-  // the bar under the last focused incident's participant scope. Uses the
-  // same scope-read + revised error behavior as the scope control (never a
-  // silent fallback).
+  // The single return action (A1-A.2 point 4): "Return to INC-#### evidence"
+  // re-runs the query currently in the bar under the case's participant
+  // scope -- the existing Stage 4 return mechanic, now the ONE exit from
+  // Expanded search. Uses the same scope-read + error behavior as the
+  // case anchor (never a silent fallback).
   const returnToIncident = (id) => {
     if (running) return;
-    setLastIncident(id);
     setScope({ kind: 'incident', id, status: 'loading' });
     apiFetch(`/api/incidents/${id}/scope`)
       .then((res) => { if (!res.ok) throw new Error('scope'); return res.json(); })
@@ -286,7 +318,6 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
     setTimeline({ kind: 'descent', origin, backView, host,
                   account: account || null, query });
     if (scopeIncidentId) {
-      setLastIncident(scopeIncidentId);
       setScope({ kind: 'incident', id: scopeIncidentId, status: 'loading' });
       apiFetch(`/api/incidents/${scopeIncidentId}/scope`)
         .then((res) => { if (!res.ok) throw new Error('scope'); return res.json(); })
@@ -396,53 +427,37 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
         </div>
       </div>
 
-      {/* Scope + TIMEFRAME + query bar */}
+      {/* Case-constant context + TIMEFRAME + query bar (Amendment 1 Delta A):
+          the pinned case line, the case-evidence state label, the explicit
+          search-all action, and the expanded-search block replace the old
+          scope select. No control here can change the case (OD-15). */}
       <div className="mb-3 flex flex-col gap-2">
+        <InvestigationContext
+          incidentId={activeIncidentId || null}
+          expandedSearch={expandedSearch
+            ? { clue: null, onReturn: () => returnToIncident(activeIncidentId) }
+            : null}
+        />
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <label className="flex items-center gap-1.5 text-[#6e7781]">
-            Scope
-            <select
-              value={scope.kind === 'incident' ? scope.id : 'session'}
-              onChange={(e) => selectScope(e.target.value)}
-              aria-label="Scope"
-              className="px-2.5 py-1.5 rounded-md border border-[#d0d7de] bg-white text-[#1a2332]"
-            >
-              <option value="session">Session-wide</option>
-              {activeIncidentId && (
-                <option value={activeIncidentId}>{`Focused on ${activeIncidentId}`}</option>
-              )}
-              {scope.kind === 'incident' && scope.id !== activeIncidentId && (
-                <option value={scope.id}>{`Focused on ${scope.id}`}</option>
-              )}
-            </select>
-          </label>
-          {scope.kind === 'incident' && (
+          {activeIncidentId && scope.kind === 'incident' && (
             <span
               data-testid="scope-chip"
               className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-[#eef1f4] text-[#1a2332]"
             >
-              <span className="log-mono text-[#16436b] font-medium">{scope.id}</span>
+              <span className="log-mono text-[#16436b] font-medium">{caseEvidenceLabel(scope.id)}</span>
               {scope.status === 'loading' && <span className="text-[#6e7781]">loading scope</span>}
               {scope.status === 'error' && <span className="text-[#b26666]">scope unavailable</span>}
-              <button
-                type="button"
-                aria-label="Clear scope"
-                onClick={() => selectScope('session')}
-                className="text-[#6e7781] hover:text-[#1a2332]"
-              >
-                x
-              </button>
             </span>
           )}
-          {lastIncident && scopeParam !== lastIncident && (
+          {activeIncidentId && scope.kind === 'incident' && (
             <button
               type="button"
-              data-testid="return-chip"
-              onClick={() => returnToIncident(lastIncident)}
-              disabled={running}
+              data-testid="search-all"
+              onClick={searchAll}
+              disabled={running || queryText.trim() === ''}
               className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-[#16436b]/40 text-[#16436b] text-xs hover:bg-[#16436b]/5 disabled:opacity-50"
             >
-              Back to {lastIncident}
+              {SEARCH_ALL_EVIDENCE}
             </button>
           )}
           <label className="flex items-center gap-1.5 text-[#6e7781] ml-auto">
@@ -468,13 +483,6 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
               className="ml-2 px-2 py-0.5 rounded border border-[#d0d7de] bg-white text-[#1a2332]"
             >
               Retry
-            </button>
-            <button
-              type="button"
-              onClick={() => selectScope('session')}
-              className="ml-2 px-2 py-0.5 rounded border border-[#d0d7de] bg-white text-[#57606a]"
-            >
-              Use Session-wide
             </button>
           </div>
         )}
@@ -523,7 +531,11 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
             </span>
             <span>as of seq #{snapshot.identity.cutoff_seq}</span>
             <span>{simTime(snapshot.identity.resolved_range.end)} sim</span>
-            <span className="log-mono">{snapshot.identity.canonical_query}</span>
+            <span>
+              {RESULTS_FROM_LABEL}{' '}
+              <span className="log-mono">{snapshot.identity.canonical_query}</span>
+            </span>
+            <span className="log-mono text-[#8b949e]">scope={snapshot.identity.scope}</span>
             {newCount > 0 && (
               <span
                 data-testid="new-events-indicator"

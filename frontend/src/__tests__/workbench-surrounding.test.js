@@ -111,16 +111,13 @@ test('the viewport centers on the source event: page jump, scrollIntoView, focus
   expect(screen.getByTestId('event-inspector').textContent).toContain('s14');
 });
 
-test('the surrounding timeline runs under an incident scope when that scope is current', async () => {
-  renderShell({ activeIncidentId: 'INC-A' });
-  await act(async () => {
-    fireEvent.change(screen.getByLabelText('Scope'), { target: { value: 'INC-A' } });
-  });
+test('the surrounding timeline runs under the case scope when a case is current', async () => {
+  await act(async () => { renderShell({ activeIncidentId: 'INC-A' }); });
   queryResponses.push(ok(snapWith([SOURCE], 'all | * | * | *', 'INC-A')));
   await run('all | * | * | *');
   await surround();
   expect(queryCalls().pop()).toBe('/api/events/query?q=all | ACME-WS10 | * | *&scope=INC-A');
-  expect(screen.getByLabelText('Scope').value).toBe('INC-A');
+  expect(screen.getByTestId('scope-chip').textContent).toContain('INC-A evidence');
 });
 
 test('an event without a hostname has no Surrounding events control', async () => {

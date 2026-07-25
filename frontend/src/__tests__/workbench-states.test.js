@@ -1,17 +1,25 @@
 /**
- * Stage 4 Phase 4.2: workbench pane states (contract Section 6).
+ * Workbench pane states, translated to the case-constant model (Stage 5
+ * Phase 1, Amendment 1 Delta A over the Stage 4 Phase 4.2 battery).
  *
- * The scope control's REVISED error behavior (review item 8): a failed
- * incident-scope read keeps the selected chip, shows the notice, preserves
- * the prior snapshot untouched, and disables Run Query until a retry
- * succeeds or the player EXPLICITLY selects Session-wide. Scope never
- * broadens silently. Plus: the pre-seal banner, submitted-incident
- * selectability, and the TIMEFRAME control proving control and text cannot
- * disagree in either direction.
+ * A selected case ANCHORS the SIEM to case evidence (the pinned header and
+ * the "INC-#### evidence" state label announce it; queries carry the case
+ * scope). With no case the SIEM is the All activity state. Expanded search
+ * is entered ONLY through an entity pivot or the explicit search-all
+ * action; exactly ONE return action restores the case evidence. The
+ * scope-error behavior keeps M1's guarantees: state label retained, prior
+ * snapshot preserved, Run disabled, recovery by Retry (ratified A-OD-3) --
+ * the deliberate Expanded search remains available as the designed
+ * exploration path. Plus: the pre-seal banner, and the TIMEFRAME control
+ * proving control and text cannot disagree in either direction.
  */
 import React from 'react';
 import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import Siem from '../components/Siem';
+import {
+  investigatingCase, ALL_ACTIVITY, caseEvidenceLabel, EXPANDED_SEARCH_TITLE,
+  returnToCaseEvidence, SEARCH_ALL_EVIDENCE,
+} from '../components/uiCopy';
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
 const { apiFetch } = require('../api');
@@ -25,16 +33,16 @@ const ROW = {
   message: 'Process created: nmap.exe launched by cmd.exe',
   key_value_pairs: {},
 };
-const SNAPSHOT = {
+const snapWith = (scope) => ({
   token: 'tok.abc',
   identity: {
-    canonical_query: 'all | * | * | *', scope: 'session',
+    canonical_query: 'all | * | * | *', scope,
     resolved_scope_hosts: [],
     resolved_range: { start: '2026-03-17T03:41:00+00:00', end: '2026-03-17T04:00:00+00:00' },
     cutoff_seq: 3,
   },
   count: 1, rows: [ROW],
-};
+});
 
 const ok = (body) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
 
@@ -44,119 +52,159 @@ beforeEach(() => {
   apiFetch.mockImplementation((path) => {
     if (path === '/api/endpoints') return ok({ org: { name: 'ACME Corp' }, endpoints: [] });
     if (path.startsWith(`/api/incidents/${INC}/scope`)) return scopeResponse();
-    if (path.startsWith('/api/events/query')) return ok(SNAPSHOT);
+    if (path.startsWith('/api/events/query?')) {
+      const scope = decodeURIComponent(path).match(/&scope=(.+)$/)[1];
+      return ok(snapWith(scope));
+    }
     return ok({});
   });
 });
 
-const renderShell = () =>
-  render(<Siem setSiemCount={() => {}} resetTrigger={0} onHostPivot={() => {}} activeIncidentId={INC} />);
+const renderShell = (props = {}) =>
+  render(<Siem setSiemCount={() => {}} resetTrigger={0} onHostPivot={() => {}}
+               activeIncidentId={INC} {...props} />);
 
-const runSessionQuery = async () => {
+const runQuery = async () => {
   fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Run Query/ })); });
 };
 
-const selectIncidentScope = async () => {
-  await act(async () => {
-    fireEvent.change(screen.getByLabelText('Scope'), { target: { value: INC } });
-  });
-};
-
-// The field sidebar (P6.2) also renders top message VALUES, which can
-// duplicate a row's own message text; scope row-content queries to the
-// results pane specifically so they cannot match a sidebar button too.
 const results = () => within(screen.getByTestId('workbench-results'));
+const queryCalls = () =>
+  apiFetch.mock.calls.map((c) => c[0]).filter((p) => p.startsWith('/api/events/query?'))
+    .map(decodeURIComponent);
 
-test('an active incident elsewhere never scopes the SIEM silently', async () => {
-  // Default-scope rule (R10, Phase 4 closure): ordinary navigation opens
-  // Session-wide; incident scope is entered ONLY through explicit scope
-  // selection (or, from Phase 7, Open Evidence Timeline descent). An
-  // incident focused elsewhere in the app merely OFFERS a scope option.
+test('a selected case anchors the SIEM to case evidence; the anchor is announced, never silent', async () => {
   const props = { setSiemCount: () => {}, resetTrigger: 0, onHostPivot: () => {} };
   const { rerender } = render(<Siem {...props} activeIncidentId={null} />);
-  expect(screen.getByLabelText('Scope')).toHaveValue('session');
-  // an incident becomes active elsewhere while the SIEM stays mounted
-  rerender(<Siem {...props} activeIncidentId={INC} />);
-  expect(screen.getByLabelText('Scope')).toHaveValue('session');
-  // and no scope read fires without an explicit selection
-  const scopeCalls = apiFetch.mock.calls.map(c => c[0])
-    .filter(p => p.includes('/scope'));
-  expect(scopeCalls).toEqual([]);
+  // no case: All activity, no state chip, no scope read
+  expect(screen.getByTestId('pinned-case-line').textContent).toBe(ALL_ACTIVITY);
+  expect(screen.queryByTestId('scope-chip')).toBeNull();
+  expect(apiFetch.mock.calls.map(c => c[0]).filter(p => p.includes('/scope'))).toEqual([]);
+  // a case is selected on Incidents -> the SIEM re-anchors, visibly
+  await act(async () => { rerender(<Siem {...props} activeIncidentId={INC} />); });
+  expect(screen.getByTestId('pinned-case-line').textContent).toBe(investigatingCase(INC));
+  expect(screen.getByTestId('scope-chip').textContent).toContain(caseEvidenceLabel(INC));
+  expect(apiFetch.mock.calls.map(c => c[0]).filter(p => p.includes('/scope')).length)
+    .toBeGreaterThanOrEqual(1);
 });
 
-test('default Session-wide; queries carry scope=session', async () => {
-  renderShell();
-  expect(screen.getByLabelText('Scope')).toHaveValue('session');
-  await runSessionQuery();
-  const call = apiFetch.mock.calls.map(c => c[0]).find(p => p.startsWith('/api/events/query'));
-  expect(call).toMatch(/scope=session$/);
+test('no case: All activity; queries carry scope=session', async () => {
+  renderShell({ activeIncidentId: null });
+  expect(screen.getByTestId('pinned-case-line').textContent).toBe(ALL_ACTIVITY);
+  await runQuery();
+  expect(queryCalls().pop()).toMatch(/scope=session$/);
 });
 
-test('incident scope: ready chip; queries carry the incident id', async () => {
-  renderShell();
-  await selectIncidentScope();
-  expect(screen.getByTestId('scope-chip').textContent).toContain(INC);
-  await runSessionQuery();
-  const call = apiFetch.mock.calls.map(c => c[0]).filter(p => p.startsWith('/api/events/query')).pop();
-  expect(call).toMatch(new RegExp(`scope=${INC}$`));
+test('case evidence is the default with a case: queries carry the case scope', async () => {
+  await act(async () => { renderShell(); });
+  expect(screen.getByTestId('scope-chip').textContent).toContain(caseEvidenceLabel(INC));
+  await runQuery();
+  expect(queryCalls().pop()).toMatch(new RegExp(`scope=${INC}$`));
 });
 
-test('pre-seal banner shows for an unsealed scoped incident and only then', async () => {
+test('search-all enters Expanded search visibly: block, explanation, exactly one return action', async () => {
+  await act(async () => { renderShell(); });
+  await runQuery();
+  expect(screen.queryByTestId('expanded-search-block')).toBeNull();
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('search-all'));
+  });
+  expect(queryCalls().pop()).toMatch(/scope=session$/);
+  const block = screen.getByTestId('expanded-search-block');
+  expect(block.textContent).toContain(EXPANDED_SEARCH_TITLE);
+  expect(within(block).getAllByRole('button')).toHaveLength(1);
+  expect(within(block).getByRole('button').textContent).toBe(returnToCaseEvidence(INC));
+  // the case stays pinned through the expansion
+  expect(screen.getByTestId('pinned-case-line').textContent).toBe(investigatingCase(INC));
+  // returning restores the case evidence
+  await act(async () => { fireEvent.click(screen.getByTestId('return-chip')); });
+  expect(queryCalls().pop()).toMatch(new RegExp(`scope=${INC}$`));
+  expect(screen.queryByTestId('expanded-search-block')).toBeNull();
+  expect(screen.getByTestId('scope-chip').textContent).toContain(caseEvidenceLabel(INC));
+});
+
+test('the case never changes from the SIEM: no control exists that mutates it (OD-15 structural)', async () => {
+  await act(async () => { renderShell(); });
+  await runQuery();
+  // enter and leave Expanded search; the pinned case is byte-identical
+  await act(async () => { fireEvent.click(screen.getByTestId('search-all')); });
+  expect(screen.getByTestId('pinned-case-line').textContent).toBe(investigatingCase(INC));
+  await act(async () => { fireEvent.click(screen.getByTestId('return-chip')); });
+  expect(screen.getByTestId('pinned-case-line').textContent).toBe(investigatingCase(INC));
+  // no scope select, no toggle, no clear control on this surface
+  expect(screen.queryByLabelText('Scope')).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Session-wide' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Use Session-wide' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Clear scope' })).toBeNull();
+});
+
+test('pre-seal banner shows for an unsealed case and only then', async () => {
   scopeResponse = () => ok({ incident_id: INC, sealed: false, hosts: [], accounts: [], detection_ids: [] });
-  renderShell();
-  await selectIncidentScope();
+  await act(async () => { renderShell(); });
   expect(screen.getByText('Incident telemetry is still loading.')).toBeInTheDocument();
-  scopeResponse = () => ok({ incident_id: INC, sealed: true, hosts: [], accounts: [], detection_ids: [] });
-  await selectIncidentScope();
-  expect(screen.queryByText('Incident telemetry is still loading.')).toBeNull();
 });
 
-test('submitted incidents stay selectable as scope (no special casing)', async () => {
-  renderShell();
-  await selectIncidentScope();
+test('a sealed case shows no pre-seal banner; submitted incidents stay anchorable (no special casing)', async () => {
+  await act(async () => { renderShell(); });
+  expect(screen.queryByText('Incident telemetry is still loading.')).toBeNull();
   expect(screen.getByRole('button', { name: /Run Query/ })).not.toBeDisabled();
 });
 
-test('scope-error: chip retained, prior snapshot preserved, Run disabled, no silent fallback; retry and explicit Session-wide recover', async () => {
-  renderShell();
-  await runSessionQuery();
+test('scope-error: label retained, prior snapshot preserved, Run disabled, Retry-only recovery; Expanded search stays available', async () => {
+  await act(async () => { renderShell(); });
+  await runQuery();
   expect(results().getByText(/nmap.exe launched/)).toBeInTheDocument();
+
+  // enter Expanded search, then return while the scope read FAILS
+  await act(async () => { fireEvent.click(screen.getByTestId('search-all')); });
   const callsBefore = apiFetch.mock.calls.length;
-
   scopeResponse = () => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) });
-  await selectIncidentScope();
+  await act(async () => { fireEvent.click(screen.getByTestId('return-chip')); });
 
-  // chip retained with the incident id; the notice shows
-  expect(screen.getByTestId('scope-chip').textContent).toContain(INC);
+  // state label retained with the case id; the notice shows
+  expect(screen.getByTestId('scope-chip').textContent).toContain(caseEvidenceLabel(INC));
   expect(screen.getByRole('alert').textContent).toContain('Incident scope could not be loaded.');
   // prior snapshot untouched
   expect(results().getByText(/nmap.exe launched/)).toBeInTheDocument();
-  // Run disabled
+  // Run disabled; NO query was issued by the failed return
   expect(screen.getByRole('button', { name: /Run Query/ })).toBeDisabled();
-  // no silent Session-wide fallback: the control still shows the incident
-  // and NO query was issued by the failed selection
-  expect(screen.getByLabelText('Scope')).toHaveValue(INC);
   const eventCalls = apiFetch.mock.calls.slice(callsBefore).map(c => c[0])
-    .filter(p => p.startsWith('/api/events/query'));
+    .filter(p => p.startsWith('/api/events/query?'));
   expect(eventCalls).toEqual([]);
+  // A-OD-3: Retry is the recovery; no Use Session-wide control exists
+  expect(screen.queryByRole('button', { name: 'Use Session-wide' })).toBeNull();
+  // the deliberate Expanded search remains available (the designed path out)
+  expect(screen.getByTestId('search-all')).not.toBeDisabled();
 
   // retry succeeds -> ready -> Run enabled
   scopeResponse = () => ok({ incident_id: INC, sealed: true, hosts: [], accounts: [], detection_ids: [] });
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Retry' })); });
   expect(screen.getByRole('button', { name: /Run Query/ })).not.toBeDisabled();
-
-  // and from a fresh error, the EXPLICIT Session-wide choice recovers too
-  scopeResponse = () => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) });
-  await selectIncidentScope();
-  expect(screen.getByRole('button', { name: /Run Query/ })).toBeDisabled();
-  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Use Session-wide' })); });
-  expect(screen.getByLabelText('Scope')).toHaveValue('session');
-  expect(screen.getByRole('button', { name: /Run Query/ })).not.toBeDisabled();
 });
 
-test('TIMEFRAME control: text drives the control (control can never disagree)', () => {
-  renderShell();
+test('search-all from a failed case read enters Expanded search honestly (block visible, all-evidence run)', async () => {
+  scopeResponse = () => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) });
+  await act(async () => { renderShell(); });
+  expect(screen.getByRole('alert').textContent).toContain('Incident scope could not be loaded.');
+  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
+  await act(async () => { fireEvent.click(screen.getByTestId('search-all')); });
+  expect(queryCalls().pop()).toMatch(/scope=session$/);
+  expect(screen.getByTestId('expanded-search-block')).toBeInTheDocument();
+  expect(screen.getByTestId('pinned-case-line').textContent).toBe(investigatingCase(INC));
+});
+
+test('search-all is disabled on an empty bar (nothing to run)', async () => {
+  await act(async () => { renderShell(); });
+  expect(screen.getByLabelText('LCQL query').value).toBe('');
+  expect(screen.getByTestId('search-all')).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
+  expect(screen.getByTestId('search-all')).not.toBeDisabled();
+  expect(screen.getByTestId('search-all').textContent).toBe(SEARCH_ALL_EVIDENCE);
+});
+
+test('TIMEFRAME control: text drives the control (control can never disagree)', async () => {
+  await act(async () => { renderShell(); });
   const bar = screen.getByLabelText('LCQL query');
   const tf = screen.getByLabelText('Timeframe');
   expect(tf).toHaveValue('1h');                 // documented default on empty
@@ -168,8 +216,8 @@ test('TIMEFRAME control: text drives the control (control can never disagree)', 
   expect(tf).toHaveValue('all');                // case-insensitive derivation
 });
 
-test('TIMEFRAME control: selecting a token edits the first segment in place', () => {
-  renderShell();
+test('TIMEFRAME control: selecting a token edits the first segment in place', async () => {
+  await act(async () => { renderShell(); });
   const bar = screen.getByLabelText('LCQL query');
   const tf = screen.getByLabelText('Timeframe');
   fireEvent.change(bar, { target: { value: '24h | Sysmon | 4625 | user_account == "spatel"' } });

@@ -234,6 +234,17 @@ const Incidents = ({
                   </div>
                   {selected.briefing && <p className="mt-1 text-sm text-[#57606a] break-words">{selected.briefing}</p>}
                 </div>
+                {/* The ONE explicit case exit (Amendment 1 Delta A): the case
+                    changes only by selection in the list or this control.
+                    Presentation only; deselecting mutates nothing. */}
+                <button
+                  type="button"
+                  onClick={() => onSelectIncident?.(null)}
+                  aria-label="Clear selected incident"
+                  className="shrink-0 text-xs px-2 py-1 rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4]"
+                >
+                  Clear selection
+                </button>
               </div>
 
               <div className="pt-2 border-t border-[#eef1f4]">

@@ -129,32 +129,31 @@ test('a pivot inherits the EXECUTED snapshot TIMEFRAME token', async () => {
   expect(calls[calls.length - 1]).toBe('/api/events/query?q=1h | ACME-WS12 | * | *&scope=session');
 });
 
-// --- Section 18 "Cross-host pivots": visible flip + return chip --------------
+// --- Section 18 "Cross-host pivots", case-constant (Amendment 1 Delta A):
+// an entity pivot from case evidence enters Expanded search visibly; the
+// single return action restores the case evidence -------------------------
 
-test('an entity pivot from incident scope visibly lands Session-wide and offers the return chip', async () => {
-  renderShell({ activeIncidentId: 'INC-A' });
-  await act(async () => {
-    fireEvent.change(screen.getByLabelText('Scope'), { target: { value: 'INC-A' } });
-  });
+test('an entity pivot from case evidence enters Expanded search visibly with the single return action', async () => {
+  await act(async () => { renderShell({ activeIncidentId: 'INC-A' }); });
   await run('all | * | * | *');
   expect(queryCalls().pop()).toBe('/api/events/query?q=all | * | * | *&scope=INC-A');
-  expect(screen.queryByTestId('return-chip')).toBeNull();   // focused: no chip
+  expect(screen.queryByTestId('return-chip')).toBeNull();   // case evidence: no return
+  expect(screen.queryByTestId('expanded-search-block')).toBeNull();
 
   selectEvent();
   await act(async () => {
     fireEvent.click(screen.getByLabelText('Pivot hostname'));
   });
-  // the pivot executed Session-wide and the scope control flipped on screen
+  // the pivot executed across all evidence; the block announces the state
   expect(queryCalls().pop()).toBe('/api/events/query?q=all | ACME-WS12 | * | *&scope=session');
-  expect(screen.getByLabelText('Scope').value).toBe('session');
-  expect(screen.getByTestId('return-chip')).toHaveTextContent('Back to INC-A');
+  expect(screen.getByTestId('expanded-search-block')).toBeInTheDocument();
+  expect(screen.getByTestId('return-chip')).toHaveTextContent('Return to INC-A evidence');
+  // the case stays pinned through the expansion (OD-15 structural)
+  expect(screen.getByTestId('pinned-case-line').textContent).toBe('Investigating INC-A');
 });
 
-test('the return chip re-runs the current query under the incident participant scope', async () => {
-  renderShell({ activeIncidentId: 'INC-A' });
-  await act(async () => {
-    fireEvent.change(screen.getByLabelText('Scope'), { target: { value: 'INC-A' } });
-  });
+test('the return action re-runs the current query under the case participant scope', async () => {
+  await act(async () => { renderShell({ activeIncidentId: 'INC-A' }); });
   await run('all | * | * | *');
   selectEvent();
   await act(async () => {
@@ -167,11 +166,12 @@ test('the return chip re-runs the current query under the incident participant s
     fireEvent.click(screen.getByTestId('return-chip'));
   });
   expect(queryCalls().pop()).toBe(`/api/events/query?q=${barText}&scope=INC-A`);
-  expect(screen.getByLabelText('Scope').value).toBe('INC-A');
-  expect(screen.queryByTestId('return-chip')).toBeNull();   // back home: chip gone
+  expect(screen.queryByTestId('expanded-search-block')).toBeNull();  // back home
+  expect(screen.queryByTestId('return-chip')).toBeNull();
+  expect(screen.getByTestId('scope-chip').textContent).toContain('INC-A evidence');
 });
 
-test('ordinary navigation stays Session-wide: Run and refinement never change scope, no chip appears', async () => {
+test('ordinary navigation without a case stays plain All activity: no block, no return', async () => {
   renderShell();
   await run('all | * | * | *');
   selectEvent();
@@ -181,7 +181,8 @@ test('ordinary navigation stays Session-wide: Run and refinement never change sc
   for (const call of queryCalls()) {
     expect(call.endsWith('&scope=session')).toBe(true);
   }
-  expect(screen.getByLabelText('Scope').value).toBe('session');
+  expect(screen.getByTestId('pinned-case-line').textContent).toBe('All activity');
+  expect(screen.queryByTestId('expanded-search-block')).toBeNull();
   expect(screen.queryByTestId('return-chip')).toBeNull();
 });
 

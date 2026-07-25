@@ -209,15 +209,17 @@ describe('indicator (fake timers)', () => {
     expect(stale.textContent).toBe('4 new (last run)');
   });
 
-  // Phase 5 ride-along (closed out at Phase 6 acceptance): contract Section 8's
-  // table lists "Scope changes" under the SAME row as "Query text edited (not
-  // yet run)" -- both stay bound to the executed snapshot, de-emphasized, until
-  // Run mints a new one. indicatorStale already checks
-  // `scopeParam !== snapshot.identity.scope` (Siem.jsx); this proves it fires
-  // on a scope-only change with the query bar left untouched.
-  test('a scope change without a Run also de-emphasizes the indicator (Section 8: "Scope changes")', async () => {
-    render(<Siem setSiemCount={() => {}} resetTrigger={0} onHostPivot={() => {}}
-                 activeIncidentId="INC-1" />);
+  // Case-constant translation (Amendment 1 Delta A): a scope-only divergence
+  // now arises when entering Expanded search whose run FAILS -- the executed
+  // scope flips to session while the displayed snapshot stays the case
+  // evidence run. The indicator stays bound to the executed snapshot and
+  // de-emphasizes, exactly the Section 8 "Scope changes" honesty.
+  test('a failed Expanded search entry keeps the prior snapshot de-emphasized (scope divergence honesty)', async () => {
+    queryResponses.push(ok(snap([R2, R1], { scope: 'INC-1', canonical: 'all | * | * | *' })));
+    await act(async () => {
+      render(<Siem setSiemCount={() => {}} resetTrigger={0} onHostPivot={() => {}}
+                   activeIncidentId="INC-1" />);
+    });
     fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Run Query/ }));
@@ -228,9 +230,13 @@ describe('indicator (fake timers)', () => {
     expect(badge.className).not.toMatch(/opacity-50/);
     expect(badge.textContent).toBe('3 new');
 
-    // scope-only change, bar text and query untouched, no Run
-    fireEvent.change(screen.getByLabelText('Scope'), { target: { value: 'INC-1' } });
-
+    // enter Expanded search; the all-evidence run fails -> executed scope
+    // flipped, snapshot preserved, indicator honestly bound to the last run
+    queryResponses.push(Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) }));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('search-all'));
+    });
+    expect(results().getByText(/alpha event one/)).toBeInTheDocument();
     const stale = screen.getByTestId('new-events-indicator');
     expect(stale.className).toMatch(/opacity-50/);
     expect(stale.textContent).toBe('3 new (last run)');

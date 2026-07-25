@@ -26,6 +26,9 @@ export const returnToCaseEvidence = (incidentId) =>
 export const returnSubcopy = (incidentId) =>
   `Return to ${incidentId} evidence runs this query over the case evidence again.`;
 
+// --- the snapshot echo label (locked contract 11.2 "Results from") ---------
+export const RESULTS_FROM_LABEL = 'Results from:';
+
 // --- 11.3 honesty notes (locked contract Section 11.3, consumed verbatim) --
 export const EDITED_NOTE = 'Edited. Results below are from the last run.';
 export const STALE_RESULTS_NOTE =

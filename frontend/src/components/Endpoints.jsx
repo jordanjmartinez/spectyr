@@ -60,10 +60,10 @@ const Endpoints = ({ isVisible, resetTrigger, setEndpointCount, pivotHost,
   const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState({ key: 'hostname', dir: 'asc' });
-  // Stage 3.9B active-incident scope, rebuilt by micro-fix M1 (Stage 5A
-  // contract Section 11.1): ONE scope state drives the label, the toggle,
-  // and the row filter. Never locks the tab; Session-wide is an explicit
-  // control. Read-only.
+  // Case-constant scope (Amendment 1 Delta A over the M1 foundation): ONE
+  // scope state drives the pinned header, the honesty notices, and the row
+  // filter. A selected case is ALWAYS case-scoped here; with no case the
+  // list is the All activity state. Read-only.
   const scope = useIncidentScope(activeIncidentId, resetTrigger);
   const scopeRefetchRef = useRef(scope.refetch);
   scopeRefetchRef.current = scope.refetch;
@@ -103,9 +103,9 @@ const Endpoints = ({ isVisible, resetTrigger, setEndpointCount, pivotHost,
 
   useEffect(() => { setSelected(null); }, [resetTrigger]);
 
-  // M1 (contract 11.1): rows derive from the ONE scope state. 'loading' and
-  // 'error' render zero rows; Session-wide rows never render while the
-  // This-incident control is selected.
+  // Rows derive from the ONE scope state (A1-A.3): 'loading' and 'error'
+  // render zero rows; all-activity rows never render while a case is
+  // selected.
   const q = search.trim().toLowerCase();
   const scopeRows = scope.rowPolicy === 'all' ? rows
     : scope.rowPolicy === 'scoped' ? rows.filter(r => scope.data.hosts.has(r.hostname))
@@ -141,11 +141,10 @@ const Endpoints = ({ isVisible, resetTrigger, setEndpointCount, pivotHost,
 
   return (
     <div>
-      {/* Stage 3.9B active-incident scope toggle (never locks the tab),
-          rendered by the shared M1 bar so label, control, and rows agree. */}
-      {activeIncidentId && (
-        <IncidentScopeBar scope={scope} incidentId={activeIncidentId} groupLabel="Endpoint scope" />
-      )}
+      {/* The case-constant header bar (pinned case line / All activity),
+          rendered from the same state as the row filter so the signals
+          cannot disagree. */}
+      <IncidentScopeBar scope={scope} incidentId={activeIncidentId} />
 
       {/* Header card */}
       <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-hidden mb-4">

@@ -1,19 +1,20 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { apiFetch } from '../api';
 
-// Pre-lock micro-fix M1 (Stage 5A contract Section 11.1, ratified OD-16):
-// ONE incident-scope state per surface. The scope label, the control's
-// selected state (visual + aria-pressed), and the row filter all derive from
-// `selection` plus the explicit fetch `status` -- never from parallel
-// derivations (the F9 defect: the toggle highlight read one value while the
-// label and the filter read another). `data` is the last successful scope
-// read FOR THE CURRENT incident: it is retained through in-flight refreshes
-// and failures (scoped rows are preserved and replaced atomically) and is
-// dropped when the incident changes, so another incident's scope can never
-// filter this one. Broadening to Session-wide happens only through the
-// explicit control, never as a fallback.
+// ONE incident-scope state per surface (pre-lock micro-fix M1, kept verbatim
+// through Stage 5 Phase 1). The pinned header, the honesty notices, and the
+// row filter all derive from this state plus the explicit fetch status --
+// never from parallel derivations (the F9 defect class). `data` is the last
+// successful scope read FOR THE CURRENT incident: retained through in-flight
+// refreshes and failures (scoped rows are preserved and replaced atomically)
+// and dropped when the incident changes, so another incident's scope can
+// never filter this one.
+//
+// Amendment 1 Delta A (case-constant model): the per-page This-incident /
+// Session-wide SELECTION is gone -- a selected case is ALWAYS case-scoped,
+// no broadening control exists on the data pages, and `mode` derives from
+// the case alone. The fetch machinery is unchanged M1.
 export default function useIncidentScope(activeIncidentId, resetTrigger) {
-  const [selection, setSelection] = useState('incident');
   const [fetchState, setFetchState] = useState({ status: 'idle', data: null, forId: null });
   const reqSeq = useRef(0);
 
@@ -58,21 +59,19 @@ export default function useIncidentScope(activeIncidentId, resetTrigger) {
     refetch();
   }, [activeIncidentId, resetTrigger, refetch]);
 
-  const mode = activeIncidentId && selection === 'incident' ? 'incident' : 'session';
+  const mode = activeIncidentId ? 'incident' : 'session';
   const scopedData = fetchState.forId === activeIncidentId ? fetchState.data : null;
   return {
     mode,
-    selection,
-    setSelection,
     refetch,
     status: fetchState.status,
     data: mode === 'incident' ? scopedData : null,
-    // Row policy, derived from the ONE state value (contract 11.1 table):
-    //   'all'     unfiltered rows (Session-wide selected)
+    // Row policy, derived from the ONE state value (A1-A.3 behavior table):
+    //   'all'     full session data (no case selected: the All activity state)
     //   'scoped'  filter rows by `data` (ready, or preserved through an
     //             in-flight refresh or a failure with prior data)
     //   'loading' render the loading state, zero rows
-    //   'error'   render the empty error state, zero rows
+    //   'error'   render the empty error state (Retry only), zero rows
     rowPolicy: mode === 'session' ? 'all'
       : scopedData ? 'scoped'
         : fetchState.status === 'error' ? 'error' : 'loading',

@@ -162,7 +162,8 @@ const Docs = () => {
                 again or press Refresh, and a new-events badge counts telemetry that arrived since
                 the snapshot. Sidebar values and per-field inspector actions refine the executed
                 query; entity pivots (host, account, IP, domain, process, file, event type, sensor)
-                always run Session-wide, with a one-click chip back to your incident scope.
+                follow the clue across all available evidence. With a case open that is Expanded
+                search: your case stays pinned and one action returns to its evidence.
                 Open Evidence Timeline on an incident or detection descends into its evidence,
                 sorted occurrence-ascending, and Surrounding events centers the host timeline on
                 the event you are inspecting.

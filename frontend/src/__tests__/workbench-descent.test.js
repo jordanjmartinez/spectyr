@@ -85,7 +85,9 @@ test('single-host detection descent (no incident context) runs all | H | * | * S
     });
   });
   expect(queryCalls().pop()).toBe('/api/events/query?q=all | ACME-WS10 | * | *&scope=session');
-  expect(screen.getByLabelText('Scope').value).toBe('session');
+  // no case: the All activity state, no case-evidence chip
+  expect(screen.getByTestId('pinned-case-line').textContent).toBe('All activity');
+  expect(screen.queryByTestId('scope-chip')).toBeNull();
   const banner = screen.getByTestId('descent-banner');
   expect(banner).toHaveTextContent('Evidence timeline for ACME-WS10, from DET-42');
   expect(banner).toHaveTextContent('occurrence ascending');
@@ -98,13 +100,14 @@ test('single-host incident descent explicitly establishes the incident scope', a
   queryResponses.push(ok(snapWith(ROWS_UNORDERED, 'all | ACME-WS10 | * | *', 'INC-9368')));
   await act(async () => {
     renderSiem({
+      activeIncidentId: 'INC-9368',
       descentRequest: { origin: 'INC-9368', hosts: ['ACME-WS10'], scopeIncidentId: 'INC-9368', backView: 'incidents', seq: 1 },
       onNavigate: nav,
     });
   });
   expect(apiFetch).toHaveBeenCalledWith('/api/incidents/INC-9368/scope');
   expect(queryCalls().pop()).toBe('/api/events/query?q=all | ACME-WS10 | * | *&scope=INC-9368');
-  expect(screen.getByLabelText('Scope').value).toBe('INC-9368');
+  expect(screen.getByTestId('scope-chip').textContent).toContain('INC-9368 evidence');
   const banner = screen.getByTestId('descent-banner');
   expect(banner).toHaveTextContent('Evidence timeline for ACME-WS10, from INC-9368');
   fireEvent.click(within(banner).getByRole('button', { name: 'Back to Incidents' }));
@@ -115,6 +118,7 @@ test('multi-host incident descent runs the scoped session query under the incide
   queryResponses.push(ok(snapWith(ROWS_UNORDERED, 'all | * | * | *', 'INC-9368')));
   await act(async () => {
     renderSiem({
+      activeIncidentId: 'INC-9368',
       descentRequest: { origin: 'INC-9368', hosts: ['ACME-WS10', 'ACME-WS22'], scopeIncidentId: 'INC-9368', backView: 'incidents', seq: 1 },
       onNavigate: () => {},
     });
@@ -323,7 +327,7 @@ test('identity descent runs the uniform two-field OR Session-wide without an inc
   });
   expect(queryCalls().pop())
     .toBe(`/api/events/query?q=${IDENTITY_OR_QUERY}&scope=session`);
-  expect(screen.getByLabelText('Scope').value).toBe('session');
+  expect(screen.getByTestId('pinned-case-line').textContent).toBe('All activity');
   const banner = screen.getByTestId('descent-banner');
   expect(banner).toHaveTextContent('Evidence timeline for ACME\\dlee, from det-ids1');
   expect(banner.textContent).not.toMatch(/—/);   // approved copy punctuation only
@@ -335,18 +339,20 @@ test('identity descent under a player-selected incident context RETAINS that sco
   queryResponses.push(ok(snapWith([], IDENTITY_OR_QUERY, 'INC-9368')));
   await act(async () => {
     renderSiem({
+      activeIncidentId: 'INC-9368',
       descentRequest: { origin: 'det-ids1', hosts: [], account: 'ACME\\dlee', scopeIncidentId: 'INC-9368', backView: 'detections', seq: 1 },
       onNavigate: () => {},
     });
   });
   expect(queryCalls().pop())
     .toBe(`/api/events/query?q=${IDENTITY_OR_QUERY}&scope=INC-9368`);
-  expect(screen.getByLabelText('Scope').value).toBe('INC-9368');
-  // zero rows is the honest incident-scoped outcome when the account's
-  // events lack participant hostnames; the visible scope control (and the
-  // explicit Session-wide switch) is the designed path, not a silent one
+  expect(screen.getByTestId('scope-chip').textContent).toContain('INC-9368 evidence');
+  // zero rows is the honest case-scoped outcome when the account's events
+  // lack participant hostnames; the explicit Search all evidence action is
+  // the designed path out, never a silent one (Amendment 1 Delta A)
   expect(screen.getByText('0 events match')).toBeInTheDocument();
-  // no silent scope broadening: nothing executed Session-wide in this flow
+  expect(screen.getByTestId('search-all')).toBeInTheDocument();
+  // no silent scope broadening: nothing executed across all evidence
   expect(queryCalls().some((c) => c.endsWith('&scope=session'))).toBe(false);
 });
 

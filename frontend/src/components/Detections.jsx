@@ -96,10 +96,11 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot,
   const [confirm, setConfirm] = useState(null); // {title, body, confirmLabel, action, target}
   const [busy, setBusy] = useState(false);
   const [actionNotice, setActionNotice] = useState(null);
-  // Stage 3.9B active-incident scope, rebuilt by micro-fix M1 (Stage 5A
-  // contract Section 11.1): ONE scope state drives the label, the toggle,
-  // and the row filter. Never locked; Session-wide is an explicit control.
-  // Read-only; selecting an incident mutates nothing.
+  // Case-constant scope (Amendment 1 Delta A over the M1 foundation): ONE
+  // scope state drives the pinned header, the honesty notices, and the row
+  // filter. A selected case is ALWAYS case-scoped here (no toggle, no
+  // broadening control); with no case the feed is the All activity state.
+  // Read-only; selecting a case mutates nothing.
   const scope = useIncidentScope(activeIncidentId, resetTrigger);
   const scopeModeRef = useRef(scope.mode);
   scopeModeRef.current = scope.mode;
@@ -182,16 +183,16 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot,
         onHostPivot={onHostPivot}
         onEvidenceDescent={onEvidenceDescent}
         // Section 16: descent opens the relevant incident scope for THIS
-        // entry -- the player-selected incident context while the feed is
-        // scoped to it; Session-wide otherwise. Observable UI state only.
-        descentScopeIncidentId={activeIncidentId && scope.mode === 'incident' && scope.data ? activeIncidentId : null}
+        // entry -- the current case while its scope is loaded; no case
+        // otherwise. Observable UI state only.
+        descentScopeIncidentId={activeIncidentId && scope.data ? activeIncidentId : null}
       />
     );
   }
 
-  // M1 (contract 11.1): rows derive from the ONE scope state. 'loading' and
-  // 'error' render zero rows; Session-wide rows never render while the
-  // This-incident control is selected.
+  // Rows derive from the ONE scope state (A1-A.3): 'loading' and 'error'
+  // render zero rows; all-activity rows never render while a case is
+  // selected.
   const baseRows = view === 'threats' ? feed.filter(d => d.player_action === 'promoted') : feed;
   const rows = scope.rowPolicy === 'all' ? baseRows
     : scope.rowPolicy === 'scoped' ? baseRows.filter(d => scope.data.detectionIds.has(d.id))
@@ -210,10 +211,12 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot,
 
   return (
     <div>
-      {/* Stage 3.9B active-incident scope toggle (never locks the tab),
-          rendered by the shared M1 bar so label, control, and rows agree. */}
-      {activeIncidentId && view !== 'log' && (
-        <IncidentScopeBar scope={scope} incidentId={activeIncidentId} groupLabel="Detection scope" />
+      {/* The case-constant header bar (pinned case line / All activity),
+          rendered from the same state as the row filter so the signals
+          cannot disagree. The Response Log view is the session-wide action
+          history by design and carries no case header. */}
+      {view !== 'log' && (
+        <IncidentScopeBar scope={scope} incidentId={activeIncidentId} />
       )}
 
       {/* Header card */}

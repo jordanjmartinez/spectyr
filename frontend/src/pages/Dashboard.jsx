@@ -181,6 +181,10 @@ const Dashboard = () => {
       await apiFetch('/api/reset-simulator', {
         method: 'POST',
       });
+      // A reset destroys the session's incidents; no case survives it, so
+      // the pinned case clears here (explicit destructive act, not an
+      // implicit case change).
+      setActiveIncidentId(null);
       setResetTrigger(prev => prev + 1);
       setShowResetModal(false);
     } catch (err) {
@@ -297,21 +301,12 @@ const Dashboard = () => {
 
       {/* Light content */}
       <main className="flex-1 min-w-0 p-4 sm:p-6 overflow-x-hidden">
-        {/* Stage 3.9B incident context bar: persistent while an incident is
-            focused, on every tab. Purely presentational; "Session-wide" clears
-            it and never mutates state. */}
-        {activeIncidentId && view !== 'dashboard' && (
-          <div className="mb-4 flex items-center justify-between rounded-lg border border-[#16436b]/30 bg-[#16436b]/5 px-3 py-2">
-            <span className="text-sm text-[#1a2332]">
-              Focused on incident <span className="log-mono text-[#16436b] font-medium">{activeIncidentId}</span>
-            </span>
-            <div className="flex items-center gap-3">
-              <button onClick={() => setView('dashboard')} className="text-xs text-[#16436b] hover:underline">Open Dashboard</button>
-              <button onClick={() => setActiveIncidentId(null)} className="text-xs px-2 py-1 rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4]">Session-wide</button>
-            </div>
-          </div>
-        )}
-
+        {/* Stage 5 Phase 1 (Amendment 1 Delta A): the global focus banner is
+            REPLACED by the per-surface pinned case header ("Investigating
+            INC-####" / "All activity") on Detections, Endpoints, and the
+            SIEM. The case changes only by explicit selection (or the
+            explicit Clear selection control) on Incidents -- OD-15 is
+            structural: no other control mutates activeIncidentId. */}
         <div className={view === "dashboard" ? "block" : "hidden"}>
           <IncidentDashboard
             gameMode={gameMode}

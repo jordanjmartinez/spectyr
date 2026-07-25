@@ -96,21 +96,21 @@ test('P7 descent, pivot, scope switch, and return-to-incident issue reads only',
   });
   await waitFor(() => expect(screen.getByTestId('descent-banner')).toBeInTheDocument());
 
-  // entity pivot out of the incident scope (visible Session-wide flip)
+  // entity pivot out of the case evidence (visible Expanded search entry)
   fireEvent.click(within(screen.getByTestId('workbench-results')).getByText('no-mutation fixture event'));
   await act(async () => {
     fireEvent.click(screen.getByLabelText('Pivot hostname'));
   });
-  // return to the incident scope via the chip
+  // return to the case evidence via the single return action
   await act(async () => {
     fireEvent.click(screen.getByTestId('return-chip'));
   });
-  // explicit scope switching through the control, both directions
+  // deliberate Expanded search entry and return, both directions
   await act(async () => {
-    fireEvent.change(screen.getByLabelText('Scope'), { target: { value: 'session' } });
+    fireEvent.click(screen.getByTestId('search-all'));
   });
   await act(async () => {
-    fireEvent.change(screen.getByLabelText('Scope'), { target: { value: 'INC-A' } });
+    fireEvent.click(screen.getByTestId('return-chip'));
   });
 
   expect(mutatingCalls()).toHaveLength(0);   // the investigation surface is read-only

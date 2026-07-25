@@ -47,6 +47,7 @@ const InvestigationContext = ({ incidentId, expandedSearch }) => (
         <span className="text-[#57606a]">{expandedSearchExplanation(incidentId)}</span>
         <button
           type="button"
+          data-testid="return-chip"
           onClick={expandedSearch.onReturn}
           className="ml-auto text-[#16436b] hover:underline"
         >
