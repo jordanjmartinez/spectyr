@@ -154,6 +154,78 @@ export function refineFilter(executedCanonicalQuery, field, op, value) {
   };
 }
 
+// --- filter chips (Amendment 2 commit 3.3, ratified remove-only) -------------
+//
+// listConjuncts: the READ projection of the executed canonical FILTERS
+// section. Returns null when the query is NOT decomposable (any top-level
+// `or` -- including the IP-pivot and identity-descent product forms -- or a
+// text that does not split into four segments), [] for `*`, else the
+// canonical conjunct texts byte-preserved (slices of the canonical string).
+// Chips must never misrepresent the query: the projection equals the
+// conjunct list exactly or collapses to the one Custom filters chip.
+// EQUIVALENCE BOUNDARY: the same recorded isConjunctionOnly notice applies
+// (valid only while LCQL has no grouping; replace, never patch); the
+// backend AST decomposition pins this via the shared CONJUNCT_SPLIT_CORPUS
+// (one corpus, two consumers, byte-equal verdicts).
+export function listConjuncts(canonicalQuery) {
+  const segs = splitSegments(canonicalQuery);
+  if (segs.length !== 4) return null;
+  const text = segs[3];
+  if (text === '*') return [];
+  if (!isConjunctionOnly(text)) return null;
+  // quote-aware token scan over the canonical FILTERS text, recording
+  // token offsets; conjunct spans split at bare top-level `and` tokens.
+  const tokens = [];   // [start, end)
+  let quote = null;
+  let tokStart = -1;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quote) {
+      if (c === '\\' && i + 1 < text.length) { i += 1; continue; }
+      if (c === quote) quote = null;
+      continue;
+    }
+    if (c === '"' || c === "'") {
+      if (tokStart === -1) tokStart = i;
+      quote = c;
+      continue;
+    }
+    if (/\s/.test(c)) {
+      if (tokStart !== -1) { tokens.push([tokStart, i]); tokStart = -1; }
+      continue;
+    }
+    if (tokStart === -1) tokStart = i;
+  }
+  if (tokStart !== -1) tokens.push([tokStart, text.length]);
+  const conjuncts = [];
+  let spanStart = null;
+  let spanEnd = null;
+  for (const [s, e] of tokens) {
+    const tok = text.slice(s, e);
+    if (tok.toLowerCase() === 'and') {
+      if (spanStart !== null) conjuncts.push(text.slice(spanStart, spanEnd));
+      spanStart = null;
+      continue;
+    }
+    if (spanStart === null) spanStart = s;
+    spanEnd = e;
+  }
+  if (spanStart !== null) conjuncts.push(text.slice(spanStart, spanEnd));
+  return conjuncts;
+}
+
+// removeConjunct: the ONE new generator form (the single query author gains
+// a form; no second author appears). Rebuilds the query with the indexed
+// conjunct removed, joining the rest with ` and ` (`*` when none);
+// TIMEFRAME/SENSOR/EVENT_TYPE preserved byte-exact.
+export function removeConjunct(canonicalQuery, index) {
+  const conjuncts = listConjuncts(canonicalQuery);
+  if (!conjuncts || index < 0 || index >= conjuncts.length) return canonicalQuery;
+  const rest = conjuncts.filter((_, i) => i !== index);
+  const [tf, sensor, eventType] = splitSegments(canonicalQuery);
+  return `${tf} | ${sensor} | ${eventType} | ${rest.length ? rest.join(' and ') : '*'}`;
+}
+
 // --- entity pivots (contract Section 13 table) ---------------------------
 // Every entity pivot mints a query from `<tf>` alone -- SENSOR/EVENT_TYPE
 // are NOT inherited from the current query (Section 14: entity pivots

@@ -8,7 +8,7 @@ import {
   refineFilter, splitSegments, pivotHost, pivotAccount, pivotProcessImage,
   pivotFile, pivotIp, pivotDomainProxy, pivotDomainDns, pivotEventType,
   pivotSensorFamily, descentHost, descentSessionAll, descentAccount,
-  OR_FALLBACK_NOTICE, sectionIndexAtPosition,
+  OR_FALLBACK_NOTICE, sectionIndexAtPosition, listConjuncts, removeConjunct,
 } from './lcqlPivots';
 import InvestigationContext from './InvestigationContext';
 import {
@@ -259,6 +259,17 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
   const selectRow = (id) => {
     setSelectedId(id);
     setSelectionNotice(null);
+  };
+
+  // A2 3.3 (ratified: chips ship remove-only): removing a chip regenerates
+  // through the generator's remove/join form and RERUNS under the current
+  // scope (execute-immediately, the same A2-OD-2 ruling as refines).
+  const queryInputRef = useRef(null);
+  const removeChip = (index) => {
+    if (!snapshot || running || scopeBlocked) return;
+    const query = removeConjunct(snapshot.identity.canonical_query, index);
+    setQueryText(query);
+    execute(query, scopeParam);
   };
 
   // Sidebar value clicks and inspector ==/!= actions ROUTE ONLY through the
@@ -537,6 +548,7 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
         <div className="flex gap-2">
           <input
             type="text"
+            ref={queryInputRef}
             placeholder={QUERY_PLACEHOLDER}
             value={queryText}
             onChange={(e) => setQueryText(e.target.value)}
@@ -621,6 +633,51 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
             </button>
           </div>
         )}
+
+        {snapshot && (() => {
+          // A2 3.3 chips: a READ projection of the EXECUTED canonical
+          // FILTERS. The binding boundary (ruled): Custom filters renders
+          // for ANY top-level OR (never for conjunction-only), and chips
+          // never render a projection unequal to the canonical query.
+          const conjuncts = listConjuncts(snapshot.identity.canonical_query);
+          if (conjuncts === null) {
+            return (
+              <div data-testid="filter-chips" className="flex flex-wrap items-center gap-1.5 text-xs">
+                <button
+                  type="button"
+                  data-testid="custom-filters-chip"
+                  onClick={() => queryInputRef.current?.focus()}
+                  title={splitSegments(snapshot.identity.canonical_query)[3] || ''}
+                  className="inline-flex items-center px-2 py-1 rounded-full border border-[#d0d7de] bg-[#eef1f4] text-[#57606a] hover:bg-white"
+                >
+                  Custom filters
+                </button>
+              </div>
+            );
+          }
+          if (conjuncts.length === 0) return null;
+          return (
+            <div data-testid="filter-chips" className="flex flex-wrap items-center gap-1.5 text-xs">
+              {conjuncts.map((c, i) => (
+                <span
+                  key={`${i}-${c}`}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-[#d0d7de] bg-white text-[#1a2332]"
+                >
+                  <span className="log-mono">{c}</span>
+                  <button
+                    type="button"
+                    aria-label={`Remove filter: ${c.split(' ')[0]}`}
+                    onClick={() => removeChip(i)}
+                    disabled={running || scopeBlocked}
+                    className="text-[#6e7781] hover:text-[#1a2332] disabled:opacity-50"
+                  >
+                    x
+                  </button>
+                </span>
+              ))}
+            </div>
+          );
+        })()}
 
         {snapshot && (
           <div className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a] flex flex-wrap items-center gap-x-3 gap-y-1">

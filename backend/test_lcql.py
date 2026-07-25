@@ -494,6 +494,9 @@ GENERATED_FORMS_CORPUS = [
     'all | * | * | message == "say \\"or\\" and | *"',
     "all | * | * | user_account == \"O'HARA@acme.com\" or UserPrincipalName == \"O'HARA@acme.com\"",
     'all | ACME-WS10 | * | severity == "high"',
+    # A2 3.3: the chip remove/join generator form's outputs
+    'all | * | * | hostname != "ACME-WS10"',
+    'all | ACME-WS10 | * | *',
 ]
 
 
@@ -507,8 +510,40 @@ def test_generated_forms_corpus_parses_and_is_canonical():
         assert canonical(parse(c1)) == c1
 
 
-def test_generated_forms_corpus_has_exactly_ten_entries():
-    assert len(GENERATED_FORMS_CORPUS) == 10
+def test_generated_forms_corpus_has_exactly_twelve_entries():
+    assert len(GENERATED_FORMS_CORPUS) == 12
+
+
+# The chip-decomposition parity corpus (A2 3.3): canonical FILTERS text ->
+# the conjunct list the AST yields (None = not decomposable, any top-level
+# `or`; [] = star). The frontend listConjuncts asserts the IDENTICAL corpus
+# -- one corpus, two implementations, byte-equal verdicts (the OR_SCAN
+# pattern; the same no-grouping equivalence boundary applies).
+CONJUNCT_SPLIT_CORPUS = [
+    ("*", []),
+    ('a == "x"', ['a == "x"']),
+    ('a == "x" and b != "y" and c contains "z z"',
+     ['a == "x"', 'b != "y"', 'c contains "z z"']),
+    ('message contains "black and white"',
+     ['message contains "black and white"']),
+    ('a == "x" or b == "y"', None),
+    ('path == "C:\\\\and\\\\bin" and q == "w"',
+     ['path == "C:\\\\and\\\\bin"', 'q == "w"']),
+]
+
+
+def test_conjunct_split_corpus_matches_ast_decomposition():
+    for text, expected in CONJUNCT_SPLIT_CORPUS:
+        q = parse(f"all | * | * | {text}")
+        if expected is None:
+            assert not lcql.conjunction_only(q), text
+            continue
+        if expected == []:
+            assert q.filters == (), text
+            continue
+        assert lcql.conjunction_only(q), text
+        got = [f"{p.field} {p.op} {p.raw_value}" for p in q.filters[0]]
+        assert got == expected, f"AST conjuncts diverge for {text!r}: {got!r}"
 
 
 def test_full_idempotence_with_catalog():

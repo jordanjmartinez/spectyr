@@ -23,6 +23,7 @@ import {
 import {
   sectionIndexAtPosition, pivotAccount, pivotFile, pivotProcessImage,
   pivotDomainProxy, pivotIp, refineFilter, descentAccount, descentHost,
+  listConjuncts, removeConjunct,
 } from '../components/lcqlPivots';
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
@@ -202,6 +203,8 @@ const GENERATED_FORMS_CORPUS = [
   'all | * | * | message == "say \\"or\\" and | *"',
   'all | * | * | user_account == "O\'HARA@acme.com" or UserPrincipalName == "O\'HARA@acme.com"',
   'all | ACME-WS10 | * | severity == "high"',
+  'all | * | * | hostname != "ACME-WS10"',
+  'all | ACME-WS10 | * | *',
 ];
 
 test('the generator emits the generated-forms corpus byte-exact (closure incl. adversarial values)', () => {
@@ -216,6 +219,8 @@ test('the generator emits the generated-forms corpus byte-exact (closure incl. a
     refineFilter('all | * | * | *', 'message', '==', 'say "or" and | *').query,
     descentAccount("O'HARA@acme.com"),
     refineFilter(descentHost('ACME-WS10'), 'severity', '==', 'high').query,
+    removeConjunct('all | * | * | severity == "high" and hostname != "ACME-WS10"', 0),
+    removeConjunct('all | ACME-WS10 | * | severity == "high"', 0),
   ];
   expect(built).toEqual(GENERATED_FORMS_CORPUS);
   // the OR-base refine is the FRESH fallback (closure case pinned)
@@ -223,6 +228,76 @@ test('the generator emits the generated-forms corpus byte-exact (closure incl. a
     .toBe(true);
 });
 
-test('GENERATED_FORMS_CORPUS has exactly the ten entries the backend corpus has', () => {
-  expect(GENERATED_FORMS_CORPUS).toHaveLength(10);
+test('GENERATED_FORMS_CORPUS has exactly the twelve entries the backend corpus has', () => {
+  expect(GENERATED_FORMS_CORPUS).toHaveLength(12);
+});
+
+// --- 19.23 chips: the honesty rule + the RULED boundary test ----------------
+// Ported VERBATIM from backend/test_lcql.py::CONJUNCT_SPLIT_CORPUS.
+
+const CONJUNCT_SPLIT_CORPUS = [
+  ['*', []],
+  ['a == "x"', ['a == "x"']],
+  ['a == "x" and b != "y" and c contains "z z"',
+   ['a == "x"', 'b != "y"', 'c contains "z z"']],
+  ['message contains "black and white"',
+   ['message contains "black and white"']],
+  ['a == "x" or b == "y"', null],
+  ['path == "C:\\\\and\\\\bin" and q == "w"',
+   ['path == "C:\\\\and\\\\bin"', 'q == "w"']],
+];
+
+test('listConjuncts matches the backend AST decomposition (shared parity corpus)', () => {
+  for (const [filters, expected] of CONJUNCT_SPLIT_CORPUS) {
+    expect({ filters, got: listConjuncts(`all | * | * | ${filters}`) })
+      .toEqual({ filters, got: expected });
+  }
+  expect(CONJUNCT_SPLIT_CORPUS).toHaveLength(6);
+});
+
+test('the RULED boundary: Custom filters never for conjunction-only, always for any top-level OR incl. the product forms', () => {
+  // product OR forms collapse to the Custom filters chip (null projection)
+  expect(listConjuncts(pivotIp('1h', '203.0.113.50'))).toBe(null);
+  expect(listConjuncts(descentAccount('ACME\\dlee'))).toBe(null);
+  // conjunction-only never collapses
+  expect(listConjuncts('all | * | * | severity == "high" and hostname != "A"'))
+    .toEqual(['severity == "high"', 'hostname != "A"']);
+  // removal regenerates through the generator and stays canonical
+  expect(removeConjunct('1h | Sysmon | 4625 | a == "x" and b == "y"', 1))
+    .toBe('1h | Sysmon | 4625 | a == "x"');
+  expect(removeConjunct('1h | Sysmon | 4625 | a == "x"', 0))
+    .toBe('1h | Sysmon | 4625 | *');
+  // out-of-range or non-decomposable removal is a no-op, never a corruption
+  expect(removeConjunct(pivotIp('1h', '10.0.0.1'), 0))
+    .toBe(pivotIp('1h', '10.0.0.1'));
+});
+
+test('chips render the executed conjuncts with remove; a removal reruns via the generator', async () => {
+  renderShell();
+  queryResponses.push(ok({
+    ...SNAP,
+    identity: { ...SNAP.identity, canonical_query: 'all | * | * | severity == "high" and hostname == "ACME-WS12"' },
+  }));
+  await run('all | * | * | severity == "high" and hostname == "ACME-WS12"');
+  const chips = screen.getByTestId('filter-chips');
+  expect(chips.textContent).toContain('severity == "high"');
+  expect(chips.textContent).toContain('hostname == "ACME-WS12"');
+  await act(async () => {
+    fireEvent.click(screen.getByLabelText('Remove filter: severity'));
+  });
+  expect(decodeURIComponent(queryCalls().pop()))
+    .toContain('q=all | * | * | hostname == "ACME-WS12"');
+});
+
+test('an OR snapshot renders exactly the Custom filters chip revealing the raw query', async () => {
+  renderShell();
+  const orQ = 'all | * | * | source_ip == "10.0.1.5" or destination_ip == "10.0.1.5"';
+  queryResponses.push(ok({
+    ...SNAP, identity: { ...SNAP.identity, canonical_query: orQ },
+  }));
+  await run(orQ);
+  expect(screen.getByTestId('custom-filters-chip')).toBeInTheDocument();
+  expect(screen.getByTestId('custom-filters-chip').getAttribute('title'))
+    .toBe('source_ip == "10.0.1.5" or destination_ip == "10.0.1.5"');
+  expect(screen.queryByLabelText(/Remove filter:/)).toBeNull();
 });
