@@ -1,11 +1,14 @@
 # Stage 5 Live Run Feedback — Implementation Scaffold
 
-**Status: PROPOSED — pending owner approval. Planning only: no product
-code, tests, schemas, scenarios, components, or endpoints change with
-this document. Implementation is authorized only after explicit owner
-approval of this scaffold, on branch `stage-5-implementation-scaffold`'s
-successor implementation branch, in the phase order below, stopping at
-every marked checkpoint.**
+**Status: APPROVED (owner review verdict PASS, 2026-07-25) — subject to
+the owner rulings recorded in the append-only approval appendix at the
+end of this document (rulings A-H; every [Scaffold decision] ratified as
+written; the ruling-A change to commit 2.2 recorded there). This remains
+a planning document: no product code, tests, schemas, scenarios,
+components, or endpoints change with it. Implementation is authorized on
+branch `stage-5-live-run-feedback` from `main` after this scaffold's
+merge, in the phase order below, stopping at every [STOP] checkpoint and
+phase stop point. Phase 1 has NOT begun.**
 
 Governing document: `docs/stage-5a-live-run-feedback-contract.md` — the
 LOCKED Stage 5A contract (Revision 3; lock recorded 2026-07-24 at `main`
@@ -922,3 +925,72 @@ this document.
 begins only after explicit owner approval of this scaffold and its
 Section 11 rulings, on the implementation branch, in the phase order
 above.*
+
+---
+
+## Appendix: Owner approval and rulings (2026-07-25, append-only)
+
+**Verdict: PASS — the scaffold is APPROVED subject to the rulings
+below, which bind implementation.** Every section above stands as
+written except where a ruling supersedes it; only ruling A changes a
+planned commit.
+
+**A. Related response activity (supersedes Section 11 item A's
+recommendation; changes commit 2.2):** the ratified observable
+`related_actions` COUNT ships exactly as ratified — **no contract
+amendment is required; the locked contract stands unamended; D4 ships
+exactly as ratified.** The existing fuzzy related-activity LIST
+(`Incidents.jsx:274-282`, fed by the `:84-88` join) is **removed in
+commit 2.2**; the detail pane displays the honest count only. No
+`related_action_seqs` or any other serialized list field is added.
+Session-wide actions are not shown as a substitute; the Response Log
+remains the venue for the player's own action history.
+
+**B. Scorer reuse (Section 11 item B): APPROVED**, with binding
+conditions: `compute_action_score` may produce an additive internal
+detail result that is removed before its existing public score result
+returns; the internal detail key is removed at EVERY
+`compute_action_score` call site, with a structural assertion that no
+served payload anywhere contains it; the planted-marker suite
+enumerates the pre-submission surfaces it covers BY NAME (at minimum:
+the in-progress score endpoint, incident cards, scope, and detections
+payloads) — never an unenumerated "every"; scoring semantics and score
+payloads remain byte-identical; the equivalence test over the full
+action-scoring fixture set is required and permanent.
+
+**C. Tier 2 rationale placement: APPROVED** as the top-level schema v2
+field `expected_response`, beside `triage_review` (Section 3.4 as
+written).
+
+**D. `_incident_progress` observation: record only.** No change is
+authorized; D4 continues to use the new observable-scope join.
+
+**E. Server readiness copy:** the existing 409 payload wording and its
+pinned tests stay unchanged. The canonical Stage 5 wording applies to
+client surfaces; Phase 2 verifies the client renders canonical copy
+rather than raw payload text where both exist.
+
+**F. New-copy register: accepted as the standing process** — NEW
+strings are drafted at implementation, reviewed at their owning
+[STOP], and denylist- and em-dash-scanned.
+
+**G. Phases 3 and 4: ONE owner-review cycle for both**, with commits
+3.1 and 4.1 kept concern-separated and independently revertible
+(Section 7's recommendation adopted).
+
+**H. Incremental Tier 2 authoring: accepted.** A submission created
+before its scenario paragraph exists may freeze
+`scenario_rationale: null`; generic Tier 1 explanations remain
+available.
+
+**[Scaffold decision] items, ratified as written:** `response_review`
+stored inside `report_card`; expected-label resolution through registry
+lookup with composite fallback; completed-strip total sourced
+frontend-side from `detection.total`; `expected_response` optional with
+a ratcheting ledger during rollout; the proposed
+`spectyr_onboarding_v1` localStorage layout; `uiCopy.js` seeded in
+Phase 1 and completed as the canonical vocabulary module in Phase 2.
+
+**Legacy-record conclusion: accepted.** Submissions are memory-only; no
+pre-Stage-5 persisted records require migration or backfill; the
+degraded missing-breakdown UI remains a defensive fallback only.
