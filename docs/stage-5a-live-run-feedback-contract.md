@@ -2399,3 +2399,713 @@ document is untouched (its deltas are drafted in A1-A.8 / A1-B.8 and
 applied only after ratification); owner asset files untouched; nothing
 pushed; no product code, no Phase 1. The deltas are ratified
 independently; this task ratifies nothing.*
+
+---
+---
+
+# AMENDMENT 2 — GUIDED SIEM SEARCH AND QUERY CLARITY (RATIFIED)
+
+**Status: RATIFIED — owner rulings recorded in A2-R, 2026-07-25. The
+A2-R rulings are the governing finals wherever they differ from the
+drafted body below (three drafted string families are superseded there).
+The Section 19 criteria numbering assignment is FINAL (A2-R.2): the
+Amendment 1 ratification was subsequently recorded (A1-R, merge
+`935f824`) and the appendices are ordered on one branch — Amendment 1
+Delta B = 19.17-19; Amendment 2 A2-AC-1..7 = 19.20-26.**
+Drafted 2026-07-25 on branch `stage-5-amendment-2` at repository baseline
+`main` `2e74b86` (the Stage 5 scaffold-approval merge; gates re-verified
+ALL GREEN on this branch at this baseline: backend 27 suites, frontend 18
+suites / 173 tests, both runs 2026-07-25). Appended AFTER the locked
+Revision 3 text through the recorded amendment discipline. **The locked
+text above is byte-unchanged; no locked clause is edited, annotated,
+retitled, retagged, or marked in place. All supersession marking lives
+here; where a ratified item below differs from the locked text, this
+appendix is the governing record for that item.**
+
+## A2-P. Preamble
+
+### A2-P.1 Independence from Amendment 1
+
+Amendment 2 is INDEPENDENT of Amendment 1 (drafted separately on
+`stage-5-amendment-1`; not present in this baseline's text): it is
+approvable, revisable, or rejectable on its own. Every reference to
+Amendment 1's case-constant model defines both readings:
+
+- **Delta A ratified:** an entity pivot enters the Expanded search state
+  (the expanded-search block is the transition surface; return =
+  "Return to INC-#### evidence").
+- **Delta A not ratified (locked model):** an entity pivot performs
+  today's Session-wide flip (the locked 8.2 transition banner is the
+  surface; return = the "Back to INC-####" chip / 11.4 controls).
+
+The verb grammar, chips, error taxonomy, placeholder, surrounding-events
+return, and invariant test below are label-stable and mechanism-stable
+under both readings. Where Amendment 1 Delta B's tooltip set is
+ratified, the ruled tooltips below join it; otherwise this amendment
+carries its own permanent-tooltip requirement for exactly the controls
+it names.
+
+### A2-P.2 Owner playtest finding (recorded verbatim as evidence)
+
+> The SIEM search experience is too cognitively heavy for a new player.
+> No parser defect was demonstrated: the gray LCQL text was placeholder
+> text, and Run was clicked with an empty field. The problems are
+> usability: the placeholder resembles a real query; the editable query
+> and the executed snapshot are not clearly separated; stale results
+> persist unlabeled after failed or empty runs; sidebar value clicks,
+> ==, !=, Pivot, Surrounding events, and Run overlap with no way to
+> predict which action narrows, follows, opens context, edits, or
+> executes.
+
+### A2-P.3 Operator and Pivot ruling (recorded verbatim; governs A2-2.1)
+
+> - Keep == and != as the primary visible labels.
+> - Do not rename them to Only this or Exclude this.
+> - Add permanent accessible explanations:
+>   - ==: Show only events matching this value.
+>   - !=: Exclude events matching this value.
+> - Preserve the operators in the query and interface so Spectyr teaches
+>   real LCQL concepts.
+>
+> Pivot remains the primary visible term, but receives clearer
+> explanation:
+>
+> - Button label: Pivot
+> - Tooltip/help: Follow this clue across all available evidence.
+> - After execution, the transition surface names:
+>   - the field and value followed
+>   - whether the search expanded beyond the current incident
+>   - how to return to incident evidence
+>
+> The goal is to teach Pivot, not replace the term.
+
+Consequence, stated plainly: the kickoff's proposed primary-label
+renames ("Only this", "Exclude this", "Follow this clue" as button
+labels) are **considered and overruled** by this ruling. The locked F6
+default (accepted symbols, not renamed) is therefore **reaffirmed, not
+superseded** — the anticipated F6 supersession does not occur. What this
+amendment adds over F6 is the exact permanent explanation copy (ruled
+above), the effect-class grammar, and the transition-surface naming
+requirements.
+
+### A2-P.4 Presentation-only discipline and the deferral rule
+
+Everything drafted below is presentation-layer: frontend components,
+frontend-owned copy, the frontend generator module (`lcqlPivots.js`, the
+sanctioned single query author, extended with one new remove/join form),
+and TEST-ONLY extensions to `backend/test_lcql.py` (fixture corpus).
+No engine, LCQL-grammar, endpoint, payload, scoring, or readiness change
+is drafted. Anything that would require one is reported and DEFERRED
+(register in A2-7): the bounded surrounding-events time window (question
+8) and chip editing.
+
+### A2-P.5 Ratification state
+
+One state for the whole amendment, recorded in A2-R: **DRAFT** (current),
+**RATIFIED**, or **RETURNED**. This task ratifies nothing.
+
+---
+
+## A2-1. Repository truth: the eight questions, answered at `2e74b86`
+
+**Q1 — which interactions execute immediately, and which only edit the
+bar?** Hypothesis CONFIRMED, with a complete inventory:
+
+- *Execute immediately:* sidebar value clicks (`FieldSidebar.jsx:49`
+  `onValueClick(field, '==', value)` -> `refineAndRun`, Siem.jsx:206-211,
+  which generates via `refineFilter` and calls `execute`); inspector
+  `==`/`!=` (`EventInspector.jsx:107,115` -> the same `refineAndRun`);
+  Pivot (`EventInspector.jsx:124` -> `pivotAndRun`, Siem.jsx:224-231);
+  Surrounding events (`EventInspector.jsx:229` -> `surroundingAndRun`,
+  Siem.jsx:238-246); Run / Enter (Siem.jsx:493,501); Refresh
+  (Siem.jsx:192-195, re-executes the snapshot's canonical query +
+  executed scope, never the bar); the return chip
+  (Siem.jsx:252-263 — loads the incident scope, then executes the
+  CURRENT BAR TEXT under it, `execute(queryText, id)` at :260); descent
+  requests (Siem.jsx:279-303).
+- *Edit only (no request):* typing in the bar (Siem.jsx:492); the
+  Timeframe select (`setTimeframe`, Siem.jsx:123-132 — rewrites the
+  first segment in place); the empty-state example buttons
+  (Siem.jsx:610-611, `setQueryText(ex)` only).
+- *Neither (state only):* the Scope select (`selectScope`,
+  Siem.jsx:115-118) changes the pending scope and loads the scope read
+  but does NOT re-execute — the displayed snapshot remains the old
+  scope's results until the next run; only the stale de-emphasis
+  (`indicatorStale`, Siem.jsx:337-339) signals the divergence.
+
+**Q2 — is Run enabled on an empty field?** Hypothesis CONFIRMED. The
+Run button disables only on `running || scopeBlocked` (Siem.jsx:502);
+an empty bar runs `execute('', scope)` and the parser rejects it:
+`_split_segments('')` yields one segment, so `parse` raises
+"expected 4 |-separated segments (TIMEFRAME | SENSOR_SELECTOR |
+EVENT_TYPE | FILTERS), found 1" at position 0 (lcql.py:291-300),
+rendered as "Parse error at position 0: …" (Siem.jsx:511). This is
+exactly the playtest error: player error by construction, not a parser
+defect.
+
+**Q3 — how are placeholder, edited text, last executed, and canonical
+represented?** Four distinct representations:
+
+- *Placeholder:* the HTML `placeholder` attribute (Siem.jsx:490) set to
+  `QUERY_PLACEHOLDER = '1h | Sysmon | ProcessCreate | command_line
+  contains "powershell"'` (Siem.jsx:20-21), styled gray
+  (`placeholder-[#8b949e]`, Siem.jsx:497) in the same monospace as run
+  queries — a full realistic query with no "example" marking: the
+  playtest confusion is faithful to the code.
+- *Edited text:* `queryText` state (Siem.jsx:44).
+- *Last executed / canonical:* `snapshot.identity.canonical_query`,
+  echoed on the status line (Siem.jsx:526) AND written back into the
+  bar after every successful run (`applySnapshot`, Siem.jsx:147) — so
+  bar text equals the canonical until the player edits.
+- *Divergence signal:* `indicatorStale` dims the new-count indicator
+  when bar or scope differs from the executed identity
+  (Siem.jsx:337-339, 530-533).
+
+"Restore last working query" is frontend-only feasible: the canonical
+is already held client-side.
+
+**Q4 — how do Pivot and Surrounding events alter or preserve the prior
+query, snapshot, and scope?**
+
+- *Pivot* (Siem.jsx:224-231): mints a new query from the executed
+  snapshot's TIMEFRAME token only (`splitSegments(...)[0]`), always
+  sets scope to session, writes the bar, executes. The prior query is
+  NOT stored; the return chip re-establishes the incident SCOPE over
+  the CURRENT bar text (Siem.jsx:260), not the prior query.
+- *Surrounding events* (Siem.jsx:238-246): generates
+  `descentHost(hostname)` = `all | H | * | *` (lcqlPivots.js:179-181 —
+  hardcoded `all`, so the view deliberately widens the timeframe),
+  keeps the CURRENT scope (`execute(query, scopeParam)`), sets the
+  timeline provenance `{kind:'surrounding', host, focusId, focusSeq,
+  query}`, and REPLACES the snapshot.
+- **Correction to the design assumption (negative answer): there is NO
+  surrounding-events return today.** The banner's back button renders
+  only for `timeline.kind === 'descent' && timeline.backView`
+  (Siem.jsx:573-580); a surrounding view offers no return, the prior
+  snapshot is not held anywhere, and the only exits are running another
+  query or a pivot. The "ONE obvious return" in A2-2.5 is an ADDITION,
+  not a reframe of an existing control.
+
+**Q5 — what does the parse error carry, and can the errored section be
+derived client-side?** Hypothesis CONFIRMED, frontend-only. `LcqlError`
+carries a 0-based character position into the ORIGINAL query string, a
+human reason, and optional near-match suggestions (lcql.py:45-53);
+`/api/events/query` serializes exactly `{error: {position, reason[,
+suggestions]}}` on 400 (app.py:2834, 2860-2866; the 300-cap variant at
+app.py:2839-2841); the frontend already renders all three
+(Siem.jsx:46, 175-179, 509-517). The client holds the submitted string,
+and `splitSegments` (lcqlPivots.js:36-52) mirrors the backend's
+quote-aware `_split_segments` (lcql.py:78-98), so the top-level pipe
+offsets — and therefore the section (Time / Source / Event type /
+Filters) containing any error position — are derivable client-side with
+no backend change. Structure-level errors (segment count != 4 at
+lcql.py:291-300, positioned at end-of-string or the extra pipe; the
+300-character cap) name the structure rather than a section.
+
+**Q6 — can the canonical filter section be decomposed client-side into
+conjunctive chips, and regenerated on removal? Which shapes cannot?**
+YES for the conjunction-only class, with an established boundary:
+
+- The grammar is OR-of-AND-groups with no parentheses (GD-3,
+  lcql.py:16, 174-230); canonical text joins AND-groups with
+  `" or "` and predicates with `" and "`, single-spaced, raw values
+  byte-preserved, and is idempotent (`canonical`, lcql.py:579-589).
+  A conjunction-only query is exactly one AND-group
+  (`conjunction_only`, lcql.py:498-504).
+- The client already has the two needed mirrors: quote-aware segment
+  splitting (`splitSegments`) and the quote-aware top-level-`or` scan
+  (`isConjunctionOnly`, lcqlPivots.js:70-97), pinned to the backend AST
+  verdicts by the shared ten-entry `OR_SCAN_CORPUS`
+  (test_lcql.py:456-474; ported verbatim,
+  workbench-pivots.test.js:170-196). Chip decomposition needs one more
+  mirror of the same kind: a quote-aware top-level `and` split over the
+  canonical FILTERS text — same mechanism, same equivalence boundary
+  (valid ONLY while LCQL has no grouping; MUST BE REPLACED, not
+  patched, if grouping arrives — the recorded lcqlPivots.js:55-69
+  notice extends to it), pinned by the same shared-corpus pattern.
+- Removal regenerates through the generator module: one new exported
+  form (join the remaining conjuncts with `" and "`, `*` when none;
+  TIMEFRAME/SENSOR/EVENT_TYPE preserved) added to `lcqlPivots.js` — the
+  single query author gains a form, not a second author — and to the
+  parity corpus.
+- **Cannot decompose (renders the single "Custom filters" chip):** any
+  FILTERS with a top-level `or` — hand-written OR queries, and notably
+  two PRODUCT-GENERATED forms: the IP pivot (`source_ip == V or
+  destination_ip == V`, lcqlPivots.js:153-155) and identity descent
+  (`user_account == A or UserPrincipalName == A`,
+  lcqlPivots.js:197-200). Hand edits that still parse decompose
+  whenever they are conjunction-only (the projection reads the
+  CANONICAL echo, so spacing/case variance is already normalized).
+- **Verdict for the ship decision (A2-OD-3):** decomposition IS clean
+  within the honesty rule — chips can ship in Stage 5 remove-only, with
+  the OR-form pivots honestly rendered as the Custom filters chip.
+
+**Q7 — do existing fixtures already prove every product-generated query
+parses?** PARTIALLY — the pattern exists, closure does not:
+
+- Exists: the 13-entry `_PIVOT_DESCENT_FIXTURES` corpus parses and is
+  byte-canonical backend-side (test_lcql.py:413-440), and the frontend
+  asserts its generator outputs equal that list byte-for-byte, in order
+  (workbench-pivots.test.js:91-105) — every PIVOT and DESCENT form is
+  proven end to end for one representative value each (backslash
+  escaping exercised). One refine composition parses backend-side
+  (`test_sidebar_conjunction_append_composes`, test_lcql.py:443-448);
+  the OR-scan corpus pins the append-vs-fresh verdict both sides.
+- Missing for closure: refineFilter OUTPUT shapes beyond the one append
+  (the `!=` append, the fresh OR-fallback output, append-after-append,
+  appends onto each documented pivot/descent canonical); adversarial
+  values through `escapeValue` (embedded double quotes, spaces,
+  reserved words, `*`/`|` characters) for every form; and, if chips
+  ratify, the removal-join outputs. **The strengthened invariant test
+  (A2-2.6) closes exactly this gap.**
+
+**Q8 — would a bounded surrounding-events time window require LCQL or
+backend changes?** YES, confirmed: TIMEFRAME is a closed token set
+(`15m/1h/4h/12h/24h/all`, lcql.py:39) resolved at execution relative to
+the pool (app.py:2868); the grammar has no absolute or event-anchored
+range form. A window centered on an arbitrary event's timestamp is an
+LCQL grammar extension or a backend query parameter — an engine change.
+**OUT of this amendment; recorded as DEFERRED (A2-7).**
+
+---
+
+## A2-2. The design (normative; smallest shippable)
+
+The structured query builder is explicitly NOT in this amendment.
+
+### A2-2.1 Verb grammar (binding; per the A2-P.3 ruling)
+
+Every SIEM control, its visible label, its permanent accessible
+explanation, its effect class, and what announces the result. Labels
+for `==`, `!=`, and Pivot are RULED (not open); the explanations for
+`==`, `!=`, and Pivot are the ruled strings verbatim. Effect classes:
+**narrows** / **follows** / **opens context** / **edits only** /
+**executes**.
+
+| Control | Visible label | Permanent explanation (tooltip/help) | Effect class | Announced by |
+|---|---|---|---|---|
+| Inspector equals | `==` (ruled) | "Show only events matching this value." (ruled) | narrows (executes immediately) | Refine notice family ("Filter added: …") + status line |
+| Inspector not-equals | `!=` (ruled) | "Exclude events matching this value." (ruled) | narrows (executes immediately) | "Excluded: …" + status line |
+| Sidebar value click | the value row (existing) | "Show only events matching this value." (same family; the existing `field == "value"` title kept as the technical detail) | narrows (executes immediately) | "Filter added: …" + status line |
+| Pivot | `Pivot` (ruled; today's lowercase `pivot` at EventInspector.jsx:129 is corrected to the ruled casing) | "Follow this clue across all available evidence." (ruled), with the per-kind detail ("host timeline", "account activity", …) as a secondary line | follows (executes; new investigation focus) | The transition surface, which MUST name: the field and value followed; whether the search expanded beyond the current incident; how to return to incident evidence (ruled). Delta A reading: the expanded-search block. Locked reading: the 8.2 banner ("Scope changed…" + return path) |
+| Surrounding events | `Surrounding events` (proposed keep; A2-OD-1) | "Show activity around this event." | opens context (temporary; executes under the CURRENT scope; widens TIMEFRAME to `all` by design) | The surrounding banner + the ONE return action (A2-2.5) |
+| Hostname value link | the hostname (existing) | "Open {host} in Endpoints" (existing title) | opens context (Endpoints tab; no query) | The Endpoints view itself |
+| Run Query / Enter | `Run Query` (existing) | "Run the query in the bar." | executes | Snapshot status line |
+| Refresh | `Refresh` (existing) | "Re-run the last executed query." | executes (the snapshot's own definition, never the bar) | Status line |
+| Return chip / action | locked: "Back to INC-####"; Delta A: "Return to INC-#### evidence" | (per governing model) | executes (re-scopes the current query) | Scope chip / block exit |
+| Query bar typing | — | (bar aria-label existing) | edits only | The 11.3 edited note ("Edited. Results below are from the last run.") |
+| Timeframe select | `Timeframe` (existing) | "Sets the query's time window (first segment)." | edits only | Same 11.3 edited note |
+| Example buttons (empty state) | the example text | "Puts this example in the bar. Run executes it." | edits only | — (bar fills; nothing runs) |
+| Scope select (locked model only) | existing | (per locked 11.x) | edits pending scope only (does NOT re-execute; repository truth Q1) | Stale de-emphasis until the next run |
+
+The permanent-tooltip requirement stands under both Amendment 1
+readings (A2-P.1): if Delta B's tooltip set ratifies, these entries
+join it; otherwise Amendment 2 itself requires permanent accessible
+tooltips for exactly `==`, `!=`, Pivot, and Surrounding events,
+augmenting the existing `title` attributes (EventInspector.jsx:126 is
+today's only pivot explanation), all modes.
+
+### A2-2.2 Filter chips: a READ projection with remove (binding honesty rule)
+
+- Chips render the EXECUTED canonical query's FILTERS section
+  (`snapshot.identity.canonical_query`), never the editable bar text.
+- Decomposition per Q6: conjunction-only canonical FILTERS (one
+  AND-group) render one chip per predicate, showing the predicate's
+  canonical text (`field op raw_value`, byte-preserved). Any other
+  shape — any top-level `or`, including the IP pivot and identity
+  descent forms — renders exactly ONE "Custom filters" chip that opens
+  (focuses) the raw query in the bar. `*` renders no chips.
+- **The honesty rule is binding: chips must never misrepresent the
+  query.** The chip set either equals the canonical conjunct list
+  exactly or collapses to the Custom filters chip; there is no partial
+  projection.
+- Removing a chip regenerates the query through the generator module's
+  new remove/join form (Q6) and runs it (execute-immediately, matching
+  the refine actions and the same A2-OD-2 decision). Chip editing is
+  DEFERRED; chips are remove-only.
+- The client `and`-split mirror carries the same equivalence-boundary
+  notice as `isConjunctionOnly` and is pinned by a shared fixture
+  corpus asserted against the backend AST decomposition (the
+  OR_SCAN_CORPUS pattern: one corpus, two implementations, byte-equal
+  verdicts).
+- Ship-or-defer is the owner's call (A2-OD-3); this draft recommends
+  SHIP in Stage 5, remove-only, on the Q6 verdict.
+
+### A2-2.3 Empty and error behavior (binding error taxonomy)
+
+Three classes, exhaustive:
+
+1. **Empty (not an error).** Run disables ONLY when the bar is truly
+   empty (`queryText.trim() === ''`). Guidance renders in place of an
+   error: "No query entered." with the example affordance (the existing
+   empty-state examples); when a snapshot exists, the preserved-results
+   statement renders (the ratified 11.3 statements, CONSUMED here, not
+   redefined). No request is ever issued for an empty bar. (The
+   existing scope-error disable, Siem.jsx:120/502, is untouched — a
+   second, independent disable condition is added.)
+2. **Malformed non-empty (a teaching error).** The query RUNS — a
+   well-named error teaches the language and a disabled button does
+   not. The error box names the SECTION derived client-side from
+   `error.position` against the submitted string's top-level pipe
+   offsets (Q5): "Check the Time section." / "… Source section." /
+   "… Event type section." / "… Filters section.", followed by the
+   parser's reason and suggestions (both kept verbatim; the character
+   position demotes to the technical detail rather than the headline).
+   Structure-level errors (segment count, the 300 cap) render the
+   structure line: "The query needs four sections separated by |."
+   Prior results stay, labeled by the ratified 11.3 statement
+   ("Displayed results are from the previous successful query.").
+   A **"Restore last working query"** action renders whenever a
+   snapshot exists and the bar differs from its canonical text: it
+   sets the bar back to `snapshot.identity.canonical_query` and clears
+   the error, issuing NO request (the displayed results already ARE
+   that query's results, so the restore is instantly truthful).
+3. **Generated-query failure (a defect, never a player error).** Any
+   query minted by the generator module that fails to parse is a
+   product defect by definition, guarded by the A2-2.6 invariant
+   corpus. If one ever occurs live it renders as class 2, but its
+   classification is DEFECT and the corpus test is the permanent
+   regression net.
+
+### A2-2.4 Placeholder (binding)
+
+Example text must be visually unmistakable as non-executed guidance:
+the placeholder becomes `Example: 1h | Sysmon | ProcessCreate |
+command_line contains "powershell"` — the "Example: " prefix is part of
+the placeholder text — and is styled distinctly from executed-query
+text (italic, existing gray; never the plain monospace a run query
+uses). It never resembles a run query; it vanishes on input as normal.
+The empty-state help panel (Siem.jsx:597-624) is already truthful
+(edit-only example buttons) and is unchanged apart from consuming the
+same "Example" framing.
+
+### A2-2.5 Surrounding events as temporary context (binding)
+
+The player experiences a centered timeline over the selected event
+(source event, entity, occurrence-ascending — the existing view) with
+**ONE obvious return to the prior evidence view**. Repository truth
+(Q4): no such return exists today, and the prior view is not held — so
+this is an addition riding the existing mechanism, not a rebuild:
+
+- On entering a surrounding view, the shell HOLDS the prior evidence
+  view: the displayed snapshot object, its scope, and the bar text.
+- The surrounding banner (existing slot, existing identity guard,
+  reframed copy) gains the single return action **"Back to previous
+  results"**: it restores the held snapshot object exactly (frozen
+  redisplay — no request; the new-count poll resumes on the restored
+  token, and a token invalidated by reset halts neutrally via the
+  existing `countHalted` path), restores the bar text, and drops the
+  surrounding provenance.
+- The hold is single-depth, not a history stack: running anything else
+  (a query, pivot, refine, chip removal) drops the held view, and the
+  banner dies with its snapshot exactly as today (the
+  `timelineActive` guard, Siem.jsx:352-353, unchanged).
+- Scope is untouched in both Amendment 1 readings (surrounding runs
+  under the current scope today and continues to). The banner copy
+  states the deliberate widening: the view covers the host's full
+  timeline (`all`), and the return restores the prior timeframe view.
+
+### A2-2.6 The permanent invariant test: every product-generated query parses
+
+Extending the established two-consumer shared-fixture pattern
+(`_PIVOT_DESCENT_FIXTURES` + `OR_SCAN_CORPUS` precedents) to CLOSURE
+over the generator module:
+
+- A closed **generated-forms corpus**: every exported generator
+  function (all pivots, both descents, `refineFilter`, and the chip
+  remove/join form if ratified) x representative AND adversarial
+  values (backslashes, embedded double quotes, spaces, reserved words
+  `and`/`or`/`not`/`contains` as values, `*` and `|` characters — all
+  of which `escapeValue`/quoting must neutralize), plus refine CLOSURE
+  cases: an append onto each documented form's canonical output, an
+  append after an append, the fresh OR-fallback output, and `!=`
+  appends.
+- Frontend: the generator outputs are asserted byte-equal to the
+  corpus. Backend (`test_lcql.py`, tests only): every corpus string
+  parses and is canonical-idempotent.
+- Binding classification: a generated string failing this corpus — or
+  failing live — is a DEFECT, never a player error (A2-2.3 class 3).
+
+---
+
+## A2-3. Copy table (every new or changed string; no em dashes)
+
+| String | Source | Where |
+|---|---|---|
+| "Show only events matching this value." | RULED (A2-P.3) -> canonical | `==` tooltip; sidebar value family |
+| "Exclude events matching this value." | RULED -> canonical | `!=` tooltip |
+| "Pivot" (button casing) | RULED -> canonical | Pivot button label |
+| "Follow this clue across all available evidence." | RULED -> canonical | Pivot tooltip/help |
+| "Show activity around this event." | Kickoff direction -> canonical | Surrounding events tooltip |
+| "Surrounding events" | existing, kept (A2-OD-1) | Button label |
+| 'Example: 1h | Sysmon | ProcessCreate | command_line contains "powershell"' | NEW (supersedes the bare `QUERY_PLACEHOLDER`) | Query bar placeholder |
+| "No query entered." | NEW | Empty-bar guidance (Run disabled) |
+| "Check the Time section." / "Check the Source section." / "Check the Event type section." / "Check the Filters section." | NEW | Section-named parse errors |
+| "The query needs four sections separated by |." | NEW | Structure-level parse errors |
+| "Restore last working query" | NEW | Error box / edited-bar action |
+| "Back to previous results" | NEW | Surrounding banner return action |
+| "Custom filters" | NEW | Non-decomposable chip |
+| "Remove filter: {field}" | NEW (aria label) | Chip remove control |
+| "Run the query in the bar." / "Re-run the last executed query." / "Sets the query's time window (first segment)." / "Puts this example in the bar. Run executes it." | NEW | Run / Refresh / Timeframe / example tooltips |
+| 11.3 statements ("Edited. Results below are from the last run."; "Displayed results are from the previous successful query.") | canonical (locked 11.3), CONSUMED | Preserved-results labeling |
+| "Filter added: …" / "Excluded: …" / "Following clue: …" | canonical (locked 8.2), CONSUMED | Refine/pivot announcements |
+
+All NEW strings follow the standing new-copy register (scaffold ruling
+F): drafted at implementation, reviewed at their owning [STOP],
+denylist- and em-dash-scanned; the strings above are the proposed
+finals for A2-OD-1.
+
+---
+
+## A2-4. New acceptance criteria (testable; final §19 numbers assigned at ratification, avoiding collision with Amendment 1's proposed additions)
+
+- **A2-AC-1 (empty-run).** With an empty query bar, Run is disabled,
+  "No query entered." renders, no request is issued, and any existing
+  results remain labeled by the ratified 11.3 statement.
+- **A2-AC-2 (section-named errors).** A malformed non-empty query
+  executes and produces an error naming the section (Time / Source /
+  Event type / Filters) derived from the parser position, with the
+  parser's reason and suggestions preserved; structure-level errors
+  render the four-sections line; prior results persist with the 11.3
+  statement.
+- **A2-AC-3 (restore).** "Restore last working query" returns the bar
+  to the executed snapshot's canonical text and clears the error
+  without issuing a request.
+- **A2-AC-4 (chip honesty; if chips ratify in).** Every rendered chip
+  equals one conjunct of the executed canonical FILTERS byte-for-byte;
+  any query with a top-level `or` renders exactly the Custom filters
+  chip; removing a chip regenerates through the generator module and
+  the regenerated query parses; no state exists where chips render a
+  projection unequal to the canonical query.
+- **A2-AC-5 (generated queries always parse).** The closed
+  generated-forms corpus is byte-pinned frontend-side and parses
+  (canonical-idempotent) backend-side; a failure is classified a
+  defect, and no player-facing surface attributes it to the player.
+- **A2-AC-6 (surrounding return).** Entering Surrounding events holds
+  the prior evidence view; the banner offers exactly ONE return action
+  while live; the return restores the prior snapshot, scope, and bar
+  text exactly with no request; running anything else drops the held
+  view and the banner dies with its snapshot.
+- **A2-AC-7 (verb tooltips).** The ruled tooltips for `==`, `!=`, and
+  Pivot and the Surrounding events tooltip are permanently available,
+  accessible, and mode-universal; the Pivot transition surface names
+  the followed field and value, whether the search expanded beyond the
+  current incident, and the return path (in whichever Amendment 1
+  reading governs).
+
+---
+
+## A2-5. Supersession map (complete)
+
+Dispositions: **T** translated, **S** superseded, **U** unchanged
+(inspected), **A** augmented (locked text stands; appendix adds a
+binding addition or recorded reading).
+
+| # | Locked item | Disp. | Governing text / note |
+|---|---|---|---|
+| 1 | §3 F6 — accepted symbols, not renamed; definitions to teach | U (reaffirmed) + A | A2-P.3 ruling reaffirms the default; A2-2.1 supplies the exact permanent explanation copy and effect classes. The kickoff-anticipated supersession does NOT occur |
+| 2 | §12.2 OD-6, tooltip half ("plain tooltips for ==/!=/Pivot … accessible") | A | A2-2.1 — tooltips become permanent, mode-universal, ruled copy, extended to Surrounding events; standalone under Amendment 2 regardless of Amendment 1 (A2-P.1). Callout half untouched here |
+| 3 | §8.2 first-use pivot explainer | U | Coexists with the ruled tooltip under the locked model; Amendment 1 Delta B (if ratified) relocates it — combination handled there, not here |
+| 4 | §8.2 transition banner contents (clue naming; scope statement; origin/return) | A (reaffirmed as ruled requirements) | A2-2.1 Pivot row — the ruled three naming requirements are already satisfied by BOTH readings (locked 8.2 banner / Delta A block); recorded as binding |
+| 5 | §8.2 "Filter added:" / "Excluded:" refine forms | U (consumed) | A2-2.1 announcements |
+| 6 | §10.1 canonical vocabulary | A | Gains the A2-3 rows (additive) |
+| 7 | §12.1 concepts "== and !=; Pivot" | U | Concepts stand; their content is now the ruled strings; delivery per whichever amendment governs Phase 6 |
+| 8 | §11.3 edited-note + stale-results statements | U (consumed) | A2-2.3 consumes them verbatim; nothing redefined |
+| 9 | §6 journey step 3 (==/!=/Pivot narration) | T | Narrative re-reads with the ruled explanations; the §6 copy-authority note stands |
+| 10 | §9 / OD-5 inspector-connection work | U | Untouched by A2 (shares the merged review cycle only) |
+| 11 | §17 row 5.2 (frontend tests) | A | Gains: verb-tooltip presence, empty-run gating, section-named errors, restore, placeholder form, surrounding hold/return, chip honesty (if in), the generated-forms corpus (frontend half) |
+| 12 | §18 workflows 3 and 5 | A | The pivot-chain walk gains an empty-run attempt, a malformed run with section-named error, a restore, and a surrounding enter/return leg |
+| 13 | §19 acceptance criteria | A | A2-4 criteria appended; numbering assigned at ratification (Amendment 1's draft independently proposes additions — collision resolved by merge order, noted in both) |
+| 14 | Locked scope-error Run-disable rule (Stage 4 revised behavior; Siem.jsx:120,502) | U | A second, independent disable condition (truly-empty bar) is ADDED; the scope-error machine is untouched |
+| 15 | `QUERY_PLACEHOLDER` bare-query placeholder (Siem.jsx:20-21) | S | A2-2.4 "Example:"-prefixed, distinctly styled placeholder |
+| 16 | Pivot button lowercase label `pivot` (EventInspector.jsx:129) + title tooltip (:126) | S | A2-2.1 — ruled casing "Pivot"; ruled tooltip replaces the title text (per-kind detail demoted to secondary line) |
+| 17 | Surrounding-events control + banner (no return; Siem.jsx:238-246, 552-583) | A | A2-2.5 — hold + single return ADDED; banner copy reframed; identity guard and view mechanics unchanged |
+| 18 | "The generator remains the only query author" (§8.4 rule; lcqlPivots.js discipline) | A (reading recorded) | The chip remove/join form is a new GENERATOR form inside the same module — the author gains a form, no second author appears; pinned by the extended parity corpus |
+| 19 | §5 inherited invariant 10 (Stage 4 query/snapshot/scope semantics intact) | U (verified) | No LCQL, endpoint, payload, or semantics change; backend touch is tests-only (A2-P.4) |
+| 20 | Scaffold §2.3/§2.4 (Phase 3/4 plans), §6 Phase 3/4 commits, §8 rows 5-6, §12 sizing rows 3-4 | T | A2-6 scaffold delta (merged cycle gains the A2 work) |
+| 21 | Scaffold ruling G (Phases 3+4, one review cycle, separable commits) | U | The venue this amendment's work lands in |
+| 22 | Scaffold §5 copy rows (8.2/11.3 families) | U (consumed) + A | Existing rows unchanged; the A2-3 rows join the register |
+| 23 | Empty-state help panel + `QUERY_HELP_EXAMPLES` (Siem.jsx:23-26, 597-624) | U | Already truthful (edit-only); consumes the Example framing only |
+| 24 | Backend parse-error payload `{position, reason, suggestions}` (app.py:2834,2860-2866) | U | Consumed client-side for section naming; no payload change |
+
+---
+
+## A2-6. Scaffold delta (applied to the scaffold only after ratification)
+
+All Amendment 2 work lands in the MERGED Phase 3/4 review cycle
+(scaffold ruling G) — **no new phase**. The cycle's commits stay
+concern-separated and independently revertible:
+
+- **(3.1) as locked** (transition banner work, in whichever Amendment 1
+  reading governs) **plus** the Pivot-row naming requirements of
+  A2-2.1 (already satisfied by the banner/block content; asserted).
+- **(3.2, new) query clarity:** ruled verb tooltips (==/!=/Pivot/
+  Surrounding events) + placeholder change + empty-run gating with
+  "No query entered." + section-named parse errors + "Restore last
+  working query" + the generated-forms corpus (frontend half byte-pin +
+  `test_lcql.py` tests-only extension).
+- **(3.3, new, only if A2-OD-3 ratifies chips in) filter chips:**
+  read-projection chips + Custom filters fallback + the generator
+  remove/join form + the and-split mirror with its shared parity corpus
+  + chip tests.
+- **(3.4, new) surrounding return:** the held prior view + "Back to
+  previous results" + banner reframe + hold/drop tests.
+- **(4.1) as locked** (inspector connection, untouched by A2).
+
+**Files (delta):** `Siem.jsx`, `EventInspector.jsx`, `FieldSidebar.jsx`
+(tooltip only), `lcqlPivots.js` (remove/join form + corpus),
+`uiCopy.js` (A2-3 strings), new `query-clarity.test.js` (+ chips test
+file if in), extended `pivot-transitions.test.js`,
+`workbench-pivots.test.js` (corpus port), backend `test_lcql.py`
+(tests only). No endpoint or payload changes; `run_gates.py` lists
+unchanged (both touched suites are already gates) apart from the new
+frontend test file riding the existing frontend suite.
+
+**Sizing:** locked Phase 3 **S-M** + Phase 4 **S**; the merged cycle
+re-estimates to **M** (the kickoff's expectation, confirmed by the
+gains list — the swing items are the error/empty taxonomy with its
+tests and, if ratified in, chips). What the cycle gains: the verb
+grammar surface, the error taxonomy, restore, placeholder, surrounding
+return, the invariant corpus, and optionally chips. What it keeps:
+everything locked for Phases 3 and 4. What it loses: nothing.
+
+---
+
+## A2-7. Owner decisions surfaced (not made) and the deferred register
+
+- **A2-OD-1 — final labels and strings.** The `==`/`!=`/Pivot labels
+  and their three explanation sentences are RULED and not open. Open
+  for ratification: the Surrounding events label (recommend KEEP
+  "Surrounding events" per the ruling's teach-the-term principle, with
+  "Show activity around this event." as its explanation), the section
+  names (Time / Source / Event type / Filters), "No query entered.",
+  "Restore last working query", "Back to previous results",
+  "Custom filters", the placeholder form, and the secondary tooltip
+  lines (A2-3).
+- **A2-OD-2 — refinement immediacy.** Current behavior (repository
+  truth, Q1): sidebar clicks and `==`/`!=` EXECUTE IMMEDIATELY.
+  **Recommendation: KEEP immediate** — every refine announces itself
+  (the notice family), the executed canonical lands in the bar and
+  teaches the form, and an Apply-batched model would add a pending
+  state the honesty rules would then have to label. The batched
+  alternative is recorded as weighed.
+- **A2-OD-3 — chips in Stage 5 vs polish.** Informed by Q6:
+  decomposition is clean for the conjunction-only class with an
+  established boundary-and-parity pattern; OR-form product queries
+  (IP pivot, identity descent) honestly collapse to the Custom filters
+  chip. **Recommendation: SHIP in Stage 5, remove-only**, as commit
+  (3.3); deferring to polish is the recorded alternative if the owner
+  prefers zero new client mirrors this stage.
+- **Deferred register (engine-touching; per A2-P.4):**
+  - Bounded surrounding-events time window (Q8: TIMEFRAME grammar has
+    no absolute or event-anchored ranges) — engine change, DEFERRED.
+  - Chip editing (chips are remove-only) — DEFERRED.
+  - Any structured query builder — explicitly NOT in this amendment.
+
+---
+
+## A2-R. Ratification record (owner; append-only)
+
+| Amendment | State | Date | Notes |
+|---|---|---|---|
+| Amendment 2 — guided SIEM search and query clarity | **RATIFIED** | 2026-07-25 | Owner rulings below are the governing finals |
+
+### A2-R.1 Owner ratification rulings (2026-07-25, recorded verbatim)
+
+> - Labels: ==, !=, Pivot, and Surrounding events keep their technical
+>   names. F6 stands reaffirmed.
+> - Permanent tooltips (canonical finals, joining the Amendment 1
+>   tooltip set, which grows to nine controls):
+>   ==: "Show only events matching this value."
+>   !=: "Exclude events matching this value."
+>   Pivot: "Follow this clue across all available evidence."
+>   Surrounding events: "Temporarily show activity around the selected
+>   event."
+> - Refines stay execute-immediately; no Apply state. The chips make
+>   the change visible.
+> - Chips ship IN Stage 5, remove-only. Removing a chip reruns the
+>   query. Any top-level OR renders one "Custom filters" chip that
+>   reveals the raw query. Binding boundary test: Custom filters never
+>   renders for a conjunction-only query and always renders for any
+>   top-level OR, including the IP-pivot and identity-descent product
+>   forms.
+> - Empty and failed searches: Run disables only when the field is
+>   truly empty; the placeholder is unmistakably an example; add
+>   "Restore last working query"; malformed queries name the broken
+>   section. Canonical error form:
+>   "This search was not run."
+>   "The {Time / Source / Event type / Filters} section could not be
+>   read."
+>   "Displayed results are from the previous successful query."
+>   (third line is the locked 11.3 string, reused verbatim, not a new
+>   variant).
+> - Surrounding events becomes reversible: single-depth hold, block
+>   copy "Activity around the selected event on {host}" / "Occurrence
+>   ascending" / "Back to previous results"; returning redisplays the
+>   prior frozen snapshot with zero requests.
+> - Deferred register ratified: bounded surrounding window (engine),
+>   chip editing, structured query builder, autocomplete overhaul.
+> All new strings pass the em-dash scan and denylist review.
+
+### A2-R.2 Recording notes (what the rulings resolve and supersede)
+
+- **A2-OD-1 resolved:** all four controls keep their technical names
+  (Surrounding events included); the four tooltip strings above are the
+  canonical finals. The ruled Surrounding events tooltip ("Temporarily
+  show activity around the selected event.") SUPERSEDES the drafted
+  "Show activity around this event." (A2-2.1 / A2-3).
+- **A2-OD-2 resolved:** refines stay execute-immediately; the
+  Apply-batched alternative is closed.
+- **A2-OD-3 resolved:** chips ship in Stage 5, remove-only, rerun on
+  removal; the boundary test in the ruling is BINDING and joins
+  A2-AC-4 (Custom filters never for conjunction-only, always for any
+  top-level OR, the two product OR forms included).
+- **Canonical error form:** the ruled three-line form SUPERSEDES the
+  drafted "Check the {Section} section." headline (A2-2.3 / A2-3).
+  Line three is the locked 11.3 string reused verbatim. The
+  structure-level line ("The query needs four sections separated
+  by |.") stands for errors that precede section identification.
+- **Surrounding block copy:** the ruled three strings ("Activity
+  around the selected event on {host}" / "Occurrence ascending" /
+  "Back to previous results") SUPERSEDE the drafted banner copy
+  (A2-2.5); the single-depth hold and zero-request frozen-snapshot
+  restore are ratified as drafted.
+- **Deferred register ratified** with one ADDITION by ruling:
+  autocomplete overhaul (joins bounded surrounding window, chip
+  editing, structured query builder).
+- **Em-dash and denylist:** every ruled string above contains no em
+  dash; all NEW strings remain subject to the standing scans at
+  implementation (scaffold ruling F).
+- **Amendment 1 interaction, recorded at ratification time:** the
+  pre-check found NO committed Amendment 1 ratification (its A1-R
+  still reads DRAFT at `stage-5-amendment-1` tip `83f8175`; `main`
+  tip `2e74b86` contains neither appendix). The ruling's
+  "joining the Amendment 1 tooltip set, which grows to nine controls"
+  therefore operates through A2-P.1's independence clause: Amendment 2
+  carries its own permanent-tooltip requirement for `==`, `!=`, Pivot,
+  and Surrounding events until Amendment 1 Delta B's ratification is
+  recorded, at which point the four join its set (nine controls
+  total). **Section 19 numbering assignment is PENDING** the same
+  resolution: the owner-directed order (Amendment 1's additions as
+  19.17-19, Amendment 2's A2-AC-1..7 as 19.20-26) is recorded here as
+  the intended assignment and becomes final when the Amendment 1
+  ratification is committed and the appendices are ordered on one
+  branch.
+- **Assignment FINAL (2026-07-25, recorded after the fact):** the
+  Amendment 1 ratification was recorded (A1-R rulings commit `b6d11e7`,
+  merged to `main` at `935f824`) and the appendices are ordered on this
+  branch (Amendment 1 first, Amendment 2 second). The Section 19
+  numbers are therefore FINAL: **Amendment 1 Delta B = 19.17-19;
+  Amendment 2 A2-AC-1 through A2-AC-7 = 19.20-26.** The nine-control
+  tooltip set is likewise in force: Delta B's eight (Promote, Dismiss,
+  Reopen, Feed/Threats, `==`, `!=`, Pivot, Expanded search) plus
+  Surrounding events, with the ruled A2 finals governing `==`, `!=`,
+  Pivot, and Surrounding events.
+
+*Amendment 2 drafted 2026-07-25 at baseline `2e74b86` on branch
+`stage-5-amendment-2`; gates ALL GREEN at this baseline on this branch
+(backend 27 suites; frontend 18 suites / 173 tests). Docs-only: the
+locked Revision 3 text above is byte-unchanged; the implementation
+scaffold document is untouched (its delta is drafted in A2-6 and applied
+only after ratification); owner asset files untouched; nothing pushed;
+no product code, no Phase 1. This task ratifies nothing.*
