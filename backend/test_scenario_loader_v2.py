@@ -538,6 +538,7 @@ RATIONALE_SCENARIOS = {
     "phishing_link",
     "data_exfil_archive",
     "insider_staging",
+    "malware_ransomware",
 }
 
 
