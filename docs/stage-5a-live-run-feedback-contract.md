@@ -1480,3 +1480,922 @@ ratified owner decisions (Section 21); phases, lock sequence, and risks
 scaffold exists; the implementation scaffold is the next separately
 approved artifact; no implementation or Stage 5B work begins from this
 document.*
+
+---
+---
+
+# AMENDMENT 1 — CASE-CONSTANT SCOPE + LEARNING FEEDBACK (RATIFIED)
+
+**Status: BOTH DELTAS RATIFIED — owner ruling 2026-07-25, recorded in
+A1-R: every drafted recommendation ratified as recommended, with two
+owner adjustments (B-OD-5 narrowed to Guided-only; the T1 sealed-roster
+count note). The A1-R record is the governing resolution of the
+surfaced owner decisions (A-OD-1..4, B-OD-1..5).**
+Drafted 2026-07-25 on branch `stage-5-amendment-1` at repository baseline
+`main` `2e74b86` (the Stage 5 scaffold-approval merge; gates verified ALL
+GREEN at this baseline: backend 27 suites, frontend 18 suites / 173
+tests, both runs 2026-07-25). This appendix is appended AFTER the locked
+Revision 3 text through the recorded amendment discipline. **The locked
+text above is byte-unchanged and remains the historical record; no locked
+clause is edited, annotated, retitled, retagged, or marked in place. All
+supersession marking lives here.** Upon ratification of a delta, where
+that delta differs from the locked text, THIS APPENDIX is the governing
+record for that delta's items; unratified deltas have no standing.
+
+## A1-P. Preamble: structure, independence, and discipline
+
+### A1-P.1 Two independently ratifiable deltas
+
+Amendment 1 contains two deltas, each with its own complete supersession
+map, replacement text, scaffold delta, and surfaced owner decisions, so
+the owner can ratify them independently — both, or one while returning
+the other for revision:
+
+- **Delta A — the case-constant scope model** (simplifies): replaces the
+  two-scopes-as-equal-modes presentation with a case-constant model.
+- **Delta B — learning feedback and motivation** (expands): revises the
+  Stage 5 feedback model (live reinforcement, post-submission payoff,
+  always-available help).
+
+Each delta's map stands alone. Neither delta's normative text depends on
+the other's ratification; every shared surface is resolved by the
+combination table (A1-P.2). The scaffold deltas (A1-A.8, A1-B.8) are
+drafted HERE as planned change lists and are applied to
+`docs/stage-5-live-run-feedback-implementation-scaffold.md` only after
+the owning delta's ratification — the scaffold document is untouched by
+this draft.
+
+### A1-P.2 Combination outcomes for shared surfaces
+
+| Shared surface | Both ratified | A only | B only |
+|---|---|---|---|
+| Scaffold Phase 2 | Renamed "Live Progress and Reinforcement"; toasts + checklist; vocabulary rows use the case-constant terms | Vocabulary rows swap to case-constant terms only | Renamed; toasts + checklist; the locked two-scope vocabulary stays |
+| Scaffold Phase 6 | Tooltip + hint model; scope teaching = the "Expanded search" tooltip | Locked onboarding model with the scope concept simplified (A1-A.8) | Tooltip + hint model; scope teaching = a scope-toggle tooltip in the locked vocabulary |
+| Phase 3 transition surface | Expanded-search block; first-use explainer retired into the Pivot tooltip/hints | Expanded-search block; locked Phase 6 explainer slot survives | Locked 8.2 banner; explainer retired into the Pivot tooltip/hints |
+| §12.1 "incident scope versus Session-wide" concept + D5 `scope` concept id | Superseded by both (A renames the concept; B replaces the delivery) | Concept renamed "case evidence versus expanded search" | Concept delivered as a tooltip, locked vocabulary |
+| §10.1 canonical vocabulary | Gains A's terms AND B's toast/checklist rows | Gains A's terms | Gains B's rows |
+
+### A1-P.3 Engine-untouched verification (both deltas)
+
+The kickoff's stop condition ("if anything in the model would require an
+engine change, STOP and report") was checked against the repository at
+`2e74b86` and is NOT triggered:
+
+- **Delta A** consumes only existing engine surfaces: the observable
+  incident-scope endpoint (`/api/incidents/<id>/scope`), the Stage 4
+  query API's existing session and incident scope parameters, snapshot
+  identity/HMAC tokens, and today's no-case session-wide reads (the
+  `useIncidentScope` `all` policy). The SIEM scope SELECT control is
+  removed, but the underlying scope request semantics, LCQL grammar,
+  scope tokens, and snapshot semantics are byte-unchanged (inherited
+  invariant 10 reading recorded in A1-A.7). Descent already establishes
+  its own scope explicitly (`Siem.jsx:265-303`) and is untouched.
+- **Delta B** consumes only: existing card observables (`sealed`,
+  `triage`, `ready`), the ratified D4 `related_actions` count, the
+  disposition and action POST responses, local classification-selection
+  state, and the submitted grading record (including the ratified D1
+  `response_review` and D2 `expected_response` once Phase 5 lands). No
+  new fields, endpoints, or readiness/scoring changes. Level 3 hints
+  WOULD require a new pre-submission serving path — which is exactly why
+  they are costed and surfaced (B-OD-2), not committed.
+
+Rosters, readiness, sealing, scoring, LCQL semantics, snapshot identity,
+and the scope endpoints are untouched by both deltas. Both are
+presentation/workflow-model amendments plus (Delta B) new render-only
+consumers of already-ratified data.
+
+### A1-P.4 Ratification states
+
+Each delta carries one state, recorded in A1-R by the owner:
+**DRAFT** (this document's state), **RATIFIED** (the delta's appendix
+text governs its superseded items; its scaffold delta may be applied to
+the scaffold document), or **RETURNED** (the delta has no standing; a
+revision cycle follows). This task does not ratify anything.
+
+---
+
+## DELTA A — THE CASE-CONSTANT SCOPE MODEL
+
+### A1-A.1 Rationale and product references
+
+The locked contract models "current case" and "data scope" as two
+first-class, co-equal concepts with a persistent per-page
+This-incident/Session-wide toggle (§11.1) and a labeled divergence state
+(§11.1 rule 3). The first-playthrough evidence (F8, F9) shows the player
+experienced this as contradiction, not power. The mature products the
+Stage 5A reference matrix already cites resolve the same tension the
+same way: **the case is the stable container; broader evidence is
+deliberately explored and explained, never a persistent per-page
+toggle:**
+
+1. **Microsoft Sentinel** (§22 row 1): incident investigation keeps the
+   incident pinned as the workspace; drilling into broader evidence
+   happens from the incident, with the incident context retained.
+2. **Splunk Enterprise Security investigations** (§22 row 2): the
+   investigation is the durable workbench; the analyst ranges over all
+   data from it and returns to it; the investigation never silently
+   changes under the analyst.
+3. **Elastic Security cases** (§22 row 3): the case is the stable
+   record; Timeline explorations range across all evidence while the
+   case remains the anchor the analyst attaches findings to.
+
+Delta A adopts that shape: ONE stable concept (the current incident),
+case-scoped work surfaces, and a self-explaining, deliberately entered
+**Expanded search** state on the SIEM — the hunting surface — with
+exactly one return action. "Session-wide" disappears from player-facing
+copy; the LCQL scope token in the canonical query echo remains the one
+deliberately technical layer.
+
+### A1-A.2 The model (normative)
+
+1. **One stable concept: the current incident.** Selecting a case on
+   Incidents enters its workspace. The current case stays pinned and
+   NEVER changes implicitly — no pivot, descent, search, navigation,
+   error, or refresh may change it; it changes only by explicit
+   selection (or explicit exit) on Incidents. This makes ratified OD-15
+   structural rather than asserted: no control exists anywhere else
+   that can change the case.
+2. **Detections and Endpoints, case selected: always case-scoped.** No
+   This-incident/Session-wide toggle, no Use Session-wide control.
+   Header form: "Investigating INC-####". Case-scoped rows only. The
+   shared-roster invariant guarantees this can never orphan a
+   readiness-gating detection: the displayed case roster IS the
+   readiness roster (`_incident_roster`), so everything submission
+   requires is reachable without ever leaving case scope.
+3. **Detections and Endpoints, no case selected: the All Activity
+   state** — header "All activity", full session data, defined
+   precisely in A1-A.3 (row 1). Selecting a case on Incidents enters
+   its workspace; these pages carry no case-entry or case-exit control
+   of their own.
+4. **SIEM: two states, not two modes.**
+   - **Case evidence** — the default while a case is active; the
+     incident-scoped view (state label "INC-#### evidence").
+   - **Expanded search** — entered ONLY through an entity Pivot or the
+     explicit search-all action. The state always explains itself
+     (which clue is being followed, across all evidence), keeps the
+     current case pinned and visible, and offers exactly ONE return
+     action ("Return to INC-#### evidence", keeping the existing
+     return-chip mechanic: the current query re-runs under the case
+     scope). Because expansion always launches from the current case,
+     the origin is ALWAYS the current case: OD-14's dual return
+     controls are superseded by the single return, and the
+     divergent-origin state becomes unrepresentable — there is no
+     reachable path to another incident's timeline while a case is
+     pinned (Detections descent is case-scoped; expanded-search rows
+     from other incidents pivot within the state without moving the
+     case).
+   - With no case active, the SIEM searches all activity naturally (no
+     block, no return action, no search-all action — it is already
+     searching everything).
+   - Descent and surrounding-events are VIEW MODES, not scope states:
+     they keep their existing origin banners and their existing
+     explicit scope mechanics (`Siem.jsx:265-303` — descent
+     establishes incident scope when opened from an incident context,
+     session scope otherwise) and present inside whichever state their
+     executed scope lands.
+   - Refines (`==`/`!=`/sidebar) are scope-preserving in BOTH states
+     (today's behavior: refines never flip scope; only entity pivots
+     do).
+5. **Copy.** "Session-wide" is removed from ALL player-facing copy. The
+   working names are "Expanded search", "All activity", "Return to
+   INC-#### evidence"; proposed finals in A1-A.5 (all free of em
+   dashes). The LCQL scope token remains visible in the canonical query
+   echo ("Results from"): the query language is the one layer where
+   scope legitimately stays technical.
+6. **M1 survives.** The `useIncidentScope` state machine — selection,
+   fetch status, atomic replacement, loading/error honesty including
+   "Displayed rows are from the last successful scope read." — remains
+   the mechanism behind every case-scoped surface. What is removed is
+   the toggle UI and the Use Session-wide control (both shipped by M1
+   in `IncidentScopeBar.jsx`); the hook, the honesty rows, and the
+   per-surface refresh triggers are kept verbatim. Nobody re-plans what
+   already exists.
+7. **The engine is untouched** (verified, A1-P.3): rosters, readiness,
+   sealing, scoring, LCQL semantics, snapshot identity, scope
+   endpoints. This delta is presentation-model only.
+
+### A1-A.3 Three-state behavior table (translating §11.1)
+
+This table translates the surviving §11.1 rows into the case-constant
+model; it does not reopen them. The §11.1 refresh triggers are UNCHANGED
+(Detections: scope read rides the existing 2.5s feed poll; Endpoints:
+refetch on tab-visibility change plus reset and pivot, no poll; SIEM:
+explicit-run only). Atomicity is UNCHANGED in force: case selection
+change updates label, state, and rows in one transition; while a read is
+in flight the surface says so; no intermediate frame disagrees.
+
+| State | Label | Controls | Rows | Loading | Error |
+|---|---|---|---|---|---|
+| **No case ("All activity")** | Header "All activity" on Detections, Endpoints, SIEM | Detections: Feed/Threats/Response Log toggles, search/filters, Promote/Dismiss/Reopen, identity actions on Threats (session-wide triage stays fully available — ambient detections outside any roster remain session material per the hotfix invariant). Endpoints: full host list + org, detail tabs, all response actions. SIEM: query bar, Run, presets, pivots/refines/descent. No scope toggle, no search-all, no return action, no case-entry control (cases are selected on Incidents) | Full session data: whole feed, all endpoints, session-scope snapshots | Each surface's existing fetch/loading presentation; no incident-scope read exists in this state | Each surface's existing fetch-error presentation |
+| **Case evidence (case selected; the default)** | "Investigating INC-####" (Detections, Endpoints; unifies the global focus banner); SIEM state label "INC-#### evidence" | Same page controls with NO scope toggle and NO Use Session-wide anywhere; SIEM adds the explicit search-all action (A-OD-4) and its pivots/descent per A1-A.2.4 | Case-scoped only: the incident's shared-roster detections; participant endpoints; incident-scope snapshots | Initial case read: "Loading incident scope", NEVER all-activity rows under a selected case; refresh with scoped rows displayed: rows retained until the new read resolves, replaced atomically (M1, verbatim) | With prior scoped rows: rows retained + error + "Displayed rows are from the last successful scope read." With none: empty error state + Retry, zero rows. Never all-activity rows; there is no broadening control on these pages at all (structural). Recovery: Retry, or explicitly leaving/switching the case on Incidents |
+| **Expanded search (SIEM only; case selected)** | The expanded-search block: "Expanded search" + clue line (when entered by pivot) + "Searching all evidence. Your case INC-#### stays open."; the case stays pinned and visible | Exactly ONE return action: "Return to INC-#### evidence" (existing return mechanic). Query bar, pivots, refines active and state-preserving; search-all absent (already expanded). Not reachable on Detections/Endpoints (A-OD-2 recommendation: no expand action) | Session-scope snapshot rows of the executed query | Existing explicit-run snapshot loading presentation (unchanged) | Existing parse/execution failure presentation + the §11.3 honesty statement (unchanged); the block persists over the 0-events state with the two designed outs (broaden TIMEFRAME; return to case evidence) |
+
+Entry and exit (normative): Expanded search is entered only by an entity
+Pivot or the explicit search-all action; exited only by the return
+action or by an explicit case change/exit on Incidents (which atomically
+re-anchors the SIEM to the new state). Nothing else moves between
+states.
+
+**Deliberate narrowing, surfaced (part of A-OD-3):** the locked §11.1
+error-empty row offered an explicit "Use Session-wide" escape; the
+case-constant model removes it (the control ceases to exist). Recovery
+from a persistent scope-read failure is Retry or explicitly leaving the
+case — never silent or one-click broadening on the data page.
+
+### A1-A.4 Context presentation (replaces §11.2; OD-12/13 re-ruled)
+
+The five-line expandable Investigation Context summary SHRINKS to:
+
+1. **One pinned case line, always visible** on every evidence surface:
+   "Investigating INC-####" (or "All activity"). It unifies and
+   replaces the global "Focused on incident INC-####" banner — one
+   case signal, one owner (the app shell), rendered per surface.
+2. **The expanded-search block, only while that state is live** (SIEM):
+   state name, followed clue (shared §8.4 vocabulary), the
+   all-evidence statement, the single return action. This block IS the
+   scope-transition surface (it subsumes the locked 8.2 banner's
+   scope-change portion).
+3. **Existing timeline banners** (descent/surrounding) unchanged.
+4. **The snapshot status line** retained with the locked "Results from:"
+   labeling and the canonical query echo — the scope token stays
+   visible here and only here as the technical truth. The §11.3
+   edited-query note and parse-failure statement are retained verbatim.
+
+Re-rulings this presentation requires (both pending this delta's
+ratification): **OD-12 superseded** — no expandable summary; the pinned
+line is always visible and there is nothing left to expand (each
+remaining fact has its own existing home). **OD-13 superseded** —
+Detections/Endpoints get the pinned case header instead of the two-line
+"Current case / Data scope" reduction; the SIEM gets pinned header +
+state label + conditional block + status line instead of the full
+five-line summary. The R5 discipline is unchanged: every element renders
+existing state only, owns no state, issues no requests.
+
+### A1-A.5 Copy table (proposed finals; no em dashes in any string)
+
+Working names from the kickoff are direction; the owner ratifies or
+edits the finals (A-OD-1).
+
+| Concept | Locked / current string | Proposed final | Surfaces |
+|---|---|---|---|
+| Pinned case line | "Focused on incident INC-8541" (banner); "Current case: INC-8541" (11.2) | "Investigating INC-8541" | All evidence surfaces, case selected |
+| No-case header | (none; implicit session view) | "All activity" | Detections, Endpoints, SIEM, no case |
+| SIEM case-evidence state label | "Data scope: This incident" | "INC-8541 evidence" | SIEM state chip |
+| Expanded-search state name | "Data scope: Session-wide" | "Expanded search" | SIEM block title |
+| Expansion explanation (pivot entry) | "Scope changed: INC-8541 → Session-wide." + "Showing Session-wide activity for ACME\dpark." | Line 1: 'Following clue: user_account = "ACME\dpark"' (locked 8.2 clue form, kept). Line 2: "Searching all evidence. Your case INC-8541 stays open." | SIEM expanded-search block |
+| Expansion explanation (search-all entry) | (state did not exist) | "Searching all evidence. Your case INC-8541 stays open." | SIEM expanded-search block |
+| Return action | "Back to INC-8541" / "Return to current case: INC-8541" / "Back to pivot origin: INC-1332" | "Return to INC-8541 evidence" | SIEM, expanded search live |
+| Search-all action | (none; scope select) | "Search all evidence" | SIEM, case evidence state |
+| Return-path explainer subcopy | "Back to INC-8541 restores that incident's scope for this query" | "Return to INC-8541 evidence runs this query over the case evidence again." | Expanded-search block subcopy |
+| Refine notices | "Filter added: ..." / "Excluded: ..." | unchanged | SIEM |
+| Scope-read honesty strings | "Loading incident scope" / "Displayed rows are from the last successful scope read." / "Retry" | unchanged | Detections, Endpoints, SIEM case read |
+| Removed outright | "Use Session-wide"; "Session-wide view"; "This incident / Session-wide" toggle labels; "Current case: ... · Data scope: ..." | (no replacement; the concepts they named no longer exist) | — |
+
+The LCQL scope token in the canonical echo is exempt by design (A1-A.2
+point 5).
+
+### A1-A.6 Translated acceptance criteria (replacing §19.10-13)
+
+Same testability bar; each replaces its number upon ratification:
+
+- **10.** On Detections, Endpoints, and the SIEM, the rendered
+  header/state label, the case selection, and the displayed rows always
+  agree with the single scope state, including in-flight and failed
+  case-evidence reads (three-state synchronization battery); a
+  case-selected surface never renders all-activity rows, and no
+  broadening control exists on Detections or Endpoints.
+- **11.** While Expanded search is live, exactly one return action
+  renders and names the current case; the current case never changes
+  except by explicit selection on Incidents (structural assertion: no
+  other code path writes the case); no state is representable in which
+  an expansion origin differs from the current case.
+- **12.** (Unchanged in substance, restated for block completeness.)
+  After a failed parse or failed execution, the UI states that the
+  displayed results are from the previous successful query.
+- **13.** The pinned case line, the expanded-search block (state, clue,
+  return target), the active timeline mode, and the "Results from"
+  canonical echo each match the executed snapshot and current state and
+  never disagree with any of them; the echo retains the LCQL scope
+  token.
+
+### A1-A.7 Delta A supersession map (complete)
+
+Dispositions: **T** translated (guarantee survives in new form; the
+appendix text cited is governing), **S** superseded (replaced;
+appendix text governing), **U** unchanged (inspected, not touched),
+**A** augmented (locked text stands; appendix adds a recorded reading).
+
+| # | Locked item | Disp. | Governing text / note |
+|---|---|---|---|
+| 1 | §11.1 preamble: "current case" + "data scope" as two named co-equal concepts | S | A1-A.2.1, A1-A.4 — one stable concept plus per-page states |
+| 2 | §11.1 rule 1: one state value per surface; F9 pattern prohibited; M1 mechanism | T | A1-A.2.6, A1-A.3 — mechanism kept verbatim; toggle UI + Use Session-wide removed |
+| 3 | §11.1 behavior table rows: initial load / refresh-success / refresh-fail-with-rows / never-silent | T | A1-A.3 case-evidence row (guarantees verbatim) |
+| 4 | §11.1 behavior table row: load-fails-no-rows incl. "explicit Use Session-wide" | T (narrowed) | A1-A.3 — Retry only; escape removed; narrowing surfaced in A-OD-3 |
+| 5 | §11.1 refresh triggers (Detections poll join; Endpoints tab-visibility; SIEM explicit-run) | U | Kept verbatim (A1-A.3 preamble) |
+| 6 | §11.1 rule 2: atomic scope change | T | A1-A.3 preamble — atomic case-selection change |
+| 7 | §11.1 rule 3: divergence labeled "Current case ... Data scope: Session-wide." | S | A1-A.4 — divergence unrepresentable on Detections/Endpoints; on SIEM the expanded-search block explains it |
+| 8 | §11.2 Investigation Context summary (contents, layout, subsumption) | S | A1-A.4 — shrunk to pinned line + conditional block + retained status line |
+| 9 | OD-12 (one-line always visible, expandable) | S | A1-A.4 — pinned line always visible; expansion retired (re-ruling pending ratification) |
+| 10 | OD-13 (full summary on SIEM; one-line reduction on Detections/Endpoints) | S | A1-A.4 (re-ruling pending ratification) |
+| 11 | §11.3 edited-query note + parse/execution-failure statement | U | Retained verbatim (A1-A.4 item 4) |
+| 12 | §11.4 dual return controls ("Return to current case" / "Back to pivot origin") | S | A1-A.2.4 — single return action |
+| 13 | OD-14 (contextual dual return controls, never one vague Back) | S | A1-A.2.4 — superseded by the single return; the two-destinations problem is dissolved, not re-answered |
+| 14 | OD-15 (pivot preserves focus; focus changes only by explicit selection) | T | A1-A.2.1 — made structural: no control outside Incidents can change the case |
+| 15 | §11.5 test battery (three-way sync; dual-control matrix; summary==query) | T | A1-A.3, A1-A.6 — three-state battery; single-return + unrepresentability assertions; pinned-line/block agreement |
+| 16 | §8.2 clue-naming forms ("Following clue:" / "Filter added:" / "Excluded:") | U | Kept verbatim (A1-A.5) |
+| 17 | §8.2 "Scope changed: INC-8541 → Session-wide." + Session-wide subcopy | S | A1-A.5 — expanded-search wording |
+| 18 | §8.2 origin-context + return-path lines | T | A1-A.2.4 — origin is always the pinned case; single return + subcopy |
+| 19 | §8.2 first-use explainer (Guided-gated) | U | Untouched by Delta A; Delta B relocates it (A1-P.2) |
+| 20 | §8.2 no-results persistence + two designed outs | T | A1-A.3 expanded-search row — block persists; outs reworded |
+| 21 | §8.3 per-source matrix (from incident / from Session-wide / OR refine / descent / surrounding / repeat) | T | A1-A.2.4 — from case evidence enters Expanded search; within Expanded search updates the clue; no-case is plain; descent/surrounding unchanged mechanics; repeat-use unchanged |
+| 22 | §8.4 shared vocabulary rule | U | One vocabulary, now consumed by the block + pinned line |
+| 23 | §10.1 canonical vocabulary table | U | Inspected: contains NO scope rows (the kickoff's "Session-wide view" pointer resolves to §11.x/8.2/M1 strings, handled above); gains A's new terms as additive rows |
+| 24 | §10.2 surface mapping | U | No scope copy present |
+| 25 | §12.1 concept "incident scope versus Session-wide" | T | Renamed "case evidence versus expanded search"; delivery per A1-P.2 |
+| 26 | §12.2 OD-6 anchor "first scoped surface -> scope concepts" | T | Simplified to the expanded-search explanation (A1-A.8 Phase 6; superseded wholesale if Delta B ratifies) |
+| 27 | §6 journey steps 2-3 (scope copy in the narrative) | T | Narrative re-reads under A1-A.2; the §6 copy-authority note stands (journey is not a copy source) |
+| 28 | §19 acceptance criteria 10-13 | T | A1-A.6 |
+| 29 | §17 rows 5.6 + 5.2 (frontend batteries) | T | A1-A.3/A1-A.6 — three-state battery, block tests, single-return matrix |
+| 30 | §18 Chrome workflows 3-4 (forced focus/origin divergence; Use Session-wide recovery) | T | Divergence walk is unrepresentable; replaced by a pinned-case pivot chain + single-return walk; recovery = Retry + explicit case exit |
+| 31 | §5 inherited invariant 10 (Stage 4 scope semantics intact) | A | Reading recorded: the scope SELECT is a control surface, not semantics; LCQL scope params, tokens, snapshots byte-unchanged (A1-P.3) |
+| 32 | §22 reference rows 1-3 (Sentinel / Splunk ES / Elastic) | A | A1-A.1 records the case-constant reading of the same sources |
+| 33 | §3 F8/F9 (evidence; M1 landed record) | U | Historical record; unchanged |
+| 34 | M1 shipped strings: toggle labels + "Use Session-wide" | S | Removed at Phase 1 (scaffold delta); honesty strings kept (A1-A.5) |
+| 35 | Scaffold §1.3 "5.6 still requires" list (dual controls; two-concept labeling; full summary) | S | A1-A.8 Phase 1 |
+| 36 | Scaffold §2.1 target; §2.3 target ("Scope changed" copy) | T | A1-A.8 Phases 1 and 3 |
+| 37 | Scaffold §5 copy rows (8.2 scope-changed row; 11.2 family; 11.1 Use Session-wide) | T/S | A1-A.5 |
+| 38 | Scaffold §6 Phase 1/2/3 commit plans; §8 traceability rows 10-13; §10 workflows 3-5; §12 sizing rows 1-3, 6 | T | A1-A.8 |
+| 39 | Scaffold approval rulings A-H | U | None touches the scope model; ruling G (Phases 3/4 one review cycle) stands |
+| 40 | Contract risk R5 (context summary drift) | U | Applies unchanged to the pinned line + block (render-only, no state) |
+
+### A1-A.8 Scaffold delta (applied to the scaffold only after ratification)
+
+**Phase 1 — scope truth and investigation context. Size M -> S-M.**
+- *Loses:* dual return controls + their matrix tests (11.4/OD-14); the
+  two-concept "Current case / Data scope" labeling on
+  `IncidentScopeBar`; the expandable full-summary form (OD-12/13); all
+  divergence-labeling states.
+- *Gains:* pinned case header unification (including replacing the
+  `Dashboard.jsx` global focus banner — file added to the phase's
+  touch list); All-activity headers/states per A1-A.3 row 1; SIEM state
+  pair (scope select removed; search-all action + single return action
+  + state label); removal of the M1 toggle + Use Session-wide from
+  `IncidentScopeBar` (hook untouched); `scope-truth.test.js` translated
+  to the three-state battery; the structural
+  case-never-changes-implicitly assertion.
+- *Keeps:* `useIncidentScope` verbatim; the loading/error honesty rows
+  and refresh triggers; §11.3 notes; `uiCopy.js` seeding (R7);
+  `InvestigationContext.jsx` shrinks to the pinned line + block (or
+  folds into existing chrome at implementation's discretion).
+- Commit shape: 1.1 (internal: strings + component vs mocked state)
+  and 1.2/1.3 **[STOP]**s consolidate to: 1.2 **[STOP]** state model +
+  headers + SIEM state pair + toggle removal; 1.3 **[STOP]** §11.3
+  notes + expanded-search return + structural assertion + battery
+  translation.
+
+**Phase 2 — neutral progress vocabulary. Size M (unchanged).**
+- *Loses/Gains:* vocabulary rows only — the removed strings (A1-A.5
+  "Removed outright" row) leave the module; the new terms (pinned
+  header, state names, return/search-all actions, All activity) enter
+  as canonical rows with the same canonical-copy test coverage.
+- *Keeps:* everything else (10.1 sweep, D4 + guards, completed strip,
+  0-of-0 regression, forbidden-phrase scan).
+
+**Phase 3 — pivot transition clarity. Size S-M (unchanged).**
+- *Loses:* the "Scope changed: INC-#### -> Session-wide." banner copy
+  and its conditional per-source scope-transition statements.
+- *Gains:* the expanded-search block as the transition surface (entry
+  via pivot names the clue; entry via search-all names the state);
+  state entry/exit tests (pivot-entry, search-all-entry, return-exit,
+  case-change-exit).
+- *Keeps:* clue naming, OR-notice folding, no-results persistence,
+  identity-guard death, the translated 8.3 matrix, `lcqlPivots.js`
+  untouched with fixtures green.
+
+**Phase 6 — Guided onboarding (Delta A alone; superseded wholesale by
+Delta B if both ratify). Size M (slightly lighter).**
+- *Loses:* the two-scope form of the scope concept.
+- *Gains:* the simplified expanded-search concept — recommend the block
+  itself carries the first-use explanation, dropping the separate scope
+  callout (concept count 8 -> 7; D5 `scope` id retired or renamed).
+- *Keeps:* everything else in the locked Phase 6.
+
+**Net for Delta A: the stage SHRINKS** (Phase 1 M -> S-M; Phases 2/3
+flat with simpler copy; Phase 6 one concept lighter; Phase 7 workflows
+3-4 simpler by one forced-divergence walk).
+
+### A1-A.9 Owner decisions surfaced (not made)
+
+- **A-OD-1 — final naming.** Ratify or edit the A1-A.5 proposed finals
+  ("Investigating INC-####", "All activity", "INC-#### evidence",
+  "Expanded search", "Search all evidence", "Return to INC-####
+  evidence", the two explanation lines).
+- **A-OD-2 — expand action on Detections/Endpoints.**
+  **Recommendation: NO.** The SIEM is the hunting surface; Detections
+  and Endpoints stay single-purpose (triage; host state). An expand
+  control on either page would recreate the removed toggle under a new
+  name and reintroduce the two-mode reading this delta exists to
+  retire; broader exploration always routes through the SIEM, where
+  the query echo, clue vocabulary, and return discipline live.
+- **A-OD-3 — the All Activity state contents per page, and the
+  error-state narrowing.** Confirm A1-A.3 row 1 (Detections keeps full
+  session triage with no case selected; Endpoints keeps all actions;
+  SIEM plain) and the surfaced narrowing: the error-empty state offers
+  Retry only, with no Use Session-wide escape (A1-A.3 note).
+- **A-OD-4 — where the explicit search-all action lives on the SIEM.**
+  **Recommendation:** the state label adjacent to the query bar renders
+  the current state ("INC-#### evidence") with "Search all evidence"
+  beside it; the return action renders in the expanded-search block.
+  Alternative (weighed): inside the pinned case line. The query-bar
+  placement keeps scope state next to the thing it governs.
+
+---
+
+## DELTA B — LEARNING FEEDBACK AND MOTIVATION
+
+### A1-B.1 Rationale and references
+
+The locked feedback model teaches at two moments: first-run-only
+onboarding callouts (§12) and the post-submission review (§7). The
+revised model follows the pattern of the training platforms the
+reference matrix already cites — **TryHackMe** (§22 row 6: in-surface
+feedback loops with instant confirmation of progress inside the
+exercise) and **HTB Academy / Guided Mode** (§22 row 5: opt-in,
+mode-gated hints on explicit request; help never interrupts the
+standard mode): **instant confirmation of observable progress during
+the exercise; correctness, rewards, and coaching after completion; help
+available on demand rather than first-run-only.**
+
+### A1-B.2 The governing invariant, restated, and the guard extension
+
+Before submission, feedback may say that an action executed, a
+detection was reviewed, or an observable milestone was reached; it must
+NEVER say or imply that any decision was correct, optimal, required,
+missing, or harmful. After submission, everything teaches. **The
+forbidden-phrase scan, the planted-marker battery, and the structural
+no-answer-key guards extend to every new surface this delta creates —
+toasts, checklist, hints** — and, per scaffold ruling B's discipline,
+the surfaces and observable inputs are enumerated BY NAME, never an
+unenumerated "every":
+
+- Toast renderers read ONLY: the disposition POST response, the action
+  POST response (`seq`, `outcome`, `reason`, `target.label`), and card
+  observables (`sealed`, `triage`, `ready`).
+- Checklist lines read ONLY: card observables (`sealed`, `triage`,
+  `ready`, `related_actions` [D4]) and local classification-selection
+  state.
+- Hint levels 1-2 read ONLY: (active surface id, control id, requested
+  level) — a permanent structural test asserts the hint module imports
+  and receives no scenario, detection, grading, or answer state.
+- Achievements and the Case Closed flow read ONLY the submitted
+  grading record (post-boundary by construction).
+
+### A1-B.3 Live Progress and Reinforcement (Phase 2, renamed)
+
+#### A1-B.3.1 The exact toast trigger list (closed set)
+
+Action-result toasts fire for discrete state-changing player actions
+ONLY. The trigger list is exact; anything not listed does not toast.
+
+| # | Trigger | Toast content (canonical vocabulary) | Observable source |
+|---|---|---|---|
+| T1 | Detection disposition set (Promote / Dismiss / Reopen) | "Promoted" / "Dismissed" / "Reopened (needs review again)" + the observable remaining count ("{n} detection{s} still need Promote or Dismiss") | disposition POST response + shared-roster counts |
+| T2 | Response action executed, `success` | action verb + registry target label (e.g. "Isolated ACME-WS12") | action POST response fields only |
+| T3 | Response action attempt, `no_op` or `failed_precondition` | the factual outcome + the in-fiction reason, verbatim from the response | action POST response fields only |
+| T4 | Milestone: an incident's sealed roster reaches fully reviewed | "All detections reviewed for INC-####" | roster counts (open hits 0 on a sealed roster) |
+| T5 | Milestone: an incident becomes ready to submit | "INC-#### is ready to submit" | the card `ready` observable |
+
+Exclusions (normative): NO toasts for read-only operations (queries,
+refines, pivots, descent, expanded-search entry/exit, tab changes); NO
+toast for case selection (the pinned header announces it); NO toast for
+classification selection (the selector and the checklist line announce
+it); NO toast for submission (the Case Closed moment is the
+announcement); NO toast that duplicates a persistent surface already
+announcing the same fact — the transition surface (locked 8.2 banner
+or, under Delta A, the expanded-search block) and the checklist are
+persistent surfaces, and one fact gets one announcement (the R5
+lesson). T2/T3 render identical shapes for required, acceptable, and
+collateral targets alike (the response is disposition-blind by
+construction). If one disposition completes several incidents' rosters
+(shared ambient detections), each affected incident's milestone fires
+once.
+
+#### A1-B.3.2 The incident-progress checklist (one surface, not two)
+
+ONE persistent per-incident checklist showing observable work
+remaining. It **folds INTO the existing phase-strip/progress surface**
+(the `PhaseStrip` evolves into it); it is NOT a second parallel
+progress surface with its own state — one source of truth per fact.
+
+| Line | Rendering | Observable source |
+|---|---|---|
+| Telemetry | "Incident telemetry is still loading." -> complete when sealed | card `sealed` (the seal marker) |
+| Detections | "Detections reviewed: {triaged} of {total}" | card/scope `triage` (shared roster) |
+| Classification | "Classification: selected ({verdict})" / "Classification: not selected" | local selection state (the player's own input; the workspace selector) |
+| Response | "Response actions taken: {n}" plus at most ONE static prompt (below) | the D4 `related_actions` count |
+| Ready | "Ready to submit" / pending | card `ready` |
+
+The locked strip's "Investigate evidence" step has no observable
+completion state (investigation is reading) and does not survive as a
+checklist line; investigation remains implicit (flagged in A1-B.7 as a
+deliberate drop, not an oversight).
+
+**LEAK RULE (binding):** every line renders identically for every
+incident regardless of the answer key. The response line shows only the
+count taken plus at most one STATIC prompt — proposed final: "Consider
+whether containment or remediation is needed." — that appears for EVERY
+incident, including inaction scenarios, with identical wording. Its
+presence, absence, or phrasing must never vary with hidden
+expectations; it never shows a target count or denominator
+(required-action counts are hidden answer-key information). The line
+set, line order, and line copy are constants; only the observable
+numbers and the local selection vary. Leak analysis over the set: every
+input is player-derived or roster-observable (A1-B.2 enumeration); no
+input distinguishes attack from FP from inaction scenarios beyond what
+the player already sees; the planted-marker battery adds the checklist
+and toast renderers to its named pre-submission surface list.
+
+**Mode presentation:** the checklist and factual toasts are
+mode-universal (observable, answer-free). The static consider-prompt is
+coaching: it renders in Guided and SOC Queue and is SUPPRESSED in
+Hardcore (no coaching there; the count line stays) — surfaced as
+B-OD-5 because it reads two kickoff clauses together.
+
+### A1-B.4 Post-submission payoff (Phase 5)
+
+#### A1-B.4.1 The sequence
+
+1. **Case Closed moment** (restrained): on submit success, a single
+   static completion moment naming the incident ("Case Closed:
+   INC-####") with the earned achievement labels. No looping animation,
+   no sound, honors `prefers-reduced-motion`; one render per
+   submission.
+2. **Grade reveal:** the Incident Grade (composite + components),
+   labeled per the 3.9B distinction (Incident Grade, never Session
+   Performance).
+3. **The review:** what you did well (completed required actions,
+   correct dispositions), what you missed, what was unnecessary or
+   harmful (each with the frozen whys), per-detection verdicts, the
+   playbook, and **Key takeaway**.
+
+#### A1-B.4.2 Key takeaway (zero new authoring)
+
+Key takeaway is RENDERED FROM the Tier 2 scenario paragraph (the
+ratified D2 `expected_response` field, frozen into the record as
+`scenario_rationale` at submit). It is a presentation heading over
+existing content, not a third authored content type; this delta creates
+ZERO new authoring lines. Where a record froze `scenario_rationale:
+null` (scaffold ruling H, unchanged), the Key takeaway section is
+omitted and the Tier 1 whys still teach — the ruling-H interplay is
+recorded, not altered.
+
+#### A1-B.4.3 Achievements (deterministic, frozen-record-only)
+
+Computed at render time from the served submitted grading record —
+never stored, never tracked, mode-universal (they are final results,
+permitted in Hardcore). Proposed set with per-achievement derivation
+(the frozen fields that prove it):
+
+| Label | Derivation (frozen record fields) |
+|---|---|
+| Case Closed | the submitted record exists (`state == "submitted"`); subtitle "All {detection.total} detections reviewed" — the readiness gate makes full triage structurally universal at submit, so "Complete Triage" folds into this subtitle rather than standing as a separate label (flagged in A1-B.7) |
+| Clean Triage | `report_card.detection.accuracy == 100` (equivalently: every `response_review.detections[].correct` true) |
+| Response Ready | `report_card.response.accuracy == 100` (for inaction scenarios this is clean hands) |
+| No Collateral | `report_card.response.collateral == 0` |
+| Solo Close | `assisted == false` (the flag rides the immutable record) |
+| Perfect Case | `report_card.composite == 100` |
+
+**Deferred list (require NEW behavior tracking; per-item cost; DEFERRED
+unless the owner rules otherwise):**
+
+| Deferred achievement | Tracking cost |
+|---|---|
+| Tool-usage labels (First Pivot, Query Author, Timeline Diver) | a new client interaction-event store + leak review of anything serialized; no such tracking exists |
+| Speed labels (Swift Close) | an additive frozen record field (drip-to-submit duration); byte-identity test extension + record-schema disclosure — new tracking even though low leak risk |
+| Run-level labels (Clean Run: every incident in a run at 100) | derivable from stored records at render, but it is streak-shaped; per the kickoff, no points, streaks, leaderboards, or currency without a separate owner ruling |
+| Cross-session labels | server or local persistence that does not exist; see the A1-B.5.5 research report |
+
+#### A1-B.4.4 One durable Learning Review venue (B-OD-1)
+
+Two candidate structures, one recommendation; either way there is
+exactly ONE teaching surface:
+
+- **Option 1 (RECOMMENDED): the Metrics/Analytics tab becomes the
+  per-incident Learning Review home.** The Incidents completed pane
+  shows the Case Closed summary (moment + grade + achievements) and a
+  "Review what you learned" path into the Learning Review; the tab
+  hosts the full teaching content (buckets + whys, attempt history,
+  per-detection verdicts, playbook, Key takeaway) for any submitted
+  incident, durably revisitable. Conditions: the in-workspace review
+  modal's teaching content MOVES (the modal never renders teaching
+  content again — one venue); the tab keeps the 3.9B labeling rule
+  with an explicit per-incident selector ("Learning Review, Incident
+  Grade") separated from "Session Performance". Rationale: the payoff
+  content outgrew a modal; durability and revisitability are the
+  point; Incidents stays focused on working cases.
+- **Option 2: the single review modal remains the venue**, enriched in
+  place. Cheaper (no relocation), but the modal is transient and
+  cramped for the full sequence, and Metrics then must never grow
+  per-incident teaching of its own (or two surfaces exist).
+
+### A1-B.5 Help model (Phase 6, replacing first-run-only onboarding)
+
+#### A1-B.5.1 Always-available control tooltips (all modes)
+
+Once-only callout persistence is retired as the primary model. Control
+explanations become permanently available accessible tooltips —
+**Promote, Dismiss, Reopen, Feed/Threats, `==`, `!=`, Pivot, Expanded
+search** (the last under Delta A; under B-only, the scope toggle) —
+every visit, all modes: controls are always understandable. Reading of
+inherited invariant 7, recorded: tooltips are passive, player-invoked,
+mechanics-only explanations, not tutorial interruptions, so Hardcore
+may carry them; coaching stays out of Hardcore.
+
+#### A1-B.5.2 The Guided hint flow ("Need a hint?")
+
+Guided mode adds an optional hint flow, allow-list gated
+(`HINT_MODES = {"guided"}`, the GUIDED_MODES pattern; Hardcore and SOC
+Queue excluded by default):
+
+- **Level 1 — mechanics help:** static copy ("how do I review a
+  detection / run a query / submit").
+- **Level 2 — generic investigation nudges:** a static,
+  scenario-independent library (e.g. "Check which account appears
+  across the flagged events."), optionally filtered by the ACTIVE
+  SURFACE only.
+- **Level 3 — scenario-specific guidance:** NOT committed; costed in
+  A1-B.5.4 and surfaced as B-OD-2.
+
+**Neutrality rule (binding, verbatim from the kickoff):** Level 1 and
+Level 2 hint availability, ordering, and wording must not depend on the
+active scenario's hidden answer key, expected actions, detection truth,
+grading state, or correctness. They may depend only on the visible
+surface, the control the player asks about, and the hint level the
+player explicitly selects. (Enforced structurally per A1-B.2.)
+
+**Hardcore:** accessible tooltips only. No coaching, nudges, hints, or
+reward popups beyond factual confirmations (A1-B.3.1 toasts) and final
+results (the post-submission payoff).
+
+#### A1-B.5.3 Hint-level content-sourcing table
+
+| Level | Content | Source | Scenario-dependent | Modes | Cost |
+|---|---|---|---|---|---|
+| Tooltips | per-control meaning (one line each) | `uiCopy.js` constants | No | All | copy only (8 controls) |
+| L1 | task mechanics (how-to) | `uiCopy.js` constants | No (surface-keyed) | Guided | copy only (~6-8 entries) |
+| L2 | generic investigation nudges | static client library | No (surface-filtered at most) | Guided | copy only (~10-20 entries) |
+| L3 | scenario-specific guidance | server-side, per-scenario authored | YES | Guided, explicit request, marks Assisted | measured below; NOT committed |
+
+#### A1-B.5.4 Level 3 cost measurement (surfaced, not committed)
+
+Per the 5A costing rule, measured across all 20 scenarios: authoring
+**2-3 hints x 20 scenarios = 40-60 authored answer-adjacent lines** —
+a second authoring pass of roughly Tier 2 scale, review-gated,
+per-scenario commit cadence. Serving: the Check Answer precedent
+applies (explicit player request, Guided-only allow-list, marks the run
+Assisted, served server-side) but the payload is authored prose, not a
+boolean — this would be the FIRST pre-submission answer-bearing prose
+serving path in the game, requiring a new endpoint or Check Answer
+extension, planted-marker and leak-guard extensions, denylist review of
+every hint line, and its own permanent test battery. That risk class,
+not the authoring volume, is the dominant cost. **B-OD-2:** rule it in
+(with the above scope) or leave it out of Stage 5; this draft
+recommends OUT (defer), consistent with the locked Tier 3 precedent.
+
+#### A1-B.5.5 Local progression research (report only; no decision)
+
+Researched per the kickoff; the owner decides venue and timing
+(B-OD-4):
+
+- **Feasibility:** Guided `catalog_id` is a stable salted digest of the
+  scenario label (`_catalog_id_for`, app.py:4012; salt
+  `spectyr-guided-catalog-v1`) — deterministic across sessions and
+  restarts, opaque, answer-neutral: a safe local key.
+- **Shape:** `localStorage["spectyr_progress_v1"]` =
+  `{ "<catalog_id>": { "completed": <int>, "best_composite": <int>,
+  "best_grade": "<letter>", "last_completed": "<iso>" } }` — under 2 KB
+  for 20 scenarios; written only when a submitted record renders in
+  Guided (the player's own results, post-boundary data).
+- **Cost drivers:** the store itself is trivial (S). The real cost is
+  UI on the Guided catalog (best-grade/completed badges on a reviewed
+  answer-neutral surface) plus tests. The server catalog payload is
+  unchanged, so `test_guided_catalog.py` is untouched; badges render
+  from local data only. A small leak review is still owed: the badge
+  layer must render identically for unplayed scenarios (no
+  server-derived variation).
+- **Assessment:** small enough for Stage 5 mechanically (S overall);
+  equally separable to final polish with zero coupling. **Reported;
+  not decided.**
+
+### A1-B.6 Replacement and new acceptance criteria
+
+**Replacing §19.8 (same testability bar):**
+
+- **8.** Control tooltips are available on every visit in every mode
+  and explain mechanics only (copy denylist). The hint flow exists
+  only in Guided by allow-list (never Hardcore or SOC Queue); Levels
+  1-2 render from static scenario-independent sources whose
+  availability, ordering, and wording never vary with hidden state
+  (structural input test); Hardcore renders no coaching, nudges,
+  hints, or reward popups beyond factual confirmations and final
+  results.
+
+**New criteria (folded in as §19.17-19 upon ratification):**
+
+- **17.** Toasts fire for exactly the A1-B.3.1 trigger list and nothing
+  else; no toast duplicates a persistent surface's announcement; T2/T3
+  toasts render only fields from the action response, shape-identical
+  across required, acceptable, and collateral targets.
+- **18.** Every checklist line renders identically for every incident
+  regardless of the answer key: constant line set, order, and copy;
+  the static response prompt (where the mode shows it) is byte-
+  identical for every incident including inaction scenarios; no line
+  ever shows an answer-key-derived total (planted-marker + copy-scan
+  proven).
+- **19.** The Case Closed moment, achievement labels, and Key takeaway
+  derive deterministically from the submitted record alone
+  (byte-identical on re-render), appear only post-submission, and the
+  teaching content renders in exactly ONE venue.
+
+### A1-B.7 Delta B supersession map (complete)
+
+Dispositions as in A1-A.7.
+
+| # | Locked item | Disp. | Governing text / note |
+|---|---|---|---|
+| 1 | §12.1 concept inventory | T | A1-B.5 — every concept re-homed: controls -> tooltips; reviewed/telemetry/Ready/review meanings -> checklist lines + L1 mechanics; scope concept per A1-P.2 |
+| 2 | §12.2 form: five anchored first-run callouts, dismiss/dismiss-all | S | A1-B.5.1 — permanent tooltips + on-demand hints; callout machinery retired |
+| 3 | OD-6 (callouts for five moments; tooltips for ==/!=/Pivot) | S | A1-B.5.1 — tooltips extended to the full control list; callouts retired (re-ruling pending ratification) |
+| 4 | §12.2 gating: `ONBOARDING_MODES` allow-list | T | A1-B.5.2 — `HINT_MODES = {"guided"}` for hints; tooltips mode-universal under the recorded invariant-7 reading |
+| 5 | §12.2 answer-free rule + copy denylist test | T | A1-B.2 — extended over tooltips, hints, toasts, checklist |
+| 6 | §12.2 "not a separate tutorial mode" | U | Holds for the hint flow |
+| 7 | §12.3 / OD-7: `spectyr_onboarding_v1` persistence; reopen via Docs + "Show tips again" | S | A1-B.5.1 — no once-only persistence to manage; reopen path moot (re-ruling pending ratification) |
+| 8 | §13 D5 row (onboarding persistence, client-only) | S | Superseded; the only candidate localStorage use is the A1-B.5.5 progression store, undecided (B-OD-4) |
+| 9 | Scaffold ratified decision: the `spectyr_onboarding_v1` key layout (2.6) | S | Superseded with D5 |
+| 10 | §19.8 acceptance | S | A1-B.6 replacement 8 |
+| 11 | Contract risk R6 (onboarding leaks into Hardcore or nags) | T | Translated + extended: allow-listed hints; passive tooltips; the toast trigger list + no-duplication rule are the new anti-nag mitigations; checklist leak rule guards the new surface (A1-B.6 criteria 17-18) |
+| 12 | §10.1 canonical vocabulary | A | Gains toast + checklist rows (additive; existing rows unchanged; "Reopened (needs review again)" and the remaining-count string reused verbatim in T1) |
+| 13 | §15 threat (d) (onboarding copy carrying answers) | T | Extended over toasts, checklist, hints (A1-B.2 enumerated-inputs discipline) |
+| 14 | §16 onboarding-callout accessibility bullet | T | Tooltips keyboard-reachable (`aria-describedby`); toasts `role="status"`/`aria-live="polite"`, never steal focus, dismissible, reduced-motion honored; Case Closed moment static under reduced motion |
+| 15 | §17 row 5.5 | S | A1-B.6 test surface: tooltip availability/all-modes; hint allow-list + structural input test; toast trigger-list exactness; checklist leak battery; achievement determinism |
+| 16 | §18 workflow 1 (first-run callouts appear once, absent after Practice Another) | T | Tooltips present every visit; hints on request mark nothing below L3; toasts fire per trigger list; payoff sequence + Key takeaway + achievements verified; re-open byte-identical |
+| 17 | §18 workflow 7 (Hardcore purity) | T | Zero hints/coaching/prompt line; tooltips present; factual toasts permitted; payoff after submission permitted; timer flows unchanged |
+| 18 | §6 journey steps 1-3, 5-7 | T | Narrative re-reads: always-available help; step 5-6 gain Case Closed -> grade -> review -> Key takeaway; step 7's "explainers do not reappear" becomes moot (nothing is once-only) |
+| 19 | §7.1/7.2/7.3 breakdown contract; OD-1..4 | U | Untouched — A1-B.4 renders ON the ratified data; Key takeaway is a heading over D2 content (zero new content types, reaffirming OD-1/OD-3) |
+| 20 | Scaffold ruling H (null `scenario_rationale`) | U | Interplay recorded: Key takeaway omitted when null; Tier 1 whys remain |
+| 21 | Scaffold ruling A (related-activity count only, no list) | U | Reaffirmed: the checklist response line consumes the D4 COUNT; nothing resurrects the list |
+| 22 | Scaffold §2.2 + Phase 2 commits | T | A1-B.8 — renamed "Live Progress and Reinforcement"; toasts + checklist added |
+| 23 | Scaffold §2.5 + Phase 5 commits (esp. 5.4 modal UI) | T | A1-B.8 — payoff sequence + achievements + Key takeaway + venue per B-OD-1 |
+| 24 | Scaffold §2.6 + Phase 6 commits | S | A1-B.8 — help-model replacement |
+| 25 | Scaffold §5 copy rows: onboarding concept copy; "Show tips again"/"Don't show tips" | S | Retired with the callout model |
+| 26 | Scaffold §5 row: pivot first-use explainer + Phase 3's explainer slot (2.3/6.2) | T | Becomes the Pivot tooltip + L1 hint content; the once-only banner slot is retired |
+| 27 | Scaffold §8 traceability row 8 | S | Re-mapped to A1-B.6 criteria (8, 17-19) |
+| 28 | Scaffold §9 R6 row | T | Per map row 11 |
+| 29 | Scaffold §10 workflows 1, 7 | T | Per map rows 16-17 |
+| 30 | Scaffold §12 sizing rows 2, 5, 6 | T | Re-estimated in A1-B.8 |
+| 31 | §5 inherited invariant 7 (Guided may teach; Hardcore no tutorial interruptions) | A | Reading recorded: passive player-invoked tooltips are not interruptions; coaching remains Guided-only |
+| 32 | §22 rows 5-6 (HTB, TryHackMe) | A | A1-B.1 records the feedback-model reading |
+| 33 | OD-9 (Feed/Threats subcopy) | U | Subcopy stands; its text seeds the Feed/Threats tooltip content |
+| 34 | PhaseStrip "Investigate evidence" step | S | No observable completion state exists; dropped from the checklist line set (deliberate, flagged) |
+
+### A1-B.8 Scaffold delta (applied to the scaffold only after ratification)
+
+**Phase 2 — renamed "Live Progress and Reinforcement". Size M -> M-L.**
+- *Gains:* the toast system (trigger list T1-T5, exclusions, mode
+  carve-out, a11y, trigger-exactness tests); the checklist evolution of
+  `PhaseStrip` (line set incl. the classification line and static
+  prompt; leak battery per A1-B.6.18); the no-duplication rule tests.
+- *Keeps:* the vocabulary module + canonical-copy test (10.1 sweep),
+  D4 + guards (the count now also feeds the checklist), completed
+  strip, 0-of-0 regression, forbidden-phrase scan.
+- *Loses:* nothing.
+- Commit shape: 2.1 as locked; 2.2 as locked + checklist line set;
+  new 2.4 **[STOP]** toasts (trigger list + tests + a11y).
+
+**Phase 5 — post-incident review teaching. Size L (grown).**
+- *Gains:* the Case Closed moment; achievements (derivation set +
+  determinism tests); Key takeaway section (renders
+  `scenario_rationale`; zero new authoring); the venue restructure per
+  B-OD-1 (under Option 1, commit 5.4 reshapes: teaching content renders
+  in the Learning Review home; Incidents gains the Case Closed summary
+  + path).
+- *Keeps:* the ENTIRE D1/D2 data plan, scorer-reuse conditions (ruling
+  B), freeze/byte-identity/reconciliation tests, Tier 1/Tier 2 plan and
+  cadence, ruling H.
+- *Loses:* nothing. The growth is UI-side only; the swing item is the
+  venue restructure.
+
+**Phase 6 — help model (replaces the locked onboarding phase). Size M
+(recomposed, comparable).**
+- *Loses:* anchored-callout machinery, once-only persistence,
+  dismiss/dismiss-all, the Docs/Help reopen path, the D5 key layout.
+- *Gains:* permanent accessible tooltips (8 controls); the "Need a
+  hint?" flow (L1/L2 static libraries; `HINT_MODES` gating; the
+  structural neutrality test); Hardcore purity assertions
+  (tooltips-only + no prompt line).
+- *Keeps:* the denylist pattern, the answer-free rule, the allow-list
+  pattern, `uiCopy.js` sourcing, the [STOP] review of all new copy.
+
+**Direction, stated honestly: Delta A shrinks the stage; Delta B grows
+it. Net with both ratified:** Phase 1 S-M (down), Phase 2 M-L (up),
+Phase 3 S-M (flat), Phase 4 S (untouched), Phase 5 L grown (up),
+Phase 6 M (flat, recomposed), Phase 7 M (workflow translations only) —
+**the stage lands modestly LARGER than the locked scaffold**, with the
+growth concentrated in Phases 2 and 5 and partially offset by Delta A's
+Phase 1 shrink.
+
+### A1-B.9 Owner decisions surfaced (not made)
+
+- **B-OD-1 — Learning Review venue.** Option 1 (Metrics/Analytics
+  becomes the per-incident Learning Review home; Incidents shows the
+  Case Closed summary + "Review what you learned" path) vs Option 2
+  (the review modal remains). **Recommendation: Option 1**, with the
+  one-venue conditions in A1-B.4.4.
+- **B-OD-2 — Level 3 scenario-specific hints.** Measured at 40-60
+  authored answer-adjacent lines + the first pre-submission
+  answer-bearing prose serving path (A1-B.5.4).
+  **Recommendation: defer** (out of Stage 5), consistent with the
+  Tier 3 precedent.
+- **B-OD-3 — deferred achievements.** The A1-B.4.3 deferred list with
+  tracking costs; any promotion is its own reviewed addition. No
+  points, streaks, leaderboards, or currency without a separate owner
+  ruling (restated).
+- **B-OD-4 — local progression store.** The A1-B.5.5 research report;
+  Stage 5 vs final polish is the owner's scheduling call. Reported,
+  not decided.
+- **B-OD-5 — the Hardcore prompt carve-out.** The checklist's static
+  consider-prompt renders in Guided and SOC Queue and is suppressed in
+  Hardcore (count line stays), reading the leak rule and the Hardcore
+  no-coaching rule together. Confirm or adjust.
+
+---
+
+## A1-R. Ratification record (owner; append-only)
+
+| Delta | State | Date | Notes |
+|---|---|---|---|
+| Delta A — case-constant scope | **RATIFIED** | 2026-07-25 | As recommended; rulings in A1-R.1 |
+| Delta B — learning feedback | **RATIFIED** | 2026-07-25 | As recommended, two owner adjustments; rulings in A1-R.1 |
+
+### A1-R.1 Owner ratification rulings (2026-07-25)
+
+The owner ratified BOTH deltas with every drafted recommendation
+standing, plus two adjustments stated in the ratification directive.
+Resolution of each surfaced decision:
+
+- **A-OD-1 (naming):** the A1-A.5 proposed finals are RATIFIED as
+  canonical ("Investigating INC-####", "All activity", "INC-####
+  evidence", "Expanded search", "Searching all evidence. Your case
+  INC-#### stays open.", "Return to INC-#### evidence", "Search all
+  evidence", and the return subcopy).
+- **A-OD-2:** NO expand action on Detections or Endpoints — the SIEM is
+  the hunting surface; the pages stay single-purpose.
+- **A-OD-3:** the All Activity state contents per A1-A.3 row 1 are
+  CONFIRMED, and the surfaced error narrowing is CONFIRMED: the
+  case-evidence error-empty state offers Retry only (no broadening
+  control exists on the data pages; the explicit exit lives on
+  Incidents).
+- **A-OD-4:** search-all placement RATIFIED as recommended: the state
+  label adjacent to the query bar ("INC-#### evidence") with "Search
+  all evidence" beside it; the return action renders in the
+  expanded-search block.
+- **B-OD-1 (venue):** Option 1 RATIFIED — the Metrics/Analytics tab
+  becomes the per-incident Learning Review home with the one-venue
+  conditions of A1-B.4.4 (the in-workspace modal never renders teaching
+  content; the Incidents completed pane shows the Case Closed summary
+  and the "Review what you learned" path; Incident Grade vs Session
+  Performance labeling preserved with a per-incident selector).
+- **B-OD-2:** Level 3 scenario-specific hints DEFERRED (out of
+  Stage 5), consistent with the Tier 3 precedent.
+- **B-OD-3:** the deferred achievements remain DEFERRED with their
+  recorded tracking costs; no points, streaks, leaderboards, or
+  currency without a separate owner ruling.
+- **B-OD-4:** the local progression store is DEFERRED (out of Stage 5;
+  a final-polish candidate). No client store ships in Stage 5.
+- **B-OD-5 (OWNER ADJUSTMENT — narrower than drafted):** the
+  checklist's static consider-prompt ("Consider whether containment or
+  remediation is needed.") renders in **Guided ONLY** — suppressed in
+  SOC Queue AND Hardcore (the draft proposed Guided + SOC Queue). The
+  count line renders in all modes.
+- **T1 (OWNER ADJUSTMENT — the sealed-roster note):** the disposition
+  toast's remaining-count line derives from the shared roster and
+  renders only once the incident's roster is SEALED; before seal, or
+  for a disposition belonging to no sealed incident roster, the toast
+  confirms the disposition alone (the checklist's telemetry line
+  already announces loading). This binds A1-B.3.1 trigger T1.
+- **Section 19 numbering:** Delta B's three new criteria take
+  **19.17-19**, final per the owner-directed merge order (Amendment 1
+  before Amendment 2; the corresponding record lives in Amendment 2's
+  A2-R.2).
+- **Scaffold application:** this ratification authorizes applying
+  A1-A.8 and A1-B.8 (with the two adjustments above) to the
+  implementation scaffold in the consolidated scaffold update.
+
+*Amendment 1 drafted 2026-07-25 at baseline `2e74b86` on branch
+`stage-5-amendment-1`; gates ALL GREEN at baseline (backend 27 suites;
+frontend 18 suites / 173 tests). This draft is docs-only: the locked
+Revision 3 text above is byte-unchanged; the implementation scaffold
+document is untouched (its deltas are drafted in A1-A.8 / A1-B.8 and
+applied only after ratification); owner asset files untouched; nothing
+pushed; no product code, no Phase 1. The deltas are ratified
+independently; this task ratifies nothing.*
