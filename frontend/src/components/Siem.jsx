@@ -16,7 +16,8 @@ import {
   EDITED_NOTE, STALE_RESULTS_NOTE, filterAdded, excludedFilter,
   NO_QUERY_ENTERED, PRESERVED_RESULTS_LABEL, SEARCH_NOT_RUN,
   QUERY_SECTION_NAMES, sectionCouldNotBeRead, STRUCTURE_LINE,
-  RESTORE_LAST_QUERY,
+  RESTORE_LAST_QUERY, surroundingBanner, OCCURRENCE_ASCENDING,
+  BACK_TO_PREVIOUS_RESULTS,
 } from './uiCopy';
 
 // SIEM Investigation Workbench shell (Stage 4 Phase 4). Analyst-driven:
@@ -92,6 +93,12 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
   // never mislabel another snapshot; the expanded-search block itself is
   // state-driven and persists across queries within the state.
   const [transition, setTransition] = useState(null);
+  // A2 3.4 (ruled): the SINGLE-DEPTH hold behind a surrounding view -- the
+  // prior evidence view (frozen snapshot + bar text + scope) held at entry,
+  // overwritten on re-entry, dropped by any other run, restored with ZERO
+  // requests by the one return action.
+  const [heldView, setHeldView] = useState(null);
+  const preserveHoldRef = useRef(false);
   const focusSeqRef = useRef(0);
 
   useEffect(() => {
@@ -113,6 +120,7 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
     setQueryNotice(null);
     setTimeline(null);
     setTransition(null);
+    setHeldView(null);
   }, [resetTrigger]);
 
   useEffect(() => {
@@ -143,6 +151,7 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
     setQueryText('');
     setTimeline(null);
     setTransition(null);
+    setHeldView(null);
     setQueryNotice(null);
     setSelectedId(null);
     setSelectionNotice(null);
@@ -213,6 +222,10 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
   // always pass none).
   const execute = (q, scopeValue, noticeAfter = null) => {
     if (running) return;
+    // any run other than a surrounding ENTRY drops the held prior view
+    // (single-depth, never a history stack)
+    if (!preserveHoldRef.current) setHeldView(null);
+    preserveHoldRef.current = false;
     setRunning(true);
     apiFetch(`/api/events/query?q=${encodeURIComponent(q)}&scope=${encodeURIComponent(scopeValue)}`)
       .then(async (res) => {
@@ -318,10 +331,40 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
     if (!snapshot || running || scopeBlocked) return;
     const query = descentHost(hostname);
     focusSeqRef.current += 1;
+    // hold the prior evidence view (A2 3.4): the frozen snapshot object,
+    // its bar text, and its scope -- restored exactly, zero requests
+    setHeldView({ snapshot, queryText, scope });
+    preserveHoldRef.current = true;
     setQueryText(query);
     setTimeline({ kind: 'surrounding', host: hostname, focusId: eventId,
                   focusSeq: focusSeqRef.current, query });
     execute(query, scopeParam);
+  };
+
+  // The ONE return from a surrounding view (ruled): redisplay the held
+  // frozen snapshot exactly. No request is issued; the new-count poll
+  // resumes on the restored token (an invalidated token halts neutrally
+  // through the existing countHalted path).
+  const restoreHeldView = () => {
+    if (!heldView || running) return;
+    setSnapshot(heldView.snapshot);
+    setQueryText(heldView.queryText);
+    setScope(heldView.scope);
+    setError(null);
+    setTimeline(null);
+    setQueryNotice(null);
+    setNewCount(0);
+    setPoolGrowth(0);
+    setCountHalted(false);
+    setSelectedId((sel) => {
+      if (sel && !heldView.snapshot.rows.some((r) => r.id === sel)) {
+        setSelectionNotice('The inspected event is not in the new snapshot.');
+        return null;
+      }
+      setSelectionNotice(null);
+      return sel;
+    });
+    setHeldView(null);
   };
 
   // The single return action (A1-A.2 point 4): "Return to INC-#### evidence"
@@ -723,10 +766,9 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
             className="px-3 py-1.5 rounded-md border border-[#16436b]/30 bg-[#16436b]/5 text-xs text-[#1a2332] flex flex-wrap items-center gap-x-2 gap-y-1"
           >
             {timeline.kind === 'surrounding' ? (
-              <span>
-                Surrounding events for <span className="log-mono font-medium">{timeline.host}</span>,
-                centered on the selected event
-              </span>
+              // A2 3.4 (ruled block copy): temporary context with the ONE
+              // clear return to the prior frozen results.
+              <span>{surroundingBanner(timeline.host)}</span>
             ) : (
               <span>
                 Evidence timeline
@@ -736,7 +778,19 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
                 , from <span className="log-mono text-[#16436b]">{timeline.origin}</span>
               </span>
             )}
-            <span className="text-[#8b949e]">occurrence ascending</span>
+            <span className="text-[#8b949e]">
+              {timeline.kind === 'surrounding' ? OCCURRENCE_ASCENDING : 'occurrence ascending'}
+            </span>
+            {timeline.kind === 'surrounding' && heldView && (
+              <button
+                type="button"
+                data-testid="surrounding-return"
+                onClick={restoreHeldView}
+                className="ml-auto text-[#16436b] hover:underline"
+              >
+                {BACK_TO_PREVIOUS_RESULTS}
+              </button>
+            )}
             {timeline.kind === 'descent' && timeline.backView && onNavigate && (
               <button
                 type="button"

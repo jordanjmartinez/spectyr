@@ -123,3 +123,11 @@ export const sectionCouldNotBeRead = (section) =>
   `The ${section} section could not be read.`;
 export const STRUCTURE_LINE = 'The query needs four sections separated by |.';
 export const RESTORE_LAST_QUERY = 'Restore last working query';
+
+// === Merged Phase 3/4 commit 3.4: reversible surrounding events ============
+// The ruled block copy (A2-R.1): temporary context with ONE clear return
+// that redisplays the prior frozen results with zero requests.
+export const surroundingBanner = (host) =>
+  `Activity around the selected event on ${host}`;
+export const OCCURRENCE_ASCENDING = 'Occurrence ascending';
+export const BACK_TO_PREVIOUS_RESULTS = 'Back to previous results';

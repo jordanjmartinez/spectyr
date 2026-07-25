@@ -86,15 +86,49 @@ const surround = async () => {
   });
 };
 
-test('Surrounding events emits all | H | * | * under the CURRENT scope with the ascending banner', async () => {
+test('Surrounding events emits all | H | * | * under the CURRENT scope with the ruled banner copy', async () => {
   renderShell();
   await run('all | * | * | *');
   await surround();
   expect(queryCalls().pop()).toBe('/api/events/query?q=all | ACME-WS10 | * | *&scope=session');
+  // A2 3.4 (ruled block copy)
   const banner = screen.getByTestId('descent-banner');
-  expect(banner).toHaveTextContent('Surrounding events for ACME-WS10, centered on the selected event');
-  expect(banner).toHaveTextContent('occurrence ascending');
+  expect(banner).toHaveTextContent('Activity around the selected event on ACME-WS10');
+  expect(banner).toHaveTextContent('Occurrence ascending');
+  expect(banner).toHaveTextContent('Back to previous results');
   expect(banner.textContent).not.toMatch(/—/);   // approved copy punctuation only
+});
+
+test('A2 3.4: the ONE return redisplays the held frozen results with ZERO requests', async () => {
+  renderShell();
+  queryResponses.push(ok(snapWith([SOURCE], 'all | * | * | severity == "low"')));
+  await run('all | * | * | severity == "low"');
+  await surround();
+  expect(screen.getByTestId('descent-banner')).toBeInTheDocument();
+  const callsBefore = queryCalls().length;
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('surrounding-return'));
+  });
+  // zero requests; the prior frozen view redisplayed exactly
+  expect(queryCalls().length).toBe(callsBefore);
+  expect(screen.queryByTestId('descent-banner')).toBeNull();
+  expect(screen.getByLabelText('LCQL query').value)
+    .toBe('all | * | * | severity == "low"');
+  // the restored frozen row set renders again (row + surviving inspector)
+  expect(within(screen.getByTestId('workbench-results'))
+    .getAllByText('host event 14').length).toBeGreaterThanOrEqual(1);
+});
+
+test('A2 3.4: the hold is single-depth -- any other run drops it (no return offered afterward)', async () => {
+  renderShell();
+  await run('all | * | * | *');
+  await surround();
+  expect(screen.getByTestId('surrounding-return')).toBeInTheDocument();
+  // running a different query drops the held view and the banner
+  queryResponses.push(ok(snapWith(SERVED_DESC, 'all | * | * | *')));
+  await run('all | * | * | *');
+  expect(screen.queryByTestId('descent-banner')).toBeNull();
+  expect(screen.queryByTestId('surrounding-return')).toBeNull();
 });
 
 test('the viewport centers on the source event: page jump, scrollIntoView, focus marker, retained selection', async () => {
