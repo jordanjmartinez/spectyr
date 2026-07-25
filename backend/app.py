@@ -3477,6 +3477,83 @@ def _incident_report_card(s, scenario_id, grading_rec, payload, all_logs):
     response["not_executed"] = {"count": len(failed), "entries": failed}
     response["no_effect"] = {"count": len(noop), "entries": noop}
 
+    # --- Stage 5 Phase 5 commit 5.3 (D1, ratified OD-2): assemble and
+    # FREEZE the complete response_review into the record at submit time.
+    # The score view serves the STORED result and never rebuilds any part
+    # of it (correction 6): later template/YAML changes reach future
+    # submissions only. ---
+    failed_keys = set()
+    for e in log:
+        if e.get("outcome") != action_overlay.FAILED:
+            continue
+        ent = registry.get((e.get("target") or {}).get("id"))
+        if ent is not None:
+            failed_keys.add((e["action"], _entity_action_key(e["action"], ent)))
+    label_by_seq = {e["seq"]: (e.get("target") or {}).get("label")
+                    for e in log}
+    entries = []
+    for raw in review_raw["entries"]:
+        code = raw["reason_code"]
+        exp_r = raw.get("expected")
+        if code == response_review.REQUIRED_NOT_ATTEMPTED and exp_r is not None:
+            k = (exp_r["action"],
+                 _action_target_key(exp_r["action"], exp_r["target"]))
+            if k in failed_keys:
+                code = response_review.REQUIRED_ATTEMPT_FAILED
+        if raw["action"] is None:
+            # the scenario-level inaction unit: no action, no target
+            label = None
+            ref = "inaction"
+        elif exp_r is not None:
+            tkey = _action_target_key(exp_r["action"], exp_r["target"])
+            label = (label_by_seq.get(raw["seq"])
+                     or response_review.expected_label(
+                         exp_r["action"], exp_r["target"], registry))
+            ref = response_review.expected_ref(exp_r["action"], tkey)
+        else:
+            # a collateral occurrence: executed-side identity only
+            label = (label_by_seq.get(raw["seq"])
+                     or response_review.expected_label(
+                         raw["action"], raw.get("target") or {}, registry))
+            ref = None
+        entries.append({
+            "bucket": response_review.BUCKET_OF[code],
+            "reason_code": code,
+            "action": raw["action"],
+            "target_label": label,
+            "why": response_review.render_why(code, raw["action"]),
+            "source_action_seq": raw["seq"],
+            "expected_ref": ref,
+        })
+    attempt_history = sorted(
+        [{"seq": e["seq"], "action": e["action"],
+          "target_label": (e.get("target") or {}).get("label"),
+          "outcome": e["outcome"],
+          "reason_code": response_review.FAILED_PRECONDITION}
+         for e in failed]
+        + [{"seq": e["seq"], "action": e["action"],
+            "target_label": (e.get("target") or {}).get("label"),
+            "outcome": e["outcome"],
+            "reason_code": response_review.NO_EFFECT_REPEAT}
+           for e in noop],
+        key=lambda r: r["seq"])
+    det_block = [{
+        "rule_name": d.get("rule_name"),
+        "entity_label": ((d.get("entity") or {}).get("host")
+                         or (d.get("entity") or {}).get("account") or ""),
+        "your_call": d.get("player_action", "open"),
+        "correct": disposition_call_correct(
+            d.get("disposition"), d.get("player_action", "open")),
+    } for d in dets]
+    response_review_block = {
+        "entries": entries,
+        "attempt_history": attempt_history,
+        "detections": det_block,
+        # Tier 2 scenario paragraph (D2): wired at 5.5; a record submitted
+        # before its paragraph exists freezes null permanently (ruling H).
+        "scenario_rationale": None,
+    }
+
     det_raw = (detection["correct"] / detection["graded"] * 100) if detection["graded"] else None
     composite = compute_composite_grade(
         (classification["accuracy"], 1),
@@ -3487,6 +3564,10 @@ def _incident_report_card(s, scenario_id, grading_rec, payload, all_logs):
         "classification": classification,
         "detection": detection,
         "response": response,
+        # D1 (ratified OD-2): the frozen teaching breakdown, a first-class
+        # report_card key served inside the submitted grading by the
+        # existing underscore-strip; never rebuilt after submit.
+        "response_review": response_review_block,
         # scoring detail for the session pool, never a required-count leak
         "_response_raw": resp_raw,
         "_inaction_collateral": inaction_collateral,
@@ -4286,6 +4367,23 @@ def _action_target_key(action, target):
 
 _IDENTITY_ACTION_NAMES = ("disable_account", "revoke_sessions",
                           "force_password_reset")
+
+
+def _entity_action_key(action, entity):
+    """The registry-entity side of _action_target_key: the same canonical
+    composite key, derived from a resolved entity, so failed ATTEMPTS in the
+    overlay log can be matched against expected composites (5.3's
+    required_not_attempted vs required_attempt_failed split)."""
+    if action in ("isolate_host", "release_host"):
+        return (entity.get("hostname"),)
+    if action == "kill_process":
+        return (entity.get("hostname"), entity.get("pid"))
+    if action == "delete_file":
+        return (entity.get("hostname"), entity.get("path"))
+    if action == "remove_persistence":
+        ident = entity.get("identity")
+        return tuple(ident) if ident else (entity.get("hostname"), None)
+    return action_overlay.account_key(entity.get("domain"), entity.get("username"))
 
 
 def scenario_grading_record(scenario_id, entry, concrete_env):
