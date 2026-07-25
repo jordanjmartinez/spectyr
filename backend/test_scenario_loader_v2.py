@@ -534,6 +534,7 @@ RATIONALE_SCENARIOS = {
     "lateral_movement_1",
     "c2_http",
     "brute_force_attack",
+    "false_positive_robocopy",
 }
 
 

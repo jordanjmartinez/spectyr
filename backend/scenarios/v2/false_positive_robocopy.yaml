@@ -277,3 +277,14 @@ triage_review:
     - "Confirm the destination endpoint is an approved cloud target"
     - "Validate the transfer volume against the migration scope"
     - "Whitelist the scheduled task for the migration window"
+
+# Stage 5 D2 (Tier 2 rationale; ledger-tracked): frozen into a
+# submission record as scenario_rationale, rendered only in the
+# post-boundary Learning Review Key takeaway.
+expected_response: >-
+  The flagged transfer is a scheduled data migration: an administrative copy
+  job moving files to the file server with a known tool, on schedule, under
+  the expected account. Classify it as a false positive and take no response
+  action. Killing the copy job, isolating the hosts, or disabling the
+  account would break a sanctioned migration in progress: collateral harm
+  against the company's own operations.
