@@ -1484,9 +1484,15 @@ document.*
 ---
 ---
 
-# AMENDMENT 2 — GUIDED SIEM SEARCH AND QUERY CLARITY (DRAFT, NOT RATIFIED)
+# AMENDMENT 2 — GUIDED SIEM SEARCH AND QUERY CLARITY (RATIFIED)
 
-**Status: DRAFT FOR RATIFICATION. Nothing in this appendix is in force.**
+**Status: RATIFIED — owner rulings recorded in A2-R, 2026-07-25. The
+A2-R rulings are the governing finals wherever they differ from the
+drafted body below (three drafted string families are superseded there).
+The Section 19 criteria numbering assignment is PENDING, recorded in
+A2-R: at ratification time the Amendment 1 ratification pre-check had
+not resolved (no A1 ratification was committed), so the by-merge-order
+assignment cannot yet be final.**
 Drafted 2026-07-25 on branch `stage-5-amendment-2` at repository baseline
 `main` `2e74b86` (the Stage 5 scaffold-approval merge; gates re-verified
 ALL GREEN on this branch at this baseline: backend 27 suites, frontend 18
@@ -2083,7 +2089,89 @@ everything locked for Phases 3 and 4. What it loses: nothing.
 
 | Amendment | State | Date | Notes |
 |---|---|---|---|
-| Amendment 2 — guided SIEM search and query clarity | DRAFT | — | — |
+| Amendment 2 — guided SIEM search and query clarity | **RATIFIED** | 2026-07-25 | Owner rulings below are the governing finals |
+
+### A2-R.1 Owner ratification rulings (2026-07-25, recorded verbatim)
+
+> - Labels: ==, !=, Pivot, and Surrounding events keep their technical
+>   names. F6 stands reaffirmed.
+> - Permanent tooltips (canonical finals, joining the Amendment 1
+>   tooltip set, which grows to nine controls):
+>   ==: "Show only events matching this value."
+>   !=: "Exclude events matching this value."
+>   Pivot: "Follow this clue across all available evidence."
+>   Surrounding events: "Temporarily show activity around the selected
+>   event."
+> - Refines stay execute-immediately; no Apply state. The chips make
+>   the change visible.
+> - Chips ship IN Stage 5, remove-only. Removing a chip reruns the
+>   query. Any top-level OR renders one "Custom filters" chip that
+>   reveals the raw query. Binding boundary test: Custom filters never
+>   renders for a conjunction-only query and always renders for any
+>   top-level OR, including the IP-pivot and identity-descent product
+>   forms.
+> - Empty and failed searches: Run disables only when the field is
+>   truly empty; the placeholder is unmistakably an example; add
+>   "Restore last working query"; malformed queries name the broken
+>   section. Canonical error form:
+>   "This search was not run."
+>   "The {Time / Source / Event type / Filters} section could not be
+>   read."
+>   "Displayed results are from the previous successful query."
+>   (third line is the locked 11.3 string, reused verbatim, not a new
+>   variant).
+> - Surrounding events becomes reversible: single-depth hold, block
+>   copy "Activity around the selected event on {host}" / "Occurrence
+>   ascending" / "Back to previous results"; returning redisplays the
+>   prior frozen snapshot with zero requests.
+> - Deferred register ratified: bounded surrounding window (engine),
+>   chip editing, structured query builder, autocomplete overhaul.
+> All new strings pass the em-dash scan and denylist review.
+
+### A2-R.2 Recording notes (what the rulings resolve and supersede)
+
+- **A2-OD-1 resolved:** all four controls keep their technical names
+  (Surrounding events included); the four tooltip strings above are the
+  canonical finals. The ruled Surrounding events tooltip ("Temporarily
+  show activity around the selected event.") SUPERSEDES the drafted
+  "Show activity around this event." (A2-2.1 / A2-3).
+- **A2-OD-2 resolved:** refines stay execute-immediately; the
+  Apply-batched alternative is closed.
+- **A2-OD-3 resolved:** chips ship in Stage 5, remove-only, rerun on
+  removal; the boundary test in the ruling is BINDING and joins
+  A2-AC-4 (Custom filters never for conjunction-only, always for any
+  top-level OR, the two product OR forms included).
+- **Canonical error form:** the ruled three-line form SUPERSEDES the
+  drafted "Check the {Section} section." headline (A2-2.3 / A2-3).
+  Line three is the locked 11.3 string reused verbatim. The
+  structure-level line ("The query needs four sections separated
+  by |.") stands for errors that precede section identification.
+- **Surrounding block copy:** the ruled three strings ("Activity
+  around the selected event on {host}" / "Occurrence ascending" /
+  "Back to previous results") SUPERSEDE the drafted banner copy
+  (A2-2.5); the single-depth hold and zero-request frozen-snapshot
+  restore are ratified as drafted.
+- **Deferred register ratified** with one ADDITION by ruling:
+  autocomplete overhaul (joins bounded surrounding window, chip
+  editing, structured query builder).
+- **Em-dash and denylist:** every ruled string above contains no em
+  dash; all NEW strings remain subject to the standing scans at
+  implementation (scaffold ruling F).
+- **Amendment 1 interaction, recorded at ratification time:** the
+  pre-check found NO committed Amendment 1 ratification (its A1-R
+  still reads DRAFT at `stage-5-amendment-1` tip `83f8175`; `main`
+  tip `2e74b86` contains neither appendix). The ruling's
+  "joining the Amendment 1 tooltip set, which grows to nine controls"
+  therefore operates through A2-P.1's independence clause: Amendment 2
+  carries its own permanent-tooltip requirement for `==`, `!=`, Pivot,
+  and Surrounding events until Amendment 1 Delta B's ratification is
+  recorded, at which point the four join its set (nine controls
+  total). **Section 19 numbering assignment is PENDING** the same
+  resolution: the owner-directed order (Amendment 1's additions as
+  19.17-19, Amendment 2's A2-AC-1..7 as 19.20-26) is recorded here as
+  the intended assignment and becomes final when the Amendment 1
+  ratification is committed and the appendices are ordered on one
+  branch.
 
 *Amendment 2 drafted 2026-07-25 at baseline `2e74b86` on branch
 `stage-5-amendment-2`; gates ALL GREEN at this baseline on this branch
