@@ -533,6 +533,7 @@ RATIONALE_SCENARIOS = {
     "false_positive_pentest",
     "lateral_movement_1",
     "c2_http",
+    "brute_force_attack",
 }
 
 

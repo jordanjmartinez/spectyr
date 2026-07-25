@@ -406,3 +406,17 @@ triage_review:
     - "Determine if any successful authentication occurred from the attacker's IP"
     - "If compromised, investigate for lateral movement to other systems"
     - "Verify MFA is enabled on the account and enforce it if not"
+
+# Stage 5 D2 (Tier 2 rationale; ledger-tracked): frozen into a
+# submission record as scenario_rationale, rendered only in the
+# post-boundary Learning Review Key takeaway.
+expected_response: >-
+  This was a failed external brute force that the system already contained:
+  the account lockout triggered and no logon succeeded, so there is no
+  breach to evict. The correct response is investigation without action;
+  blocking the source address sits outside the response vocabulary here, and
+  nothing inside the environment is attacker-controlled. An optional hygiene
+  password reset on the locked account is defensible. Isolating the domain
+  controller or disabling accounts punishes healthy assets for an attack
+  that already failed, which is why over-reaction grades as collateral, not
+  caution.
