@@ -10,6 +10,14 @@ branch `stage-5-live-run-feedback` from `main` after this scaffold's
 merge, in the phase order below, stopping at every [STOP] checkpoint and
 phase stop point. Phase 1 has NOT begun.**
 
+**CONSOLIDATED REVISION (2026-07-25): contract Amendments 1 (both
+deltas) and 2 are RATIFIED; this scaffold is updated in ONE pass to the
+consolidated plan. The amendment appendices (contract A1-A.8, A1-B.8,
+A2-6, and the ratification rulings A1-R / A2-R) are the GOVERNING
+sources; the changelog below records every applied change. The original
+approved text remains in git history; the approval appendix at the end
+of this document is unchanged.**
+
 Governing document: `docs/stage-5a-live-run-feedback-contract.md` — the
 LOCKED Stage 5A contract (Revision 3; lock recorded 2026-07-24 at `main`
 `09eea3b`). This scaffold translates every locked requirement into a
@@ -21,6 +29,47 @@ repository disagreement, and interpretation found while planning — each
 is REPORTED for the owner, none is silently resolved. Contract changes
 happen only through the recorded amendment discipline, and proposing one
 is the owner's call, not this scaffold's.
+
+## Changelog — consolidated revision (2026-07-25)
+
+Applied in ONE pass after the ratifications of contract Amendments 1
+and 2 (governing sources: A1-A.8, A1-B.8, A2-6, A1-R, A2-R):
+
+1. **Delta A (case-constant scope):** Phase 1 reshaped — pinned case
+   header ("Investigating INC-####" / "All activity") unifying the
+   Dashboard focus banner; SIEM case-evidence/expanded-search state
+   pair (scope select removed; "Search all evidence"; ONE return
+   action); `IncidentScopeBar` toggle + Use Session-wide REMOVED
+   (`useIncidentScope`, honesty rows, refresh triggers kept verbatim;
+   error-empty state Retry-only per ratified A-OD-3); dual return
+   controls and the expandable two-concept summary DROPPED (OD-12/13/14
+   superseded; OD-15 structural). Phase 2 vocabulary rows swapped;
+   Phase 3's transition surface is the expanded-search block. Sizing:
+   Phase 1 M -> S-M.
+2. **Delta B (learning feedback):** Phase 2 renamed "Live Progress and
+   Reinforcement", gaining toasts T1-T5 (T1 sealed-roster note as
+   ruled) and the incident checklist folded into `PhaseStrip` (B-OD-5
+   as ruled: the static consider-prompt is GUIDED-ONLY). Phase 5 gains
+   the Case Closed -> grade -> review payoff, achievements, Key
+   takeaway, and the ratified B-OD-1 venue (Metrics/Analytics = the
+   per-incident Learning Review home; one teaching venue). Phase 6
+   becomes the help model (permanent tooltips — nine controls with
+   Amendment 2; Guided-only "Need a hint?" L1/L2; no once-only
+   persistence — D5 superseded; L3 hints and the progression store
+   DEFERRED per B-OD-2/B-OD-4). Sizing: Phase 2 M -> M-L, Phase 5 L
+   (grown), Phase 6 M (recomposed).
+3. **Amendment 2 (SIEM search clarity):** the merged Phase 3/4 review
+   cycle (ruling G) gains commits 3.2 (ruled verb tooltips; "Example:"
+   placeholder; empty-run gating; the ruled three-line section-named
+   error form; "Restore last working query"; the generated-forms parse
+   corpus), 3.3 (chips, remove-only, with the binding Custom-filters
+   boundary test), and 3.4 (reversible surrounding events with the
+   ruled block copy). Merged-cycle sizing S-M + S -> M.
+4. **Section 19 numbering final:** Amendment 1 Delta B = 19.17-19;
+   Amendment 2 A2-AC-1..7 = 19.20-26.
+
+Every in-place edit below is one of these four items; anything not
+listed is unchanged from the approved text.
 
 Standing constraints restated as binding for every phase: the two owner
 asset files (`frontend/public/videos/spectyrvideo.mp4`,
@@ -67,14 +116,19 @@ behavior table on Detections and Endpoints:
 | `Endpoints.jsx` | Hook at `:67`; fetch on tab open/reset (`:82-84`) and pivot (`:95-101`); scope refetch on tab visibility (`:86-93`, no poll); rows (`:110-112`) |
 | `frontend/src/__tests__/scope-truth.test.js` | The three-way label/control/rows synchronization battery for both surfaces |
 
-What workstream 5.6 (Phase 1) **still requires** (Section 2.1 of this
-scaffold plans it): the Investigation Context summary (11.2, OD-12/13),
-SIEM-side integration (the full summary subsuming the status line +
-banner stack), the one-line "Current case / Data scope" reductions on
-Detections and Endpoints (OD-13 — extending `IncidentScopeBar`, not
-replacing it), the 11.3 edited-query and parse-failure honesty notes,
-the 11.4 dual return controls (OD-14/15), and the 11.5 sync-battery
-extensions over SIEM and the new surfaces.
+What workstream 5.6 (Phase 1) **still requires** (Section 2.1, as
+consolidated under Amendment 1 Delta A): the pinned case header
+("Investigating INC-####" / "All activity") unifying the Dashboard
+focus banner; the SIEM case-evidence/expanded-search state pair (scope
+select removed; "Search all evidence" + the single "Return to INC-####
+evidence" action); removal of the M1 toggle and Use Session-wide
+controls from `IncidentScopeBar` (the hook, honesty rows, and refresh
+triggers are kept verbatim; the error-empty state is Retry-only per
+ratified A-OD-3); the 11.3 edited-query and parse-failure honesty notes
+(unchanged); and the three-state sync-battery translation plus the
+structural case-never-changes-implicitly assertion (A1-A.3/A1-A.6 —
+dual return controls and the expandable two-concept summary are
+DROPPED; OD-12/13/14 superseded, OD-15 structural).
 
 ### 1.4 Frozen boundaries inherited (unchanged by Stage 5)
 
@@ -119,37 +173,43 @@ item E records the choice).
   banner (`:552-583`, identity guard `timelineActive` `:352-353`);
   selection/query notices (`:584-594`). Detections/Endpoints scope truth
   per Section 1.3 (M1).
-- **Target:** **added** `frontend/src/components/InvestigationContext.jsx`
-  — the 11.2 summary, pure presentation over EXISTING state (props from
-  the SIEM shell; zero requests of its own — risk R5's mitigation by
-  construction). On SIEM: the full summary **subsumes** the current
-  status line + banner stack into one coherent block (OD-13): one-line
-  always-visible row (current case · data scope · followed clue when
-  live · view mode when live), expandable (OD-12) to the full block
-  including "Results from: `<canonical query>`" (relabeling the existing
-  `:526` echo). On Detections/Endpoints: **adapted**
-  `IncidentScopeBar.jsx` gains the canonical two-concept labeling
-  ("Current case: INC-#### · Data scope: This incident / Session-wide")
-  — an extension of the M1 bar, not a new component. **Adapted**
-  `Siem.jsx`: 11.3 notes (bar text differs from executed -> "Edited.
-  Results below are from the last run."; parse/execution failure ->
-  "Displayed results are from the previous successful query." appended
-  to the existing error box, prior-snapshot preservation is already the
-  behavior); 11.4 dual return controls replacing the single chip
-  (contextual per OD-14: "Return to current case: INC-A" when focus and
-  chip agree or only focus applies; "Back to pivot origin: INC-B" when
-  the origin differs; both when they differ, exactly one when they
-  coincide; OD-15: pivots never move focus — today's behavior, now
-  asserted).
+- **Target (consolidated, A1-A.4 / A1-A.8):** **added**
+  `frontend/src/components/InvestigationContext.jsx` — the SHRUNK
+  case-constant presentation: ONE pinned case line ("Investigating
+  INC-####" / "All activity") plus the expanded-search block rendered
+  only while that state is live (title, followed clue when entered by
+  pivot, "Searching all evidence. Your case INC-#### stays open.", the
+  single "Return to INC-#### evidence" action). Pure presentation over
+  props; zero requests (risk R5 by construction). **Adapted**
+  `Dashboard.jsx`: the global "Focused on incident INC-####" banner is
+  REPLACED by the pinned header. **Adapted** `Siem.jsx`: the scope
+  select is REMOVED in favor of the state pair (case evidence default
+  with the query-bar-adjacent "INC-#### evidence" label + "Search all
+  evidence" action per ratified A-OD-4; expanded search entered only by
+  entity pivot or search-all, exited only by the return action or an
+  explicit case change on Incidents); the status line kept with
+  "Results from:" labeling (the LCQL scope token stays visible there
+  and only there); 11.3 notes (bar text differs from executed ->
+  "Edited. Results below are from the last run."; parse/execution
+  failure -> "Displayed results are from the previous successful
+  query.", prior-snapshot preservation is already the behavior).
+  **Adapted** `IncidentScopeBar.jsx`: toggle + Use Session-wide
+  REMOVED; pinned header rendered; `useIncidentScope`, the honesty rows
+  ("Loading incident scope", "Displayed rows are from the last
+  successful scope read.", Retry), and the per-surface refresh triggers
+  kept verbatim (error-empty state Retry-only, ratified A-OD-3).
 - **Constrained today by:** `scope-truth.test.js` (M1 battery),
   `workbench*.test.js` (shell behavior), `scope-no-mutation.test.js`.
-- **Tests to add:** `investigation-context.test.js` (summary == executed
-  query / case / scope / clue / view; never disagrees — acceptance 13);
-  extensions to `scope-truth.test.js` (SIEM three-way sync; atomicity at
-  the state-model level); `workbench-states.test.js` (11.3 notes;
-  11.4 dual-control matrix: agree/differ/none).
+- **Tests to add:** `investigation-context.test.js` (pinned line in
+  both states; block with/without clue; single return naming the case
+  — translated acceptance 13); `scope-truth.test.js` TRANSLATED to the
+  three-state battery (a case-selected surface never renders
+  all-activity rows; atomicity at the state-model level);
+  `workbench-states.test.js` (11.3 notes; the single-return matrix +
+  the structural no-implicit-case-change assertion — the dual-control
+  matrix is dropped).
 
-### 2.2 Workstream 5.4 — neutral progress vocabulary (Phase 2)
+### 2.2 Workstream 5.4 — Live Progress and Reinforcement (Phase 2)
 
 - **Current copy inventory (verified):** `PhaseStrip`
   (`Incidents.jsx:19-40`): "Incident telemetry is still loading." /
@@ -203,6 +263,29 @@ item E records the choice).
   "N to review" everywhere. Backend: D4 field test (observable-only
   shape; count correctness on a fixture session; structural no-answer-key
   guard extended over the new reader).
+- **Consolidated additions (A1-B.8; ruled adjustments):** action-result
+  **toasts** for exactly the A1-B.3.1 trigger list T1-T5 (disposition
+  results with the observable remaining count; action results rendered
+  from the action POST response fields only, shape-identical across
+  required/acceptable/collateral; the two milestones). **T1
+  sealed-roster note (ruled):** the remaining-count line derives from
+  the shared roster and renders only once the incident's roster is
+  SEALED; before seal, or for a disposition in no sealed incident
+  roster, the toast confirms the disposition alone. NO toast for
+  read-only operations, case selection, classification selection,
+  submission, or any fact a persistent surface already announces (one
+  announcement per fact). The **incident checklist** folds INTO
+  `PhaseStrip` (lines: telemetry / detections reviewed / classification
+  selected / response actions taken / ready to submit; the "Investigate
+  evidence" step is dropped — no observable completion state). **Leak
+  rule binding (A1-B.3.2 / 19.18):** every line renders identically for
+  every incident; the response line shows the D4 count plus the ONE
+  static prompt "Consider whether containment or remediation is
+  needed." — **GUIDED-ONLY as ruled (B-OD-5)**, suppressed in SOC Queue
+  and Hardcore; the count line renders in all modes. Vocabulary rows:
+  the Session-wide strings leave the module; the case-constant terms
+  (A1-A.5 ratified finals) and the toast/checklist strings enter as
+  canonical rows.
 
 ### 2.3 Workstream 5.2 — pivot transition clarity (Phase 3)
 
@@ -230,12 +313,45 @@ item E records the choice).
   consuming the same `uiCopy.js` transition forms. First-use explainer
   text is NOT rendered here (it is 5.5 machinery; Phase 6 adds it into
   the banner's explainer slot).
-- **Tests to add:** `pivot-transitions.test.js` — banner content per 8.3
-  row (from-incident, from-session, OR-refine folding, from-descent,
-  from-surrounding, repeat-use always-renders); banner dies with its
-  snapshot; no-results persistence; generator fixtures unchanged
-  (Section 17: no query changes — asserted by the untouched
-  `workbench-pivots.test.js` corpus).
+- **Tests to add:** `pivot-transitions.test.js` — the transition
+  surface per the translated 8.3 matrix (from case evidence enters
+  Expanded search; within Expanded search updates the clue; no-case is
+  plain; OR-refine folding; from-descent; from-surrounding; repeat-use
+  always-renders); the surface dies with its snapshot; no-results
+  persistence; state entry/exit (pivot-entry, search-all-entry,
+  return-exit, case-change-exit).
+- **Consolidated (A1-A.8 Phase 3; A2-6):** the transition surface IS
+  the expanded-search block (Delta A): a pivot from case evidence
+  enters Expanded search naming the clue; "Scope changed: INC-#### ->
+  Session-wide." copy is retired; the OR fresh-query notice still folds
+  into the one announcement. The merged Phase 3/4 review cycle
+  additionally lands Amendment 2:
+  - **Commit 3.2 (query clarity):** ruled verb tooltips for
+    `==`/`!=`/Pivot/Surrounding events (A2-R.1 canonical finals); the
+    "Example:" placeholder; empty-run gating ("No query entered.";
+    Run disables ONLY on a truly empty bar); the RULED three-line error
+    form — "This search was not run." / "The {Time / Source / Event
+    type / Filters} section could not be read." / the locked 11.3 third
+    line — section named client-side from the parser position;
+    "Restore last working query"; the generated-forms parse corpus
+    (frontend byte-pin + `test_lcql.py` tests-only extension;
+    generated-query failure is a DEFECT, never a player error).
+  - **Commit 3.3 (chips):** remove-only read projection of the
+    executed canonical FILTERS; removal regenerates through the new
+    `lcqlPivots.js` remove/join generator form and reruns; the BINDING
+    boundary test — "Custom filters" never renders for a
+    conjunction-only query and always renders for any top-level OR,
+    including the IP-pivot and identity-descent product forms.
+  - **Commit 3.4 (reversible surrounding events):** single-depth hold
+    of the prior evidence view; ruled block copy "Activity around the
+    selected event on {host}" / "Occurrence ascending" / "Back to
+    previous results"; return redisplays the held frozen snapshot with
+    zero requests.
+  - First-use explainer: retired into the Pivot tooltip (Delta B help
+    model); the Phase 6 explainer slot is gone.
+  `lcqlPivots.js` gains the remove/join form (the single query author
+  gains a form, never a second author); `workbench-pivots.test.js` and
+  backend `test_lcql.py` extend to the closed corpus (tests only).
 
 ### 2.4 Workstream 5.3 — inspector-selection connection (Phase 4)
 
@@ -278,32 +394,49 @@ empty states; **added** Tier 1 generic templates (code constants) and
 Tier 2 scenario paragraphs (schema v2 top-level field, per-scenario
 authored commits).
 
+**Consolidated additions (A1-B.8; ratified B-OD-1 Option 1):** the
+submit-success flow becomes Case Closed (restrained, static,
+reduced-motion honoring) -> Incident Grade reveal -> review. The
+**Learning Review home moves to the Metrics/Analytics tab**
+(per-incident, durably revisitable, Incident Grade vs Session
+Performance labeling preserved with a per-incident selector); the
+Incidents completed pane shows the Case Closed summary + the "Review
+what you learned" path; the in-workspace modal NEVER renders teaching
+content again (one venue). Achievements (Case Closed, Clean Triage,
+Response Ready, No Collateral, Solo Close, Perfect Case) are computed
+at render from the served frozen record only (derivations A1-B.4.3);
+deferred achievements stay deferred (B-OD-3). Key takeaway renders
+`scenario_rationale` (null -> section omitted, ruling H); zero new
+authoring.
+
 ### 2.6 Workstream 5.5 — Guided onboarding (Phase 6)
 
 - **Current:** no onboarding machinery anywhere (verified — contract
   4.2); mode is client-known (`Dashboard.jsx:35` `gameMode`, set from
   `/api/game-state` at `:87`); a Docs page exists
   (`frontend/src/pages/Docs.jsx`) — the OD-7 reopen path has a home.
-- **Target:** **added** `frontend/src/components/onboarding.js`
-  (concept registry + localStorage persistence) and an anchored-callout
-  component; **adapted** the five load-bearing surfaces to mount
-  callouts at the 12.2 moments; tooltips for `==`/`!=`/Pivot augmenting
-  the existing title attributes (`EventInspector.jsx:108,126`);
-  **adapted** `Docs.jsx` + a Help affordance for "Show tips again".
-  Gating: `ONBOARDING_MODES = ['guided']` allow-list against the client
-  `gameMode` (client-only feature per D5; no server field).
-  **[Scaffold decision — persistence key layout]**
-  `localStorage["spectyr_onboarding_v1"]` = JSON
-  `{ "seen": { "<concept_id>": true, ... }, "dismissed_all": bool }`
-  with concept ids: `phase_strip`, `triage_actions`, `feed_threats`,
-  `scope`, `operators`, `response_vs_review`, `ready_submit`,
-  `post_review`. Reset/Practice Another never clear it; "Show tips
-  again" writes `{}`.
-- **Tests to add:** `onboarding.test.js` — first-run-once per concept;
-  dismiss / dismiss-all; reopen path; persistence across
-  reset/practice-another; **Hardcore-never and SOC-Queue-never**
-  (allow-list assertions); the copy denylist (correctness phrasing,
-  scenario answers, active-scenario category names).
+- **Target (consolidated, A1-B.5 + A2-R rulings; replaces the
+  callout/persistence model — the previously ratified
+  `spectyr_onboarding_v1` layout is SUPERSEDED with D5):** **added**
+  permanent accessible tooltips for NINE controls (Promote, Dismiss,
+  Reopen, Feed/Threats, `==`, `!=`, Pivot, Expanded search, Surrounding
+  events) with the ruled canonical finals; all modes, every visit
+  (invariant-7 reading recorded: passive player-invoked mechanics help,
+  not a tutorial interruption). **Added** the Guided-only "Need a
+  hint?" flow: Level 1 mechanics help + Level 2 generic investigation
+  nudges, both static and scenario-independent
+  (`HINT_MODES = ['guided']` allow-list; the binding neutrality rule —
+  availability, ordering, and wording never vary with hidden state —
+  enforced by a structural inputs test: surface id, control id, level,
+  nothing else). Level 3 scenario hints DEFERRED (B-OD-2). Hardcore:
+  tooltips + factual confirmations + final results only. No once-only
+  persistence, no reopen machinery, no Docs-page coupling.
+- **Tests to add:** `help-model.test.js` — tooltip presence on all nine
+  controls in every mode; hint flow Guided-only (**Hardcore-never and
+  SOC-Queue-never** allow-list assertions); the structural hint-inputs
+  (neutrality) test; the copy denylist over tooltip/hint strings
+  (correctness phrasing, scenario answers, active-scenario category
+  names); Hardcore purity (no prompt line, no hints, no coaching).
 
 ---
 
@@ -318,7 +451,7 @@ each disclosed here and again in the Phase 7 report:
 | D2 | Tier 2 scenario rationale | **top-level** schema v2 field `expected_response` (**[Scaffold decision]** — a SIBLING of `triage_review`, Section 11 item C) | 5.5 + per-scenario |
 | D3 | Completed-strip total | **none** — frontend reads the score view's `detection.total` (contract's stated default) | 2.3 |
 | D4 | `related_actions` observable count on active incident cards | `GET /api/incidents` active sealed cards | 2.2 |
-| D5 | Onboarding persistence | client localStorage only | 6.1 |
+| D5 | SUPERSEDED (consolidated revision): the help model has no once-only persistence; no client store ships in Stage 5 (progression store deferred, B-OD-4) | — | — |
 | D6 | NO other changes | event payloads, LCQL, snapshot identity/tokens, readiness rules, scoring semantics/weights, detection generation, world, answer-key grammar (except D2), pre-submission shapes | — |
 
 ### 3.1 D1 — the `response_review` frozen breakdown (complete field plan)
@@ -494,6 +627,27 @@ at implementation and reviewed at the phase's [STOP]).
 | "Show tips again" / "Don't show tips" | 12.2 | 6.1 |
 | PhaseStrip "Investigate" step detail | **NEW** (kept observable-neutral) | 2.2, [STOP] review |
 
+**Consolidated copy changes (governing: A1-A.5 ratified finals; A2-R.1
+ruled finals; A1-B strings):** the "Scope changed: INC-#### →
+Session-wide." row, its Session-wide subcopy, the 11.2 "Current case: /
+Data scope:" family, "Use Session-wide", and the onboarding rows ("Show
+tips again" / "Don't show tips", the once-only pivot explainer) are
+SUPERSEDED. Entering as canonical rows in their owning commits (all
+em-dash and denylist scanned): the case-constant terms ("Investigating
+INC-####", "All activity", "INC-#### evidence", "Expanded search",
+"Searching all evidence. Your case INC-#### stays open.", "Return to
+INC-#### evidence", "Search all evidence", the return subcopy); the
+nine ruled tooltips; the ruled three-line error form ("This search was
+not run." / "The {Time / Source / Event type / Filters} section could
+not be read." / the locked 11.3 third line); "No query entered.";
+"Restore last working query"; "Back to previous results"; "Custom
+filters"; the "Example:" placeholder; the surrounding block copy
+("Activity around the selected event on {host}" / "Occurrence
+ascending"); the toast strings (T1-T5); the checklist lines + the
+Guided-only prompt ("Consider whether containment or remediation is
+needed."); Case Closed, the achievement labels, and "Review what you
+learned".
+
 Tier 2 scenario paragraphs are answer-bearing authored content — they
 follow the per-scenario review cadence (Section 6, Phase 5), not this
 table.
@@ -525,28 +679,35 @@ the Section 11 register). No product code.
 - **Concern:** one truthful context layer over existing state; F8 closed
   architecturally; M1 foundation extended, never rebuilt.
 - **Prerequisites:** Phase 0 approval.
-- **Files:** added `InvestigationContext.jsx`, `uiCopy.js` (11.x strings
-  only at this phase), `investigation-context.test.js`; adapted
-  `Siem.jsx`, `IncidentScopeBar.jsx`, `scope-truth.test.js`,
+- **Files:** added `InvestigationContext.jsx`, `uiCopy.js`
+  (case-constant context strings at this phase),
+  `investigation-context.test.js`; adapted `Siem.jsx`,
+  `IncidentScopeBar.jsx`, `Dashboard.jsx`, `scope-truth.test.js`,
   `workbench-states.test.js`.
 - **Endpoint/field changes:** none (frontend-only phase; the summary
   issues no requests).
 - **Commits:**
-  - (1.1) internal: `uiCopy.js` created with the 11.x context strings;
-    `InvestigationContext` component + tests rendering from mocked state
-    (not yet mounted). No behavior change.
-  - (1.2) **[STOP]** SIEM integration: the summary subsumes the status
-    line + banner stack (OD-13 full form; OD-12 one-line + expand);
-    "Results from" labeling of the existing canonical-query echo;
-    Detections/Endpoints `IncidentScopeBar` two-concept labeling.
-    Section 17 rows landing: 5.6 frontend "context summary == executed
-    query"; 11.5 "summary never disagrees".
-  - (1.3) **[STOP]** 11.3 + 11.4: edited-note; parse/execution-failure
-    stale-results statement; dual return controls (contextual, each
-    naming its target; OD-15 focus preservation asserted). Section 17
-    rows: parse-failure notice; dual return controls; the SIEM leg of
-    the three-way sync battery + scope-change atomicity (state-model
-    level).
+  - (1.1) internal: `uiCopy.js` created with the case-constant context
+    strings (A1-A.5 ratified finals + the 11.3 notes);
+    `InvestigationContext` (pinned line + expanded-search block) +
+    tests rendering from mocked state (not yet mounted). No behavior
+    change.
+  - (1.2) **[STOP]** the case-constant state model lands: pinned header
+    on Detections/Endpoints/SIEM (replacing the Dashboard focus
+    banner); All-activity states; SIEM state pair (scope select
+    removed; "Search all evidence" per A-OD-4; expanded-search block;
+    single return); `IncidentScopeBar` toggle + Use Session-wide
+    removed (hook + honesty rows kept); "Results from" labeling of the
+    existing canonical-query echo; `scope-truth.test.js` translated to
+    the three-state battery. Section 17 rows landing: 5.6 frontend
+    "pinned line/block == executed state" (translated 13).
+  - (1.3) **[STOP]** 11.3 notes (edited-note; parse/execution-failure
+    stale-results statement); the structural
+    case-never-changes-implicitly assertion; the single-return matrix
+    (translated 11); battery completion — translated acceptance 10-13
+    green. Section 17 rows: parse-failure notice; single return; the
+    SIEM leg of the three-state battery + case-change atomicity
+    (state-model level).
 - **Section 17 battery rows:** 5.6 frontend rows split across 1.2/1.3 as
   above; 5.6 backend row (structural guard over new readers) is N/A this
   phase — no new backend reader exists (recorded; D4's reader lands in
@@ -559,7 +720,7 @@ the Section 11 register). No product code.
 
 ---
 
-**Phase 2 — neutral progress vocabulary (5.4).**
+**Phase 2 — Live Progress and Reinforcement (5.4, consolidated).**
 - **Concern:** one observable vocabulary everywhere; 0-of-0 resolved;
   the honest related-actions count.
 - **Prerequisites:** Phase 1.
@@ -584,11 +745,19 @@ the Section 11 register). No product code.
   - (2.3) **[STOP]** completed strip (score-view-fed) + active strip
     gated to in_progress + 0-of-0 regression test. Section 17 row:
     completed-strip regression.
+  - (2.4) **[STOP]** toasts T1-T5 (trigger-exactness tests; the ruled
+    T1 sealed-roster note; `role="status"`/polite a11y; the
+    no-duplication rule) + the checklist line set folded into
+    `PhaseStrip` (classification line; the D4 count line; the
+    GUIDED-ONLY static prompt per ruled B-OD-5; the leak battery per
+    19.18). Section 17 rows: 19.17 toast exactness; 19.18 checklist
+    leak.
 - **Gate checkpoint:** `--all` for 2.2 (payload change); `--frontend`
-  for 2.3; `--all` at phase end.
-- **Stop point:** acceptance 7 and 14 green; every 10.2 surface reads
-  constants; owner approves the [STOP] commits (the related-activity
-  LIST question — Section 11 item A — must be ruled before 2.2).
+  for 2.3 and 2.4; `--all` at phase end.
+- **Stop point:** acceptance 7, 14, and 19.17-18 green; every 10.2
+  surface reads constants; owner approves the [STOP] commits (the
+  related-activity LIST question — Section 11 item A — is RULED:
+  ruling A, count only).
 - **Rollback:** 2.2 reverts as one commit (field + consumers together).
 
 ---
@@ -596,21 +765,36 @@ the Section 11 register). No product code.
 **Phase 3 — pivot transition clarity (5.2).**
 - **Concern:** every pivot/refine announces itself; one notice system.
 - **Prerequisites:** Phase 2 (consumes `uiCopy` 8.2 forms).
-- **Files:** adapted `Siem.jsx` (banner slot + provenance state +
-  queryNotice folding), `uiCopy.js` (8.2 forms — specified once,
-  consumed by banner AND the Phase 1 summary per 8.4); added
-  `pivot-transitions.test.js`.
-- **Endpoint/field changes:** none. `lcqlPivots.js` untouched (no query
-  changes; generator fixtures stay green — Section 17's 5.2 backend
-  row).
-- **Commits:**
-  - (3.1) **[STOP]** transition banner: clue naming, conditional scope
-    transition, origin + return path, OR-notice folding, no-results
-    persistence, identity-guard death. Section 17 rows: all 5.2
-    frontend rows except first-use gating (Phase 6).
-- **Gate checkpoint:** `--frontend`; `--all` at phase end.
-- **Stop point:** acceptance 5 green; 8.3 matrix demonstrated in Chrome.
-- **Rollback:** single-commit revert restores today's banner behavior.
+- **Files:** adapted `Siem.jsx` (transition surface + provenance state
+  + queryNotice folding + query-clarity + surrounding hold),
+  `EventInspector.jsx` (ruled tooltips + Pivot casing),
+  `FieldSidebar.jsx` (tooltip), `lcqlPivots.js` (the remove/join
+  generator form + corpus — the one sanctioned author gains a form),
+  `uiCopy.js` (transition forms + A2 ruled strings); added
+  `pivot-transitions.test.js`, `query-clarity.test.js`, chips tests;
+  extended `workbench-pivots.test.js` and backend `test_lcql.py`
+  (tests only).
+- **Endpoint/field changes:** none (backend touch is tests-only).
+- **Commits (ONE review cycle with Phase 4, ruling G; each separable):**
+  - (3.1) **[STOP]** the expanded-search block as the transition
+    surface (Delta A): clue naming, all-evidence statement, single
+    return, OR-notice folding, no-results persistence, identity-guard
+    death, state entry/exit tests.
+  - (3.2) **[STOP]** query clarity (Amendment 2): ruled verb tooltips;
+    "Example:" placeholder; empty-run gating ("No query entered.");
+    the ruled three-line section-named error form; "Restore last
+    working query"; the generated-forms parse corpus (19.20-22, 19.24,
+    19.26).
+  - (3.3) **[STOP]** chips: remove-only read projection; the
+    `lcqlPivots.js` remove/join form; rerun on removal; the BINDING
+    Custom-filters boundary test (19.23).
+  - (3.4) **[STOP]** reversible surrounding events: single-depth hold;
+    ruled block copy; zero-request frozen-snapshot restore (19.25).
+- **Gate checkpoint:** `--frontend` per commit (`--all` where
+  `test_lcql.py` extends); `--all` at phase end.
+- **Stop point:** acceptance 5 and 19.20-26 green; the translated 8.3
+  matrix + the A2 legs demonstrated in Chrome.
+- **Rollback:** each commit reverts separably.
 
 ---
 
@@ -670,11 +854,19 @@ the Section 11 register). No product code.
     payload never in the session aggregate); real-drip corpus
     reconciliation pass. **R2: these guards land in THIS commit, with
     the data.** Disclosure: the one serialized-field change.
-  - (5.4) **[STOP]** review modal UI: Completed / Missed / Unnecessary
-    -or-harmful sections + whys, attempt history (separately labeled),
-    per-detection dispositions with correctness, the `response_actions`
-    playbook render (already served, app.py:4611-4628), 7.1 empty
-    states, loading/error + retry. Incident Grade labeling untouched.
+  - (5.4) **[STOP]** the payoff + Learning Review home (ratified
+    B-OD-1 Option 1): Case Closed moment -> Incident Grade reveal; the
+    full teaching render (Completed / Missed / Unnecessary-or-harmful
+    sections + whys, attempt history separately labeled, per-detection
+    dispositions with correctness, the `response_actions` playbook
+    render — already served, app.py:4611-4628 — Key takeaway from
+    `scenario_rationale`, achievements from the frozen record) moves to
+    the Metrics/Analytics **Learning Review home** with a per-incident
+    selector; the Incidents completed pane renders the Case Closed
+    summary + "Review what you learned" path; the modal never renders
+    teaching content (ONE venue, 19.19); 7.1 empty states,
+    loading/error + retry; Incident Grade vs Session Performance
+    labeling preserved.
   - (5.5) internal->**[STOP]** at schema disclosure: D2 schema field
     (top-level `expected_response`) + loader validation + ledger test +
     freeze wiring (`scenario_rationale` from the field at submit; null
@@ -699,26 +891,27 @@ the Section 11 register). No product code.
 
 ---
 
-**Phase 6 — Guided onboarding (5.5).**
-- **Concern:** first-run teaching, Guided-only, answer-free.
+**Phase 6 — the help model (5.5, consolidated).**
+- **Concern:** controls always understandable; coaching Guided-only;
+  answer-free by construction.
 - **Prerequisites:** Phase 5 (Section 23 order).
-- **Files:** added `onboarding.js`, callout component,
-  `onboarding.test.js`; adapted the five anchor surfaces + inspector
-  tooltips + `Docs.jsx` + the Help affordance; `uiCopy.js` (onboarding
-  copy).
-- **Endpoint/field changes:** none (D5 client-only).
+- **Files:** added `helpContent.js` (tooltip + hint libraries), a
+  tooltip component, `help-model.test.js`; adapted the surfaces
+  carrying the nine controls; `uiCopy.js` (help copy).
+- **Endpoint/field changes:** none (client-only; D5 superseded — no
+  persistence store).
 - **Commits:**
-  - (6.1) internal: concept registry + persistence + allow-list gating +
-    the callout component + full test battery (first-run-once, dismiss,
-    reopen, persistence, **Hardcore/SOC-never**, denylist). Not mounted.
-  - (6.2) **[STOP]** mounting: the five load-bearing callouts (OD-6) at
-    the 12.2 moments + `==`/`!=`/Pivot accessible tooltips + the Phase 3
-    banner's first-use explainer line + Docs/Help reopen path (OD-7).
-- **Section 17 battery rows:** all 5.5 rows at 6.1 (machinery) and 6.2
-  (surface gating).
+  - (6.1) internal: tooltip + hint libraries (`HINT_MODES` allow-list;
+    the structural hint-inputs neutrality test; denylist battery). Not
+    mounted.
+  - (6.2) **[STOP]** mounting: permanent accessible tooltips on the
+    nine controls (ruled finals) + the Guided "Need a hint?" flow
+    (L1/L2) + Hardcore purity assertions.
+- **Section 17 battery rows:** all 5.5 replacement rows at 6.1
+  (machinery) and 6.2 (surface gating).
 - **Gate checkpoint:** `--frontend`; `--all` at phase end.
-- **Stop point:** acceptance 8 green; Chrome first-run + Hardcore-purity
-  passes.
+- **Stop point:** replacement acceptance 8 green; Chrome tooltip/hint +
+  Hardcore-purity passes.
 - **Rollback:** 6.2 unmounts cleanly; 6.1 is inert without it.
 
 ---
@@ -761,15 +954,25 @@ per Section 2/6; names final at implementation, structure binding):
 | 5 | Pivot names clue + transition, origin, return; banner dies with snapshot | 3.1 | `pivot-transitions.test.js` (8.3 matrix + identity-guard death) |
 | 6 | Selection–inspector connection; persistence across views/sort | 4.1 | `inspector-connection.test.js` |
 | 7 | Every progress count == shared roster counts | 2.2 | `progress-vocabulary.test.js` count-source assertions + existing `test_incident_scope.py` roster guards (unchanged) |
-| 8 | Guided help once/dismissible/reopenable; never Hardcore or SOC Queue | 6.1/6.2 | `onboarding.test.js` allow-list + persistence battery |
+| 8 | REPLACED (A1-B.6): tooltips all modes, mechanics-only; hints Guided-only, static, hidden-state-independent; Hardcore coaching-free | 6.1/6.2 | `help-model.test.js` allow-list + neutrality + purity battery |
 | 9 | No pre-submission correctness/totals/forbidden phrasing | 2.1 scan + 5.3 markers + every phase | forbidden-phrase scan; planted markers; structural guards; full inherited batteries |
-| 10 | Label/control/rows always agree on all three surfaces | 1.2/1.3 (+M1 base) | `scope-truth.test.js` (M1 rows + SIEM extension) |
-| 11 | Dual return controls when focus != origin; one when equal | 1.3 | `workbench-states.test.js::dual_return_controls_matrix` |
+| 10 | TRANSLATED (A1-A.6): header/state/rows agree with the single scope state on all three surfaces; a case-selected surface never renders all-activity rows | 1.2/1.3 (+M1 base) | `scope-truth.test.js` three-state battery |
+| 11 | TRANSLATED (A1-A.6): exactly one return action in Expanded search naming the current case; the case changes only by explicit selection (structural) | 1.3 | `workbench-states.test.js::single_return_and_structural_assertion` |
 | 12 | Stale-results statement after failed parse/execution | 1.3 | `workbench-states.test.js::parse_failure_stale_statement` |
-| 13 | Context summary matches executed query/case/scope/clue/mode | 1.2 | `investigation-context.test.js` |
+| 13 | TRANSLATED (A1-A.6): pinned line, expanded-search block, timeline mode, and Results-from echo never disagree; the echo keeps the scope token | 1.2 | `investigation-context.test.js` |
 | 14 | Completed incident never renders active strip | 2.3 | `progress-vocabulary.test.js::completed_strip_regression` |
 | 15 | Inherited batteries green; fields disclosed; zero console errors | every phase; 7 | `run_gates.py --all` per phase; Phase 7 report + console sweep |
 | 16 | Count reconciliation (incl. inaction fold-in + out_of_order subset) | 5.2 (fixtures) + 5.3 (corpus) | `test_response_review.py::test_count_reconciliation_fixtures` / `::test_count_reconciliation_real_drip_corpus` |
+| 17 | Toast trigger-list exactness; no duplication; action toasts shape-identical (A1-B.6) | 2.4 | `progress-vocabulary.test.js` toast battery |
+| 18 | Checklist renders identically regardless of the answer key; the Guided-only prompt byte-identical; no answer-derived totals (A1-B.6) | 2.4 | checklist leak battery |
+| 19 | Case Closed / achievements / Key takeaway deterministic from the frozen record; post-submission only; ONE venue (A1-B.6) | 5.4 | `review-teaching.test.js` determinism + venue assertions |
+| 20 | Empty-run behavior (A2-AC-1) | 3.2 | `query-clarity.test.js` |
+| 21 | Section-named malformed errors, ruled three-line form (A2-AC-2) | 3.2 | `query-clarity.test.js` |
+| 22 | Restore last working query, request-free (A2-AC-3) | 3.2 | `query-clarity.test.js` |
+| 23 | Chip honesty + the binding Custom-filters boundary (A2-AC-4) | 3.3 | chips battery |
+| 24 | Every product-generated query parses; failure is a defect (A2-AC-5) | 3.2 | generated-forms corpus (frontend byte-pin + `test_lcql.py`) |
+| 25 | Surrounding-events hold + zero-request restore (A2-AC-6) | 3.4 | `query-clarity.test.js` surrounding battery |
+| 26 | Ruled tooltips permanent, accessible, mode-universal; pivot transition naming (A2-AC-7) | 3.2 (+6.2) | `query-clarity.test.js` + `help-model.test.js` |
 
 No criterion is unmapped; no test is "covered implicitly."
 
@@ -784,7 +987,7 @@ No criterion is unmapped; no test is "covered implicitly."
 | R3 record-schema ripple into 3.9A tests | additive-only field; byte-identity tests extended never weakened; Option B fallback recorded | 5.3 |
 | R4 rationale authoring stalls the stage | Tier 1 ships at 5.1 (zero authoring); Tier 2 is the LAST sub-batch, per-scenario, non-blocking (phases 1-4 already closed; review teaches with generic whys meanwhile) | 5.1 + 5.6..N |
 | R5 context summary drifts (second truth) | renders existing state only, no state or requests of its own; covered by the sync battery | 1.1/1.2 |
-| R6 onboarding leaks into Hardcore / nags | allow-list gating + Hardcore/SOC-never tests + per-concept once-only persistence, all landing with the machinery before mounting | 6.1 |
+| R6 coaching leaks into Hardcore / feedback nags | `HINT_MODES` allow-list + Hardcore/SOC-never tests + passive tooltips; the toast trigger list, the no-duplication rule, and the checklist leak battery are the anti-nag mitigations, landing with the machinery before mounting | 2.4, 6.1 |
 | R7 copy churn breaks scans late | the vocabulary lands as constants with its own test in **2.1**, before any later phase consumes it; Phase 1's 11.x strings live in the same module from 1.1 so nothing is defined twice | 2.1 (module seeded 1.1) |
 
 ---
@@ -817,6 +1020,16 @@ full pre-submission run: no response_review, no rationale strings, no
 expected-action content in any payload; planted-marker spot-check;
 all-tab console sweep. (9) 0-of-0 regression — submitted incident shows
 the completed strip, never the active strip.
+
+Consolidated workflow translations (Amendments 1+2): workflow 1
+verifies tooltips every visit, Guided hints on request, toasts per the
+trigger list, and the Case Closed -> grade -> Learning Review path
+(byte-identical re-render); workflows 3-5 walk the pinned-case chain
+(the focus/origin divergence is unrepresentable), Retry-only
+scope-error recovery, the empty-run and malformed-run legs (ruled
+error form), restore, and the surrounding enter/return leg; workflow 7
+asserts Hardcore purity (tooltips only, no prompt line, factual toasts,
+payoff after submission).
 
 Full batteries (`run_gates.py --all`) before and after the workflow
 sweep. Closing report `docs/stage-5-implementation-report.md` MUST
@@ -911,13 +1124,16 @@ this document.
 
 | Phase | Size | Dominant cost |
 |---|---|---|
-| 1 scope truth + context | **M** | SIEM status/banner consolidation without behavior regressions; sync-battery extension |
-| 2 vocabulary + D4 | **M** | surface sweep + the one backend field with guards |
-| 3 pivot transitions | **S-M** | banner provenance + notice folding |
-| 4 inspector | **S** | interaction polish + a11y assertions |
-| 5 review teaching | **L** | the scorer detail extraction + freeze + fixtures + modal + schema + 20 authored paragraphs |
-| 6 onboarding | **M** | eight concepts, gating, persistence, denylist |
-| 7 certification | **M** | nine workflows + report |
+| 1 scope truth + context (case-constant) | **S-M** | state-pair rework + battery translation; dual controls and the expandable summary dropped |
+| 2 Live Progress and Reinforcement + D4 | **M-L** | vocabulary sweep + toasts + checklist leak battery + the one backend field |
+| 3+4 merged cycle: transitions, query clarity, chips, surrounding, inspector | **M** | expanded-search surface + ruled error taxonomy + chips + generated-forms corpus + inspector polish |
+| 5 review teaching + payoff | **L** (grown) | scorer detail + freeze + fixtures + schema + the Learning Review home + achievements + 20 authored paragraphs |
+| 6 help model | **M** | nine tooltips, hint libraries, gating, neutrality + denylist |
+| 7 certification | **M** | nine workflows (consolidated translations) + report |
+
+Net vs the approved plan: modestly larger — growth concentrated in
+Phases 2 and 5, partially offset by Phase 1's shrink (the A1-B.8 net
+statement).
 
 ---
 
