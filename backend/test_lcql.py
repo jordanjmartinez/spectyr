@@ -474,6 +474,43 @@ def test_or_scan_fixture_corpus_matches_ast_verdicts():
             f"AST verdict diverges for FILTERS {filters_text!r}"
 
 
+# The GENERATED-FORMS closure corpus (Stage 5 Amendment 2, A2-2.6 / 19.24):
+# every product generator form x adversarial values (backslashes, embedded
+# double quotes, spaces, reserved words, pipe/star metacharacters), plus the
+# refineFilter closure cases (append onto canonical bases, append after
+# append, the fresh OR-fallback output). The frontend generator test builds
+# the SAME strings via generator calls and asserts byte-equality against a
+# verbatim port of this list (the shared-fixture pattern: one corpus, two
+# consumers). A generated query failing to parse is a DEFECT, never a
+# player error. TESTS ONLY -- no engine change.
+GENERATED_FORMS_CORPUS = [
+    '4h | * | * | user_account == "ACME\\\\o hara"',
+    '12h | * | * | target_filename == "C:\\\\Tools\\\\say \\"hi\\".exe"',
+    '24h | * | * | image == "and"',
+    '15m | Proxy | * | url contains "evil|site*.example"',
+    'all | * | * | severity == "high"',
+    'all | * | * | severity == "high" and hostname != "ACME-WS10"',
+    '1h | * | * | hostname == "ACME-WS10"',
+    'all | * | * | message == "say \\"or\\" and | *"',
+    "all | * | * | user_account == \"O'HARA@acme.com\" or UserPrincipalName == \"O'HARA@acme.com\"",
+    'all | ACME-WS10 | * | severity == "high"',
+]
+
+
+def test_generated_forms_corpus_parses_and_is_canonical():
+    """Every corpus entry parses structurally and is byte-canonical and
+    idempotent -- the backend half of the generated-forms invariant."""
+    for q in GENERATED_FORMS_CORPUS:
+        parsed = parse(q)
+        c1 = canonical(parsed)
+        assert c1 == q, f"generated form must be byte-canonical: {q!r} -> {c1!r}"
+        assert canonical(parse(c1)) == c1
+
+
+def test_generated_forms_corpus_has_exactly_ten_entries():
+    assert len(GENERATED_FORMS_CORPUS) == 10
+
+
 def test_full_idempotence_with_catalog():
     for q in list(_CONTRACT_VALID_EXAMPLES) + list(_PIVOT_DESCENT_FIXTURES):
         c1 = canonical(_q(q))

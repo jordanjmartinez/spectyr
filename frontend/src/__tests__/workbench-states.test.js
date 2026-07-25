@@ -148,6 +148,9 @@ test('pre-seal banner shows for an unsealed case and only then', async () => {
 test('a sealed case shows no pre-seal banner; submitted incidents stay anchorable (no special casing)', async () => {
   await act(async () => { renderShell(); });
   expect(screen.queryByText('Incident telemetry is still loading.')).toBeNull();
+  // A2 3.2: Run disables only on a truly EMPTY bar; with text and a ready
+  // case scope it is enabled (the scope never blocks a sealed case).
+  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
   expect(screen.getByRole('button', { name: /Run Query/ })).not.toBeDisabled();
 });
 
@@ -208,8 +211,9 @@ test('11.3: an edited bar shows the edited note; a run that lands clears it', as
   await runQuery();
   expect(screen.queryByTestId('edited-note')).toBeNull();
   fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | * draft' } });
+  // the note carries the canonical 11.3 string plus the A2 Restore action
   expect(screen.getByTestId('edited-note').textContent)
-    .toBe('Edited. Results below are from the last run.');
+    .toContain('Edited. Results below are from the last run.');
   fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
   expect(screen.queryByTestId('edited-note')).toBeNull();
 });

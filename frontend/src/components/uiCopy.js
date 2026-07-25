@@ -105,3 +105,21 @@ export const SUBMIT_PENDING = 'Submit pending';
 // (translated 8.2 no-results rule).
 export const NO_RESULTS_OUTS =
   'No events matched. Broaden the Timeframe or return to the case evidence.';
+
+// === Merged Phase 3/4 commit 3.2: query clarity (Amendment 2, A2-R.1) ======
+// The ruled canonical finals: the four permanent tooltip sentences, the
+// three-line error form (line 3 is the locked 11.3 string, reused
+// verbatim), the empty-run guidance, and Restore.
+export const TOOLTIP_EQ = 'Show only events matching this value.';
+export const TOOLTIP_NEQ = 'Exclude events matching this value.';
+export const TOOLTIP_PIVOT = 'Follow this clue across all available evidence.';
+export const TOOLTIP_SURROUNDING =
+  'Temporarily show activity around the selected event.';
+export const NO_QUERY_ENTERED = 'No query entered.';
+export const PRESERVED_RESULTS_LABEL = 'Results below are from the last run.';
+export const SEARCH_NOT_RUN = 'This search was not run.';
+export const QUERY_SECTION_NAMES = ['Time', 'Source', 'Event type', 'Filters'];
+export const sectionCouldNotBeRead = (section) =>
+  `The ${section} section could not be read.`;
+export const STRUCTURE_LINE = 'The query needs four sections separated by |.';
+export const RESTORE_LAST_QUERY = 'Restore last working query';

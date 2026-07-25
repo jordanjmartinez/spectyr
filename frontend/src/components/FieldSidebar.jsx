@@ -1,6 +1,7 @@
 import React from 'react';
 import { computeFieldSummary } from './fieldSummary';
 import { renderFieldValue } from './siemUtils';
+import { TOOLTIP_EQ } from './uiCopy';
 
 // Field sidebar (Stage 4 Phase 6.2, contract Section 10.3). Derives fields,
 // top-5 values, and counts EXCLUSIVELY from the frozen snapshot's `rows`
@@ -47,7 +48,7 @@ const FieldSidebar = ({ snapshot, running, onValueClick }) => {
                 <button
                   type="button"
                   onClick={() => onValueClick(field, '==', value)}
-                  title={`${field} == "${value}"`}
+                  title={`${TOOLTIP_EQ} (${field} == "${value}")`}
                   className="w-full flex items-center justify-between gap-2 text-xs text-[#57606a] hover:bg-[#eef1f4] px-1.5 py-0.5 rounded"
                 >
                   <span className="truncate">{renderFieldValue(field, value)}</span>

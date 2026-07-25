@@ -96,6 +96,35 @@ export function isConjunctionOnly(filtersText) {
   return !tokens.some((t) => t.toLowerCase() === 'or');
 }
 
+// --- section identification (Amendment 2 commit 3.2) -------------------------
+//
+// Which of the four query sections a parser error position falls in, from
+// the SAME quote-aware top-level-pipe scan splitSegments uses (the backend's
+// _split_segments mirror). Returns 0..3, or null when the text does not
+// split into exactly four top-level segments (a structure-level error, named
+// by the structure line instead). EQUIVALENCE BOUNDARY: valid only while
+// LCQL has no grouping/parentheses (the recorded isConjunctionOnly notice
+// applies here identically -- replace, never patch, if grouping arrives).
+export function sectionIndexAtPosition(query, position) {
+  const segs = [];
+  let quote = null;
+  let start = 0;
+  for (let i = 0; i < query.length; i++) {
+    const c = query[i];
+    if (quote) {
+      if (c === '\\' && i + 1 < query.length) { i += 1; continue; }
+      if (c === quote) quote = null;
+      continue;
+    }
+    if (c === '"' || c === "'") { quote = c; continue; }
+    if (c === '|') { segs.push([start, i]); start = i + 1; }
+  }
+  segs.push([start, query.length]);
+  if (segs.length !== 4) return null;
+  const idx = segs.findIndex(([s, e]) => position >= s && position <= e);
+  return idx === -1 ? 3 : idx;
+}
+
 // --- sidebar / per-field refinement (conjunction-only append vs OR fallback) -
 
 // The exact contract-quoted notice (Section 11, OR-composition restriction).

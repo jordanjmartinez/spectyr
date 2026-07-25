@@ -8,13 +8,16 @@ import {
   refineFilter, splitSegments, pivotHost, pivotAccount, pivotProcessImage,
   pivotFile, pivotIp, pivotDomainProxy, pivotDomainDns, pivotEventType,
   pivotSensorFamily, descentHost, descentSessionAll, descentAccount,
+  OR_FALLBACK_NOTICE, sectionIndexAtPosition,
 } from './lcqlPivots';
 import InvestigationContext from './InvestigationContext';
 import {
   caseEvidenceLabel, SEARCH_ALL_EVIDENCE, RESULTS_FROM_LABEL,
   EDITED_NOTE, STALE_RESULTS_NOTE, filterAdded, excludedFilter,
+  NO_QUERY_ENTERED, PRESERVED_RESULTS_LABEL, SEARCH_NOT_RUN,
+  QUERY_SECTION_NAMES, sectionCouldNotBeRead, STRUCTURE_LINE,
+  RESTORE_LAST_QUERY,
 } from './uiCopy';
-import { OR_FALLBACK_NOTICE } from './lcqlPivots';
 
 // SIEM Investigation Workbench shell (Stage 4 Phase 4). Analyst-driven:
 // the shell submits LCQL text to the server's single query read and renders
@@ -22,9 +25,11 @@ import { OR_FALLBACK_NOTICE } from './lcqlPivots';
 // filtering, no client-side query execution of any kind (contract P8): rows
 // never insert, remove, or reorder until the analyst runs a query again.
 
-// The placeholder is one canonical conforming LCQL example (never key=value).
+// The placeholder is unmistakably an EXAMPLE (Amendment 2, ruled): the
+// Example prefix is part of the placeholder text and the input styles
+// placeholder text in italic, so guidance never resembles a run query.
 export const QUERY_PLACEHOLDER =
-  '1h | Sysmon | ProcessCreate | command_line contains "powershell"';
+  'Example: 1h | Sysmon | ProcessCreate | command_line contains "powershell"';
 
 export const QUERY_HELP_EXAMPLES = [
   'all | * | * | *',
@@ -216,18 +221,32 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
           applySnapshot(body);
           setQueryNotice(noticeAfter);
         } else if (body && body.error && typeof body.error === 'object') {
-          setError(body.error);
+          // A2 3.2: the submitted text rides the error so the broken
+          // SECTION can be named client-side from the parser position.
+          setError({ ...body.error, submitted: q });
         } else {
-          setError({ position: 0, reason: 'The query could not be executed.' });
+          setError({ position: 0, reason: 'The query could not be executed.', submitted: q });
         }
       })
-      .catch(() => setError({ position: 0, reason: 'The query could not be executed.' }))
+      .catch(() => setError({ position: 0, reason: 'The query could not be executed.', submitted: q }))
       .finally(() => setRunning(false));
   };
 
   const runQuery = () => {
-    if (running || scopeBlocked) return;
+    // A2 3.2 (ruled): Run disables ONLY on a truly empty bar -- an empty
+    // query is guidance territory, never an error; a malformed non-empty
+    // query RUNS and receives a section-named teaching error.
+    if (running || scopeBlocked || queryText.trim() === '') return;
     execute(queryText, scopeParam);
+  };
+
+  // A2 3.2 (ruled): Restore last working query -- the canonical snapshot
+  // query is already held client-side; restoring is an edit (no request)
+  // and instantly truthful (the displayed results ARE that query's).
+  const restoreLastWorking = () => {
+    if (!snapshot) return;
+    setQueryText(snapshot.identity.canonical_query);
+    setError(null);
   };
 
   // Refresh re-executes the DISPLAYED snapshot's definition (its canonical
@@ -525,12 +544,13 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
             readOnly={running}
             maxLength={300}
             aria-label="LCQL query"
-            className="log-mono flex-1 pl-4 pr-4 py-2 rounded-md bg-white border border-[#e2e6ea] text-[#1a2332] text-sm placeholder-[#8b949e] focus:border-[#8b949e] focus:outline-none transition-colors"
+            className="log-mono flex-1 pl-4 pr-4 py-2 rounded-md bg-white border border-[#e2e6ea] text-[#1a2332] text-sm placeholder-[#8b949e] placeholder:italic focus:border-[#8b949e] focus:outline-none transition-colors"
           />
           <button
             type="button"
             onClick={runQuery}
-            disabled={running || scopeBlocked}
+            disabled={running || scopeBlocked || queryText.trim() === ''}
+            title={queryText.trim() === '' ? NO_QUERY_ENTERED : 'Run the query in the bar.'}
             className="px-4 py-2 text-xs font-medium rounded-md bg-[#101218] text-white disabled:opacity-50"
           >
             {running ? 'Running' : 'Run Query'}
@@ -538,24 +558,67 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
         </div>
 
         {error && (
+          // A2 3.2 (ruled canonical error form, three lines): the search was
+          // not run; the broken SECTION in plain language (structure line
+          // when the text does not split into four sections); the locked
+          // 11.3 stale-results statement exactly when prior results are
+          // preserved. The parser reason + suggestions stay as the
+          // technical detail; Restore is the one-click recovery.
           <div className="px-3 py-2 rounded-md border border-[#e2e6ea] bg-[#faf6f0] text-xs text-[#1a2332]" role="alert">
-            <span className="font-medium">Parse error at position {error.position}:</span>{' '}
-            {error.reason}
-            {error.suggestions && error.suggestions.length > 0 && (
-              <span className="text-[#57606a]"> Did you mean: {error.suggestions.join(', ')}?</span>
+            <span className="font-medium">{SEARCH_NOT_RUN}</span>{' '}
+            <span>
+              {(() => {
+                const idx = sectionIndexAtPosition(error.submitted || '', error.position || 0);
+                return idx === null ? STRUCTURE_LINE
+                  : sectionCouldNotBeRead(QUERY_SECTION_NAMES[idx]);
+              })()}
+            </span>
+            <span className="block mt-1 text-[#57606a]">
+              {error.reason} <span className="text-[#8b949e]">(position {error.position})</span>
+              {error.suggestions && error.suggestions.length > 0 && (
+                <> Did you mean: {error.suggestions.join(', ')}?</>
+              )}
+            </span>
+            {snapshot && (
+              <span className="block mt-1 text-[#57606a]">{STALE_RESULTS_NOTE}</span>
             )}
             {snapshot && (
-              // 11.3 honesty (locked contract, consumed verbatim): the prior
-              // snapshot is deliberately preserved; this states it.
-              <span className="block mt-1 text-[#57606a]">{STALE_RESULTS_NOTE}</span>
+              <button
+                type="button"
+                onClick={restoreLastWorking}
+                className="mt-1.5 px-2 py-0.5 rounded border border-[#d0d7de] bg-white text-[#1a2332]"
+              >
+                {RESTORE_LAST_QUERY}
+              </button>
             )}
           </div>
         )}
-        {snapshot && !error && queryText !== snapshot.identity.canonical_query && (
+        {snapshot && !error && queryText.trim() === '' && (
+          // A2 3.2: the truly-empty bar is guidance, not an error; the
+          // preserved results stay labeled.
+          <div role="status" data-testid="empty-note" className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a] flex items-center gap-2">
+            <span>{NO_QUERY_ENTERED} {PRESERVED_RESULTS_LABEL}</span>
+            <button
+              type="button"
+              onClick={restoreLastWorking}
+              className="px-2 py-0.5 rounded border border-[#d0d7de] bg-white text-[#1a2332]"
+            >
+              {RESTORE_LAST_QUERY}
+            </button>
+          </div>
+        )}
+        {snapshot && !error && queryText.trim() !== '' && queryText !== snapshot.identity.canonical_query && (
           // 11.3 edited-query honesty: the bar no longer matches the
           // executed snapshot; the results below belong to the last run.
-          <div role="status" data-testid="edited-note" className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a]">
-            {EDITED_NOTE}
+          <div role="status" data-testid="edited-note" className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a] flex items-center gap-2">
+            <span>{EDITED_NOTE}</span>
+            <button
+              type="button"
+              onClick={restoreLastWorking}
+              className="px-2 py-0.5 rounded border border-[#d0d7de] bg-white text-[#1a2332]"
+            >
+              {RESTORE_LAST_QUERY}
+            </button>
           </div>
         )}
 
