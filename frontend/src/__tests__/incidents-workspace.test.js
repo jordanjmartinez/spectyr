@@ -6,7 +6,7 @@
  * Both neutral readiness messages are reachable; no POST fires on render.
  */
 import React from 'react';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within, act } from '@testing-library/react';
 import Incidents from '../components/Incidents';
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
@@ -110,9 +110,60 @@ test('Check Answer is offered in Guided on a sealed incident, and hidden in Hard
 test('Check Answer reads nested classification.correct and marks Assisted', async () => {
   render(<Incidents gameMode="training" activeIncidentId="INC-2000" />);   // guided, sealed
   fireEvent.click(await screen.findByText('Check Answer'));
-  fireEvent.click(await screen.findByText('False Positive'));   // FP path -> immediate check
+  // C1 (F4a): the workspace selector also renders 'False Positive'; the
+  // check flow's click is scoped to the modal (FP path -> immediate check).
+  const cmodal = await screen.findByTestId('classification-modal');
+  fireEvent.click(within(cmodal).getByText('False Positive'));
   expect(await screen.findByText('Classification correct')).toBeInTheDocument();
   expect(screen.getByText(/now marked/)).toBeInTheDocument();   // Assisted note
+});
+
+// --- C1 checkpoint fix (F4a): the ratified A1-B.3.2 workspace selector ----
+
+test('A1-B.3.2 (C1): the workspace selector drives the checklist Classification line before Submit', async () => {
+  render(<Incidents gameMode="soc_queue" activeIncidentId="INC-2000" />);
+  await screen.findByText('brief B');
+  expect(screen.getByText('Classification: not selected')).toBeInTheDocument();
+  const ws = screen.getByTestId('workspace-classification');
+  fireEvent.click(within(ws).getByText('False Positive'));
+  expect(screen.getByText('Classification: False Positive')).toBeInTheDocument();
+  expect(screen.queryByText('Classification: not selected')).toBeNull();
+  // local input only: no state-changing call fired
+  const posts = apiFetch.mock.calls.filter(([, o]) => o && o.method && o.method !== 'GET');
+  expect(posts).toHaveLength(0);
+});
+
+test('C1 (F4a): the workspace threat path reveals the inline category step and completes the line', async () => {
+  render(<Incidents gameMode="soc_queue" activeIncidentId="INC-2000" />);
+  await screen.findByText('brief B');
+  const ws = screen.getByTestId('workspace-classification');
+  fireEvent.click(within(ws).getByText('True Positive'));
+  // a threat verdict without a category is not yet a valid classification
+  expect(screen.getByText('Classification: not selected')).toBeInTheDocument();
+  fireEvent.click(within(ws).getByText('Malware'));
+  expect(screen.getByText('Classification: Malware')).toBeInTheDocument();
+});
+
+test('C1 (F4a): the submit modal flow is unchanged and arrives pre-filled from the workspace selection', async () => {
+  render(<Incidents gameMode="training" activeIncidentId="INC-4000" />);
+  await screen.findByText('brief D');
+  fireEvent.click(within(screen.getByTestId('workspace-classification')).getByText('False Positive'));
+  fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+  // the classifier modal still opens (flow unchanged), pre-filled
+  const modal = await screen.findByTestId('classification-modal');
+  expect(within(modal).getByText('False Positive').closest('button'))
+    .toHaveAttribute('aria-pressed', 'true');
+  expect(within(modal).getByText('True Positive').closest('button'))
+    .toHaveAttribute('aria-pressed', 'false');
+  // the verdict still requires its explicit click before the confirm step
+  await act(async () => { fireEvent.click(within(modal).getByText('False Positive')); });
+  expect(await screen.findByText(/Filing as/)).toBeInTheDocument();
+});
+
+test('C1 (F4a): no workspace selector before the roster seals', async () => {
+  render(<Incidents gameMode="training" activeIncidentId="INC-1000" />);
+  await screen.findByText('brief A');
+  expect(screen.queryByTestId('workspace-classification')).toBeNull();
 });
 
 test('Practice Another (Guided) warns, cancels back, and calls back on confirm', async () => {

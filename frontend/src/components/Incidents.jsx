@@ -77,9 +77,31 @@ const Incidents = ({
   const [showCategory, setShowCategory] = useState(false);
   const [pendingSubmit, setPendingSubmit] = useState(null);  // {..., action: 'submit' | 'check'}
   // 2.4 checklist: the player's own tentative classification per incident
-  // (observable local input; feeds ONLY the checklist line).
+  // (observable local input; feeds ONLY the checklist line and the modal
+  // pre-fill). C1 checkpoint fix (F4a): now written by the ratified
+  // A1-B.3.2 WORKSPACE selector (the checklist line's specified source),
+  // shape { verdict, category, categoryId } per incident.
   const [chosen, setChosen] = useState({});
   useEffect(() => { setChosen({}); prevReadyRef.current = {}; }, [resetTrigger]);
+  const verdictOptionId = (v) =>
+    v === 'threat' ? 'true_positive' : v === 'false_positive' ? 'false_positive' : null;
+  // Workspace classification handlers: local input only, no request; a
+  // threat verdict completes when its category is picked.
+  const setWorkspaceVerdict = (incidentId, id) => {
+    setChosen(c => {
+      const prev = c[incidentId] || {};
+      if (id === 'false_positive') {
+        return { ...c, [incidentId]: { verdict: 'false_positive', category: 'False Positive', categoryId: null } };
+      }
+      const keep = prev.verdict === 'threat';
+      return { ...c, [incidentId]: { verdict: 'threat',
+        category: keep ? prev.category || null : null,
+        categoryId: keep ? prev.categoryId || null : null } };
+    });
+  };
+  const setWorkspaceCategory = (incidentId, cid, clabel) => {
+    setChosen(c => ({ ...c, [incidentId]: { verdict: 'threat', category: clabel, categoryId: cid } }));
+  };
   const [submitBusy, setSubmitBusy] = useState(false);
   const [checkResult, setCheckResult] = useState(null);      // Guided Check Answer feedback
   const [checkBusy, setCheckBusy] = useState(false);
@@ -318,10 +340,29 @@ const Incidents = ({
                   <PhaseStrip sealed={selected.sealed}
                     triage={selected.triage} related={selected.related_actions}
                     ready={selected.ready}
-                    classification={chosen[selected.incident_id] || null}
+                    classification={chosen[selected.incident_id]?.category || null}
                     showPrompt={gameMode === 'guided'} />
                 )}
               </div>
+
+              {/* C1 checkpoint fix (F4a): the ratified A1-B.3.2 workspace
+                  selector -- the checklist Classification line's specified
+                  local-input source. Purely local state, no request; the
+                  submit modal flow is unchanged and arrives pre-filled from
+                  this choice. Identical for every incident (leak rule). */}
+              {selected.state !== 'submitted' && selected.sealed && (
+                <div className="pt-3 border-t border-[#eef1f4] space-y-2" data-testid="workspace-classification">
+                  <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium">Classification</p>
+                  <ClassificationSelector variant="inline"
+                    selected={verdictOptionId(chosen[selected.incident_id]?.verdict)}
+                    onSelect={(id) => setWorkspaceVerdict(selected.incident_id, id)} />
+                  {chosen[selected.incident_id]?.verdict === 'threat' && (
+                    <CategorySelector variant="inline"
+                      selected={chosen[selected.incident_id]?.categoryId || null}
+                      onSelect={(cid, clabel) => setWorkspaceCategory(selected.incident_id, cid, clabel)} />
+                  )}
+                </div>
+              )}
 
               {/* Related hosts / accounts (observable scope) */}
               {scope && (scope.hosts?.length || scope.accounts?.length) ? (
@@ -419,12 +460,13 @@ const Incidents = ({
           action routes the completed classification to submit or check. */}
       {showClassifier && pendingSubmit && (
         <ClassificationSelector isHardcore={gameMode === 'hardcore'}
+          selected={verdictOptionId(chosen[pendingSubmit.incident_id]?.verdict)}
           onSelect={(id) => {
             setShowClassifier(false);
             if (id === 'false_positive') {
               const p = { ...pendingSubmit, verdict: 'false_positive', category: 'False Positive' };
               setPendingSubmit(p);
-              setChosen(c => ({ ...c, [p.incident_id]: 'False Positive' }));
+              setChosen(c => ({ ...c, [p.incident_id]: { verdict: 'false_positive', category: 'False Positive', categoryId: null } }));
               if (p.action === 'check') doCheck(p);
             } else { setPendingSubmit(p => ({ ...p, verdict: 'threat' })); setShowCategory(true); }
           }}
@@ -432,11 +474,12 @@ const Incidents = ({
       )}
       {showCategory && pendingSubmit && (
         <CategorySelector isHardcore={gameMode === 'hardcore'} scenarioInfo={pendingSubmit}
+          selected={chosen[pendingSubmit.incident_id]?.categoryId || null}
           onSelect={(cid, clabel) => {
             setShowCategory(false);
             const p = { ...pendingSubmit, category: clabel };
             setPendingSubmit(p);
-            setChosen(c => ({ ...c, [p.incident_id]: clabel }));
+            setChosen(c => ({ ...c, [p.incident_id]: { verdict: 'threat', category: clabel, categoryId: cid } }));
             if (p.action === 'check') doCheck(p);
           }}
           onCancel={() => { setShowCategory(false); setPendingSubmit(null); }} />

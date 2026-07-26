@@ -240,7 +240,10 @@ test('19.19 one venue: the Case Closed modal after submit carries the moment + a
   render(<Incidents gameMode="soc_queue" activeIncidentId="INC-4000"
     onOpenLearningReview={onOpenLearningReview} />);
   fireEvent.click(await screen.findByRole('button', { name: 'Submit' }));
-  await act(async () => { fireEvent.click(screen.getByText('False Positive')); });
+  // C1 (F4a): the workspace selector also renders 'False Positive'; the
+  // submit flow's click is scoped to the modal.
+  const cmodal = await screen.findByTestId('classification-modal');
+  await act(async () => { fireEvent.click(within(cmodal).getByText('False Positive')); });
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit Incident' })); });
   const modal = await screen.findByTestId('case-closed-modal');
   const m = within(modal);

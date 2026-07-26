@@ -11,9 +11,40 @@ const ATTACK_CATEGORIES = [
   { id: 'defense_evasion', label: 'Defense Evasion' },
 ];
 
-const CategorySelector = ({ onSelect, onCancel, scenarioInfo, isHardcore }) => {
+// C1 checkpoint fix (post-Stage-5 review, F4a): like ClassificationSelector,
+// this serves the original submit-flow modal (default, unchanged) and the
+// A1-B.3.2 workspace selector's category step (variant="inline");
+// `selected` pre-fills either mount from the player's workspace choice.
+const CategoryGrid = ({ onSelect, selected, compact }) => (
+  <div className={compact ? 'grid grid-cols-2 md:grid-cols-4 gap-2' : 'grid grid-cols-2 md:grid-cols-4 gap-3'}>
+    {ATTACK_CATEGORIES.map((category) => {
+      const isSel = selected === category.id;
+      return (
+        <button
+          key={category.id}
+          onClick={() => onSelect(category.id, category.label)}
+          aria-pressed={isSel}
+          className={`flex items-center justify-center rounded-lg border-2 transition-all duration-200 group ${
+            compact ? 'h-10 px-2' : 'h-20 px-3'
+          } ${isSel
+            ? 'bg-[#eef1f4] border-[#101218]'
+            : 'bg-white border-[#d0d7de] hover:bg-[#eef1f4] hover:border-[#8b949e]'}`}
+        >
+          <span className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-center text-[#1a2332]`}>
+            {category.label}
+          </span>
+        </button>
+      );
+    })}
+  </div>
+);
+
+const CategorySelector = ({ onSelect, onCancel, scenarioInfo, isHardcore, variant = 'modal', selected = null }) => {
+  if (variant === 'inline') {
+    return <CategoryGrid onSelect={onSelect} selected={selected} compact />;
+  }
   return (
-    <div className="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center p-4" data-testid="category-modal">
       <div className="relative bg-white border border-[#e2e6ea] rounded-xl shadow-2xl max-w-2xl w-full animate-modalIn">
         <button
           onClick={onCancel}
@@ -41,19 +72,7 @@ const CategorySelector = ({ onSelect, onCancel, scenarioInfo, isHardcore }) => {
 
         {/* Category Grid */}
         <div className="p-4 sm:p-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {ATTACK_CATEGORIES.map((category) => (
-              <button
-                key={category.id}
-                onClick={() => onSelect(category.id, category.label)}
-                className="flex items-center justify-center h-20 px-3 rounded-lg border-2 transition-all duration-200 group border-[#d0d7de] bg-white hover:bg-[#eef1f4] hover:border-[#8b949e]"
-              >
-                <span className="text-sm font-medium text-center text-[#1a2332] group-hover:text-[#1a2332]">
-                  {category.label}
-                </span>
-              </button>
-            ))}
-          </div>
+          <CategoryGrid onSelect={onSelect} selected={selected} />
         </div>
       </div>
     </div>
