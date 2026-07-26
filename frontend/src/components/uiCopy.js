@@ -50,6 +50,11 @@ export const LOAD_NEW_EVENTS = 'Load new events';
 // forbidden class (correctness phrasing, answer-key totals) never appears
 // pre-submission -- progress-vocabulary.test.js scans every string below.
 
+// Visual pass V3: the ONE mode display-label map (previously local to
+// IncidentDashboard; the shell utility region is a second consumer).
+// "training" is the legacy Guided alias; "analyst" backs SOC Queue.
+export const MODE_LABEL = { training: 'Guided', guided: 'Guided', analyst: 'SOC Queue', hardcore: 'Hardcore' };
+
 export const TELEMETRY_LOADING = 'Incident telemetry is still loading.';
 export const detectionsReviewed = (triaged, total) =>
   `Detections reviewed: ${triaged} of ${total}`;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '../api';
-import { toReview, SUBMIT_PENDING } from './uiCopy';
+import { toReview, SUBMIT_PENDING, MODE_LABEL } from './uiCopy';
 import { submissionReady } from './submissionReady';
 import { severityDot, gradeColor, CARD_STYLE } from './ui';
 
@@ -14,9 +14,6 @@ import { severityDot, gradeColor, CARD_STYLE } from './ui';
 // Visual pass VG: severity dots, grade colors, and the card surface come
 // from the shared visual-language module (ui.jsx).
 const fmtTime = (iso) => { try { return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
-
-// Stage 3.9B Step 3 mode labels. "training" is the legacy Guided alias.
-const MODE_LABEL = { training: 'Guided', guided: 'Guided', analyst: 'SOC Queue', hardcore: 'Hardcore' };
 
 const Metric = ({ label, value, accent }) => (
   <div className="rounded-xl p-4" style={CARD_STYLE}>

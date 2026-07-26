@@ -14,6 +14,7 @@ import GameTimer from '../components/GameTimer';
 import FailureModal from '../components/FailureModal';
 import HintPanel from '../components/HintPanel';
 import { NAV_ICONS, NAV_STROKE, ChromeIcons } from '../components/icons';
+import UtilityBar from '../components/UtilityBar';
 
 const Dashboard = () => {
   const [groupedAlertCount, setGroupedAlertCount] = useState(0);
@@ -111,6 +112,10 @@ const Dashboard = () => {
         .then(res => res.json())
         .then(data => {
           setSimActive(!!data.analyst_name);
+          // V3: the utility region shows the REAL session identity, so the
+          // analyst name follows the server (it previously survived only in
+          // memory from the start dialog and vanished on reload).
+          setAnalystName(data.analyst_name || null);
           if (data.game_mode) setGameMode(data.game_mode);
           const injected = data.injected_count ?? 0;
           if (injected > lastInjectedRef.current) {
@@ -123,6 +128,9 @@ const Dashboard = () => {
         })
         .catch(() => {});
     };
+    // V3: run once immediately so the utility region shows the real session
+    // identity on load instead of waiting out the first poll interval.
+    checkForIncidents();
     const interval = setInterval(checkForIncidents, 2000);
     return () => clearInterval(interval);
   }, [view]);
@@ -334,6 +342,15 @@ const Dashboard = () => {
 
       {/* Light content */}
       <main className="flex-1 min-w-0 p-4 sm:p-6 overflow-x-hidden">
+        {/* V3: the compact top utility region (real session identity + the
+            ghost avatar with its real-controls menu). No case context here
+            -- the pinned case line lives on the working surfaces. */}
+        <UtilityBar
+          gameMode={gameMode}
+          analystName={analystName}
+          simActive={simActive}
+          onReset={() => setShowResetModal(true)}
+        />
         {/* Stage 5 Phase 1 (Amendment 1 Delta A): the global focus banner is
             REPLACED by the per-surface pinned case header ("Investigating
             INC-####" / "All activity") on Detections, Endpoints, and the
