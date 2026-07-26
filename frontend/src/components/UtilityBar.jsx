@@ -40,7 +40,7 @@ const UtilityBar = ({ gameMode, analystName, simActive, onReset }) => {
       <div className="flex items-center gap-2 min-w-0 text-xs">
         {simActive ? (
           <>
-            <span className="uppercase tracking-wider text-gray-400 font-medium">{MODE_LABEL[gameMode] || gameMode}</span>
+            <span className="t-overline text-gray-400">{MODE_LABEL[gameMode] || gameMode}</span>
             {analystName && (
               <>
                 <span className="text-gray-600" aria-hidden="true">·</span>
@@ -73,7 +73,7 @@ const UtilityBar = ({ gameMode, analystName, simActive, onReset }) => {
           >
             {/* The local analyst identity: factual fields only. */}
             <div className="px-3 py-2.5 border-b border-[#eef1f4]">
-              <p className="text-[11px] uppercase tracking-wider text-[#6e7781]">Local analyst</p>
+              <p className="t-overline">Local analyst</p>
               <p className="text-sm font-medium text-[#1a2332] truncate">{simActive && analystName ? analystName : 'No active session'}</p>
               {simActive && (
                 <p className="text-xs text-[#57606a]">{MODE_LABEL[gameMode] || gameMode} mode</p>

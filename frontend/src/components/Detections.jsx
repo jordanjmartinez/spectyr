@@ -23,12 +23,15 @@ const PageIcon = NAV_ICONS.detections;
 // Visual pass VG: severity pills and dots read the shared maps (ui.jsx),
 // unifying the dot palette with the Incidents/Dashboard severity dots
 // (previously a slightly different set of hexes solved the same problem).
-export const SeverityBadge = ({ severity }) => (
-  <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border ${SEVERITY_PILL[severity] || 'border-[#d0d7de] text-[#57606a]'}`}>
-    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: severityDot(severity) }} />
-    {String(severity || '').toUpperCase()}
-  </span>
-);
+export const SeverityBadge = ({ severity }) => {
+  const s = String(severity || '');
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border ${SEVERITY_PILL[severity] || 'border-[#d0d7de] text-[#57606a]'}`}>
+      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: severityDot(severity) }} />
+      {s ? s.charAt(0).toUpperCase() + s.slice(1) : ''}
+    </span>
+  );
+};
 
 export const RuleTypeChip = ({ type }) => (
   <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs border border-[#d0d7de] text-[#57606a] whitespace-nowrap">
@@ -195,7 +198,7 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
         <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="dark-thead">
-              <tr className="text-xs uppercase tracking-wider">
+              <tr>
                 <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">Severity</th>
                 <th className="px-3 sm:px-4 py-3 font-medium">Rule</th>
                 <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">Type</th>

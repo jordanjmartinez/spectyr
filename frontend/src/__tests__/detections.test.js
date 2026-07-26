@@ -110,7 +110,7 @@ test('feed renders detections and triages them', async () => {
   );
   expect(await screen.findByText('LSASS Process Memory Access')).toBeInTheDocument();
   expect(screen.getByText('2 open · 2 promoted · 0 dismissed')).toBeInTheDocument();
-  expect(screen.getAllByText('CRITICAL').length).toBeGreaterThanOrEqual(1);
+  expect(screen.getAllByText('Critical').length).toBeGreaterThanOrEqual(1);
   assertClean(container);
   // promote the first detection
   fireEvent.click(screen.getAllByText('Promote')[0]);

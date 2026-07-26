@@ -3,7 +3,7 @@ import { apiFetch } from '../api';
 import {
   toReview, SUBMIT_PENDING, MODE_LABEL, TELEMETRY_LOADING,
   detectionsReviewed, responseActionsTaken, CLASSIFICATION_NOT_SELECTED,
-  classificationSelected, READY_TO_SUBMIT,
+  classificationSelected, READY_TO_SUBMIT, SESSION_PERFORMANCE_LABEL,
 } from './uiCopy';
 import { submissionReady, validClassification } from './submissionReady';
 import { severityDot, gradeColor, CARD_STYLE } from './ui';
@@ -37,14 +37,14 @@ const gradeAccuracy = (g) =>
 
 const Metric = ({ label, value, accent, sub }) => (
   <div className="rounded-xl p-4" style={CARD_STYLE}>
-    <p className="text-2xl font-semibold" style={{ color: accent || '#1a2332' }}>{value}</p>
-    <p className="text-xs text-[#6e7781] mt-0.5">{label}</p>
+    <p className="t-kpi" style={accent ? { color: accent } : undefined}>{value}</p>
+    <p className="t-meta text-[#6e7781] mt-0.5">{label}</p>
     {sub && <p className="text-[11px] text-[#8b949e] mt-0.5">{sub}</p>}
   </div>
 );
 
 const WidgetLabel = ({ children }) => (
-  <p className="text-[11px] uppercase tracking-wider text-[#6e7781] mb-2 font-medium">{children}</p>
+  <p className="t-overline mb-2">{children}</p>
 );
 
 const IncidentDashboard = ({
@@ -197,7 +197,7 @@ const IncidentDashboard = ({
       <div className="rounded-xl p-4 sm:p-5" style={CARD_STYLE}>
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <span className="text-xs uppercase tracking-wider text-[#6e7781] font-medium">{MODE_LABEL[gameMode] || gameMode}</span>
+            <span className="t-overline">{MODE_LABEL[gameMode] || gameMode}</span>
             {analystName && <span className="text-sm text-[#1a2332] font-medium">{analystName}</span>}
             <span className="text-sm text-[#57606a]">
               {isGuided
@@ -207,7 +207,7 @@ const IncidentDashboard = ({
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-[11px] uppercase tracking-wider text-[#6e7781]">Session Performance</p>
+              <p className="t-overline">{SESSION_PERFORMANCE_LABEL}</p>
               <p className="text-lg font-semibold" style={{ color: gradeColor(sessionGrade?.grade) }}>
                 {sessionGrade?.grade || '-'}
                 {sessionGrade?.accuracy != null && <span className="ml-1.5 text-xs text-[#8b949e] font-normal">{sessionGrade.accuracy}%</span>}
@@ -223,7 +223,7 @@ const IncidentDashboard = ({
         <div className="space-y-4 min-w-0">
           {/* A. Active Investigation (observable fields only; Resume navigates) */}
           <div className="rounded-xl p-4" style={CARD_STYLE} data-testid="active-investigation">
-            <WidgetLabel>Active Investigation</WidgetLabel>
+            <WidgetLabel>Active investigation</WidgetLabel>
             {!focus ? (
               <p className="text-sm text-[#8b949e]">No active investigations.</p>
             ) : (
@@ -308,7 +308,7 @@ const IncidentDashboard = ({
                         style={{ width: `${sevMax ? Math.round((r.count / sevMax) * 100) : 0}%`, background: severityDot(r.key) }}
                       />
                     </span>
-                    <span className="w-6 shrink-0 text-right font-medium text-[#1a2332] log-mono">{r.count}</span>
+                    <span className="w-6 shrink-0 text-right font-medium text-[#1a2332] tabular-nums">{r.count}</span>
                   </div>
                 ))}
               </div>
@@ -323,7 +323,7 @@ const IncidentDashboard = ({
               <p className="text-sm text-[#57606a]">No managed hosts available.</p>
             ) : (
               <div className="space-y-2">
-                <p className="text-2xl font-semibold text-[#1a2332]">{managed}<span className="ml-1.5 text-sm font-normal text-[#57606a]">managed host{managed === 1 ? '' : 's'}</span></p>
+                <p className="t-kpi">{managed}<span className="ml-1.5 text-sm font-normal text-[#57606a]">managed host{managed === 1 ? '' : 's'}</span></p>
                 <p className="text-sm text-[#57606a] flex items-center gap-1.5">
                   <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full" style={{ background: '#6fa868' }} />
                   <span><span className="font-medium text-[#1a2332]">{online}</span> online</span>
@@ -395,7 +395,7 @@ const IncidentDashboard = ({
               <div className="overflow-x-auto pb-1">
                 <table className="w-full text-left text-sm">
                   <thead className="dark-thead">
-                    <tr className="text-xs uppercase tracking-wider">
+                    <tr>
                       <th className="px-3 py-2 font-medium whitespace-nowrap">Incident</th>
                       <th className="px-3 py-2 font-medium whitespace-nowrap">Category</th>
                       <th className="px-3 py-2 font-medium whitespace-nowrap">Mode</th>

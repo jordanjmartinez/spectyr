@@ -10,7 +10,7 @@ const basename = (p) => (p ? p.split('\\').pop().split('/').pop() : '');
 const dash = (v) => (v === null || v === undefined || v === '' ? '-' : v);
 
 const SectionLabel = ({ children }) => (
-  <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium">{children}</p>
+  <p className="t-overline">{children}</p>
 );
 
 const Card = ({ children }) => (

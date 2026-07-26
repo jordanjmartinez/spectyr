@@ -299,7 +299,7 @@ const Incidents = ({
                     <span className="text-[11px] text-[#8b949e]">{selected.severity}</span>
                     <span className="text-base font-semibold text-[#1a2332]">{selected.title}</span>
                     {selected.state === 'submitted' && selected.assisted && (
-                      <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#eef1f4] text-[#57606a] border border-[#d0d7de]">Assisted</span>
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#eef1f4] text-[#57606a] border border-[#d0d7de]">Assisted</span>
                     )}
                   </div>
                   {selected.briefing && <p className="mt-1 text-sm text-[#57606a] break-words">{selected.briefing}</p>}
@@ -343,7 +343,7 @@ const Incidents = ({
                   this choice. Identical for every incident (leak rule). */}
               {selected.state !== 'submitted' && selected.sealed && (
                 <div className="pt-3 border-t border-[#eef1f4] space-y-2" data-testid="workspace-classification">
-                  <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium">Classification</p>
+                  <p className="t-overline">Classification</p>
                   <ClassificationSelector
                     selected={verdictOptionId(chosen[selected.incident_id]?.verdict)}
                     onSelect={(id) => setWorkspaceVerdict(selected.incident_id, id)} />
@@ -488,9 +488,9 @@ const Incidents = ({
           <div className="absolute inset-0 bg-black/70" onClick={() => setReview(null)} />
           <div className="relative bg-white border border-[#e2e6ea] rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 animate-modalIn" data-testid="case-closed-modal">
             <div className="flex items-center justify-between">
-              <div><p className="text-[11px] uppercase tracking-wider text-[#6e7781]">Incident Grade</p>
+              <div><p className="t-overline">Incident Grade</p>
                 <h2 className="text-lg font-semibold text-[#1a2332]">{caseClosed(review.incidentId)}</h2></div>
-              {review.assisted && <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#eef1f4] text-[#57606a] border border-[#d0d7de]">Assisted</span>}
+              {review.assisted && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#eef1f4] text-[#57606a] border border-[#d0d7de]">Assisted</span>}
             </div>
             <div className="mt-3 flex flex-wrap gap-1.5">
               {deriveAchievements(review.view).map(a => (
@@ -532,7 +532,7 @@ const Incidents = ({
             <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
             <div className="p-5">
               <h3 className="text-base font-semibold text-[#1a2332]">Practice another scenario?</h3>
-              <p className="mt-2 text-sm text-[#57606a]">This clears the current Guided run: its submitted incident record, your Session Performance, and this Post-Incident Review. The simulation resets and returns to the scenario picker.</p>
+              <p className="mt-2 text-sm text-[#57606a]">This clears the current Guided run: its submitted incident record, your Session performance, and this Post-Incident Review. The simulation resets and returns to the scenario picker.</p>
               <div className="mt-5 flex justify-end gap-2">
                 <button type="button" onClick={() => setPracticeWarn(false)}
                   className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4]">Cancel</button>

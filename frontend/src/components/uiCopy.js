@@ -153,7 +153,9 @@ export const caseClosed = (incidentId) => `Case Closed: ${incidentId}`;
 export const REVIEW_WHAT_YOU_LEARNED = 'Review what you learned';
 export const LEARNING_REVIEW_TITLE = 'Learning Review';
 export const INCIDENT_GRADE_LABEL = 'Incident Grade';
-export const SESSION_PERFORMANCE_LABEL = 'Session Performance';
+// VT (owner correction): sentence case for visible section labels; the
+// Incident Grade vs Session performance DISTINCTION is unchanged.
+export const SESSION_PERFORMANCE_LABEL = 'Session performance';
 export const ACHIEVEMENT_LABELS = {
   case_closed: 'Case Closed',
   clean_triage: 'Clean Triage',

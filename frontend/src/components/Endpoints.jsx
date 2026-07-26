@@ -16,11 +16,11 @@ import {
 export const StatusBadge = ({ status }) => (
   status === 'online' ? (
     <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />ONLINE
+      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Online
     </span>
   ) : (
     <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
-      <span className="w-1.5 h-1.5 rounded-full bg-red-500" />OFFLINE
+      <span className="w-1.5 h-1.5 rounded-full bg-red-500" />Offline
     </span>
   )
 );
@@ -174,7 +174,7 @@ const Endpoints = ({ isVisible, resetTrigger, pivotHost,
       <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="dark-thead">
-            <tr className="text-xs uppercase tracking-wider">
+            <tr>
               {COLUMNS.map(col => (
                 <th key={col.key} className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">
                   {col.sortable === false ? col.label : (

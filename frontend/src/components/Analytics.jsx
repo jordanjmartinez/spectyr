@@ -81,7 +81,7 @@ const Analytics = ({ onReset, analystName, setAnalyticsCount, isVisible = true, 
       <PageHeader
         icon={<PageIcon size={20} strokeWidth={NAV_STROKE} aria-hidden="true" />}
         title="Metrics"
-        subtitle="Learning Review and Session Performance for this run."
+        subtitle="Learning Review and Session performance for this run."
         right={(
           <button
             onClick={onReset}
@@ -105,7 +105,7 @@ const Analytics = ({ onReset, analystName, setAnalyticsCount, isVisible = true, 
           "Report Card") sits outside the container like the other section
           headings; the container keeps stats + grade */}
       <div>
-        <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">{SESSION_PERFORMANCE_LABEL}</h2>
+        <h2 className="t-section mb-4">{SESSION_PERFORMANCE_LABEL}</h2>
         {progress ? (
           <div className="rounded-xl p-4 sm:p-6" style={CARD_STYLE}>
             <p className="text-sm text-[#57606a]">

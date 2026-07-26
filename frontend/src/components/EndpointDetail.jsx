@@ -28,7 +28,7 @@ const Card = ({ children, className = '' }) => (
 );
 
 const SectionLabel = ({ children }) => (
-  <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium">{children}</p>
+  <p className="t-overline">{children}</p>
 );
 
 const SignerBadge = ({ signer, signed }) => (
@@ -75,17 +75,17 @@ const StateBadges = ({ row }) => {
 
 const TABS = [
   { key: 'overview', label: 'Overview', group: null },
-  { key: 'processes', label: 'Processes', group: 'ENUMERATE' },
-  { key: 'network', label: 'Network', group: 'ENUMERATE' },
-  { key: 'services', label: 'Services', group: 'ENUMERATE' },
-  { key: 'users', label: 'Users', group: 'ENUMERATE' },
-  { key: 'autoruns', label: 'Autoruns', group: 'ENUMERATE' },
+  { key: 'processes', label: 'Processes', group: 'Enumerate' },
+  { key: 'network', label: 'Network', group: 'Enumerate' },
+  { key: 'services', label: 'Services', group: 'Enumerate' },
+  { key: 'users', label: 'Users', group: 'Enumerate' },
+  { key: 'autoruns', label: 'Autoruns', group: 'Enumerate' },
 ];
 
 const Th = ({ children, onClick, active, dir }) => (
-  <th className="px-3 py-2.5 font-medium whitespace-nowrap text-xs uppercase tracking-wider">
+  <th className="px-3 py-2.5 whitespace-nowrap">
     {onClick ? (
-      <button type="button" onClick={onClick} className="inline-flex items-center gap-1 uppercase tracking-wider">
+      <button type="button" onClick={onClick} className="inline-flex items-center gap-1">
         {children}{active && <span aria-hidden="true">{dir === 'asc' ? '▴' : '▾'}</span>}
       </button>
     ) : children}
@@ -197,7 +197,7 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
             {TABS.map((t, i) => (
               <React.Fragment key={t.key}>
                 {t.group && TABS[i - 1]?.group !== t.group && (
-                  <p className="px-3 pt-3 pb-1 text-[10px] uppercase tracking-wider text-[#8b949e]">{t.group}</p>
+                  <p className="px-3 pt-3 pb-1 t-overline">{t.group}</p>
                 )}
                 <button
                   type="button"
@@ -216,7 +216,7 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
 
       {/* Main pane */}
       <div className="flex-1 min-w-0 w-full">
-        <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332]">{tabTitle}</h2>
+        <h2 className="t-section">{tabTitle}</h2>
         <p className="text-sm text-[#57606a] mb-4">
           <span className="font-mono">{snap.hostname}</span>{snap.desc ? `: ${snap.desc}` : ''}
         </p>

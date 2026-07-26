@@ -95,7 +95,7 @@ export const PageHeader = ({ icon, title, count = null, subtitle, right = null }
       )}
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332]">{title}</h2>
+          <h2 className="t-page">{title}</h2>
           {count !== null && <CountPill>{count}</CountPill>}
         </div>
         {subtitle && <p className="text-sm text-[#57606a] truncate">{subtitle}</p>}
@@ -112,7 +112,7 @@ export const CountPill = ({ children }) => (
 );
 
 export const SectionLabel = ({ className = '', children }) => (
-  <p className={`text-[11px] uppercase tracking-wider text-[#6e7781] font-medium ${className}`}>{children}</p>
+  <p className={`t-overline ${className}`}>{children}</p>
 );
 
 export const Dot = ({ color }) => (

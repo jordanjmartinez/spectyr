@@ -73,7 +73,7 @@ const PromotedChips = ({ rules }) => (rules && rules.length ? (
 const GroupCard = ({ title, count, children }) => (
   <div className="rounded-xl overflow-hidden" style={CARD_STYLE}>
     <div className="px-4 py-2.5 border-b border-[#eef1f4] flex items-center gap-2">
-      <h3 className="text-sm font-semibold text-[#1a2332]">{title}</h3>
+      <h3 className="t-card">{title}</h3>
       <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-[#57606a]">{count}</span>
     </div>
     {children}
@@ -238,7 +238,7 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
         <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="dark-thead">
-              <tr className="text-xs uppercase tracking-wider">
+              <tr>
                 <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">Time</th>
                 <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">Action</th>
                 <th className="px-3 sm:px-4 py-3 font-medium">Target</th>
@@ -284,7 +284,7 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
               {hostRows.length > 0 && (
                 <GroupCard title="Hosts" count={hostRows.length}>
                   <table className="w-full text-left text-sm">
-                    <thead className="dark-thead"><tr className="text-xs uppercase tracking-wider">
+                    <thead className="dark-thead"><tr>
                       <th className="px-3 py-2.5 font-medium">Host</th>
                       <th className="px-3 py-2.5 font-medium whitespace-nowrap">State</th>
                       <th className="px-3 py-2.5 font-medium whitespace-nowrap">Actions</th>
@@ -326,7 +326,7 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
               {accounts.length > 0 && (
                 <GroupCard title="Accounts" count={accounts.length}>
                   <table className="w-full text-left text-sm">
-                    <thead className="dark-thead"><tr className="text-xs uppercase tracking-wider">
+                    <thead className="dark-thead"><tr>
                       <th className="px-3 py-2.5 font-medium">Account</th>
                       <th className="px-3 py-2.5 font-medium whitespace-nowrap">State</th>
                       <th className="px-3 py-2.5 font-medium whitespace-nowrap">Actions</th>
@@ -372,7 +372,7 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                   </div>
                   <div className="overflow-x-auto max-h-96 overflow-y-auto">
                     <table className="w-full text-left text-sm">
-                      <thead className="dark-thead"><tr className="text-xs uppercase tracking-wider">
+                      <thead className="dark-thead"><tr>
                         <th className="px-3 py-2.5 font-medium whitespace-nowrap">Host</th>
                         <th className="px-3 py-2.5 font-medium whitespace-nowrap">PID</th>
                         <th className="px-3 py-2.5 font-medium">Process</th>
@@ -403,7 +403,7 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
               {fileRows.length > 0 && (
                 <GroupCard title="Files" count={fileRows.length}>
                   <table className="w-full text-left text-sm">
-                    <thead className="dark-thead"><tr className="text-xs uppercase tracking-wider">
+                    <thead className="dark-thead"><tr>
                       <th className="px-3 py-2.5 font-medium whitespace-nowrap">Host</th>
                       <th className="px-3 py-2.5 font-medium">Payload</th>
                       <th className="px-3 py-2.5 font-medium whitespace-nowrap">State</th>
@@ -435,7 +435,7 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
               {persistRows.length > 0 && (
                 <GroupCard title="Persistence" count={persistRows.length}>
                   <table className="w-full text-left text-sm">
-                    <thead className="dark-thead"><tr className="text-xs uppercase tracking-wider">
+                    <thead className="dark-thead"><tr>
                       <th className="px-3 py-2.5 font-medium whitespace-nowrap">Host</th>
                       <th className="px-3 py-2.5 font-medium whitespace-nowrap">Type</th>
                       <th className="px-3 py-2.5 font-medium">Artifact</th>

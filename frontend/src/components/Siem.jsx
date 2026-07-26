@@ -15,8 +15,6 @@ import {
 import InvestigationContext from './InvestigationContext';
 import { CARD_STYLE, PageHeader, SegmentedToggle } from './ui';
 import { NAV_ICONS, NAV_STROKE } from './icons';
-
-const PageIcon = NAV_ICONS.siem;
 import {
   followingClue, resultsFor, ALL_EVENTS_LABEL, INITIAL_INCIDENT_EVIDENCE,
   INITIAL_EVIDENCE, SELECTED_EVENT_HIDDEN, newEventsAvailable,
@@ -28,6 +26,8 @@ import {
   ADVANCED_TOGGLE, SOURCE_LABEL, EVENT_TYPE_LABEL, ALL_SOURCES,
   ALL_EVENT_TYPES,
 } from './uiCopy';
+
+const PageIcon = NAV_ICONS.siem;
 
 // SIEM Investigation Workbench shell (Stage 4 Phase 4). Analyst-driven:
 // the shell submits LCQL text to the server's single query read and renders

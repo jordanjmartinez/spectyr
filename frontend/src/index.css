@@ -36,14 +36,34 @@ html, body {
   background-color: #0d1117;
 }
 
+/* Visual pass VT: Inter is the primary product typeface (loaded as a
+   variable range in index.html, so weights like 650 are real). The brand
+   wordmark lockups keep their IBM Plex face (logo, not product type). */
 body {
   margin: 0;
   min-width: 352px;
-  font-family: 'IBM Plex Sans', 'Inter', -apple-system, BlinkMacSystemFont,
+  font-family: 'Inter', 'IBM Plex Sans', -apple-system, BlinkMacSystemFont,
     'Segoe UI', 'Roboto', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* ===== Visual pass VT: the shared typography tokens =====
+   The ONE type scale every workspace consumes (no page styles its own
+   hierarchy). Mono stays reserved for genuinely technical values via
+   .log-mono / font-mono (queries, raw events, IPs, hostnames, INC ids,
+   technique ids, timestamps, PIDs, account strings). */
+.t-page     { font-size: 26px; font-weight: 650; line-height: 1.2;  color: #1a2332; }
+.t-section  { font-size: 18px; font-weight: 600; line-height: 1.3;  color: #1a2332; }
+.t-card     { font-size: 14px; font-weight: 600; color: #1a2332; }
+.t-body     { font-size: 14px; font-weight: 400; line-height: 1.5; }
+.t-nav      { font-size: 14px; font-weight: 500; }
+.t-kpi      { font-size: 28px; font-weight: 650; line-height: 1.15;
+              font-variant-numeric: tabular-nums; font-feature-settings: 'tnum';
+              color: #1a2332; }
+.t-meta     { font-size: 12px; font-weight: 400; }
+.t-overline { font-size: 11px; font-weight: 600; letter-spacing: 0.03em;
+              color: #57606a; text-transform: none; }
 
 code {
   font-family: 'JetBrains Mono', sans-serif;
@@ -234,6 +254,13 @@ code {
   background: #101218;
   color: #d1d5db;
   border-bottom: none;
+  /* VT: table heads join the token system -- sentence case as authored,
+     no broad uppercase or wide tracking (technical abbreviations like
+     PID/IP stay caps because they are authored caps). */
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 12px;
+  font-weight: 600;
 }
 .dark-thead th:first-child {
   border-top-left-radius: 0.5rem;

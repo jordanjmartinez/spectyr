@@ -124,7 +124,7 @@ test('VS: severity bars show the active incident detections in order with exact 
   // row order + exact right-aligned counts (dz stays out: not in the scope)
   const rows = within(card).getAllByText(/^(Critical|High|Medium|Low)$/).map(el => el.textContent);
   expect(rows).toEqual(['Critical', 'High', 'Medium', 'Low']);
-  const counts = Array.from(card.querySelectorAll('.log-mono')).map(el => el.textContent);
+  const counts = Array.from(card.querySelectorAll('.tabular-nums')).map(el => el.textContent);
   expect(counts).toEqual(['1', '2', '0', '0']);
   expect(within(card).getByText('Active incident')).toBeInTheDocument();
   // no percentages implied, no correctness/hidden-answer vocabulary
@@ -231,10 +231,10 @@ test('V6-R: the coverage radar carries no session/player overlay; grading is fet
   graded.forEach(p => expect(p).toContain('INC-3000'));
 });
 
-test('Incident Grade and Session Performance are both present and distinct', async () => {
+test('Incident Grade and Session performance are both present and distinct', async () => {
   render(<IncidentDashboard gameMode="analyst" />);
   await screen.findByText('INC-3000');
-  expect(screen.getByText('Session Performance')).toBeInTheDocument();
+  expect(screen.getByText('Session performance')).toBeInTheDocument();
   expect(screen.getAllByText(/71%/).length).toBeGreaterThanOrEqual(1);   // session grade C 71%
   expect(screen.getByText(/B · 84%/)).toBeInTheDocument();               // incident grade row
 });

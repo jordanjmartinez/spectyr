@@ -22,7 +22,7 @@ const HintPanel = ({ gameMode, surface }) => {
           <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
           <div className="p-4">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium">
+              <p className="t-overline">
                 {level === 1 ? 'How the controls work' : 'Investigation nudges'}
               </p>
               <button type="button" onClick={() => setOpen(false)} aria-label="Close hints"

@@ -38,7 +38,7 @@ const EntryRow = ({ e }) => (
 
 const Section = ({ title, entries, emptyLine }) => (
   <div className="pt-3 border-t border-[#eef1f4]">
-    <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium mb-1.5">{title}</p>
+    <p className="t-overline mb-1.5">{title}</p>
     {entries.length === 0 ? (
       <p className="text-sm text-[#8b949e]">{emptyLine}</p>
     ) : (
@@ -113,8 +113,8 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
   return (
     <div>
       <div className="flex items-baseline gap-2 mb-4">
-        <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332]">{LEARNING_REVIEW_TITLE}</h2>
-        <span className="text-xs text-[#6e7781] uppercase tracking-wider">{INCIDENT_GRADE_LABEL}</span>
+        <h2 className="t-section">{LEARNING_REVIEW_TITLE}</h2>
+        <span className="t-overline">{INCIDENT_GRADE_LABEL}</span>
       </div>
       <div className="rounded-xl p-4 sm:p-6" style={CARD_STYLE}>
         {completed.length === 0 ? (
@@ -158,14 +158,14 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                 {/* Header: incident + Assisted + achievements */}
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div>
-                    <p className="text-[11px] uppercase tracking-wider text-[#6e7781]">{INCIDENT_GRADE_LABEL}</p>
+                    <p className="t-overline">{INCIDENT_GRADE_LABEL}</p>
                     <h3 className="text-lg font-semibold text-[#1a2332]">
                       <span className="log-mono text-[#16436b] text-sm mr-2">{selectedId}</span>
                       {selectedCard?.title || ''}
                     </h3>
                   </div>
                   {scoreView.assisted && (
-                    <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#eef1f4] text-[#57606a] border border-[#d0d7de]">Assisted</span>
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#eef1f4] text-[#57606a] border border-[#d0d7de]">Assisted</span>
                   )}
                 </div>
                 <AchievementChips items={achievements} />
@@ -191,7 +191,7 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                     completed required actions, and every empty state names
                     its own category (never a bare global negative). */}
                 <div className="pt-3 border-t border-[#eef1f4]">
-                  <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium mb-1.5">{REVIEW_SECTION_CORRECT}</p>
+                  <p className="t-overline mb-1.5">{REVIEW_SECTION_CORRECT}</p>
                   <div className="space-y-2">
                     {correctCallCount > 0 ? (
                       <p className="text-sm text-[#1a2332]">{correctDetectionCalls(correctCallCount, detectionCalls.length)}</p>
@@ -215,7 +215,7 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                     teaching bucket (7.1). */}
                 {(review.attempt_history || []).length > 0 && (
                   <div className="pt-3 border-t border-[#eef1f4]">
-                    <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium mb-1.5">{REVIEW_SECTION_ATTEMPTS}</p>
+                    <p className="t-overline mb-1.5">{REVIEW_SECTION_ATTEMPTS}</p>
                     <ul className="space-y-1">
                       {review.attempt_history.map(h => (
                         <li key={h.seq} className="text-sm text-[#57606a]">
@@ -230,7 +230,7 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
 
                 {/* Per-detection verdicts from the frozen record */}
                 <div className="pt-3 border-t border-[#eef1f4]">
-                  <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium mb-1.5">{REVIEW_SECTION_DETECTIONS}</p>
+                  <p className="t-overline mb-1.5">{REVIEW_SECTION_DETECTIONS}</p>
                   {(review.detections || []).length === 0 ? (
                     <p className="text-sm text-[#8b949e]">{REVIEW_EMPTY_DETECTIONS}</p>
                   ) : (
@@ -260,7 +260,7 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                 )}
                 {(triage?.response_actions || []).length > 0 && (
                   <div className="pt-3 border-t border-[#eef1f4]">
-                    <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium mb-1.5">{REVIEW_SECTION_PLAYBOOK}</p>
+                    <p className="t-overline mb-1.5">{REVIEW_SECTION_PLAYBOOK}</p>
                     <ol className="list-decimal ml-5 space-y-1">
                       {triage.response_actions.map((step, i) => (
                         <li key={i} className="text-sm text-[#57606a]">{step}</li>
@@ -273,7 +273,7 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                     Ruling H: null -> section omitted (Tier 1 whys teach). */}
                 {review.scenario_rationale && (
                   <div className="pt-3 border-t border-[#eef1f4]">
-                    <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium mb-1.5">{REVIEW_SECTION_TAKEAWAY}</p>
+                    <p className="t-overline mb-1.5">{REVIEW_SECTION_TAKEAWAY}</p>
                     <p className="text-sm text-[#57606a]">{review.scenario_rationale}</p>
                   </div>
                 )}

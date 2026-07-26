@@ -84,7 +84,7 @@ function buildStructuredView(event) {
 }
 
 const SectionLabel = ({ children }) => (
-  <div className="text-[10px] uppercase tracking-wide text-[#8b949e] mt-2 mb-1 first:mt-0">
+  <div className="t-overline mt-2 mb-1 first:mt-0">
     {children}
   </div>
 );

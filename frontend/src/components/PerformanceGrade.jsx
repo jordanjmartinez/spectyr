@@ -122,7 +122,7 @@ export const GradeCard = ({ report }) => {
             </div>
           </div>
         </div>
-        <p className="text-[11px] uppercase tracking-wider text-[#6e7781] text-center">Composite grade · 40 / 30 / 30</p>
+        <p className="t-overline text-center">Composite grade · 40 / 30 / 30</p>
         <p className="text-sm text-[#57606a] text-center min-h-[1.25rem]">{GRADE_MESSAGES[grade] || ' '}</p>
       </div>
     </div>

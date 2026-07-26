@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { CARD_STYLE } from './ui';
 
 const WIN_ART = `██╗   ██╗ ██████╗ ██╗   ██╗    ██╗    ██╗██╗███╗   ██╗██╗
 ╚██╗ ██╔╝██╔═══██╗██║   ██║    ██║    ██║██║████╗  ██║██║
@@ -20,8 +21,6 @@ const LOSE_ART = `██╗   ██╗ ██████╗ ██╗   ██
   ╚██╔╝  ██║   ██║██║   ██║    ██║     ██║   ██║╚════██║██╔══╝  ╚═╝
    ██║   ╚██████╔╝╚██████╔╝    ███████╗╚██████╔╝███████║███████║██╗
    ╚═╝    ╚═════╝  ╚═════╝     ╚══════╝ ╚═════╝ ╚══════╝╚══════╝╚═╝`;
-
-import { CARD_STYLE } from './ui';
 
 const gradeOf = (report) => report?.grade || '-';
 
@@ -102,7 +101,9 @@ const CampaignProgress = ({ levelData, analystName, report }) => {
                   : ch
               )}
             </pre>
-            <p className="font-mono text-xs sm:text-sm text-[#57606a] mb-6">&gt;<span className="animate-blink">|</span> {message}</p>
+            {/* VT: the message is product copy (Inter); only the ASCII art
+                banner above genuinely needs mono. */}
+            <p className="text-sm text-[#57606a] mb-6"><span className="font-mono">&gt;<span className="animate-blink">|</span></span> {message}</p>
           </div>
           <div className={`pt-2 transition-all duration-700 delay-300 ease-out ${revealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
             <OutcomeBar total={total_levels} results={results} />

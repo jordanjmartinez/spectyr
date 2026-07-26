@@ -39,7 +39,7 @@ const ScoreSections = ({ isVisible = true, report = null }) => {
 
   const FactualBlock = ({ title, entries }) => (
     <div className="border-t border-[#eef1f4] px-4 sm:px-6 py-4">
-      <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium mb-2">{title}</p>
+      <p className="t-overline mb-2">{title}</p>
       <ul className="space-y-1.5">
         {entries.map(e => (
           <li key={e.seq} className="text-sm text-[#57606a]">
@@ -99,7 +99,7 @@ const ScoreSections = ({ isVisible = true, report = null }) => {
   // historical series exists.
   return (
     <div>
-      <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">Score Summary</h2>
+      <h2 className="t-section mb-4">Score summary</h2>
       <div className="space-y-3">
         {/* the Overall grade, exactly once */}
         <Card>
