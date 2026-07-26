@@ -369,3 +369,16 @@ triage_review:
     - "Search for lateral movement from the compromised host"
     - "Scan other endpoints for dumping tools or suspicious .dmp files"
     - "Escalate to incident response"
+
+# Stage 5 D2 (Tier 2 rationale; ledger-tracked): frozen into a
+# submission record as scenario_rationale, rendered only in the
+# post-boundary Learning Review Key takeaway.
+expected_response: >-
+  The victim workstation shows remote-execution tooling and credential use
+  against the file server. Contain the source first: isolate the workstation
+  and terminate both attack processes, then evict the attacker from the
+  identity by revoking sessions and resetting the password, the reset
+  ordered after isolation so a live foothold cannot immediately recapture
+  the new credential. Disabling the account is defensible. Isolating the
+  file server, the target of the movement, would take a shared service
+  offline when the compromise lives on the source host.

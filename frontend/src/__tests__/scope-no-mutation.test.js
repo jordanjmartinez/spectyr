@@ -79,38 +79,31 @@ test('select A, switch to B, clear to Session-wide across scoped tabs issues rea
   expect(mutatingCalls()).toHaveLength(0);   // reads only; nothing was mutated
 });
 
-// Stage 4 P7 (contract Section 18 "No-mutation reads", extended): the whole
-// investigation surface -- descent entry, query run, entity pivot, scope
-// switching, and the return chip -- issues READS ONLY. Nothing about the
+// Stage 4 P7 (contract Section 18 "No-mutation reads", extended; Final pass
+// III.0 item 2): the whole investigation surface -- descent entry, query
+// run, entity pivot, and refinement -- issues READS ONLY. Nothing about the
 // world, response log, grading, readiness, or submissions can change from
 // investigating.
-test('P7 descent, pivot, scope switch, and return-to-incident issue reads only', async () => {
+test('P7 descent, pivot, and refinement issue reads only', async () => {
   await act(async () => {
     render(
       <Siem
-        setSiemCount={() => {}} resetTrigger={0} onHostPivot={() => {}}
+        resetTrigger={0} onHostPivot={() => {}}
         activeIncidentId="INC-A" onNavigate={() => {}}
-        descentRequest={{ origin: 'INC-A', hosts: ['ACME-WS10'], scopeIncidentId: 'INC-A', backView: 'incidents', seq: 1 }}
+        descentRequest={{ hosts: ['ACME-WS10'], scopeIncidentId: 'INC-A', seq: 1 }}
       />
     );
   });
-  await waitFor(() => expect(screen.getByTestId('descent-banner')).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByTestId('workbench-results')).toBeInTheDocument());
 
-  // entity pivot out of the incident scope (visible Session-wide flip)
+  // entity pivot from the case evidence (stays in the case's pool)
   fireEvent.click(within(screen.getByTestId('workbench-results')).getByText('no-mutation fixture event'));
   await act(async () => {
     fireEvent.click(screen.getByLabelText('Pivot hostname'));
   });
-  // return to the incident scope via the chip
+  // and a refinement from the inspector
   await act(async () => {
-    fireEvent.click(screen.getByTestId('return-chip'));
-  });
-  // explicit scope switching through the control, both directions
-  await act(async () => {
-    fireEvent.change(screen.getByLabelText('Scope'), { target: { value: 'session' } });
-  });
-  await act(async () => {
-    fireEvent.change(screen.getByLabelText('Scope'), { target: { value: 'INC-A' } });
+    fireEvent.click(screen.getByLabelText('Filter hostname equals'));
   });
 
   expect(mutatingCalls()).toHaveLength(0);   // the investigation surface is read-only
@@ -122,9 +115,9 @@ test('P7.4 identity descent issues reads only', async () => {
   await act(async () => {
     render(
       <Siem
-        setSiemCount={() => {}} resetTrigger={0} onHostPivot={() => {}}
+        resetTrigger={0} onHostPivot={() => {}}
         activeIncidentId="INC-A" onNavigate={() => {}}
-        descentRequest={{ origin: 'det-ids1', hosts: [], account: 'ACME\\dlee', scopeIncidentId: 'INC-A', backView: 'detections', seq: 1 }}
+        descentRequest={{ hosts: [], account: 'ACME\\dlee', scopeIncidentId: 'INC-A', seq: 1 }}
       />
     );
   });

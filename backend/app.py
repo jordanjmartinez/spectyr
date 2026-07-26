@@ -19,6 +19,7 @@ import threading
 # the base. Imported unconditionally so revert paths keep working.
 import action_overlay
 import persistence
+import response_review
 
 # Stage 4 A1: the deterministic simulation epoch every occurrence timestamp
 # derives from (world["started_at"] IS the epoch; drip orchestration stays
@@ -3407,6 +3408,23 @@ def _entry_in_scope(entry, grading_rec, registry):
     return e.get("hostname") in grading_rec["hostnames"]
 
 
+def _entry_in_observable_scope(entry, obs_hosts, obs_account_ids, registry):
+    """Stage 5 Phase 2, D4 (ratified OD-8): does this action-log entry's
+    registry-resolved target sit in the incident's OBSERVABLE scope? A
+    deliberately separate join from _entry_in_scope's grading-record join
+    (scaffold ruling D: _incident_progress keeps its frozen 3.9A behavior;
+    D4 uses the observable sets). Reads ONLY the registry entity, the
+    observable host set, and account entity ids pre-resolved from the
+    observable account strings via the sanctioned resolver -- never grading
+    records, expected actions, or answer keys."""
+    e = registry.get(entry["target"]["id"])
+    if e is None:
+        return False
+    if e["kind"] == "account":
+        return entry["target"]["id"] in obs_account_ids
+    return e.get("hostname") in obs_hosts
+
+
 def _classification_grade(verdict, category, actual_category):
     """Unified classification correctness (matches the legacy classify rule).
     verdict false_positive maps the submitted category to 'False Positive'."""
@@ -3420,6 +3438,18 @@ def _classification_grade(verdict, category, actual_category):
         "accuracy": 100.0 if correct else 0.0,
         "grade": "A" if correct else "F",
     }
+
+
+def _scenario_rationale(label):
+    """The scenario's authored Tier 2 rationale paragraph (D2, schema v2
+    top-level expected_response), or None while unauthored / on non-v2
+    sources. Read ONLY at submit time -- the text freezes into the record
+    as scenario_rationale, so later YAML edits reach future submissions
+    only (correction 6) and a record frozen null stays null (ruling H)."""
+    if not label or not yaml_catalog:
+        return None
+    entry = yaml_catalog.get(label) or {}
+    return entry.get("expected_response") or None
 
 
 def _incident_report_card(s, scenario_id, grading_rec, payload, all_logs):
@@ -3440,6 +3470,9 @@ def _incident_report_card(s, scenario_id, grading_rec, payload, all_logs):
                 if grading_rec and h in grading_rec["hostnames"]}
     response = compute_action_score(exp, executed, isolated,
                                     [grading_rec] if grading_rec else [])
+    # 5.2 (ruling B): pop the internal review detail at this call site; the
+    # 5.3 freeze consumes it into the stored response_review.
+    review_raw = response.pop("_review")
     acceptable_seqs = set(response.pop("acceptable_seqs"))
     resp_raw = response.pop("accuracy_raw")            # kept for the composite
     inaction_collateral = response.pop("inaction_collateral")
@@ -3456,6 +3489,87 @@ def _incident_report_card(s, scenario_id, grading_rec, payload, all_logs):
     response["not_executed"] = {"count": len(failed), "entries": failed}
     response["no_effect"] = {"count": len(noop), "entries": noop}
 
+    # --- Stage 5 Phase 5 commit 5.3 (D1, ratified OD-2): assemble and
+    # FREEZE the complete response_review into the record at submit time.
+    # The score view serves the STORED result and never rebuilds any part
+    # of it (correction 6): later template/YAML changes reach future
+    # submissions only. ---
+    failed_keys = set()
+    for e in log:
+        if e.get("outcome") != action_overlay.FAILED:
+            continue
+        ent = registry.get((e.get("target") or {}).get("id"))
+        if ent is not None:
+            failed_keys.add((e["action"], _entity_action_key(e["action"], ent)))
+    label_by_seq = {e["seq"]: (e.get("target") or {}).get("label")
+                    for e in log}
+    entries = []
+    for raw in review_raw["entries"]:
+        code = raw["reason_code"]
+        exp_r = raw.get("expected")
+        if code == response_review.REQUIRED_NOT_ATTEMPTED and exp_r is not None:
+            k = (exp_r["action"],
+                 _action_target_key(exp_r["action"], exp_r["target"]))
+            if k in failed_keys:
+                code = response_review.REQUIRED_ATTEMPT_FAILED
+        if raw["action"] is None:
+            # the scenario-level inaction unit: no action, no target
+            label = None
+            ref = "inaction"
+        elif exp_r is not None:
+            tkey = _action_target_key(exp_r["action"], exp_r["target"])
+            label = (label_by_seq.get(raw["seq"])
+                     or response_review.expected_label(
+                         exp_r["action"], exp_r["target"], registry))
+            ref = response_review.expected_ref(exp_r["action"], tkey)
+        else:
+            # a collateral occurrence: executed-side identity only
+            label = (label_by_seq.get(raw["seq"])
+                     or response_review.expected_label(
+                         raw["action"], raw.get("target") or {}, registry))
+            ref = None
+        entries.append({
+            "bucket": response_review.BUCKET_OF[code],
+            "reason_code": code,
+            "action": raw["action"],
+            "target_label": label,
+            "why": response_review.render_why(code, raw["action"]),
+            "source_action_seq": raw["seq"],
+            "expected_ref": ref,
+        })
+    attempt_history = sorted(
+        [{"seq": e["seq"], "action": e["action"],
+          "target_label": (e.get("target") or {}).get("label"),
+          "outcome": e["outcome"],
+          "reason_code": response_review.FAILED_PRECONDITION}
+         for e in failed]
+        + [{"seq": e["seq"], "action": e["action"],
+            "target_label": (e.get("target") or {}).get("label"),
+            "outcome": e["outcome"],
+            "reason_code": response_review.NO_EFFECT_REPEAT}
+           for e in noop],
+        key=lambda r: r["seq"])
+    det_block = [{
+        "rule_name": d.get("rule_name"),
+        "entity_label": ((d.get("entity") or {}).get("host")
+                         or (d.get("entity") or {}).get("account") or ""),
+        "your_call": d.get("player_action", "open"),
+        "correct": disposition_call_correct(
+            d.get("disposition"), d.get("player_action", "open")),
+    } for d in dets]
+    scenario_label = next((l.get("label") for l in all_logs
+                           if l.get("scenario_id") == scenario_id
+                           and l.get("label")), "")
+    response_review_block = {
+        "entries": entries,
+        "attempt_history": attempt_history,
+        "detections": det_block,
+        # Tier 2 scenario paragraph (D2, wired at 5.5): frozen from the
+        # scenario's expected_response at submit; a record submitted before
+        # its paragraph exists freezes null permanently (ruling H).
+        "scenario_rationale": _scenario_rationale(scenario_label),
+    }
+
     det_raw = (detection["correct"] / detection["graded"] * 100) if detection["graded"] else None
     composite = compute_composite_grade(
         (classification["accuracy"], 1),
@@ -3466,6 +3580,10 @@ def _incident_report_card(s, scenario_id, grading_rec, payload, all_logs):
         "classification": classification,
         "detection": detection,
         "response": response,
+        # D1 (ratified OD-2): the frozen teaching breakdown, a first-class
+        # report_card key served inside the submitted grading by the
+        # existing underscore-strip; never rebuilt after submit.
+        "response_review": response_review_block,
         # scoring detail for the session pool, never a required-count leak
         "_response_raw": resp_raw,
         "_inaction_collateral": inaction_collateral,
@@ -3989,6 +4107,24 @@ def list_incidents():
                     card["triage"] = {"total": total, "triaged": triaged}
                     card["open_detections"] = total - triaged
                     card["ready"] = triaged == total
+                    # D4 (ratified OD-8): the honest related-actions COUNT --
+                    # successful log entries whose registry-resolved target is
+                    # an observable scope host/account. A count of the
+                    # player's own actions: observable by definition; no
+                    # required-total or correctness signal. Ruling A: count
+                    # only, never a list.
+                    registry = s.get("entity_index", {})
+                    obs_hosts = set(scope["hosts"])
+                    obs_account_ids = {
+                        action_overlay.resolve_account_key(a, registry)
+                        for a in scope["accounts"]}
+                    obs_account_ids.discard(None)
+                    log = (s.get("overlay") or {}).get("log", [])
+                    card["related_actions"] = sum(
+                        1 for le in log
+                        if le.get("outcome") == action_overlay.SUCCESS
+                        and _entry_in_observable_scope(
+                            le, obs_hosts, obs_account_ids, registry))
                 active.append(card)
     return jsonify({"active": active, "completed": completed,
                     "queue_length": s.get("queue_length", 0),
@@ -4161,6 +4297,15 @@ def check_answer_route(incident_id):
 # Disposition scoring: correct = promote a true positive, dismiss a false
 # positive, dismiss a benign_expected. Wrong = the inverse. Open detections
 # are pending, excluded from the grade.
+def disposition_call_correct(disposition, player_action):
+    """The ONE disposition-correctness rule, shared by compute_detection_score
+    (whose bucket arithmetic implements the same mapping, pinned equal by
+    test) and the 5.3 review detections block. Correct = promote a true
+    positive / dismiss a false positive / dismiss an expected-benign."""
+    return _DISPOSITION_CORRECT.get(disposition) == player_action \
+        if player_action in ("promoted", "dismissed") else False
+
+
 _DISPOSITION_CORRECT = {
     "true_positive": "promoted",
     "false_positive": "dismissed",
@@ -4238,6 +4383,23 @@ def _action_target_key(action, target):
 
 _IDENTITY_ACTION_NAMES = ("disable_account", "revoke_sessions",
                           "force_password_reset")
+
+
+def _entity_action_key(action, entity):
+    """The registry-entity side of _action_target_key: the same canonical
+    composite key, derived from a resolved entity, so failed ATTEMPTS in the
+    overlay log can be matched against expected composites (5.3's
+    required_not_attempted vs required_attempt_failed split)."""
+    if action in ("isolate_host", "release_host"):
+        return (entity.get("hostname"),)
+    if action == "kill_process":
+        return (entity.get("hostname"), entity.get("pid"))
+    if action == "delete_file":
+        return (entity.get("hostname"), entity.get("path"))
+    if action == "remove_persistence":
+        ident = entity.get("identity")
+        return tuple(ident) if ident else (entity.get("hostname"), None)
+    return action_overlay.account_key(entity.get("domain"), entity.get("username"))
 
 
 def scenario_grading_record(scenario_id, entry, concrete_env):
@@ -4338,6 +4500,13 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
     by_eid = {(x["scenario_id"], x["eid"]): x for x in required_exp
               if x.get("eid")}
 
+    # Stage 5 Phase 5 commit 5.2 (ruling B): the review detail is built
+    # INSIDE the scorer's own joins, in the same pass, and returned as the
+    # popped `_review` key (the acceptable_seqs pattern). Raw entries carry
+    # the reason code, the expected composite (for label rendering at the
+    # one consuming call site), and the occurrence seq; every call site
+    # removes the key before the public score result is used or served.
+    review_entries = []
     required = len(required_exp)
     correct = missed = order_violations = 0
     for exp in required_exp:
@@ -4355,10 +4524,31 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
                     break
         if achieved and order_ok:
             correct += 1
+            review_entries.append({
+                "reason_code": response_review.REQUIRED_COMPLETED,
+                "action": exp["action"], "expected": exp, "seq": seq})
         else:
             missed += 1
             if achieved and not order_ok:
                 order_violations += 1
+                review_entries.append({
+                    "reason_code": response_review.OUT_OF_ORDER,
+                    "action": exp["action"], "expected": exp, "seq": seq})
+            elif exp["action"] == "isolate_host" and seq is not None:
+                # executed but released before submission: the end-state
+                # forfeit, distinguishable from never-attempted by the seq
+                review_entries.append({
+                    "reason_code": response_review.RELEASED_AFTER_ISOLATION,
+                    "action": exp["action"], "expected": exp, "seq": seq})
+            else:
+                # never successfully executed; the consuming call site
+                # upgrades to required_attempt_failed when failed attempts
+                # of this composite exist in the overlay log (the scorer
+                # never sees failed attempts -- successful_executions
+                # filters to SUCCESS)
+                review_entries.append({
+                    "reason_code": response_review.REQUIRED_NOT_ATTEMPTED,
+                    "action": exp["action"], "expected": exp, "seq": None})
 
     required_keys = {(x["action"], _action_target_key(x["action"], x["target"]))
                      for x in required_exp}
@@ -4368,6 +4558,14 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
         seq for (action, key), (seq, target) in first.items()
         if (action, key) in acceptable_keys)
 
+    # acceptable executions: teaching entries with their occurrence seqs
+    for x in acceptable_exp:
+        hit = first.get((x["action"], _action_target_key(x["action"], x["target"])))
+        if hit:
+            review_entries.append({
+                "reason_code": response_review.ACCEPTABLE_COMPLETED,
+                "action": x["action"], "expected": x, "seq": hit[0]})
+
     collateral_hits = []
     for (action, key), (seq, target) in first.items():
         if action == "isolate_host":
@@ -4376,6 +4574,10 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
             continue
         if in_grading_scope(action, target):
             collateral_hits.append((action, target))
+            review_entries.append({
+                "reason_code": response_review.COLLATERAL_IN_SCOPE,
+                "action": action, "expected": None, "target": target,
+                "seq": seq})
     required_iso = {x["target"]["hostname"] for x in required_exp
                     if x["action"] == "isolate_host"}
     acceptable_iso = {x["target"]["hostname"] for x in acceptable_exp
@@ -4386,6 +4588,11 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
         target = {"hostname": hostname}
         if in_grading_scope("isolate_host", target):
             collateral_hits.append(("isolate_host", target))
+            iso_hit = first.get(("isolate_host", (hostname,)))
+            review_entries.append({
+                "reason_code": response_review.COLLATERAL_IN_SCOPE,
+                "action": "isolate_host", "expected": None, "target": target,
+                "seq": iso_hit[0] if iso_hit else None})
 
     # Intentional correct inaction: each reviewed scenario with no REQUIRED
     # actions (empty, or acceptable-only) is one graded unit, credited only
@@ -4399,8 +4606,14 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
         required += 1
         if any(claims(g, action, target) for action, target in collateral_hits):
             missed += 1
+            review_entries.append({
+                "reason_code": response_review.INACTION_SPOILED,
+                "action": None, "expected": None, "seq": None})
         else:
             correct += 1
+            review_entries.append({
+                "reason_code": response_review.INACTION_CORRECT,
+                "action": None, "expected": None, "seq": None})
 
     collateral = len(collateral_hits)
     # Stage 3d collateral pricing (owner ruling 2026-07-19): required credit is
@@ -4434,6 +4647,10 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
         "inaction_collateral": inaction_collateral,
         "grade": _letter_grade(accuracy, graded),
         "acceptable_seqs": acceptable_seqs,
+        # 5.2 (ruling B): the internal review detail -- popped at EVERY call
+        # site before the public score result is used; a structural test
+        # asserts no served payload anywhere contains it.
+        "_review": {"entries": review_entries},
     }
 
 

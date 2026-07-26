@@ -1,12 +1,14 @@
 /**
- * Stage 1 UI acceptance tests (amended by Stage 3a): render the Endpoints
- * routes against fixture data and inspect visible text.
+ * Stage 1 UI acceptance tests (amended by Stage 3a; Final pass III.0.1):
+ * render the Endpoints routes against fixture data and inspect visible
+ * text.
  *  - no rendered application copy contains an em dash
  *  - empty values render exactly as "-"
  *  - no Add Endpoint / Refresh / bulk action / uninstall / delete affordances
- *  - Stage 3a: the reserved isolation area carries the Isolate/Release
- *    control, process rows carry Kill, actions confirm before executing,
- *    and failed preconditions surface their in-fiction reason
+ *  - Final pass III.0.1: Endpoints are INVESTIGATION ONLY. No direct
+ *    action execution exists on any endpoint surface (no Isolate, Kill,
+ *    Remove Persistence, Delete File); the contextual Respond controls
+ *    only NAVIGATE to the Response workspace with the target selected.
  *  - technical values render in mono
  */
 import React from 'react';
@@ -15,6 +17,8 @@ import Endpoints from '../components/Endpoints';
 import EndpointDetail from '../components/EndpointDetail';
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
+jest.mock('react-toastify', () => ({ toast: jest.fn(), ToastContainer: () => null }));
+const { toast } = require('react-toastify');
 const { apiFetch } = require('../api');
 
 const LIST_FIXTURE = {
@@ -127,7 +131,7 @@ const assertCleanCopy = (container) => {
 test('endpoints list renders fixture rows with clean copy', async () => {
   mockApi();
   const { container } = render(
-    <Endpoints isVisible resetTrigger={0} setEndpointCount={() => {}} pivotHost={null} />
+    <Endpoints isVisible resetTrigger={0} pivotHost={null} />
   );
   expect(await screen.findByText('ACME-WS12')).toBeInTheDocument();
   expect(screen.getByText('1 online · 1 offline')).toBeInTheDocument();
@@ -139,24 +143,28 @@ test('endpoints list renders fixture rows with clean copy', async () => {
   assertCleanCopy(container);
 });
 
-test('endpoint detail renders all tabs with clean copy and response actions', async () => {
+test('endpoint detail renders all tabs with clean copy and Respond navigation only', async () => {
+  const onOpenResponse = jest.fn();
   mockApi();
   const { container } = render(
-    <EndpointDetail hostname="ACME-WS12" org={{ name: 'ACME Corp' }} onBack={() => {}} />
+    <EndpointDetail hostname="ACME-WS12" org={{ name: 'ACME Corp' }} onBack={() => {}}
+      onOpenResponse={onOpenResponse} />
   );
   expect(await screen.findByText('spectyr-agent 1.0.0')).toBeInTheDocument();
-  // Stage 3a: the reserved area now carries the Isolate control (enabled;
-  // offline enforcement is server-side so the trap stays live)
-  const isolateBtn = screen.getByRole('button', { name: 'Isolate Host' });
-  expect(isolateBtn).toBeEnabled();
+  // III.0.1: no direct execution on the overview; the reserved area
+  // carries the neutral navigation only
+  expect(screen.queryByRole('button', { name: 'Isolate Host' })).toBeNull();
   expect(screen.queryByRole('button', { name: /release/i })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Respond to this host' })).toBeInTheDocument();
   expect(screen.getByText('00:50:56:1A:2B:3C')).toBeInTheDocument();
   assertCleanCopy(container);
 
   fireEvent.click(screen.getByRole('button', { name: 'Processes' }));
   expect(await screen.findByText('C:\\Windows\\explorer.exe')).toBeInTheDocument();
   expect(screen.getByText('3 of 3')).toBeInTheDocument();
-  expect(screen.getAllByRole('button', { name: 'Kill' })).toHaveLength(3);
+  // no Kill execution; each process row navigates to Response
+  expect(screen.queryByRole('button', { name: 'Kill' })).toBeNull();
+  expect(screen.getAllByRole('button', { name: 'Respond' })).toHaveLength(3);
   // orphan of an overlay-killed parent: original PPID annotated terminated
   expect(screen.getByText('(terminated)')).toBeInTheDocument();
   assertCleanCopy(container);
@@ -174,15 +182,15 @@ test('endpoint detail renders all tabs with clean copy and response actions', as
 
   fireEvent.click(screen.getByRole('button', { name: 'Autoruns' }));
   expect(await screen.findByText('WindowsUpdate')).toBeInTheDocument();
-  // persistence-artifact view: artifact-type labels so WMI never reads as a
-  // registry autorun, per-flag state, and the remove/delete controls
+  // persistence-artifact view: artifact-type labels + per-flag state stay;
+  // execution moved to Response (no Remove/Delete controls here)
   expect(screen.getByText('WMI subscription')).toBeInTheDocument();
   expect(screen.getByText('Run key')).toBeInTheDocument();
   expect(screen.getAllByText('Registered').length).toBe(2);
   expect(screen.getByText('File present')).toBeInTheDocument();
-  expect(screen.getAllByRole('button', { name: 'Remove Persistence' })).toHaveLength(2);
-  // only the file-backed Run key offers Delete File
-  expect(screen.getAllByRole('button', { name: 'Delete File' })).toHaveLength(1);
+  expect(screen.queryByRole('button', { name: 'Remove Persistence' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Delete File' })).toBeNull();
+  expect(screen.getAllByRole('button', { name: 'Respond' })).toHaveLength(2);
   assertCleanCopy(container);
 
   fireEvent.click(screen.getByRole('button', { name: 'Services' }));
@@ -190,86 +198,29 @@ test('endpoint detail renders all tabs with clean copy and response actions', as
   assertCleanCopy(container);
 });
 
-test('isolate flow: confirm dialog, POST, refetch shows Isolated', async () => {
-  let posted = null;
-  let isolated = false;
-  apiFetch.mockImplementation((path, opts) => {
-    if (path === '/api/actions') {
-      posted = JSON.parse(opts.body);
-      isolated = true;
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({
-        seq: 1, timestamp: '2026-07-16T12:00:01+00:00', action: 'isolate_host',
-        outcome: 'success', reason: null,
-        target: { id: 'ent-aaaa11112222', kind: 'host', label: 'ACME-WS12' },
-      }) });
-    }
-    const detail = { ...DETAIL_FIXTURE, isolation: isolated ? 'isolated' : 'not_isolated' };
-    return Promise.resolve({ ok: true, json: () => Promise.resolve(detail) });
-  });
-  render(<EndpointDetail hostname="ACME-WS12" org={{ name: 'ACME Corp' }} onBack={() => {}} />);
-  fireEvent.click(await screen.findByRole('button', { name: 'Isolate Host' }));
-  // confirm dialog with concise copy
-  expect(screen.getByRole('dialog')).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Isolate' }));
-  await waitFor(() => expect(posted).toEqual({ action: 'isolate_host', target: 'ent-aaaa11112222' }));
-  // refetched view renders the isolated state and the Release control
-  expect(await screen.findByRole('button', { name: 'Release Host' })).toBeInTheDocument();
-  expect(screen.getAllByText('Isolated').length).toBeGreaterThanOrEqual(1);
-});
+test('III.0.1: Respond controls navigate with the target selected and never execute', async () => {
+  const onOpenResponse = jest.fn();
+  mockApi();
+  render(<EndpointDetail hostname="ACME-WS12" org={{ name: 'ACME Corp' }} onBack={() => {}}
+    onOpenResponse={onOpenResponse} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Respond to this host' }));
+  expect(onOpenResponse).toHaveBeenCalledWith({ kind: 'host', hostname: 'ACME-WS12' });
 
-test('failed precondition surfaces the in-fiction reason', async () => {
-  const offline = { ...DETAIL_FIXTURE, status: 'offline' };
-  apiFetch.mockImplementation((path, opts) => {
-    if (path === '/api/actions') {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({
-        seq: 1, timestamp: '2026-07-16T12:00:01+00:00', action: 'isolate_host',
-        outcome: 'failed_precondition',
-        reason: 'Host is offline. The isolation command could not be delivered to the endpoint agent.',
-        target: { id: 'ent-aaaa11112222', kind: 'host', label: 'ACME-WS12' },
-      }) });
-    }
-    return Promise.resolve({ ok: true, json: () => Promise.resolve(offline) });
-  });
-  const { container } = render(
-    <EndpointDetail hostname="ACME-WS12" org={{ name: 'ACME Corp' }} onBack={() => {}} />
-  );
-  // the control stays enabled on an offline host; the server enforces
-  fireEvent.click(await screen.findByRole('button', { name: 'Isolate Host' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Isolate' }));
-  await waitFor(() => {
-    expect(container.textContent).toMatch(/isolation command could not be delivered/);
-  });
-  assertCleanCopy(container);
-});
+  fireEvent.click(screen.getByRole('button', { name: 'Processes' }));
+  await screen.findByText('C:\\Windows\\explorer.exe');
+  fireEvent.click(screen.getAllByRole('button', { name: 'Respond' })[1]);
+  expect(onOpenResponse).toHaveBeenCalledWith({ kind: 'process', hostname: 'ACME-WS12', pid: 3456 });
 
-test('remove persistence flow: confirm dialog, POST, refetch drops the row', async () => {
-  let posted = null;
-  let removed = false;
-  apiFetch.mockImplementation((path, opts) => {
-    if (path === '/api/actions') {
-      posted = JSON.parse(opts.body);
-      removed = true;
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({
-        seq: 1, timestamp: '2026-07-16T12:00:01+00:00', action: 'remove_persistence',
-        outcome: 'success', reason: null,
-        target: { id: 'ent-2222aaaa3333', kind: 'persistence',
-                  label: "WMI subscription 'WindowsUpdConsumer' on ACME-WS12" },
-      }) });
-    }
-    // after removal the fully-neutralized WMI row leaves the live view
-    const autoruns = removed
-      ? DETAIL_FIXTURE.autoruns.filter(a => a.persist_type !== 'wmi_subscription')
-      : DETAIL_FIXTURE.autoruns;
-    return Promise.resolve({ ok: true, json: () => Promise.resolve({ ...DETAIL_FIXTURE, autoruns }) });
-  });
-  render(<EndpointDetail hostname="ACME-WS12" org={{ name: 'ACME Corp' }} onBack={() => {}} />);
-  fireEvent.click(await screen.findByRole('button', { name: 'Autoruns' }));
-  expect(await screen.findByText('WindowsUpdConsumer')).toBeInTheDocument();
-  fireEvent.click(screen.getAllByRole('button', { name: 'Remove Persistence' })[1]);
-  expect(screen.getByRole('dialog')).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
-  await waitFor(() => expect(posted).toEqual({ action: 'remove_persistence', target: 'ent-2222aaaa3333' }));
-  await waitFor(() => expect(screen.queryByText('WindowsUpdConsumer')).toBeNull());
+  fireEvent.click(screen.getByRole('button', { name: 'Autoruns' }));
+  await screen.findByText('WindowsUpdConsumer');
+  fireEvent.click(screen.getAllByRole('button', { name: 'Respond' })[1]);
+  expect(onOpenResponse).toHaveBeenCalledWith({ kind: 'autorun', entityId: 'ent-2222aaaa3333' });
+
+  // navigation only: no dialog opened, no action POST fired
+  expect(screen.queryByRole('dialog')).toBeNull();
+  const posts = apiFetch.mock.calls.filter(([, o]) => o && o.method === 'POST');
+  expect(posts).toHaveLength(0);
+  expect(toast).not.toHaveBeenCalled();
 });
 
 test('unknown host shows the not-managed notice', async () => {

@@ -84,6 +84,11 @@
       "type": "array",
       "items": { "$ref": "#/$defs/supplemental_entity" }
     },
+    "expected_response": {
+      "$comment": "Stage 5 D2 (contract 7.3, ratified OD-1/OD-3; scaffold Section 3.4): the Tier 2 scenario-level rationale paragraph. TOP-LEVEL sibling of triage_review so the frozen v1<->v2 triage parity stays byte-identical. Optional during the per-scenario rollout (the ledger test in test_scenario_loader_v2.py ratchets coverage); frozen into a submission record as scenario_rationale at submit time. Answer-bearing authored content: served post-boundary only.",
+      "type": "string",
+      "minLength": 1
+    },
     "detections": {
       "$comment": "Stage 2: the raw detections this scenario surfaces in the feed. Each fires on triggering step id(s) and carries a server-side answer-key disposition that must never reach the client.",
       "type": "array",

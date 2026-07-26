@@ -325,3 +325,16 @@ triage_review:
     - "Identify who cleared the logs using the subject account in the 1102 event"
     - "Search other hosts for the same account performing similar activity"
     - "Escalate to incident response as log clearing is a late-stage indicator"
+
+# Stage 5 D2 (Tier 2 rationale; ledger-tracked): frozen into a
+# submission record as scenario_rationale, rendered only in the
+# post-boundary Learning Review Key takeaway.
+expected_response: >-
+  Security logs on the victim workstation were cleared and a WMI event
+  subscription was planted: a fileless foothold that re-executes on its
+  trigger even after reboots. Required: isolate the workstation, and remove
+  the WMI subscription itself, because terminating processes does not
+  unregister the subscription and the foothold would simply fire again.
+  Terminating the involved processes is defensible but not sufficient. The
+  look-alike process and the signed-in account are near-misses: neither is
+  shown compromised.

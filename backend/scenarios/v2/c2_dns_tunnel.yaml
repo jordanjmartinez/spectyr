@@ -325,3 +325,16 @@ triage_review:
     - "Block the tunneling domain at the DNS server"
     - "Search DNS logs for other hosts querying the same domain"
     - "Investigate how the tunneling tool was delivered to the host"
+
+# Stage 5 D2 (Tier 2 rationale; ledger-tracked): frozen into a
+# submission record as scenario_rationale, rendered only in the
+# post-boundary Learning Review Key takeaway.
+expected_response: >-
+  The victim workstation is exchanging attacker traffic inside DNS queries:
+  tunneling that rides the one protocol every network allows. Required:
+  isolate the workstation to sever the covert channel, and terminate the
+  tunneling process. The DNS server is the strongest temptation in this
+  scenario, but it is shared infrastructure faithfully resolving what
+  clients send; isolating it breaks name resolution for everyone while the
+  compromise stays on the workstation. The account shows no credential
+  theft, so disabling it is collateral.

@@ -1039,6 +1039,37 @@ table (Section 8 here) with final test names and results; Chrome
 workflow transcripts; the copy inventory as landed; any deviation,
 flagged per the deviation-flagging rule at the time it was made.
 
+### 10.1 Ratified-copy conformance sweep (post-checkpoint addition, 2026-07-26, append-only)
+
+Added at the C1 checkpoint after the post-Stage-5 product review found
+two divergences from ratified content specifications that the Phase 7
+certification did not catch (F4a: no workspace selector despite the
+A1-B.3.2 source parenthetical; F5a: the well bucket rendered response
+entries only despite the A1-B.4.1 item 3 parenthetical). Root cause in
+both: acceptance rows tested the implementation's own routing against
+the payload shape, and no certification step diffed the RATIFIED TEXT
+against the RENDERED OUTPUT.
+
+**Standing rule: every ratified content specification for a teaching or
+progress surface gets an explicit verification row diffing the ratified
+sentence against the rendered surface.** The sweep runs at every future
+certification (this stage's checkpoint fixes included) and grows a row
+whenever an amendment ratifies new surface content. Initial rows:
+
+| # | Ratified source (contract) | Specified content | Rendered surface | Verified by |
+|---|---|---|---|---|
+| 1 | A1-B.4.1 item 3 (the review) | "what you did well (completed required actions, correct dispositions), what you missed, what was unnecessary or harmful (each with the frozen whys), per-detection verdicts, the playbook, and Key takeaway" | Metrics Learning Review sections | `review-teaching.test.js` A1-B.4.1 conformance test + C1 Chrome walk (INC-9709: "Detection calls: 5 of 5 correct" beside the missed-actions whys) |
+| 2 | A1-B.3.2 line table (checklist) | Each checklist line's OBSERVABLE SOURCE as specified, incl. Classification = "local selection state (the player's own input; the workspace selector)" | PhaseStrip lines + the workspace classification block | `incidents-workspace.test.js` A1-B.3.2 tests + C1 Chrome walk (selection updates the line pre-submit) |
+| 3 | A1-A.5 copy table (case-constant finals) | The ratified A-OD-1 strings byte-exact | Pinned line, state chip, expanded-search block, return action | `progress-vocabulary.test.js` byte-exact battery + `investigation-context.test.js` |
+| 4 | A2-3 + A2-R.1 (query clarity finals) | The four ruled tooltips, three-line error form, placeholder, Restore, surrounding block copy | SIEM bar, inspector, error box, banner | `query-clarity.test.js` + `help-model.test.js` byte pins |
+| 5 | A1-B.3.1/T1-T5 (toasts) + B-OD-5 (prompt) | Trigger list exactness; Guided-only consider-prompt | Toast container + checklist prompt | `live-progress.test.js` |
+
+A future amendment that changes any specified content MUST update the
+matching row in the same change; a certification that cannot tick every
+row is not complete. Rows verify CONTENT AGAINST RATIFIED TEXT, not
+merely that a test exists: the reviewer reads the contract sentence and
+the rendered surface side by side.
+
 ---
 
 ## 11. Ambiguities, repository disagreements, and decisions requiring ratification
@@ -1210,3 +1241,67 @@ Phase 1 and completed as the canonical vocabulary module in Phase 2.
 **Legacy-record conclusion: accepted.** Submissions are memory-only; no
 pre-Stage-5 persisted records require migration or backfill; the
 degraded missing-breakdown UI remains a defensive fallback only.
+
+---
+
+## Appendix: Amendment 3 cycle (applied at ratification, 2026-07-26, append-only)
+
+The ratified Amendment 3 (contract appendix A3; rulings A3-R.1)
+authorizes ONE consolidated implementation cycle on
+`stage-5-live-run-feedback`, following the merged Phase 3/4 pattern
+(one review cycle). Binding order: F2 lands before F3 (the hold
+machinery converges at F3); copy lands first (R7). Each commit is one
+concern, independently revertible, hook battery green.
+
+- **A3.1 — copy constants + scans.** The ratified A3-R.1 finals and
+  the standing drafted finals land in `uiCopy.js` ahead of their
+  consumers; the enumerated forbidden/em-dash scan rows and byte-exact
+  pins land with them. Retiring strings die with their consumers in
+  the later commits. Size XS.
+- **A3.2 — F2 model B.** The expanded-search hold (entry capture at
+  every entry site, survives every run while expanded, consumed by
+  Return, cleared by case change / incident-scoped descent / reset),
+  the zero-request restore incl. timeline mode, the ruled subcopy,
+  C1-guard removal, and the model B test battery (the model A re-run
+  assertions translate). The surrounding path keeps its own A2 hold
+  until A3.3 deletes it (the convergence). Size S-M.
+- **A3.3 — F3 removal.** The complete A3-3.2 surface: inspector
+  control, surrounding timeline branches, focus/centering chain, the
+  A2 hold machinery (now superseded by A3.2's), four copy strings,
+  tooltip set nine -> eight, the docs-page clause, test
+  deletions/moves (the two OR-fallback tests relocate). `descentHost`
+  and descent untouched. Size S, net-negative.
+- **A3.4 — F4b gating.** The shell-owned selection state (`chosen`
+  lifts to Dashboard), the ONE `submissionReady` derivation consumed
+  by every Ready surface (checklist line, Submit gate, Incidents list
+  chip + Ready view/count, IncidentDashboard chip), the bare
+  confirmation (landed confirm copy verbatim + the Hardcore warning
+  relocated into it), Check Answer on the workspace selection
+  (disabled until valid), modal variants DELETED. Size S-M.
+- **A3.5 — F7 core.** `queryMode` (default Simple, all modes,
+  session-local), the FILTERS-only bar projection over the ONE pending
+  canonical text, the value-driven Source / Event type selects, the
+  `composeQuery` + `replaceTimeframe` chokepoint forms (the timeframe
+  raw-splice migrates), mode-scoped placeholder/help/empty-state, the
+  docs-page distinction sentence. Size M.
+- **A3.6 — F7 validation + corpora.** The FILTERS-vs-compiler error
+  boundary with the field-relative detail offset, restore-across-modes,
+  the GENERATED_FORMS_CORPUS extension (both sides, counts bumped),
+  the SOURCE_FAMILIES two-sided parity corpus, the timeframe-migration
+  translation corpus, and the representability round-trip battery.
+  Size S-M.
+- **A3.7 — certification.** The A3-9 Chrome workflows (model B return
+  walk; gated-submit walk; W-simple; Hardcore confirm-warning check),
+  the ratified-copy conformance sweep (Section 10.1) with its A3 row
+  updates, the full `--all` battery at the boundary, and the closing
+  report update (docs/stage-5-implementation-report.md gains the C1 +
+  Amendment 3 record, behavioral changes, tests, workflows,
+  deviations, and the complete ordered commit ledger). Size S.
+
+Certification workflow deltas (Section 10 list, in force for this
+cycle): W1's submit leg = workspace-classify -> gated Ready -> bare
+confirm; W3-W5's return leg = the zero-request model B restore; the
+surrounding legs are DELETED; the parse-failure leg runs in BOTH
+search modes; W7 adds the Hardcore confirm-warning assertion; NEW
+W-simple walks the default simple mode end to end. The Section 10.1
+conformance sweep rows update per contract A3-9.

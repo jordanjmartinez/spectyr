@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+// Final pass III.0 item 7: the Reports section is gone (nothing may imply
+// a report workflow exists).
 const SECTIONS = [
   { id: 'queue', label: 'Queue' },
   { id: 'game-modes', label: 'Game Modes' },
   { id: 'siem', label: 'SIEM Workbench' },
   { id: 'scenarios', label: 'Scenarios' },
   { id: 'analytics', label: 'Analytics' },
-  { id: 'reports', label: 'Reports' },
 ];
 
 const Section = ({ id, title, children }) => (
@@ -116,8 +117,8 @@ const Docs = () => {
                 SIEM, mixing routine network activity with active threats.
               </p>
               <p>
-                Investigate alerts, follow related users, hosts, and IPs, classify each scenario,
-                and submit a short incident report.
+                Investigate incidents, follow related users, hosts, and IPs, classify each one,
+                and submit your verdict.
               </p>
             </div>
 
@@ -159,13 +160,18 @@ const Docs = () => {
               <p className="log-mono text-[#1a2332]">TIMEFRAME | SENSOR | EVENT TYPE | FILTERS</p>
               <p>
                 Run Query executes the bar as a frozen snapshot: results never move until you run
-                again or press Refresh, and a new-events badge counts telemetry that arrived since
-                the snapshot. Sidebar values and per-field inspector actions refine the executed
+                again, and when new matching telemetry arrives a count appears with a Load new
+                events action that brings the snapshot up to date. Sidebar values and per-field
+                inspector actions refine the executed
                 query; entity pivots (host, account, IP, domain, process, file, event type, sensor)
-                always run Session-wide, with a one-click chip back to your incident scope.
-                Open Evidence Timeline on an incident or detection descends into its evidence,
-                sorted occurrence-ascending, and Surrounding events centers the host timeline on
-                the event you are inspecting.
+                follow the clue across the evidence you are searching. With an incident selected
+                the SIEM searches that incident&apos;s evidence; with none it searches all activity.
+                Investigate in SIEM on an incident or detection opens the SIEM with that
+                evidence already searched.
+              </p>
+              <p>
+                Simple search accepts a filter expression. Advanced LCQL accepts the complete
+                four-part query.
               </p>
               <p>
                 Quoting rules for filter values: values containing spaces or any of{' '}
@@ -207,12 +213,6 @@ const Docs = () => {
               <p>Your analytics show accuracy, queue progress, recent decisions, and final grade.</p>
             </Section>
 
-            <Section id="reports" title="Reports">
-              <p>
-                Submit a report for each scenario describing what happened, which systems or users
-                were affected, and what action was taken.
-              </p>
-            </Section>
           </div>
         </main>
       </div>

@@ -399,3 +399,18 @@ triage_review:
     - "Search firewall logs for scan activity from the same source"
     - "Check for follow-up activity like exploitation attempts or lateral movement"
     - "Review segmentation rules to confirm workstations cannot reach server management ports"
+
+# Stage 5 D2 (Tier 2 rationale; ledger-tracked): frozen into a
+# submission record as scenario_rationale, rendered only in the
+# post-boundary Learning Review Key takeaway.
+expected_response: >-
+  An attacker moved from the victim workstation to the file server using the
+  victim's credentials. The response must close both footholds and the
+  identity: isolate the source workstation, terminate the malicious
+  processes on the workstation and on the file server, revoke the account's
+  sessions, and reset its password, resetting only after the workstation is
+  contained so a live foothold cannot immediately recapture the new
+  credential. Disabling the account outright is defensible. The
+  vulnerability scanner's activity is a look-alike, and isolating the file
+  server takes a shared service away from the whole company when terminating
+  its malicious process suffices.

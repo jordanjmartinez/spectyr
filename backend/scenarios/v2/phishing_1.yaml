@@ -249,3 +249,17 @@ triage_review:
     - "Reset credentials for any affected users"
     - "Search logs for other lookalike domains from the same source"
     - "Report the domain to the registrar"
+
+# Stage 5 D2 (Tier 2 rationale; ledger-tracked): frozen into a
+# submission record as scenario_rationale, rendered only in the
+# post-boundary Learning Review Key takeaway.
+expected_response: >-
+  This was a credential phish: the victim entered their password on an
+  attacker page, and the evidence shows the account being abused, not the
+  workstation being compromised. The response evicts the attacker from the
+  identity: revoke the account's active sessions so stolen tokens die, and
+  force a password reset so the stolen secret stops working. Disabling the
+  account also works and is defensible, but eviction plus reset already
+  closes the breach with less disruption. Isolating the workstation is the
+  tempting wrong move: no malware ran there, so host containment addresses
+  an asset the attacker never controlled.

@@ -1,0 +1,481 @@
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { apiFetch } from '../api';
+import ConfirmDialog from './ConfirmDialog';
+import IncidentScopeBar from './IncidentScopeBar';
+import useIncidentScope from './useIncidentScope';
+import { postResponseAction, confirmSpecs, PERSIST_LABEL } from './responseActions';
+import {
+  ACTION_LABELS, RESPONSE_SELECT_INCIDENT, RESPONSE_NO_PROMOTED,
+  RESPONSE_NO_PROMOTED_SUB, RESPONSE_NO_TARGETS, RESPONSE_NO_ACTIONS,
+} from './uiCopy';
+
+// Final pass Part III.0.1: the ONE canonical action-execution workspace
+// (Investigate -> Triage -> Respond -> Submit -> Learn). Actionable
+// incident entities are grouped by target type with FACTUAL context only:
+// identity, host/parent, related promoted detections, observable action
+// state, the available existing verbs, and actions already executed.
+// Never required / recommended / correct / sufficient / remaining /
+// expected -- promotion contributes context, not endorsement. The
+// Response Log is the single chronological history. Everything executes
+// through the one action system (responseActions.js); the endpoint and
+// detection surfaces only navigate here.
+
+const CARD = { background: '#fff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' };
+
+const shortTime = (iso) =>
+  iso ? new Date(iso).toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
+
+const OUTCOME_CHIP = {
+  success: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  no_op: 'border-[#d0d7de] text-[#57606a]',
+  failed_precondition: 'bg-red-50 text-red-700 border-red-200',
+};
+const OUTCOME_LABEL = { success: 'Success', no_op: 'No effect', failed_precondition: 'Failed' };
+const OutcomeChip = ({ outcome }) => (
+  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${OUTCOME_CHIP[outcome] || 'border-[#d0d7de] text-[#57606a]'}`}>
+    {OUTCOME_LABEL[outcome] || outcome}
+  </span>
+);
+
+const StateChip = ({ children }) => (
+  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#eef1f4] text-[#57606a]">{children}</span>
+);
+
+const VerbButton = ({ onClick, disabled, dark, children }) => (
+  <button
+    type="button"
+    disabled={disabled}
+    onClick={onClick}
+    className={`px-2.5 py-1 text-xs font-medium rounded-md border transition disabled:opacity-50 disabled:cursor-default ${
+      dark ? 'bg-[#101218] text-white border-transparent hover:bg-[#1a2332]'
+           : 'bg-white text-[#57606a] border-[#d0d7de] hover:bg-[#eef1f4]'}`}
+  >
+    {children}
+  </button>
+);
+
+const PromotedChips = ({ rules }) => (rules && rules.length ? (
+  <span className="flex flex-wrap gap-1 mt-1">
+    {rules.map(r => <StateChip key={r}>Promoted: {r}</StateChip>)}
+  </span>
+) : null);
+
+const GroupCard = ({ title, count, children }) => (
+  <div className="rounded-xl overflow-hidden" style={CARD}>
+    <div className="px-4 py-2.5 border-b border-[#eef1f4] flex items-center gap-2">
+      <h3 className="text-sm font-semibold text-[#1a2332]">{title}</h3>
+      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-[#57606a]">{count}</span>
+    </div>
+    {children}
+  </div>
+);
+
+const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
+                    responseFocus = null, onHostPivot }) => {
+  const [view, setView] = useState('actions');   // 'actions' | 'log'
+  const [feed, setFeed] = useState([]);
+  const [snaps, setSnaps] = useState({});        // hostname -> snapshot | null (null = not managed)
+  const [logEntries, setLogEntries] = useState([]);
+  const [confirm, setConfirm] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [procSearch, setProcSearch] = useState('');
+  const scope = useIncidentScope(activeIncidentId, resetTrigger);
+  const scopeRefetchRef = useRef(scope.refetch);
+  scopeRefetchRef.current = scope.refetch;
+
+  const hostsKey = scope.data ? [...scope.data.hosts].sort().join(',') : '';
+
+  const fetchAll = useCallback(() => {
+    apiFetch('/api/detections').then(r => r.json())
+      .then(d => setFeed(d.detections || [])).catch(() => {});
+    apiFetch('/api/actions').then(r => r.json())
+      .then(d => setLogEntries(d.actions || [])).catch(() => {});
+    if (hostsKey) {
+      hostsKey.split(',').forEach(h => {
+        apiFetch(`/api/endpoints/${encodeURIComponent(h)}`)
+          .then(res => (res.ok ? res.json() : null))
+          .then(snap => setSnaps(prev => ({ ...prev, [h]: snap })))
+          .catch(() => {});
+      });
+    }
+  }, [hostsKey]);
+
+  useEffect(() => {
+    if (!isVisible) return;
+    fetchAll();
+    const iv = setInterval(() => {
+      fetchAll();
+      if (activeIncidentId) scopeRefetchRef.current();
+    }, 3000);
+    return () => clearInterval(iv);
+  }, [isVisible, fetchAll, activeIncidentId]);
+
+  useEffect(() => { setSnaps({}); setConfirm(null); setView('actions'); }, [resetTrigger, activeIncidentId]);
+
+  // Contextual navigation (III.0.1 item 5): an incoming focus highlights
+  // and scrolls to the target; it never executes or preselects an action.
+  const focusRef = useRef(null);
+  useEffect(() => {
+    if (responseFocus && focusRef.current
+        && typeof focusRef.current.scrollIntoView === 'function') {
+      focusRef.current.scrollIntoView({ block: 'center' });
+    }
+  }, [responseFocus && responseFocus.seq, view, hostsKey]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  const run = (spec) => {
+    setBusy(true);
+    postResponseAction(spec.action, spec.target)
+      .then(() => { setConfirm(null); setBusy(false); fetchAll(); })
+      .catch(() => { setConfirm(null); setBusy(false); });
+  };
+
+  // --- data derivations (roster-scoped, observable only) ------------------
+  const detIds = scope.data ? scope.data.detectionIds : new Set();
+  const roster = feed.filter(d => detIds.has(d.id));
+  const promoted = roster.filter(d => d.player_action === 'promoted');
+  const promotedFor = (match) => promoted.filter(match).map(d => d.rule_name);
+
+  const accounts = [];
+  const seenAcct = new Set();
+  for (const d of roster) {
+    const e = d.entity || {};
+    if (e.account_id && !seenAcct.has(e.account_id)) {
+      seenAcct.add(e.account_id);
+      accounts.push({
+        entityId: e.account_id, account: e.account, host: e.host || null,
+        state: e.account_state || {},
+        promotedRules: promotedFor(x => x.entity?.account_id === e.account_id),
+      });
+    }
+  }
+
+  const hostRows = [];
+  const procRows = [];
+  const fileRows = [];
+  const persistRows = [];
+  if (scope.data) {
+    for (const h of [...scope.data.hosts].sort()) {
+      const snap = snaps[h];
+      if (!snap) continue;   // unmanaged (log source) or not yet loaded
+      hostRows.push({
+        hostname: h, entityId: snap.entity_id, status: snap.status,
+        isolation: snap.isolation,
+        promotedRules: promotedFor(x => x.entity?.host === h),
+      });
+      for (const p of snap.processes || []) {
+        if (p.entity_id) procRows.push({ ...p, hostname: h });
+      }
+      for (const a of snap.autoruns || []) {
+        if (a.persistence_entity_id) {
+          persistRows.push({ ...a, hostname: h });
+        }
+        if (a.file_entity_id) {
+          fileRows.push({ ...a, hostname: h });
+        }
+      }
+    }
+  }
+  const q = procSearch.trim().toLowerCase();
+  const procFiltered = procRows.filter(p =>
+    !q || p.name.toLowerCase().includes(q) || String(p.pid).includes(q)
+      || (p.user || '').toLowerCase().includes(q) || p.hostname.toLowerCase().includes(q));
+
+  const anyTargets = hostRows.length || accounts.length || procRows.length
+    || fileRows.length || persistRows.length;
+
+  const isFocused = (kind, row) => {
+    const f = responseFocus;
+    if (!f || f.kind !== kind) return false;
+    if (kind === 'host') return f.hostname === row.hostname;
+    if (kind === 'process') return f.hostname === row.hostname && f.pid === row.pid;
+    if (kind === 'account') return f.entityId === row.entityId;
+    if (kind === 'autorun') return f.entityId && (f.entityId === row.persistence_entity_id || f.entityId === row.file_entity_id);
+    return false;
+  };
+  const focusProps = (kind, row) => (isFocused(kind, row)
+    ? { ref: focusRef, 'data-focused': 'true',
+        className: 'border-b border-[#eef1f4] last:border-b-0 bg-[#16436b]/5' }
+    : { className: 'border-b border-[#eef1f4] last:border-b-0' });
+
+  const logNewestFirst = [...logEntries].reverse();
+
+  return (
+    <div>
+      <IncidentScopeBar scope={scope} incidentId={activeIncidentId} />
+
+      {/* Header */}
+      <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-hidden mb-4">
+        <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
+        <div className="p-4 sm:p-5 flex flex-wrap items-center gap-4">
+          <div className="w-10 h-10 rounded-lg bg-[#101218] flex items-center justify-center shrink-0">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" role="img" aria-label="Response">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332]">Response</h2>
+            </div>
+            <p className="text-sm text-[#57606a]">
+              {view === 'log'
+                ? 'Every response action this session, in order.'
+                : 'Containment and remediation for the incident targets below.'}
+            </p>
+          </div>
+          <div className="ml-auto flex items-center rounded-md border border-[#d0d7de] overflow-hidden" role="group" aria-label="Response view">
+            {[['actions', 'Actions'], ['log', 'Response Log']].map(([key, label]) => (
+              <button key={key} type="button" onClick={() => setView(key)}
+                className={`px-3 py-1.5 text-xs font-medium transition ${view === key ? 'bg-[#101218] text-white' : 'bg-white text-[#57606a] hover:bg-[#eef1f4]'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {view === 'log' ? (
+        <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="dark-thead">
+              <tr className="text-xs uppercase tracking-wider">
+                <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">Time</th>
+                <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">Action</th>
+                <th className="px-3 sm:px-4 py-3 font-medium">Target</th>
+                <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">Outcome</th>
+                <th className="px-3 sm:px-4 py-3 font-medium">Detail</th>
+              </tr>
+            </thead>
+            <tbody>
+              {logNewestFirst.length === 0 && (
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-[#8b949e]">{RESPONSE_NO_ACTIONS}</td></tr>
+              )}
+              {logNewestFirst.map(e => (
+                <tr key={e.seq} className="border-b border-[#eef1f4] last:border-b-0">
+                  <td className="px-3 sm:px-4 py-3 font-mono whitespace-nowrap text-[#57606a]">{shortTime(e.timestamp)}</td>
+                  <td className="px-3 sm:px-4 py-3 whitespace-nowrap">{ACTION_LABELS[e.action] || e.action}</td>
+                  <td className="px-3 sm:px-4 py-3 font-mono break-all">{e.target?.label || '-'}</td>
+                  <td className="px-3 sm:px-4 py-3"><OutcomeChip outcome={e.outcome} /></td>
+                  <td className="px-3 sm:px-4 py-3 text-[#57606a]">{e.reason || '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : !activeIncidentId ? (
+        <div className="rounded-xl p-8 text-center text-sm text-[#57606a]" style={CARD}>
+          {RESPONSE_SELECT_INCIDENT}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {promoted.length === 0 && (
+            <div className="rounded-xl px-4 py-3 text-sm" style={CARD}>
+              <span className="text-[#1a2332]">{RESPONSE_NO_PROMOTED}</span>{' '}
+              <span className="text-[#57606a]">{RESPONSE_NO_PROMOTED_SUB}</span>
+            </div>
+          )}
+
+          {!anyTargets ? (
+            <div className="rounded-xl p-8 text-center text-sm text-[#57606a]" style={CARD}>
+              {RESPONSE_NO_TARGETS}
+            </div>
+          ) : (
+            <>
+              {hostRows.length > 0 && (
+                <GroupCard title="Hosts" count={hostRows.length}>
+                  <table className="w-full text-left text-sm">
+                    <thead className="dark-thead"><tr className="text-xs uppercase tracking-wider">
+                      <th className="px-3 py-2.5 font-medium">Host</th>
+                      <th className="px-3 py-2.5 font-medium whitespace-nowrap">State</th>
+                      <th className="px-3 py-2.5 font-medium whitespace-nowrap">Actions</th>
+                    </tr></thead>
+                    <tbody>
+                      {hostRows.map(h => (
+                        <tr key={h.hostname} {...focusProps('host', h)}>
+                          <td className="px-3 py-2.5">
+                            <button type="button" onClick={() => onHostPivot?.(h.hostname)}
+                              className="font-mono text-[#16436b] hover:underline" title={`Open ${h.hostname} in Endpoints`}>
+                              {h.hostname}
+                            </button>
+                            <PromotedChips rules={h.promotedRules} />
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <span className="flex flex-wrap gap-1">
+                              <StateChip>{h.status === 'online' ? 'Online' : 'Offline'}</StateChip>
+                              {h.isolation === 'isolated' && <StateChip>Isolated</StateChip>}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5 whitespace-nowrap">
+                            {h.isolation === 'isolated' ? (
+                              <VerbButton onClick={() => setConfirm(confirmSpecs.release_host(h))}>Release Host</VerbButton>
+                            ) : (
+                              <VerbButton dark onClick={() => setConfirm(confirmSpecs.isolate_host(h))}>Isolate Host</VerbButton>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </GroupCard>
+              )}
+
+              {accounts.length > 0 && (
+                <GroupCard title="Accounts" count={accounts.length}>
+                  <table className="w-full text-left text-sm">
+                    <thead className="dark-thead"><tr className="text-xs uppercase tracking-wider">
+                      <th className="px-3 py-2.5 font-medium">Account</th>
+                      <th className="px-3 py-2.5 font-medium whitespace-nowrap">State</th>
+                      <th className="px-3 py-2.5 font-medium whitespace-nowrap">Actions</th>
+                    </tr></thead>
+                    <tbody>
+                      {accounts.map(a => (
+                        <tr key={a.entityId} {...focusProps('account', a)}>
+                          <td className="px-3 py-2.5">
+                            <span className="font-mono text-[#1a2332]">{a.account}</span>
+                            {a.host && <span className="block text-xs text-[#8b949e] font-mono">{a.host}</span>}
+                            <PromotedChips rules={a.promotedRules} />
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <span className="flex flex-wrap gap-1">
+                              {a.state.disabled && <StateChip>Disabled</StateChip>}
+                              {a.state.sessions_revoked && <StateChip>Sessions revoked</StateChip>}
+                              {a.state.password_reset && <StateChip>Password reset</StateChip>}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5 whitespace-nowrap">
+                            <div className="flex flex-wrap gap-1.5">
+                              <VerbButton disabled={!!a.state.disabled}
+                                onClick={() => setConfirm(confirmSpecs.disable_account(a))}>Disable</VerbButton>
+                              <VerbButton disabled={!!a.state.sessions_revoked}
+                                onClick={() => setConfirm(confirmSpecs.revoke_sessions(a))}>Revoke</VerbButton>
+                              <VerbButton disabled={!!a.state.password_reset}
+                                onClick={() => setConfirm(confirmSpecs.force_password_reset(a))}>Reset PW</VerbButton>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </GroupCard>
+              )}
+
+              {procRows.length > 0 && (
+                <GroupCard title="Processes" count={procRows.length}>
+                  <div className="px-3 py-2 border-b border-[#eef1f4]">
+                    <input value={procSearch} onChange={e => setProcSearch(e.target.value)}
+                      placeholder="Search processes..." aria-label="Search processes"
+                      className="w-full sm:w-72 px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#1a2332] placeholder-[#8b949e] focus:outline-none focus:ring-2 focus:ring-[#101218]/20" />
+                  </div>
+                  <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead className="dark-thead"><tr className="text-xs uppercase tracking-wider">
+                        <th className="px-3 py-2.5 font-medium whitespace-nowrap">Host</th>
+                        <th className="px-3 py-2.5 font-medium whitespace-nowrap">PID</th>
+                        <th className="px-3 py-2.5 font-medium">Process</th>
+                        <th className="px-3 py-2.5 font-medium whitespace-nowrap">User</th>
+                        <th className="px-3 py-2.5 font-medium whitespace-nowrap">Actions</th>
+                      </tr></thead>
+                      <tbody>
+                        {procFiltered.map(p => (
+                          <tr key={`${p.hostname}-${p.pid}`} {...focusProps('process', p)}>
+                            <td className="px-3 py-2 font-mono whitespace-nowrap text-[#57606a]">{p.hostname}</td>
+                            <td className="px-3 py-2 font-mono whitespace-nowrap">{p.pid}</td>
+                            <td className="px-3 py-2 font-mono break-all min-w-[12rem]">
+                              {p.name}
+                              <PromotedChips rules={promotedFor(x => x.entity?.host === p.hostname && x.sha256 && x.sha256 === p.sha256)} />
+                            </td>
+                            <td className="px-3 py-2 font-mono whitespace-nowrap">{p.user || '-'}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              <VerbButton onClick={() => setConfirm(confirmSpecs.kill_process(p))}>Kill</VerbButton>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </GroupCard>
+              )}
+
+              {fileRows.length > 0 && (
+                <GroupCard title="Files" count={fileRows.length}>
+                  <table className="w-full text-left text-sm">
+                    <thead className="dark-thead"><tr className="text-xs uppercase tracking-wider">
+                      <th className="px-3 py-2.5 font-medium whitespace-nowrap">Host</th>
+                      <th className="px-3 py-2.5 font-medium">Payload</th>
+                      <th className="px-3 py-2.5 font-medium whitespace-nowrap">State</th>
+                      <th className="px-3 py-2.5 font-medium whitespace-nowrap">Actions</th>
+                    </tr></thead>
+                    <tbody>
+                      {fileRows.map(a => (
+                        <tr key={`f-${a.hostname}-${a.file_entity_id}`} {...focusProps('autorun', { ...a, persistence_entity_id: null })}>
+                          <td className="px-3 py-2.5 font-mono whitespace-nowrap text-[#57606a]">{a.hostname}</td>
+                          <td className="px-3 py-2.5 font-mono break-all min-w-[14rem]">
+                            {a.name}
+                            <span className="block text-xs text-[#8b949e]">{a.command}</span>
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <StateChip>{a.file_state === 'present' ? 'File present' : 'File deleted'}</StateChip>
+                          </td>
+                          <td className="px-3 py-2.5 whitespace-nowrap">
+                            {a.file_state === 'present' && (
+                              <VerbButton onClick={() => setConfirm(confirmSpecs.delete_file({ entityId: a.file_entity_id, name: a.name, hostname: a.hostname }))}>Delete File</VerbButton>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </GroupCard>
+              )}
+
+              {persistRows.length > 0 && (
+                <GroupCard title="Persistence" count={persistRows.length}>
+                  <table className="w-full text-left text-sm">
+                    <thead className="dark-thead"><tr className="text-xs uppercase tracking-wider">
+                      <th className="px-3 py-2.5 font-medium whitespace-nowrap">Host</th>
+                      <th className="px-3 py-2.5 font-medium whitespace-nowrap">Type</th>
+                      <th className="px-3 py-2.5 font-medium">Artifact</th>
+                      <th className="px-3 py-2.5 font-medium whitespace-nowrap">State</th>
+                      <th className="px-3 py-2.5 font-medium whitespace-nowrap">Actions</th>
+                    </tr></thead>
+                    <tbody>
+                      {persistRows.map(a => (
+                        <tr key={`p-${a.hostname}-${a.persistence_entity_id}`} {...focusProps('autorun', { ...a, file_entity_id: null })}>
+                          <td className="px-3 py-2.5 font-mono whitespace-nowrap text-[#57606a]">{a.hostname}</td>
+                          <td className="px-3 py-2.5 whitespace-nowrap">{PERSIST_LABEL[a.persist_type] || 'Autorun'}</td>
+                          <td className="px-3 py-2.5 font-mono break-all min-w-[14rem]">
+                            {a.name}
+                            <span className="block text-xs text-[#8b949e]">{a.location}</span>
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <StateChip>{a.registration === 'removed' ? 'Registration removed' : 'Registered'}</StateChip>
+                          </td>
+                          <td className="px-3 py-2.5 whitespace-nowrap">
+                            {a.registration !== 'removed' && (
+                              <VerbButton onClick={() => setConfirm(confirmSpecs.remove_persistence({ entityId: a.persistence_entity_id, name: a.name, hostname: a.hostname, persistType: a.persist_type }))}>Remove Persistence</VerbButton>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </GroupCard>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={!!confirm}
+        title={confirm?.title}
+        body={confirm?.body}
+        confirmLabel={confirm?.confirmLabel}
+        busy={busy}
+        onConfirm={() => confirm && run(confirm)}
+        onCancel={() => setConfirm(null)}
+      />
+    </div>
+  );
+};
+
+export default Response;

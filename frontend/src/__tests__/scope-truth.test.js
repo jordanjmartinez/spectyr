@@ -1,24 +1,28 @@
 /**
- * Pre-lock micro-fix M1 (Stage 5A contract Section 11.1, ratified OD-16):
- * scope truth on Detections and Endpoints. The scope label, the control's
- * selected state (aria-pressed), and the rendered row set must always derive
- * from ONE state value plus an explicit fetch status:
- *  - initial incident-scope load shows the loading state, never Session-wide
- *    rows under a selected This-incident control
+ * Scope truth on Detections and Endpoints -- the three-state battery
+ * (Stage 5 Phase 1, Amendment 1 Delta A, translating the M1 battery; the
+ * A1-A.3 behavior table is the specification):
+ *  - case selected: the pinned header ("Investigating INC-####"), the
+ *    honesty notices, and the rendered row set derive from ONE state value
+ *  - initial case read shows the loading state, NEVER all-activity rows
+ *    under a selected case
  *  - a refresh with scoped rows already displayed retains them and replaces
  *    them atomically
  *  - a failure with prior scoped rows preserves them and states:
  *    "Displayed rows are from the last successful scope read."
  *  - a failure with no prior scoped rows renders the empty error state
- *    (error + Retry + explicit Use Session-wide), zero rows
- *  - Session-wide rows never render under a selected This-incident control
- *  - refresh triggers: Detections joins the existing 2.5s feed poll;
- *    Endpoints refetches on tab-visibility change, with no poll introduced
+ *    (Retry ONLY -- no broadening control exists on these pages, ratified
+ *    A-OD-3), zero rows
+ *  - no case selected: the All activity state (full session data)
+ *  - NO scope toggle and NO Use Session-wide control exist (structural)
+ *  - refresh triggers unchanged: Detections joins the existing 2.5s feed
+ *    poll; Endpoints refetches on tab-visibility change, no poll introduced
  */
 import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import Detections from '../components/Detections';
 import Endpoints from '../components/Endpoints';
+import { investigatingCase, ALL_ACTIVITY } from '../components/uiCopy';
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
 const { apiFetch } = require('../api');
@@ -77,9 +81,12 @@ const mockApi = (scopeImpl) => {
   });
 };
 
-const pressed = (name) =>
-  screen.getByRole('button', { name }).getAttribute('aria-pressed');
-
+const pinnedLine = () => screen.getByTestId('pinned-case-line').textContent;
+const noToggle = () => {
+  expect(screen.queryByRole('button', { name: 'This incident' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Session-wide' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Use Session-wide' })).toBeNull();
+};
 const noEmDash = (container) => expect(container.textContent).not.toMatch(/—/);
 
 beforeEach(() => {
@@ -87,139 +94,133 @@ beforeEach(() => {
   jest.useRealTimers();
 });
 
-test('Detections: label, control, and rows agree across loading, ready, session, and post-reset states', async () => {
+test('Detections: pinned header and rows agree across loading, ready, and post-reset; no toggle exists', async () => {
   const d1 = deferred();
   let settled = false;
   mockApi(() => (settled ? ok(SCOPE) : { ok: true, json: () => d1.p }));
   const { container, rerender } = render(
-    <Detections isVisible resetTrigger={0} setDetectionCount={() => {}}
+    <Detections isVisible resetTrigger={0}
       onHostPivot={() => {}} activeIncidentId="INC-0001" />
   );
-  // loading: This incident selected, loading copy, ZERO rows
+  // loading: pinned case header, loading copy, ZERO rows, NO toggle
+  expect(pinnedLine()).toBe(investigatingCase('INC-0001'));
   expect((await screen.findAllByText('Loading incident scope')).length).toBeGreaterThanOrEqual(1);
-  expect(pressed('This incident')).toBe('true');
-  expect(pressed('Session-wide')).toBe('false');
+  noToggle();
   expect(screen.queryByText('LSASS Process Memory Access')).toBeNull();
   expect(screen.queryByText('Impossible Travel Sign-in')).toBeNull();
-  // resolve -> ready: scoped label, scoped rows only
+  // resolve -> ready: case-scoped rows only, header unchanged
   settled = true;
   await act(async () => { d1.resolve(SCOPE); });
-  expect(await screen.findByText(/Scoped to incident/)).toBeInTheDocument();
-  expect(screen.getByText('INC-0001')).toBeInTheDocument();
-  expect(screen.getByText('LSASS Process Memory Access')).toBeInTheDocument();
+  expect(await screen.findByText('LSASS Process Memory Access')).toBeInTheDocument();
   expect(screen.queryByText('Impossible Travel Sign-in')).toBeNull();
-  expect(pressed('This incident')).toBe('true');
-  // explicit Session-wide: label, control, and rows flip together
-  fireEvent.click(screen.getByRole('button', { name: 'Session-wide' }));
-  expect(await screen.findByText('Session-wide view')).toBeInTheDocument();
-  expect(pressed('Session-wide')).toBe('true');
-  expect(pressed('This incident')).toBe('false');
-  expect(screen.getByText('Impossible Travel Sign-in')).toBeInTheDocument();
-  // back to This incident: cached scope filters again
-  fireEvent.click(screen.getByRole('button', { name: 'This incident' }));
-  expect(await screen.findByText(/Scoped to incident/)).toBeInTheDocument();
-  expect(screen.queryByText('Impossible Travel Sign-in')).toBeNull();
+  expect(pinnedLine()).toBe(investigatingCase('INC-0001'));
   // post-reset: refetch resolves and every signal still agrees
   rerender(
-    <Detections isVisible resetTrigger={1} setDetectionCount={() => {}}
+    <Detections isVisible resetTrigger={1}
       onHostPivot={() => {}} activeIncidentId="INC-0001" />
   );
-  expect(await screen.findByText(/Scoped to incident/)).toBeInTheDocument();
-  expect(pressed('This incident')).toBe('true');
+  expect(await screen.findByText('LSASS Process Memory Access')).toBeInTheDocument();
   expect(screen.queryByText('Impossible Travel Sign-in')).toBeNull();
+  expect(pinnedLine()).toBe(investigatingCase('INC-0001'));
   noEmDash(container);
 });
 
-test('Endpoints: label, control, and rows agree across loading, ready, session, and post-reset states', async () => {
+test('Detections: no case selected is the All activity state with the full feed', async () => {
+  mockApi(() => ok(SCOPE));
+  const { container } = render(
+    <Detections isVisible resetTrigger={0}
+      onHostPivot={() => {}} activeIncidentId={null} />
+  );
+  expect(await screen.findByText('LSASS Process Memory Access')).toBeInTheDocument();
+  expect(screen.getByText('Impossible Travel Sign-in')).toBeInTheDocument();
+  expect(pinnedLine()).toBe(ALL_ACTIVITY);
+  noToggle();
+  // no case, no scope read
+  const scopeCalls = apiFetch.mock.calls.map(c => c[0]).filter(p => p.includes('/scope'));
+  expect(scopeCalls).toEqual([]);
+  noEmDash(container);
+});
+
+test('Endpoints: pinned header and rows agree across loading, ready, and All activity', async () => {
   const d1 = deferred();
   let settled = false;
   mockApi(() => (settled ? ok(SCOPE) : { ok: true, json: () => d1.p }));
-  const { container, rerender } = render(
-    <Endpoints isVisible resetTrigger={0} setEndpointCount={() => {}}
+  const { rerender } = render(
+    <Endpoints isVisible resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
+  expect(pinnedLine()).toBe(investigatingCase('INC-0001'));
   expect((await screen.findAllByText('Loading incident scope')).length).toBeGreaterThanOrEqual(1);
-  expect(pressed('This incident')).toBe('true');
+  noToggle();
   expect(screen.queryByText('ACME-WS12')).toBeNull();
   expect(screen.queryByText('ACME-SVR02')).toBeNull();
   settled = true;
   await act(async () => { d1.resolve(SCOPE); });
-  expect(await screen.findByText(/Scoped to incident/)).toBeInTheDocument();
   expect(await screen.findByText('ACME-WS12')).toBeInTheDocument();
   expect(screen.queryByText('ACME-SVR02')).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: 'Session-wide' }));
-  expect(await screen.findByText('Session-wide view')).toBeInTheDocument();
-  expect(pressed('Session-wide')).toBe('true');
-  expect(await screen.findByText('ACME-SVR02')).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'This incident' }));
-  expect(await screen.findByText(/Scoped to incident/)).toBeInTheDocument();
-  expect(screen.queryByText('ACME-SVR02')).toBeNull();
+  // clearing the case (explicitly, on Incidents) lands the All activity state
   rerender(
-    <Endpoints isVisible resetTrigger={1} setEndpointCount={() => {}}
-      pivotHost={null} activeIncidentId="INC-0001" />
+    <Endpoints isVisible resetTrigger={0}
+      pivotHost={null} activeIncidentId={null} />
   );
-  expect(await screen.findByText(/Scoped to incident/)).toBeInTheDocument();
-  expect(pressed('This incident')).toBe('true');
-  expect(screen.queryByText('ACME-SVR02')).toBeNull();
-  noEmDash(container);
+  expect(await screen.findByText('ACME-SVR02')).toBeInTheDocument();
+  expect(pinnedLine()).toBe(ALL_ACTIVITY);
 });
 
-test('a slow scope read never renders This incident selected over unfiltered rows', async () => {
+test('a slow scope read never renders a selected case over unfiltered rows', async () => {
   const never = new Promise(() => {});
   mockApi(() => ({ ok: true, json: () => never }));
   render(
-    <Detections isVisible resetTrigger={0} setDetectionCount={() => {}}
+    <Detections isVisible resetTrigger={0}
       onHostPivot={() => {}} activeIncidentId="INC-0001" />
   );
-  // the feed itself has loaded; the scoped surface still shows zero rows
   expect((await screen.findAllByText('Loading incident scope')).length).toBeGreaterThanOrEqual(1);
-  expect(pressed('This incident')).toBe('true');
+  expect(pinnedLine()).toBe(investigatingCase('INC-0001'));
   expect(screen.queryByText('LSASS Process Memory Access')).toBeNull();
   expect(screen.queryByText('Impossible Travel Sign-in')).toBeNull();
-  expect(screen.queryByText('Session-wide view')).toBeNull();
 });
 
-test('a failed scope load with no prior rows renders the empty error state with Retry and Use Session-wide', async () => {
+test('a failed scope load with no prior rows renders the empty error state with Retry ONLY', async () => {
   let failing = true;
   mockApi(() => (failing ? fail() : ok(SCOPE)));
   const { container } = render(
-    <Endpoints isVisible resetTrigger={0} setEndpointCount={() => {}}
+    <Endpoints isVisible resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
   expect((await screen.findAllByText('Incident scope could not be loaded.')).length).toBeGreaterThanOrEqual(1);
-  expect(pressed('This incident')).toBe('true');
+  expect(pinnedLine()).toBe(investigatingCase('INC-0001'));
   expect(screen.queryByText('ACME-WS12')).toBeNull();
   expect(screen.queryByText('ACME-SVR02')).toBeNull();
   expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+  // A-OD-3: no broadening control exists on the data pages
+  noToggle();
   // Retry while healthy again -> scoped rows appear
   failing = false;
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
-  expect(await screen.findByText(/Scoped to incident/)).toBeInTheDocument();
   expect(await screen.findByText('ACME-WS12')).toBeInTheDocument();
   expect(screen.queryByText('ACME-SVR02')).toBeNull();
   noEmDash(container);
 });
 
-test('explicit Use Session-wide is the only path out of a scope failure', async () => {
+test('a persistent scope failure keeps zero rows: no broadening path exists on the page', async () => {
   mockApi(() => fail());
   render(
-    <Endpoints isVisible resetTrigger={0} setEndpointCount={() => {}}
+    <Endpoints isVisible resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
   expect((await screen.findAllByText('Incident scope could not be loaded.')).length).toBeGreaterThanOrEqual(1);
-  // still zero rows: no silent broadening
+  // still zero rows: no silent broadening, and no control that could broaden
   expect(screen.queryByText('ACME-SVR02')).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: 'Use Session-wide' }));
-  expect(await screen.findByText('Session-wide view')).toBeInTheDocument();
-  expect(pressed('Session-wide')).toBe('true');
-  expect(await screen.findByText('ACME-SVR02')).toBeInTheDocument();
+  noToggle();
+  expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+  expect(pinnedLine()).toBe(investigatingCase('INC-0001'));
 });
 
 test('a failed scope refresh with prior scoped rows preserves them and states the last-successful-read notice', async () => {
   let failing = false;
   mockApi(() => (failing ? fail() : ok(SCOPE)));
   const { container, rerender } = render(
-    <Endpoints isVisible resetTrigger={0} setEndpointCount={() => {}}
+    <Endpoints isVisible resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
   expect(await screen.findByText('ACME-WS12')).toBeInTheDocument();
@@ -227,20 +228,19 @@ test('a failed scope refresh with prior scoped rows preserves them and states th
   // visibility change triggers the refetch, which now fails
   failing = true;
   rerender(
-    <Endpoints isVisible={false} resetTrigger={0} setEndpointCount={() => {}}
+    <Endpoints isVisible={false} resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
   rerender(
-    <Endpoints isVisible resetTrigger={0} setEndpointCount={() => {}}
+    <Endpoints isVisible resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
   expect(await screen.findByText(/Displayed rows are from the last successful scope read\./))
     .toBeInTheDocument();
-  // prior scoped rows preserved; This incident still selected; no broadening
+  // prior scoped rows preserved; the case stays pinned; no broadening
   expect(screen.getByText('ACME-WS12')).toBeInTheDocument();
   expect(screen.queryByText('ACME-SVR02')).toBeNull();
-  expect(pressed('This incident')).toBe('true');
-  expect(screen.getByText(/Scoped to incident/)).toBeInTheDocument();
+  expect(pinnedLine()).toBe(investigatingCase('INC-0001'));
   noEmDash(container);
 });
 
@@ -249,18 +249,18 @@ test('a scope refresh with scoped rows already displayed replaces them atomicall
   let hold = false;
   mockApi(() => (hold ? { ok: true, json: () => d2.p } : ok(SCOPE)));
   const { rerender } = render(
-    <Endpoints isVisible resetTrigger={0} setEndpointCount={() => {}}
+    <Endpoints isVisible resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
   expect(await screen.findByText('ACME-WS12')).toBeInTheDocument();
   // trigger the refresh (visibility change); leave the new read pending
   hold = true;
   rerender(
-    <Endpoints isVisible={false} resetTrigger={0} setEndpointCount={() => {}}
+    <Endpoints isVisible={false} resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
   rerender(
-    <Endpoints isVisible resetTrigger={0} setEndpointCount={() => {}}
+    <Endpoints isVisible resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
   // retained: old scoped rows stay; still never unfiltered
@@ -272,15 +272,15 @@ test('a scope refresh with scoped rows already displayed replaces them atomicall
   });
   expect(await screen.findByText('ACME-SVR02')).toBeInTheDocument();
   expect(screen.queryByText('ACME-WS12')).toBeNull();
-  expect(pressed('This incident')).toBe('true');
+  expect(pinnedLine()).toBe(investigatingCase('INC-0001'));
 });
 
-test('Detections: the scope read joins the 2.5s feed poll while an incident scope is selected', async () => {
+test('Detections: the scope read joins the 2.5s feed poll while a case is selected, and stops without one', async () => {
   jest.useFakeTimers();
   let scopeCalls = 0;
   mockApi(() => { scopeCalls += 1; return ok(SCOPE); });
-  render(
-    <Detections isVisible resetTrigger={0} setDetectionCount={() => {}}
+  const { rerender } = render(
+    <Detections isVisible resetTrigger={0}
       onHostPivot={() => {}} activeIncidentId="INC-0001" />
   );
   await act(async () => {});
@@ -289,8 +289,11 @@ test('Detections: the scope read joins the 2.5s feed poll while an incident scop
   act(() => { jest.advanceTimersByTime(2500); });
   await act(async () => {});
   expect(scopeCalls).toBe(initial + 1);
-  // with Session-wide selected the poll stops refetching the scope
-  fireEvent.click(screen.getByRole('button', { name: 'Session-wide' }));
+  // with the case cleared (on Incidents) the poll stops refetching the scope
+  rerender(
+    <Detections isVisible resetTrigger={0}
+      onHostPivot={() => {}} activeIncidentId={null} />
+  );
   await act(async () => {});
   const beforeIdle = scopeCalls;
   act(() => { jest.advanceTimersByTime(5000); });
@@ -303,7 +306,7 @@ test('Endpoints: scope refetches on tab-visibility change and never from a timer
   let scopeCalls = 0;
   mockApi(() => { scopeCalls += 1; return ok(SCOPE); });
   const { rerender } = render(
-    <Endpoints isVisible resetTrigger={0} setEndpointCount={() => {}}
+    <Endpoints isVisible resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
   await act(async () => {});
@@ -315,12 +318,12 @@ test('Endpoints: scope refetches on tab-visibility change and never from a timer
   expect(scopeCalls).toBe(initial);
   // a visibility change refetches
   rerender(
-    <Endpoints isVisible={false} resetTrigger={0} setEndpointCount={() => {}}
+    <Endpoints isVisible={false} resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
   await act(async () => {});
   rerender(
-    <Endpoints isVisible resetTrigger={0} setEndpointCount={() => {}}
+    <Endpoints isVisible resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
   await act(async () => {});

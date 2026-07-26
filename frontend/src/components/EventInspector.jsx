@@ -1,6 +1,9 @@
 import React from 'react';
 import { sourceColor, sanitizeEvent, renderFieldValue } from './siemUtils';
 import kvpCatalogOrder from './kvpCatalogOrder.json';
+import {
+  TOOLTIP_EQ, TOOLTIP_NEQ, TOOLTIP_PIVOT,
+} from './uiCopy';
 
 // Event inspector (Stage 4 Phase 6.3, contract Section 12). One lens over
 // exactly the whitelisted, sanitized event -- no non-whitelisted field is
@@ -29,7 +32,7 @@ const CANONICAL_COMMONS = ['hostname', 'user_account', 'source_ip', 'destination
 // field can enter query generation through this map. `kind` selects the
 // documented Section 13 generator form in the shell.
 export const PIVOT_MAP = {
-  hostname: { kind: 'host', label: 'host timeline' },
+  hostname: { kind: 'host', label: 'host activity' },
   user_account: { kind: 'account', label: 'account activity' },
   source_ip: { kind: 'ip', label: 'IP activity' },
   destination_ip: { kind: 'ip', label: 'IP activity' },
@@ -86,7 +89,7 @@ const SectionLabel = ({ children }) => (
   </div>
 );
 
-const EventInspector = ({ event, onFilter, onHostPivot, onPivot, onSurrounding }) => {
+const EventInspector = ({ event, onFilter, onHostPivot, onPivot }) => {
   if (!event) return null;
 
   let view = null;
@@ -102,11 +105,15 @@ const EventInspector = ({ event, onFilter, onHostPivot, onPivot, onSurrounding }
     const piv = PIVOT_MAP[field];
     return (
       <span className="flex gap-1 shrink-0">
+        {/* A2 3.2 (ruled): the technical labels stay; the permanent
+            explanations are the ruled canonical finals. */}
         <button
           type="button"
           onClick={() => onFilter(field, '==', value)}
           aria-label={`Filter ${field} equals`}
-          className="px-1.5 py-0.5 text-[10px] rounded border border-[#d0d7de] hover:bg-[#eef1f4]"
+          title={TOOLTIP_EQ}
+          data-help={TOOLTIP_EQ}
+          className="help-tip px-1.5 py-0.5 text-[10px] rounded border border-[#d0d7de] hover:bg-[#eef1f4]"
         >
           ==
         </button>
@@ -114,19 +121,22 @@ const EventInspector = ({ event, onFilter, onHostPivot, onPivot, onSurrounding }
           type="button"
           onClick={() => onFilter(field, '!=', value)}
           aria-label={`Filter ${field} not equals`}
-          className="px-1.5 py-0.5 text-[10px] rounded border border-[#d0d7de] hover:bg-[#eef1f4]"
+          title={TOOLTIP_NEQ}
+          data-help={TOOLTIP_NEQ}
+          className="help-tip px-1.5 py-0.5 text-[10px] rounded border border-[#d0d7de] hover:bg-[#eef1f4]"
         >
           !=
         </button>
         {piv && onPivot && (
           <button
             type="button"
-            onClick={() => onPivot(piv.kind, value)}
+            onClick={() => onPivot(piv.kind, value, field)}
             aria-label={`Pivot ${field}`}
-            title={`Pivot: ${piv.label} (runs Session-wide)`}
-            className="px-1.5 py-0.5 text-[10px] rounded border border-[#d0d7de] text-[#16436b] hover:bg-[#eef1f4]"
+            title={`${TOOLTIP_PIVOT} (${piv.label})`}
+            data-help={`${TOOLTIP_PIVOT} (${piv.label})`}
+            className="help-tip px-1.5 py-0.5 text-[10px] rounded border border-[#d0d7de] text-[#16436b] hover:bg-[#eef1f4]"
           >
-            pivot
+            Pivot
           </button>
         )}
       </span>
@@ -218,22 +228,6 @@ const EventInspector = ({ event, onFilter, onHostPivot, onPivot, onSurrounding }
 {JSON.stringify(sanitizeEvent(event), null, 2)}
       </pre>
 
-      {/* P7.3 Surrounding events (contract Sections 12/13): the host's full
-          timeline, occurrence ascending, viewport centered on THIS event.
-          Host-anchored -- an event without a hostname (identity-provider
-          telemetry) has no host to anchor, so no control. */}
-      {event.hostname && onSurrounding && (
-        <div className="mt-3 pt-2 border-t border-[#eef1f4]">
-          <button
-            type="button"
-            onClick={() => onSurrounding(event.hostname, event.id)}
-            title="All events on this host, occurrence ascending, centered on this event"
-            className="px-2.5 py-1 text-xs rounded-md border border-[#d0d7de] text-[#16436b] hover:bg-[#eef1f4]"
-          >
-            Surrounding events
-          </button>
-        </div>
-      )}
     </div>
   );
 };

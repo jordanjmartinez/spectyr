@@ -56,8 +56,10 @@ beforeEach(() => {
   });
 });
 
-const renderShell = () =>
-  render(<Siem setSiemCount={() => {}} resetTrigger={0} onHostPivot={() => {}} />);
+const renderShell = () => {
+  const utils = render(<Siem initialQueryMode="advanced" resetTrigger={0} onHostPivot={() => {}} />);
+  return utils;
+};
 
 const run = async (text) => {
   fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: text } });
@@ -71,11 +73,13 @@ const run = async (text) => {
 // results pane specifically so they cannot match a sidebar button too.
 const results = () => within(screen.getByTestId('workbench-results'));
 
-test('empty state: canonical placeholder, two valid examples, GD-5a rules in the help copy', () => {
+test('empty state: example placeholder, two valid examples, GD-5a rules in the help copy', () => {
   renderShell();
   const bar = screen.getByLabelText('LCQL query');
   expect(bar).toHaveAttribute('placeholder', QUERY_PLACEHOLDER);
-  expect(QUERY_PLACEHOLDER).toMatch(/^\S+ \| .+ \| .+ \| .+$/);
+  // A2 (ruled): the placeholder is unmistakably an EXAMPLE -- the prefix is
+  // part of the text, and the remainder is a conforming four-segment query
+  expect(QUERY_PLACEHOLDER).toMatch(/^Example: \S+ \| .+ \| .+ \| .+$/);
   expect(QUERY_PLACEHOLDER).not.toMatch(/\w+=\w/);   // never key=value drift
   expect(screen.getByText('Run a query to begin.')).toBeInTheDocument();
   for (const ex of QUERY_HELP_EXAMPLES) {

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { sevColor } from './siemUtils';
 
 // SIEM table view: presentational. Receives the frozen snapshot rows from
@@ -16,12 +16,11 @@ const SORTABLE = [
   { key: 'destination_ip', label: 'Dst IP' },
 ];
 
-const SiemTable = ({ alerts, resetTrigger, selectedId, onSelect, focus }) => {
+const SiemTable = ({ alerts, resetTrigger, selectedId, onSelect }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [alertsPerPage, setAlertsPerPage] = useState(20);
   const [sort, setSort] = useState(null); // { key, dir } or null = server canonical order
   const [pageSizeOpen, setPageSizeOpen] = useState(false);
-  const focusRef = useRef(null);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -51,20 +50,6 @@ const SiemTable = ({ alerts, resetTrigger, selectedId, onSelect, focus }) => {
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / alertsPerPage));
   const currentAlerts = sorted.slice((currentPage - 1) * alertsPerPage, currentPage * alertsPerPage);
-
-  // P7.3 surrounding-events centering: jump to the focus event's page (in
-  // the DISPLAYED order), then scroll its row into the viewport center.
-  useEffect(() => {
-    if (!focus || !focus.id) return;
-    const idx = sorted.findIndex((a) => a.id === focus.id);
-    if (idx !== -1) setCurrentPage(Math.floor(idx / alertsPerPage) + 1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focus && focus.seq]);
-  useEffect(() => {
-    if (focus && focusRef.current && typeof focusRef.current.scrollIntoView === 'function') {
-      focusRef.current.scrollIntoView({ block: 'center' });
-    }
-  }, [focus && focus.seq, currentPage]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const changePage = (n) => { if (n >= 1 && n <= totalPages) setCurrentPage(n); };
   // Selection is controlled by the shell (P5.1): one inspector, id-keyed.
@@ -185,22 +170,31 @@ const SiemTable = ({ alerts, resetTrigger, selectedId, onSelect, focus }) => {
                 {currentAlerts.map((alert) => (
                   <tr
                       key={alert.id}
-                      ref={focus && alert.id === focus.id ? focusRef : undefined}
-                      data-focused={focus && alert.id === focus.id ? 'true' : undefined}
+                      aria-selected={alert.id === selectedId}
+                      // OD-5 Option A (Phase 4): the strong selected treatment
+                      // equivalent to the cards' ring -- background + an inset
+                      // accent ring; the severity left border stays untouched
+                      // (color never the sole signal: the dot indicator pairs
+                      // with it).
                       className={`hover:bg-[#f6f8fa] transition-colors cursor-pointer border-b border-[#e2e6ea]/50 ${
-                        alert.id === selectedId ? 'bg-[#eef1f4]' : ''
+                        alert.id === selectedId
+                          ? 'bg-[#eef1f4] shadow-[inset_0_0_0_1px_#16436b66]' : ''
                       }`}
                       onClick={() => toggleRow(alert.id)}
                     >
                       <td className="px-2 sm:px-4 py-4 border-l-[3px]" style={{ borderLeftColor: sevColor(alert.severity) }}>
-                        <svg
-                          className={`w-5 h-5 text-[#6e7781] hover:text-[#1a2332] transition-transform duration-300 ease-in-out ${
-                            alert.id === selectedId ? 'rotate-180' : 'rotate-0'
+                        {/* the misleading rotating chevron is replaced by a
+                            selection affordance that promises no inline
+                            expansion: an open dot that fills when selected */}
+                        <span
+                          aria-hidden="true"
+                          data-testid={alert.id === selectedId ? 'row-selected-dot' : undefined}
+                          className={`block w-2.5 h-2.5 rounded-full ${
+                            alert.id === selectedId
+                              ? 'bg-[#16436b]'
+                              : 'border border-[#8b949e]'
                           }`}
-                          fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
+                        />
                       </td>
                       <td className="log-mono px-2 sm:px-4 py-4 text-[#1a2332] whitespace-nowrap">
                         {alert.timestamp ? new Date(alert.timestamp).toLocaleTimeString('en-GB', {

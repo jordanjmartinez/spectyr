@@ -1,0 +1,394 @@
+/**
+ * Merged Phase 3/4 commit 3.2 (Amendment 2, A2-R.1 ruled finals):
+ * - Empty-run behavior (19.20): Run disables ONLY on a truly empty bar;
+ *   guidance + the preserved-results label render; no request is issued.
+ * - Section-named malformed errors, the ruled three-line form (19.21):
+ *   "This search was not run." / "The {Section} section could not be
+ *   read." (structure line when the text does not split into four) / the
+ *   locked 11.3 stale statement exactly when prior results are preserved.
+ * - Restore last working query (19.22): request-free, bar back to the
+ *   executed canonical.
+ * - The ruled permanent tooltips (19.26 at 3.2: title-attribute layer).
+ * - The generated-forms corpus, frontend half (19.24): generator calls
+ *   byte-equal the verbatim port of backend GENERATED_FORMS_CORPUS.
+ */
+import React from 'react';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
+import Siem, { QUERY_PLACEHOLDER } from '../components/Siem';
+import {
+  TOOLTIP_EQ, TOOLTIP_NEQ, TOOLTIP_PIVOT,
+  NO_QUERY_ENTERED, SEARCH_NOT_RUN, sectionCouldNotBeRead, STRUCTURE_LINE,
+  RESTORE_LAST_QUERY, PRESERVED_RESULTS_LABEL,
+} from '../components/uiCopy';
+import {
+  sectionIndexAtPosition, pivotAccount, pivotFile, pivotProcessImage,
+  pivotDomainProxy, pivotIp, refineFilter, descentAccount, descentHost,
+  listConjuncts, removeConjunct, composeQuery, replaceTimeframe,
+  rawFiltersOf, splitSegments, SOURCE_FAMILIES,
+} from '../components/lcqlPivots';
+
+jest.mock('../api', () => ({ apiFetch: jest.fn() }));
+const { apiFetch } = require('../api');
+
+const ok = (body) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
+const EVENT = {
+  id: 'qc-1', event_seq: 7, timestamp: '2026-03-17T05:10:00+00:00',
+  event_type: 'ProcessCreate', source_type: 'Sysmon', severity: 'high',
+  hostname: 'ACME-WS12', message: 'clarity fixture event', key_value_pairs: {},
+};
+const SNAP = {
+  token: 'tok.one',
+  identity: {
+    canonical_query: 'all | * | * | *', scope: 'session', resolved_scope_hosts: [],
+    resolved_range: { start: '2026-03-17T03:41:00+00:00', end: '2026-03-17T05:20:00+00:00' },
+    cutoff_seq: 7,
+  },
+  count: 1, rows: [EVENT],
+};
+
+let queryResponses;
+beforeEach(() => {
+  queryResponses = [];
+  apiFetch.mockReset();
+  apiFetch.mockImplementation((p) => {
+    if (p === '/api/endpoints') return ok({ org: {}, endpoints: [] });
+    if (p.startsWith('/api/events/query/new-count')) return ok({ new_count: 0, pool_growth: 0 });
+    if (p.startsWith('/api/events/query')) {
+      return queryResponses.length ? queryResponses.shift() : ok(SNAP);
+    }
+    return ok({});
+  });
+});
+
+const renderShell = () => {
+  const utils = render(<Siem initialQueryMode="advanced" resetTrigger={0} onHostPivot={() => {}} />);
+  return utils;
+};
+const queryCalls = () =>
+  apiFetch.mock.calls.map((c) => c[0]).filter((p) => p.startsWith('/api/events/query?'));
+const run = async (text) => {
+  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: text } });
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Run Query/ })); });
+};
+
+// --- 19.20 empty-run ------------------------------------------------------
+
+test('Run disables ONLY on a truly empty bar; empty guidance + preserved results; no request', async () => {
+  renderShell();
+  const runBtn = screen.getByRole('button', { name: /Run Query/ });
+  expect(runBtn).toBeDisabled();                       // empty at mount
+  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: '   ' } });
+  expect(runBtn).toBeDisabled();                       // whitespace = empty
+  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'broken but not empty' } });
+  expect(runBtn).not.toBeDisabled();                   // malformed still RUNS
+  await run('all | * | * | *');
+  const callsAfterRun = queryCalls().length;
+  // empty the bar with results present: guidance line + label; Run disabled;
+  // clicking issues nothing
+  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: '' } });
+  expect(screen.getByTestId('empty-note').textContent)
+    .toContain(NO_QUERY_ENTERED);
+  expect(screen.getByTestId('empty-note').textContent)
+    .toContain(PRESERVED_RESULTS_LABEL);
+  expect(runBtn).toBeDisabled();
+  fireEvent.click(runBtn);
+  expect(queryCalls().length).toBe(callsAfterRun);
+});
+
+// --- 19.21 section-named errors -------------------------------------------
+
+test('a malformed run produces the ruled three-line form with the broken section named', async () => {
+  renderShell();
+  await run('all | * | * | *');
+  queryResponses.push(Promise.resolve({
+    ok: false, status: 400,
+    json: () => Promise.resolve({ error: { position: 0, reason: "unknown TIMEFRAME 'never'", suggestions: ['1h'] } }),
+  }));
+  await run('never | * | * | *');
+  const alert = screen.getByRole('alert');
+  expect(alert.textContent).toContain(SEARCH_NOT_RUN);
+  expect(alert.textContent).toContain(sectionCouldNotBeRead('Time'));
+  expect(alert.textContent).toContain("unknown TIMEFRAME 'never'");
+  expect(alert.textContent).toContain('Did you mean: 1h?');
+  // line 3 is the ruled III.0 item 3 sentence, exactly because prior results persist
+  expect(alert.textContent).toContain('Showing results from the previous successful search.');
+  expect(within(screen.getByTestId('workbench-results'))
+    .getByText('clarity fixture event')).toBeInTheDocument();
+});
+
+test('a first-run failure (no prior results) omits the stale-results line', async () => {
+  renderShell();
+  queryResponses.push(Promise.resolve({
+    ok: false, status: 400,
+    json: () => Promise.resolve({ error: { position: 7, reason: 'empty SENSOR_SELECTOR segment; use *' } }),
+  }));
+  await run('all |  | * | *');
+  const alert = screen.getByRole('alert');
+  expect(alert.textContent).toContain(sectionCouldNotBeRead('Source'));
+  expect(alert.textContent).not.toContain('Showing results from the previous successful search.');
+  expect(screen.queryByRole('button', { name: RESTORE_LAST_QUERY })).toBeNull();
+});
+
+test('a structure-level failure names the four-sections line, not a section', async () => {
+  renderShell();
+  queryResponses.push(Promise.resolve({
+    ok: false, status: 400,
+    json: () => Promise.resolve({ error: { position: 9, reason: 'expected 4 |-separated segments (TIMEFRAME | SENSOR_SELECTOR | EVENT_TYPE | FILTERS), found 2' } }),
+  }));
+  await run('all | xyz');
+  expect(screen.getByRole('alert').textContent).toContain(STRUCTURE_LINE);
+});
+
+test('sectionIndexAtPosition maps positions to sections, quote-aware', () => {
+  const q = 'all | Sysmon | 4625 | message == "a | b"';
+  expect(sectionIndexAtPosition(q, 0)).toBe(0);
+  expect(sectionIndexAtPosition(q, 7)).toBe(1);
+  expect(sectionIndexAtPosition(q, 16)).toBe(2);
+  expect(sectionIndexAtPosition(q, 25)).toBe(3);
+  expect(sectionIndexAtPosition(q, 36)).toBe(3);      // the piped value never splits
+  expect(sectionIndexAtPosition(q, q.length)).toBe(3); // end-of-string errors
+  expect(sectionIndexAtPosition('all | xyz', 5)).toBe(null); // structure-level
+});
+
+// --- 19.22 restore --------------------------------------------------------
+
+test('Restore last working query returns the bar to the canonical and clears the error, request-free', async () => {
+  renderShell();
+  await run('all | * | * | *');
+  queryResponses.push(Promise.resolve({
+    ok: false, status: 400,
+    json: () => Promise.resolve({ error: { position: 0, reason: 'unknown TIMEFRAME' } }),
+  }));
+  await run('zzz | * | * | *');
+  const before = queryCalls().length;
+  fireEvent.click(screen.getByRole('button', { name: RESTORE_LAST_QUERY }));
+  expect(screen.getByLabelText('LCQL query').value).toBe('all | * | * | *');
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect(queryCalls().length).toBe(before);
+});
+
+// --- placeholder + tooltips (ruled finals) --------------------------------
+
+test('the placeholder is unmistakably an example', () => {
+  renderShell();
+  expect(QUERY_PLACEHOLDER.startsWith('Example: ')).toBe(true);
+  expect(screen.getByLabelText('LCQL query').getAttribute('placeholder'))
+    .toBe(QUERY_PLACEHOLDER);
+});
+
+test('the ruled permanent explanations sit on ==, !=, and Pivot (Surrounding events removed by A3 F3)', async () => {
+  renderShell();
+  await run('all | * | * | *');
+  fireEvent.click(within(screen.getByTestId('workbench-results'))
+    .getByText('clarity fixture event'));
+  expect(screen.getAllByLabelText(/Filter .+ equals/)[0].getAttribute('title'))
+    .toBe(TOOLTIP_EQ);
+  expect(screen.getAllByLabelText(/Filter .+ not equals/)[0].getAttribute('title'))
+    .toBe(TOOLTIP_NEQ);
+  expect(screen.getAllByLabelText(/^Pivot /)[0].getAttribute('title'))
+    .toContain(TOOLTIP_PIVOT);
+  expect(screen.queryByRole('button', { name: 'Surrounding events' })).toBeNull();
+});
+
+// --- OR-fallback UX (moved from the retired surrounding suite at A3.3):
+// exact notice on refinement, never on fresh forms -------------------------
+
+const OR_CANONICAL = 'all | * | * | source_ip == "10.0.1.5" or destination_ip == "10.0.1.5"';
+const snapWithQ = (canonical) => ({ ...SNAP, identity: { ...SNAP.identity, canonical_query: canonical } });
+
+test('refining an OR snapshot mints a fresh standalone query and shows the EXACT approved notice', async () => {
+  queryResponses.push(ok(snapWithQ(OR_CANONICAL)));
+  renderShell();
+  await run(OR_CANONICAL);
+  fireEvent.click(within(screen.getByTestId('workbench-results')).getByText('clarity fixture event'));
+  queryResponses.push(ok(snapWithQ('all | * | * | hostname == "ACME-WS12"')));
+  await act(async () => {
+    fireEvent.click(screen.getByLabelText('Filter hostname equals'));
+  });
+  expect(decodeURIComponent(queryCalls().pop())).toBe(
+    '/api/events/query?q=all | * | * | hostname == "ACME-WS12"&scope=session');
+  expect(screen.getByTestId('query-notice'))
+    .toHaveTextContent('Started a new query; the previous one mixed or-conditions.');
+});
+
+test('fresh-by-design forms (entity pivot) never show the OR notice', async () => {
+  queryResponses.push(ok(snapWithQ(OR_CANONICAL)));
+  renderShell();
+  await run(OR_CANONICAL);
+  fireEvent.click(within(screen.getByTestId('workbench-results')).getByText('clarity fixture event'));
+  await act(async () => {
+    fireEvent.click(screen.getByLabelText('Pivot hostname'));
+  });
+  // The pivot announces its clue on the one notice line (III.0 item 2);
+  // the OR fresh-query sentence must still never attach to a
+  // fresh-by-design form.
+  const notice = screen.getByTestId('query-notice').textContent;
+  expect(notice).toBe('Following clue: hostname = "ACME-WS12"');
+  expect(notice).not.toContain('mixed or-conditions');
+});
+
+// --- 19.24 the generated-forms corpus (frontend half) ---------------------
+// Ported VERBATIM from backend/test_lcql.py::GENERATED_FORMS_CORPUS. Do not
+// hand-edit one side; the backend parses these exact strings.
+
+const GENERATED_FORMS_CORPUS = [
+  '4h | * | * | user_account == "ACME\\\\o hara"',
+  '12h | * | * | target_filename == "C:\\\\Tools\\\\say \\"hi\\".exe"',
+  '24h | * | * | image == "and"',
+  '15m | Proxy | * | url contains "evil|site*.example"',
+  'all | * | * | severity == "high"',
+  'all | * | * | severity == "high" and hostname != "ACME-WS10"',
+  '1h | * | * | hostname == "ACME-WS10"',
+  'all | * | * | message == "say \\"or\\" and | *"',
+  'all | * | * | user_account == "O\'HARA@acme.com" or UserPrincipalName == "O\'HARA@acme.com"',
+  'all | ACME-WS10 | * | severity == "high"',
+  'all | * | * | hostname != "ACME-WS10"',
+  'all | ACME-WS10 | * | *',
+  '1h | * | * | *',
+  '24h | Windows Security | 4625 | user_account == "spatel" and source_ip contains "10.0."',
+  'all | ACME-WS12 | ProcessCreate | *',
+  '15m | DNS | QUERY | message contains "say \\"or\\" | nicely"',
+  '24h | Sysmon | ProcessCreate | image contains "winupdate"',
+  'all | * | * | message contains "a|b"',
+];
+
+test('the generator emits the generated-forms corpus byte-exact (closure incl. adversarial values)', () => {
+  const built = [
+    pivotAccount('4h', 'ACME\\o hara'),
+    pivotFile('12h', 'C:\\Tools\\say "hi".exe'),
+    pivotProcessImage('24h', 'and'),
+    pivotDomainProxy('15m', 'evil|site*.example'),
+    refineFilter('all | * | * | *', 'severity', '==', 'high').query,
+    refineFilter('all | * | * | severity == "high"', 'hostname', '!=', 'ACME-WS10').query,
+    refineFilter(pivotIp('1h', '10.0.1.5'), 'hostname', '==', 'ACME-WS10').query,
+    refineFilter('all | * | * | *', 'message', '==', 'say "or" and | *').query,
+    descentAccount("O'HARA@acme.com"),
+    refineFilter(descentHost('ACME-WS10'), 'severity', '==', 'high').query,
+    removeConjunct('all | * | * | severity == "high" and hostname != "ACME-WS10"', 0),
+    removeConjunct('all | ACME-WS10 | * | severity == "high"', 0),
+    // Amendment 3 A3.6 (F7): the simple-mode compose + timeframe forms
+    composeQuery('1h', '*', '*', ''),
+    composeQuery('24h', 'Windows Security', '4625',
+      'user_account == "spatel" and source_ip contains "10.0."'),
+    composeQuery('all', 'ACME-WS12', 'ProcessCreate', '  '),
+    composeQuery('15m', 'DNS', 'QUERY', 'message contains "say \\"or\\" | nicely"'),
+    replaceTimeframe('1h | Sysmon | ProcessCreate | image contains "winupdate"', '24h'),
+    replaceTimeframe('1h | * | * | message contains "a|b"', 'all'),
+  ];
+  expect(built).toEqual(GENERATED_FORMS_CORPUS);
+  // the OR-base refine is the FRESH fallback (closure case pinned)
+  expect(refineFilter(pivotIp('1h', '10.0.1.5'), 'hostname', '==', 'ACME-WS10').fresh)
+    .toBe(true);
+});
+
+test('GENERATED_FORMS_CORPUS has exactly the eighteen entries the backend corpus has', () => {
+  expect(GENERATED_FORMS_CORPUS).toHaveLength(18);
+});
+
+// --- A3.6 (F7): projection parity, migration, and round-trip batteries ------
+
+test('SOURCE_FAMILIES mirrors the backend family set (two-sided parity literal)', () => {
+  expect(SOURCE_FAMILIES).toEqual([
+    'Sysmon', 'Windows Security', 'Proxy', 'DNS', 'Firewall',
+    'Azure AD', 'Veeam', 'Defender',
+  ]);
+});
+
+test('replaceTimeframe byte-matches the retired raw splice on ordinary forms and fixes the quoted-pipe case', () => {
+  const oldSplice = (t, tok) => {
+    if (t.trim() === '') return `${tok} | * | * | *`;
+    const idx = t.indexOf('|');
+    if (idx === -1) return tok;
+    return `${tok} ${t.slice(idx)}`;
+  };
+  for (const t of ['1h | * | * | *',
+    '24h | Windows Security | 4625 | user_account == "spatel"',
+    'all | ACME-WS10 | * | severity == "high"', '', 'garbage']) {
+    expect(replaceTimeframe(t, '4h')).toBe(oldSplice(t, '4h'));
+  }
+  // the old splice split INSIDE a quoted value; the chokepoint form cannot
+  expect(replaceTimeframe('1h | * | * | message contains "a|b"', 'all'))
+    .toBe('all | * | * | message contains "a|b"');
+  expect(oldSplice('1h | * | * | message contains "a|b"', 'all'))
+    .toBe('all | * | * | message contains "a|b"');   // same here by luck of the FIRST pipe
+});
+
+test('representability round-trip: every corpus canonical decomposes into the simple controls and recompiles byte-identically', () => {
+  for (const q of GENERATED_FORMS_CORPUS) {
+    const segs = splitSegments(q);
+    expect(segs).toHaveLength(4);
+    const raw = rawFiltersOf(q);
+    expect(raw).not.toBeNull();
+    expect(composeQuery(segs[0], segs[1], segs[2], raw)).toBe(q);
+  }
+});
+
+// --- 19.23 chips: the honesty rule + the RULED boundary test ----------------
+// Ported VERBATIM from backend/test_lcql.py::CONJUNCT_SPLIT_CORPUS.
+
+const CONJUNCT_SPLIT_CORPUS = [
+  ['*', []],
+  ['a == "x"', ['a == "x"']],
+  ['a == "x" and b != "y" and c contains "z z"',
+   ['a == "x"', 'b != "y"', 'c contains "z z"']],
+  ['message contains "black and white"',
+   ['message contains "black and white"']],
+  ['a == "x" or b == "y"', null],
+  ['path == "C:\\\\and\\\\bin" and q == "w"',
+   ['path == "C:\\\\and\\\\bin"', 'q == "w"']],
+];
+
+test('listConjuncts matches the backend AST decomposition (shared parity corpus)', () => {
+  for (const [filters, expected] of CONJUNCT_SPLIT_CORPUS) {
+    expect({ filters, got: listConjuncts(`all | * | * | ${filters}`) })
+      .toEqual({ filters, got: expected });
+  }
+  expect(CONJUNCT_SPLIT_CORPUS).toHaveLength(6);
+});
+
+test('the RULED boundary: Custom filters never for conjunction-only, always for any top-level OR incl. the product forms', () => {
+  // product OR forms collapse to the Custom filters chip (null projection)
+  expect(listConjuncts(pivotIp('1h', '203.0.113.50'))).toBe(null);
+  expect(listConjuncts(descentAccount('ACME\\dlee'))).toBe(null);
+  // conjunction-only never collapses
+  expect(listConjuncts('all | * | * | severity == "high" and hostname != "A"'))
+    .toEqual(['severity == "high"', 'hostname != "A"']);
+  // removal regenerates through the generator and stays canonical
+  expect(removeConjunct('1h | Sysmon | 4625 | a == "x" and b == "y"', 1))
+    .toBe('1h | Sysmon | 4625 | a == "x"');
+  expect(removeConjunct('1h | Sysmon | 4625 | a == "x"', 0))
+    .toBe('1h | Sysmon | 4625 | *');
+  // out-of-range or non-decomposable removal is a no-op, never a corruption
+  expect(removeConjunct(pivotIp('1h', '10.0.0.1'), 0))
+    .toBe(pivotIp('1h', '10.0.0.1'));
+});
+
+test('chips render the executed conjuncts with remove; a removal reruns via the generator', async () => {
+  renderShell();
+  queryResponses.push(ok({
+    ...SNAP,
+    identity: { ...SNAP.identity, canonical_query: 'all | * | * | severity == "high" and hostname == "ACME-WS12"' },
+  }));
+  await run('all | * | * | severity == "high" and hostname == "ACME-WS12"');
+  const chips = screen.getByTestId('filter-chips');
+  expect(chips.textContent).toContain('severity == "high"');
+  expect(chips.textContent).toContain('hostname == "ACME-WS12"');
+  await act(async () => {
+    fireEvent.click(screen.getByLabelText('Remove filter: severity'));
+  });
+  expect(decodeURIComponent(queryCalls().pop()))
+    .toContain('q=all | * | * | hostname == "ACME-WS12"');
+});
+
+test('an OR snapshot renders exactly the Custom filters chip revealing the raw query', async () => {
+  renderShell();
+  const orQ = 'all | * | * | source_ip == "10.0.1.5" or destination_ip == "10.0.1.5"';
+  queryResponses.push(ok({
+    ...SNAP, identity: { ...SNAP.identity, canonical_query: orQ },
+  }));
+  await run(orQ);
+  expect(screen.getByTestId('custom-filters-chip')).toBeInTheDocument();
+  expect(screen.getByTestId('custom-filters-chip').getAttribute('title'))
+    .toBe('source_ip == "10.0.1.5" or destination_ip == "10.0.1.5"');
+  expect(screen.queryByLabelText(/Remove filter:/)).toBeNull();
+});

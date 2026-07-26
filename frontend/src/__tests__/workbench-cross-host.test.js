@@ -1,15 +1,17 @@
 /**
- * Stage 4 Phase 7.1: entity pivots and cross-host scope transitions
- * (contract Sections 12/13/14, Section 18 "Cross-host pivots").
+ * Stage 4 Phase 7.1: entity pivots and cross-host behavior (contract
+ * Sections 12/13/14, Section 18 "Cross-host pivots"), under the Final-pass
+ * one-evidence-universe model (III.0 item 2).
  *
  * Proves: every per-field inspector pivot emits its documented Section 13
  * query (pinned as LITERAL text, not re-derived through the generator) and
- * executes Session-wide; the scope control visibly flips as part of the
- * pivot; the return chip re-runs the current query under the incident's
- * participant scope; ordinary navigation (Run, refinement) never changes
- * scope; and -- structurally -- pivot sources are only serialized
- * observable fields and the generator module is pure (no imports, no
- * fetch), so no answer-key or hidden field can enter query generation.
+ * executes in the CURRENT evidence pool -- session with no case (the
+ * literal pins), the case scope with one (the case-constant tests); a
+ * pivot never changes the evidence universe; ordinary navigation (Run,
+ * refinement) never changes scope; and -- structurally -- pivot sources
+ * are only serialized observable fields and the generator module is pure
+ * (no imports, no fetch), so no answer-key or hidden field can enter
+ * query generation.
  */
 import React from 'react';
 import { render, screen, fireEvent, act, within } from '@testing-library/react';
@@ -53,8 +55,10 @@ const snapWith = (rows, extra = {}) => ({
 });
 
 let queryResponses;
+let scopeFails;
 beforeEach(() => {
   queryResponses = [];
+  scopeFails = false;
   apiFetch.mockReset();
   apiFetch.mockImplementation((p) => {
     if (p === '/api/endpoints') return ok({ org: {}, endpoints: [] });
@@ -63,14 +67,17 @@ beforeEach(() => {
       return queryResponses.length ? queryResponses.shift() : ok(snapWith([PIVOT_EVENT]));
     }
     if (p === '/api/incidents/INC-A/scope') {
+      if (scopeFails) return Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) });
       return ok({ incident_id: 'INC-A', sealed: true, hosts: ['ACME-WS12'], accounts: [], detection_ids: [] });
     }
     return ok({});
   });
 });
 
-const renderShell = (props = {}) =>
-  render(<Siem setSiemCount={() => {}} resetTrigger={0} onHostPivot={() => {}} {...props} />);
+const renderShell = (props = {}) => {
+  const utils = render(<Siem initialQueryMode="advanced" resetTrigger={0} onHostPivot={() => {}} {...props} />);
+  return utils;
+};
 
 const run = async (text) => {
   fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: text } });
@@ -129,49 +136,53 @@ test('a pivot inherits the EXECUTED snapshot TIMEFRAME token', async () => {
   expect(calls[calls.length - 1]).toBe('/api/events/query?q=1h | ACME-WS12 | * | *&scope=session');
 });
 
-// --- Section 18 "Cross-host pivots": visible flip + return chip --------------
+// --- Section 18 "Cross-host pivots" under III.0 item 2: a pivot from case
+// evidence follows the clue INSIDE the case's evidence pool ----------------
 
-test('an entity pivot from incident scope visibly lands Session-wide and offers the return chip', async () => {
-  renderShell({ activeIncidentId: 'INC-A' });
-  await act(async () => {
-    fireEvent.change(screen.getByLabelText('Scope'), { target: { value: 'INC-A' } });
-  });
+test('an entity pivot from case evidence executes under the case scope and announces the clue', async () => {
+  await act(async () => { renderShell({ activeIncidentId: 'INC-A' }); });
   await run('all | * | * | *');
   expect(queryCalls().pop()).toBe('/api/events/query?q=all | * | * | *&scope=INC-A');
-  expect(screen.queryByTestId('return-chip')).toBeNull();   // focused: no chip
 
   selectEvent();
   await act(async () => {
     fireEvent.click(screen.getByLabelText('Pivot hostname'));
   });
-  // the pivot executed Session-wide and the scope control flipped on screen
-  expect(queryCalls().pop()).toBe('/api/events/query?q=all | ACME-WS12 | * | *&scope=session');
-  expect(screen.getByLabelText('Scope').value).toBe('session');
-  expect(screen.getByTestId('return-chip')).toHaveTextContent('Back to INC-A');
+  // the documented query text, executed in the SAME evidence universe
+  expect(queryCalls().pop()).toBe('/api/events/query?q=all | ACME-WS12 | * | *&scope=INC-A');
+  expect(screen.getByTestId('query-notice'))
+    .toHaveTextContent('Following clue: hostname = "ACME-WS12"');
+  // no expanded-search furniture; the case stays pinned (OD-15 structural)
+  expect(screen.queryByTestId('expanded-search-block')).toBeNull();
+  expect(screen.queryByTestId('return-chip')).toBeNull();
+  expect(screen.queryByTestId('search-all')).toBeNull();
+  expect(screen.getByTestId('pinned-case-line').textContent).toBe('Investigating INC-A');
 });
 
-test('the return chip re-runs the current query under the incident participant scope', async () => {
-  renderShell({ activeIncidentId: 'INC-A' });
-  await act(async () => {
-    fireEvent.change(screen.getByLabelText('Scope'), { target: { value: 'INC-A' } });
-  });
+test('ONE evidence universe with a case: run, pivot, refine, and chip removal all carry the case scope', async () => {
+  await act(async () => { renderShell({ activeIncidentId: 'INC-A' }); });
   await run('all | * | * | *');
   selectEvent();
   await act(async () => {
     fireEvent.click(screen.getByLabelText('Pivot hostname'));
   });
-  // the executed pivot's canonical query is now in the bar (mock echoes the
-  // default canonical); returning re-runs exactly that text under INC-A
-  const barText = screen.getByLabelText('LCQL query').value;
+  // a refine whose snapshot carries a removable conjunct, then remove it
+  queryResponses.push(ok(snapWith([PIVOT_EVENT],
+    { canonical_query: 'all | * | * | severity != "high"', scope: 'INC-A' })));
   await act(async () => {
-    fireEvent.click(screen.getByTestId('return-chip'));
+    fireEvent.click(screen.getByLabelText('Filter severity not equals'));
   });
-  expect(queryCalls().pop()).toBe(`/api/events/query?q=${barText}&scope=INC-A`);
-  expect(screen.getByLabelText('Scope').value).toBe('INC-A');
-  expect(screen.queryByTestId('return-chip')).toBeNull();   // back home: chip gone
+  await act(async () => {
+    fireEvent.click(screen.getByLabelText('Remove filter: severity'));
+  });
+  const calls = queryCalls();
+  expect(calls).toHaveLength(4);
+  for (const call of calls) {
+    expect(call.endsWith('&scope=INC-A')).toBe(true);
+  }
 });
 
-test('ordinary navigation stays Session-wide: Run and refinement never change scope, no chip appears', async () => {
+test('ordinary navigation without a case stays plain All activity: no block, no return', async () => {
   renderShell();
   await run('all | * | * | *');
   selectEvent();
@@ -181,7 +192,8 @@ test('ordinary navigation stays Session-wide: Run and refinement never change sc
   for (const call of queryCalls()) {
     expect(call.endsWith('&scope=session')).toBe(true);
   }
-  expect(screen.getByLabelText('Scope').value).toBe('session');
+  expect(screen.getByTestId('pinned-case-line').textContent).toBe('All activity');
+  expect(screen.queryByTestId('expanded-search-block')).toBeNull();
   expect(screen.queryByTestId('return-chip')).toBeNull();
 });
 

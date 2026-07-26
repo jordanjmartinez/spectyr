@@ -474,6 +474,104 @@ def test_or_scan_fixture_corpus_matches_ast_verdicts():
             f"AST verdict diverges for FILTERS {filters_text!r}"
 
 
+# The GENERATED-FORMS closure corpus (Stage 5 Amendment 2, A2-2.6 / 19.24):
+# every product generator form x adversarial values (backslashes, embedded
+# double quotes, spaces, reserved words, pipe/star metacharacters), plus the
+# refineFilter closure cases (append onto canonical bases, append after
+# append, the fresh OR-fallback output). The frontend generator test builds
+# the SAME strings via generator calls and asserts byte-equality against a
+# verbatim port of this list (the shared-fixture pattern: one corpus, two
+# consumers). A generated query failing to parse is a DEFECT, never a
+# player error. TESTS ONLY -- no engine change.
+GENERATED_FORMS_CORPUS = [
+    '4h | * | * | user_account == "ACME\\\\o hara"',
+    '12h | * | * | target_filename == "C:\\\\Tools\\\\say \\"hi\\".exe"',
+    '24h | * | * | image == "and"',
+    '15m | Proxy | * | url contains "evil|site*.example"',
+    'all | * | * | severity == "high"',
+    'all | * | * | severity == "high" and hostname != "ACME-WS10"',
+    '1h | * | * | hostname == "ACME-WS10"',
+    'all | * | * | message == "say \\"or\\" and | *"',
+    "all | * | * | user_account == \"O'HARA@acme.com\" or UserPrincipalName == \"O'HARA@acme.com\"",
+    'all | ACME-WS10 | * | severity == "high"',
+    # A2 3.3: the chip remove/join generator form's outputs
+    'all | * | * | hostname != "ACME-WS10"',
+    'all | ACME-WS10 | * | *',
+    # Amendment 3 A3.6 (F7): the simple-mode composeQuery outputs -- the
+    # picker/select matrix (family sensor, hostname sensor, event type,
+    # empty FILTERS -> *) and adversarial FILTERS text riding raw
+    '1h | * | * | *',
+    '24h | Windows Security | 4625 | user_account == "spatel" and source_ip contains "10.0."',
+    'all | ACME-WS12 | ProcessCreate | *',
+    '15m | DNS | QUERY | message contains "say \\"or\\" | nicely"',
+    # A3.6: the replaceTimeframe outputs (the migrated Timeframe splice),
+    # incl. the quote-aware case the old raw splice would have broken on
+    '24h | Sysmon | ProcessCreate | image contains "winupdate"',
+    'all | * | * | message contains "a|b"',
+]
+
+
+def test_generated_forms_corpus_parses_and_is_canonical():
+    """Every corpus entry parses structurally and is byte-canonical and
+    idempotent -- the backend half of the generated-forms invariant."""
+    for q in GENERATED_FORMS_CORPUS:
+        parsed = parse(q)
+        c1 = canonical(parsed)
+        assert c1 == q, f"generated form must be byte-canonical: {q!r} -> {c1!r}"
+        assert canonical(parse(c1)) == c1
+
+
+def test_generated_forms_corpus_has_exactly_eighteen_entries():
+    # 12 at A2 closure + 6 Amendment 3 F7 forms (composeQuery,
+    # replaceTimeframe); both sides bump together (the frontend port
+    # asserts the same length).
+    assert len(GENERATED_FORMS_CORPUS) == 18
+
+
+def test_source_families_match_the_frontend_mirror():
+    """A3.6 (F7): the Source select's static family options are a client
+    mirror of SOURCE_FAMILIES; this is the backend half of the two-sided
+    parity pin (the frontend asserts its export equals the same literal).
+    TESTS ONLY -- no engine change."""
+    from lcql import SOURCE_FAMILIES
+    assert list(SOURCE_FAMILIES) == [
+        "Sysmon", "Windows Security", "Proxy", "DNS", "Firewall",
+        "Azure AD", "Veeam", "Defender",
+    ]
+
+
+# The chip-decomposition parity corpus (A2 3.3): canonical FILTERS text ->
+# the conjunct list the AST yields (None = not decomposable, any top-level
+# `or`; [] = star). The frontend listConjuncts asserts the IDENTICAL corpus
+# -- one corpus, two implementations, byte-equal verdicts (the OR_SCAN
+# pattern; the same no-grouping equivalence boundary applies).
+CONJUNCT_SPLIT_CORPUS = [
+    ("*", []),
+    ('a == "x"', ['a == "x"']),
+    ('a == "x" and b != "y" and c contains "z z"',
+     ['a == "x"', 'b != "y"', 'c contains "z z"']),
+    ('message contains "black and white"',
+     ['message contains "black and white"']),
+    ('a == "x" or b == "y"', None),
+    ('path == "C:\\\\and\\\\bin" and q == "w"',
+     ['path == "C:\\\\and\\\\bin"', 'q == "w"']),
+]
+
+
+def test_conjunct_split_corpus_matches_ast_decomposition():
+    for text, expected in CONJUNCT_SPLIT_CORPUS:
+        q = parse(f"all | * | * | {text}")
+        if expected is None:
+            assert not lcql.conjunction_only(q), text
+            continue
+        if expected == []:
+            assert q.filters == (), text
+            continue
+        assert lcql.conjunction_only(q), text
+        got = [f"{p.field} {p.op} {p.raw_value}" for p in q.filters[0]]
+        assert got == expected, f"AST conjuncts diverge for {text!r}: {got!r}"
+
+
 def test_full_idempotence_with_catalog():
     for q in list(_CONTRACT_VALID_EXAMPLES) + list(_PIVOT_DESCENT_FIXTURES):
         c1 = canonical(_q(q))

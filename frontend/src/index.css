@@ -244,3 +244,52 @@ code {
 .dark-thead button:hover {
   color: #ffffff;
 }
+
+/* Phase 4 commit 4.1 (OD-5 Option A): one short emphasis run on the shared
+   inspector per selection change; disabled under prefers-reduced-motion by
+   the shell (the class is simply not applied). */
+@keyframes inspectorPulse {
+  0% { box-shadow: 0 0 0 2px rgba(22, 67, 107, 0.55); }
+  100% { box-shadow: 0 0 0 0 rgba(22, 67, 107, 0); }
+}
+.inspector-emphasis {
+  animation: inspectorPulse 0.6s ease-out 1;
+}
+
+/* Phase 5 commit 5.4 (A1-B.4.1): the Case Closed moment is restrained --
+   the one-shot modal entrance is dropped entirely under
+   prefers-reduced-motion (content renders immediately, no motion). */
+@media (prefers-reduced-motion: reduce) {
+  .animate-modalIn {
+    animation: none;
+  }
+}
+
+/* Phase 6 commit 6.2 (A1-B.5.1): permanent accessible control tooltips.
+   The native title serves pointer users and aria/text serves screen
+   readers; this ::after layer makes the SAME line keyboard-reachable by
+   rendering it on :focus-visible (and on hover for a styled pointer
+   affordance). Pure CSS, no timers, never steals focus. */
+.help-tip {
+  position: relative;
+}
+.help-tip:focus-visible::after,
+.help-tip:hover::after {
+  content: attr(data-help);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  width: max-content;
+  max-width: 260px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #101218;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.35;
+  text-align: left;
+  white-space: normal;
+  pointer-events: none;
+}

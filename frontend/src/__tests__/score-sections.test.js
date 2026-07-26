@@ -1,8 +1,9 @@
 /**
- * Stage 3d composite sections: Classification, Detections, and Response
- * render as independent scored sections beneath the composite headline; the
- * Response card surfaces failed attempts factually; ungraded renders "-";
- * clean copy (no em dashes).
+ * Stage 3d composite sections, compacted by the Final pass (III.0 item 6):
+ * ONE compact responsive summary -- the Overall grade exactly once, then
+ * Classification / Detections / Response as three equal columns with the
+ * same values and calculations; the factual teaching blocks remain
+ * beneath; ungraded renders "-"; clean copy (no em dashes).
  *
  * Stage 3.9A: ScoreSections reads the SUBMISSION-GATED grading from its report
  * prop (report.detection / report.response, aggregated over submitted
@@ -65,9 +66,21 @@ const REPORT = {
   response: RESPONSE,
 };
 
+test('the compact summary shows the Overall grade exactly once, columns in accessible order (III.0 item 6)', () => {
+  const { container } = render(<ScoreSections isVisible report={REPORT} />);
+  expect(screen.getByText('Overall grade')).toBeInTheDocument();
+  // the composite grade renders once, never repeated per column
+  expect(screen.getAllByText('C')).toHaveLength(1);
+  // DOM (reading) order: Overall, then the three equal columns
+  const text = container.textContent;
+  expect(text.indexOf('Overall grade')).toBeLessThan(text.indexOf('Classification'));
+  expect(text.indexOf('Classification')).toBeLessThan(text.indexOf('Detections'));
+  expect(text.indexOf('Detections')).toBeLessThan(text.indexOf('Response'));
+});
+
 test('renders all three sections with grades, counts, and factual failed attempts', () => {
   const { container } = render(<ScoreSections isVisible report={REPORT} />);
-  // all three components render as their own scored sections
+  // all three components render inside the one compact summary
   expect(screen.getByText('Classification')).toBeInTheDocument();
   expect(screen.getByText('Detections')).toBeInTheDocument();
   expect(screen.getByText('Response')).toBeInTheDocument();

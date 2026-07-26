@@ -333,3 +333,15 @@ triage_review:
     - "Inventory what data was stolen"
     - "Trace where the archived files originated from"
     - "Engage HR and Legal if insider threat is suspected"
+
+# Stage 5 D2 (Tier 2 rationale; ledger-tracked): frozen into a
+# submission record as scenario_rationale, rendered only in the
+# post-boundary Learning Review Key takeaway.
+expected_response: >-
+  Corporate data was staged, archived, and pushed out from the victim
+  workstation. Isolating that workstation is the one required action: it
+  stops the outbound transfer immediately and preserves the staging
+  evidence. Terminating the archiver process is defensible but secondary
+  once the host is off the network. The account shows no sign of takeover,
+  so disabling it is collateral, as is action against shared infrastructure
+  or the look-alike process.

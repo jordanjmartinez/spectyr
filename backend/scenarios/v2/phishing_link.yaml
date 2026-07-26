@@ -316,3 +316,16 @@ triage_review:
     - "Search email and proxy logs for other users who received the same link"
     - "Check the host for post-execution activity"
     - "Quarantine the original phishing email across all mailboxes"
+
+# Stage 5 D2 (Tier 2 rationale; ledger-tracked): frozen into a
+# submission record as scenario_rationale, rendered only in the
+# post-boundary Learning Review Key takeaway.
+expected_response: >-
+  The phishing link delivered a payload: opening it dropped and executed a
+  fake invoice service on the victim workstation. Because the compromise is
+  on the host, the required response is containment there: isolate the
+  workstation, terminate the malicious process, and delete the dropped
+  executable. Terminating the secondary process is a defensible extra. The
+  evidence shows no credential entry, so disabling the account is
+  collateral, and the DNS server that resolved the malicious domain is
+  shared infrastructure doing its job.

@@ -520,6 +520,87 @@ def test_all_twenty_scenarios_reviewed_gate():
     assert not unreviewed, f"unreviewed scenarios remain: {sorted(unreviewed)}"
 
 
+# The Stage 5 D2 rationale ledger (the 3c cadence, scaffold Section 3.4):
+# grown by exactly one label per approved Tier 2 authoring commit (the
+# scenario's top-level expected_response lands with its ledger row). It
+# flips to required-by-ledger at 20/20 -- the ratchet below enforces exact
+# correspondence in BOTH directions the whole way, so a paragraph can never
+# land silently and a ledger row can never outrun its content.
+RATIONALE_SCENARIOS = {
+    "malware_usb",
+    "phishing_1",
+    "defense_evasion",
+    "false_positive_pentest",
+    "lateral_movement_1",
+    "c2_http",
+    "brute_force_attack",
+    "false_positive_robocopy",
+    "phishing_link",
+    "data_exfil_archive",
+    "insider_staging",
+    "malware_ransomware",
+    "lateral_movement_2",
+    "defense_evasion_log_clearing",
+    "insider_shadow_it",
+    "password_spray",
+    "c2_dns_tunnel",
+    "false_positive_veeam",
+    "false_positive_oauth",
+    "false_positive_ssl_inspection",
+}
+
+
+def test_expected_response_validated_when_present():
+    """The optional D2 field is loader-validated: a valid paragraph loads
+    (and surfaces on the catalog entry); an empty or non-string value is a
+    schema error; the field stays optional (absence loads clean)."""
+    doc = _one_valid_doc()
+    doc["expected_response"] = "The expected response and why, authored."
+    v2.validate_scenario_v2(doc, _SCHEMA_V2, _SCHEMA_V1, "fixture.yaml")
+    assert v2._catalog_entry_v2(doc)["expected_response"] == \
+        "The expected response and why, authored."
+    doc["expected_response"] = ""
+    _expect_error(doc, "expected_response")
+    doc["expected_response"] = ["not", "a", "string"]
+    _expect_error(doc, "expected_response")
+    del doc["expected_response"]
+    v2.validate_scenario_v2(doc, _SCHEMA_V2, _SCHEMA_V1, "fixture.yaml")
+    assert v2._catalog_entry_v2(doc)["expected_response"] is None
+
+
+def test_rationale_ledger_matches_expected_response_state():
+    """Stage 5 D2 ratchet: a scenario carries a top-level expected_response
+    iff its label is in the rationale ledger; authored paragraphs are
+    non-empty strings. At 20/20 the ledger equals the corpus and the field
+    is required-by-ledger (never a schema-required flip mid-rollout)."""
+    catalog, _ = _load_corpus()
+    for label, sc in catalog.items():
+        text = sc.get("expected_response")
+        if label in RATIONALE_SCENARIOS:
+            assert isinstance(text, str) and text.strip(), \
+                f"{label}: ledger row without an authored expected_response"
+        else:
+            assert text is None, \
+                f"{label}: expected_response authored outside the ledger cadence"
+    unknown = RATIONALE_SCENARIOS - set(catalog)
+    assert not unknown, f"rationale ledger names unknown scenarios: {sorted(unknown)}"
+
+
+def test_all_twenty_rationales_authored_gate():
+    """The 20/20 required-by-ledger flip (scaffold Section 3.4): the Tier 2
+    rollout completed 2026-07-25, so every corpus scenario must carry an
+    authored expected_response and the rationale ledger must be exactly the
+    corpus. A scenario added later needs its paragraph authored with it (or
+    this gate goes red) -- the ratchet never loosens."""
+    catalog, _ = _load_corpus()
+    assert RATIONALE_SCENARIOS == set(catalog), \
+        "the 20/20 gate: the rationale ledger must be exactly the corpus"
+    missing = [l for l, sc in catalog.items()
+               if not (isinstance(sc.get("expected_response"), str)
+                       and sc["expected_response"].strip())]
+    assert not missing, f"scenarios without an authored rationale: {sorted(missing)}"
+
+
 def test_rejects_authored_actions_without_reviewed_flag():
     """Authored actions and the reviewed marker flip together: an authored
     set without actions_reviewed: true is an inconsistent state. The

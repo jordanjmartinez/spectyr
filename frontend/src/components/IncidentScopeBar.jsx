@@ -1,48 +1,36 @@
 import React from 'react';
+import InvestigationContext from './InvestigationContext';
 
-// Scope bar shared by Detections and Endpoints (pre-lock micro-fix M1,
-// Stage 5A contract Section 11.1). The label, the toggle's selected state
-// (visual + aria-pressed), and the error/loading notices all render from the
-// SAME useIncidentScope state the row filter consumes, so the three signals
-// cannot disagree (the F9 defect class). Broadening to Session-wide happens
-// only through the explicit controls here.
-const IncidentScopeBar = ({ scope, incidentId, groupLabel }) => {
-  const { mode, selection, setSelection, status, data, refetch } = scope;
-  const scoped = selection === 'incident';
-  const label = mode === 'session'
-    ? <>Session-wide view</>
-    : data
-      ? <>Scoped to incident <span className="log-mono text-[#16436b]">{incidentId}</span></>
-      : status === 'error'
-        ? <>Incident scope could not be loaded.</>
-        : <>Loading incident scope</>;
+// The case-constant header bar shared by Detections and Endpoints (Stage 5
+// Phase 1, Amendment 1 Delta A over the M1 foundation). The pinned case line
+// ("Investigating INC-####" / "All activity"), the loading and error honesty
+// notices, and the row filter all render from the SAME useIncidentScope
+// state, so the signals cannot disagree (the F9 defect class). There is NO
+// scope toggle and NO broadening control here (ratified A-OD-2 / A-OD-3):
+// a selected case is always case-scoped; recovery from a failed scope read
+// is Retry, or explicitly leaving the case on Incidents.
+const IncidentScopeBar = ({ scope, incidentId }) => {
+  const { status, data, refetch } = scope;
   return (
     <div className="mb-3 rounded-lg border border-[#d0d7de] bg-white px-3 py-2 text-xs">
-      <div className="flex items-center justify-between">
-        <span className="text-[#57606a]">{label}</span>
-        <div className="inline-flex rounded-md border border-[#d0d7de] overflow-hidden" role="group" aria-label={groupLabel}>
-          <button type="button" aria-pressed={scoped} onClick={() => setSelection('incident')}
-            className={`px-2.5 py-1 font-medium transition ${scoped ? 'bg-[#101218] text-white' : 'bg-white text-[#57606a] hover:bg-[#eef1f4]'}`}>
-            This incident
-          </button>
-          <button type="button" aria-pressed={!scoped} onClick={() => setSelection('session')}
-            className={`px-2.5 py-1 font-medium transition ${!scoped ? 'bg-[#101218] text-white' : 'bg-white text-[#57606a] hover:bg-[#eef1f4]'}`}>
-            Session-wide
-          </button>
-        </div>
+      <div className="flex items-center justify-between gap-2">
+        <InvestigationContext incidentId={incidentId || null} />
+        {incidentId && status === 'loading' && !data && (
+          <span className="text-[#6e7781]">Loading incident scope</span>
+        )}
       </div>
-      {mode === 'incident' && status === 'error' && (
+      {incidentId && status === 'error' && (
         <div role="alert" className="mt-2 text-[#1a2332]">
-          {data
-            ? <>Incident scope could not be loaded. <span className="text-[#57606a]">Displayed rows are from the last successful scope read.</span></>
-            : null}
-          <button type="button" onClick={refetch}
-            className={`px-2 py-0.5 rounded border border-[#d0d7de] bg-white text-[#1a2332] ${data ? 'ml-2' : ''}`}>
+          Incident scope could not be loaded.
+          {data && (
+            <span className="text-[#57606a]"> Displayed rows are from the last successful scope read.</span>
+          )}
+          <button
+            type="button"
+            onClick={refetch}
+            className="ml-2 px-2 py-0.5 rounded border border-[#d0d7de] bg-white text-[#1a2332]"
+          >
             Retry
-          </button>
-          <button type="button" onClick={() => setSelection('session')}
-            className="ml-2 px-2 py-0.5 rounded border border-[#d0d7de] bg-white text-[#57606a]">
-            Use Session-wide
           </button>
         </div>
       )}

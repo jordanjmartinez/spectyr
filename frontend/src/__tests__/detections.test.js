@@ -106,7 +106,7 @@ test('feed renders detections and triages them', async () => {
   let promoted = false;
   mockApi({ onDisposition: () => { promoted = true; } });
   const { container } = render(
-    <Detections isVisible resetTrigger={0} setDetectionCount={() => {}} onHostPivot={() => {}} />
+    <Detections isVisible resetTrigger={0} onHostPivot={() => {}} />
   );
   expect(await screen.findByText('LSASS Process Memory Access')).toBeInTheDocument();
   expect(screen.getByText('2 open · 2 promoted · 0 dismissed')).toBeInTheDocument();
@@ -117,58 +117,31 @@ test('feed renders detections and triages them', async () => {
   await waitFor(() => expect(promoted).toBe(true));
 });
 
-test('threats view offers identity actions on any account-bearing detection', async () => {
-  let posted = null;
-  mockApi();
-  apiFetch.mockImplementation((path, opts) => {
-    if (path === '/api/actions' && opts?.method === 'POST') {
-      posted = JSON.parse(opts.body);
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({
-        seq: 1, timestamp: '2026-07-16T12:00:01+00:00', action: posted.action,
-        outcome: 'success', reason: null,
-        target: { id: posted.target, kind: 'account', label: 'ACME\\lgreen' } }) });
-    }
-    if (path === '/api/actions') {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve(ACTION_LOG) });
-    }
-    return Promise.resolve({ ok: true, json: () => Promise.resolve(FEED) });
-  });
-  const { container } = render(
-    <Detections isVisible resetTrigger={0} setDetectionCount={() => {}} onHostPivot={() => {}} />
-  );
-  await screen.findByText('LSASS Process Memory Access');
-  fireEvent.click(screen.getByRole('button', { name: /Threats/ }));
-  // both promoted rows appear: the identity-provider one (host null) and the
-  // host-local one that carries an acting account (the reachability fix)
-  expect(await screen.findByText('Impossible Travel Sign-in')).toBeInTheDocument();
-  expect(screen.getByText('Password Spray Success')).toBeInTheDocument();
-  // the host-local row shows its host with the acting account beneath it
-  expect(screen.getByText('ACME-SVR01')).toBeInTheDocument();
-  expect(screen.getByText('lgreen')).toBeInTheDocument();
-  // both rows offer identity actions -> two Disable buttons
-  const disables = screen.getAllByRole('button', { name: 'Disable' });
-  expect(disables).toHaveLength(2);
-  // act on the host-local account (the second row)
-  fireEvent.click(disables[1]);
-  expect(screen.getByRole('dialog')).toBeInTheDocument();
-  expect(screen.getByText(/Disable the account lgreen/)).toBeInTheDocument();
-  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Disable' }));
-  await waitFor(() => expect(posted).toEqual({ action: 'disable_account', target: 'ent-cccc000011ab' }));
-  assertClean(container);
-});
-
-test('response log renders every attempt with outcomes', async () => {
+test('Final pass III.0.1: Detections is triage-only -- no Threats or Response Log tabs, no execution controls', async () => {
+  const onOpenResponse = jest.fn();
   mockApi();
   const { container } = render(
-    <Detections isVisible resetTrigger={0} setDetectionCount={() => {}} onHostPivot={() => {}} />
+    <Detections isVisible resetTrigger={0} onHostPivot={() => {}}
+      onOpenResponse={onOpenResponse} />
   );
   await screen.findByText('LSASS Process Memory Access');
-  fireEvent.click(screen.getByRole('button', { name: 'Response Log' }));
-  expect(await screen.findByText('ACME-SVR02')).toBeInTheDocument();
-  expect(screen.getAllByText('Isolate Host').length).toBe(2);
-  expect(screen.getByText('Success')).toBeInTheDocument();
-  expect(screen.getByText('Failed')).toBeInTheDocument();
-  expect(container.textContent).toMatch(/isolation command could not be delivered/);
+  // the retired views and execution controls are structurally gone
+  expect(screen.queryByRole('button', { name: /Threats/ })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Response Log' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Disable' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Revoke' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Reset PW' })).toBeNull();
+  // triage stays
+  expect(screen.getAllByText('Promote').length).toBeGreaterThanOrEqual(1);
+  expect(screen.getAllByText('Dismiss').length).toBeGreaterThanOrEqual(1);
+  // promoted rows offer ONLY the neutral navigation; clicking selects the
+  // relevant target in Response and executes nothing
+  const opens = screen.getAllByRole('button', { name: 'Open in Response' });
+  expect(opens).toHaveLength(2);   // the two promoted fixtures
+  fireEvent.click(opens[0]);
+  expect(onOpenResponse).toHaveBeenCalledWith({ kind: 'account', entityId: 'ent-1234567890ab' });
+  const posts = apiFetch.mock.calls.filter(([, o]) => o && o.method === 'POST');
+  expect(posts).toHaveLength(0);
   assertClean(container);
 });
 

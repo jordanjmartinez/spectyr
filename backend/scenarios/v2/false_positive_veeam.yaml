@@ -255,3 +255,13 @@ triage_review:
     - "Cross-reference with the backup schedule and retention policy"
     - "Check with the backup team for recent agent deployments"
     - "Add the backup process and destination to the monitoring whitelist"
+
+# Stage 5 D2 (Tier 2 rationale; ledger-tracked): frozen into a
+# submission record as scenario_rationale, rendered only in the
+# post-boundary Learning Review Key takeaway.
+expected_response: >-
+  The beacon-like traffic is the backup agent checking in with its
+  management server on its normal schedule: regular intervals and a known
+  internal destination. Classify as a false positive and take no action.
+  Killing the backup process or isolating the host would break the company's
+  data-protection cycle: real harm in exchange for imaginary containment.

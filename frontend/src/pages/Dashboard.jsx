@@ -1,27 +1,33 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
 import { apiFetch } from '../api';
 import Siem from '../components/Siem';
 import Incidents from '../components/Incidents';
 import IncidentDashboard from '../components/IncidentDashboard';
 import Analytics from '../components/Analytics';
-import Reports from '../components/Reports';
 import Endpoints from '../components/Endpoints';
 import Detections from '../components/Detections';
+import Response from '../components/Response';
 import DifficultySelector from '../components/DifficultySelector';
 import GameTimer from '../components/GameTimer';
 import FailureModal from '../components/FailureModal';
+import HintPanel from '../components/HintPanel';
 
 const Dashboard = () => {
-  const [alertCount, setAlertCount] = useState(0);
   const [groupedAlertCount, setGroupedAlertCount] = useState(0);
-  const [reportCount, setReportCount] = useState(0);
   const [analyticsCount, setAnalyticsCount] = useState(0);
   const [view, setView] = useState("dashboard");
   // Stage 3.9B: the active-incident context (opaque INC id). Pure UI state, never
   // a server mutation; scopes the incident-aware tabs when set, session-wide when
   // null. Selecting/switching never mutates world/scoring/readiness/submission.
   const [activeIncidentId, setActiveIncidentId] = useState(null);
+  // A3.4 (ratified A3-OD-3): the SHELL-OWNED classification selection per
+  // incident ({verdict, category, categoryId}). Every player-facing Ready
+  // surface (Incidents workspace + list, this dashboard's rows) derives
+  // readiness from this one state through submissionReady(); local input
+  // only, never a request; cleared with the session.
+  const [chosen, setChosen] = useState({});
   const [resetTrigger, setResetTrigger] = useState(0);
   const [showResetModal, setShowResetModal] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -35,16 +41,36 @@ const Dashboard = () => {
   const [gameMode, setGameMode] = useState('training');
   const [incidentBadge, setIncidentBadge] = useState(0);
   const [simActive, setSimActive] = useState(false);
-  const [endpointCount, setEndpointCount] = useState(0);
-  const [detectionCount, setDetectionCount] = useState(0);
   const [pivotHost, setPivotHost] = useState(null);
-  // Stage 4 P7.2: Open Evidence Timeline descent requests (contract Sections
-  // 13/16). The request carries ONLY observable data supplied by the origin
-  // surface (origin label, participant hostnames, the player-selected
-  // incident context); the SIEM shell generates the query through the one
-  // generator. seq retriggers identical consecutive descents.
+  // Final pass III.0.1 item 5: contextual navigation into the Response
+  // workspace -- {kind, hostname?, pid?, entityId?, seq}. Selection only;
+  // navigating here never executes anything.
+  const [responseFocus, setResponseFocus] = useState(null);
+  const responseSeqRef = useRef(0);
+  const handleOpenResponse = (target) => {
+    responseSeqRef.current += 1;
+    setResponseFocus({ ...target, seq: responseSeqRef.current });
+    setView('response');
+  };
+  // Stage 4 P7.2 entry, renamed "Investigate in SIEM" (III.0 item 5). The
+  // request carries ONLY observable data supplied by the origin surface
+  // (participant hostnames / account, the player-selected incident
+  // context); the SIEM shell generates and executes the prepared search
+  // through the one generator. seq retriggers identical consecutive
+  // entries.
   const [descentRequest, setDescentRequest] = useState(null);
   const descentSeqRef = useRef(0);
+  // Stage 5 commit 5.4: "Review what you learned" requests -- opens the
+  // Metrics Learning Review home with the incident preselected (B-OD-1
+  // Option 1). Pure navigation state; seq retriggers repeat requests.
+  const [reviewRequest, setReviewRequest] = useState(null);
+  const reviewSeqRef = useRef(0);
+
+  const handleOpenLearningReview = (incidentId) => {
+    reviewSeqRef.current += 1;
+    setReviewRequest({ id: incidentId, seq: reviewSeqRef.current });
+    setView('analytics');
+  };
 
   // Host pivot: a hostname link in an event view opens that endpoint page.
   const handleHostPivot = (hostname) => {
@@ -67,8 +93,8 @@ const Dashboard = () => {
         case '3': setView('siem'); break;
         case '4': setView('detections'); break;
         case '5': setView('endpoints'); break;
-        case '6': setView('analytics'); break;
-        case '7': setView('reports'); break;
+        case '6': setView('response'); break;
+        case '7': setView('analytics'); break;
         default: break;
       }
     };
@@ -181,6 +207,11 @@ const Dashboard = () => {
       await apiFetch('/api/reset-simulator', {
         method: 'POST',
       });
+      // A reset destroys the session's incidents; no case survives it, so
+      // the pinned case clears here (explicit destructive act, not an
+      // implicit case change). The classification selections die with it.
+      setActiveIncidentId(null);
+      setChosen({});
       setResetTrigger(prev => prev + 1);
       setShowResetModal(false);
     } catch (err) {
@@ -205,16 +236,29 @@ const Dashboard = () => {
       icon: 'M4 5a1 1 0 011-1h5a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM14 13a1 1 0 011-1h4a1 1 0 011 1v6a1 1 0 01-1 1h-4a1 1 0 01-1-1v-6zM4 15a1 1 0 011-1h5a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4z' },
     { key: 'incidents', label: 'Incidents', count: groupedAlertCount,
       icon: 'M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z' },
-    { key: 'siem', label: 'SIEM', count: alertCount,
+    // C1 checkpoint fix (post-Stage-5 review, F1): the evidence-surface nav
+    // entries (SIEM, Detections, Endpoints) carry NO numeric badge. The old
+    // badges read unfiltered session payloads while the page headers rendered
+    // case-scoped counts, so badge and header could not agree with a case
+    // pinned; the Incidents badge stays (cases are a global concept).
+    { key: 'siem', label: 'SIEM',
       icon: 'M4 6h16M4 10h16M4 14h16M4 18h16' },
-    { key: 'detections', label: 'Detections', count: detectionCount,
+    { key: 'detections', label: 'Detections',
       icon: 'M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z' },
-    { key: 'endpoints', label: 'Endpoints', count: endpointCount,
+    { key: 'endpoints', label: 'Endpoints',
       icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
+    // Final pass III.0.1: Response is the one action-execution workspace
+    // (Investigate -> Triage -> Respond -> Submit -> Learn). Badge-free
+    // per the C1 nav ruling.
+    { key: 'response', label: 'Response',
+      icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' },
     { key: 'analytics', label: 'Metrics', count: analyticsCount,
       icon: 'M9 19v-6m4 6V5m4 14v-9M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z' },
-    { key: 'reports', label: 'Reports', count: reportCount,
-      icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+    // C1 checkpoint fix (F6 slice): the Reports entry is HIDDEN until a
+    // working report workflow exists (the ruled default). The tab was a
+    // read-only shell over a store nothing writes (no create path since
+    // 3.9B retired the Alerts flow), permanently stuck on an empty state
+    // that cited that retired workflow.
   ];
 
   return (
@@ -297,21 +341,12 @@ const Dashboard = () => {
 
       {/* Light content */}
       <main className="flex-1 min-w-0 p-4 sm:p-6 overflow-x-hidden">
-        {/* Stage 3.9B incident context bar: persistent while an incident is
-            focused, on every tab. Purely presentational; "Session-wide" clears
-            it and never mutates state. */}
-        {activeIncidentId && view !== 'dashboard' && (
-          <div className="mb-4 flex items-center justify-between rounded-lg border border-[#16436b]/30 bg-[#16436b]/5 px-3 py-2">
-            <span className="text-sm text-[#1a2332]">
-              Focused on incident <span className="log-mono text-[#16436b] font-medium">{activeIncidentId}</span>
-            </span>
-            <div className="flex items-center gap-3">
-              <button onClick={() => setView('dashboard')} className="text-xs text-[#16436b] hover:underline">Open Dashboard</button>
-              <button onClick={() => setActiveIncidentId(null)} className="text-xs px-2 py-1 rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4]">Session-wide</button>
-            </div>
-          </div>
-        )}
-
+        {/* Stage 5 Phase 1 (Amendment 1 Delta A): the global focus banner is
+            REPLACED by the per-surface pinned case header ("Investigating
+            INC-####" / "All activity") on Detections, Endpoints, and the
+            SIEM. The case changes only by explicit selection (or the
+            explicit Clear selection control) on Incidents -- OD-15 is
+            structural: no other control mutates activeIncidentId. */}
         <div className={view === "dashboard" ? "block" : "hidden"}>
           <IncidentDashboard
             gameMode={gameMode}
@@ -321,6 +356,7 @@ const Dashboard = () => {
             onNavigate={setView}
             onReset={() => setShowResetModal(true)}
             isVisible={view === "dashboard"}
+            chosen={chosen}
           />
         </div>
 
@@ -337,27 +373,30 @@ const Dashboard = () => {
             setGroupedAlertCount={setGroupedAlertCount}
             onPracticeAnother={handlePracticeAnother}
             onEvidenceDescent={handleEvidenceDescent}
+            onOpenLearningReview={handleOpenLearningReview}
+            chosen={chosen}
+            setChosen={setChosen}
           />
         </div>
 
         <div className={view === "siem" ? "block" : "hidden"}>
-          <Siem setSiemCount={setAlertCount} resetTrigger={resetTrigger} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} descentRequest={descentRequest} onNavigate={setView} />
+          <Siem resetTrigger={resetTrigger} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} descentRequest={descentRequest} />
         </div>
 
         <div className={view === "detections" ? "block" : "hidden"}>
-          <Detections isVisible={view === "detections"} resetTrigger={resetTrigger} setDetectionCount={setDetectionCount} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} onEvidenceDescent={handleEvidenceDescent} />
+          <Detections isVisible={view === "detections"} resetTrigger={resetTrigger} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} onEvidenceDescent={handleEvidenceDescent} onOpenResponse={handleOpenResponse} />
         </div>
 
         <div className={view === "endpoints" ? "block" : "hidden"}>
-          <Endpoints isVisible={view === "endpoints"} resetTrigger={resetTrigger} setEndpointCount={setEndpointCount} pivotHost={pivotHost} activeIncidentId={activeIncidentId} />
+          <Endpoints isVisible={view === "endpoints"} resetTrigger={resetTrigger} pivotHost={pivotHost} activeIncidentId={activeIncidentId} onOpenResponse={handleOpenResponse} />
+        </div>
+
+        <div className={view === "response" ? "block" : "hidden"}>
+          <Response isVisible={view === "response"} resetTrigger={resetTrigger} activeIncidentId={activeIncidentId} responseFocus={responseFocus} onHostPivot={handleHostPivot} />
         </div>
 
         <div className={view === "analytics" ? "block" : "hidden"}>
-          <Analytics onReset={() => setShowResetModal(true)} analystName={analystName} setAnalyticsCount={setAnalyticsCount} isVisible={view === "analytics"} />
-        </div>
-
-        <div className={view === "reports" ? "block" : "hidden"}>
-          <Reports setReportCount={setReportCount} reportCount={reportCount} analystName={analystName} resetTrigger={resetTrigger} />
+          <Analytics onReset={() => setShowResetModal(true)} analystName={analystName} setAnalyticsCount={setAnalyticsCount} isVisible={view === "analytics"} reviewRequest={reviewRequest} />
         </div>
       </main>
 
@@ -381,7 +420,7 @@ const Dashboard = () => {
             </button>
             <h3 className="text-lg font-semibold text-[#1a2332] mb-4">Reset Simulation</h3>
             <p className="text-[#57606a] mb-6">
-              This will clear all events, alerts, and reports. Your progress will be reset. This action cannot be undone.
+              This will clear all events and incidents. Your progress will be reset. This action cannot be undone.
             </p>
             <div className="flex justify-end gap-2">
               <button
@@ -467,6 +506,19 @@ const Dashboard = () => {
           onQuit={handleFailureRestart}
         />
       )}
+
+      {/* Live Progress and Reinforcement toasts (Phase 2 commit 2.4,
+          A1-B.3.1): factual confirmations only, announced politely
+          (role=status), never stealing focus. */}
+      <ToastContainer position="bottom-right" autoClose={4000} newestOnTop
+        closeOnClick pauseOnFocusLoss={false} limit={4} role="status"
+        theme="light" />
+
+      {/* Phase 6 commit 6.2 (A1-B.5.2): the Guided-only hint flow. The
+          component itself enforces the HINT_MODES allow-list (renders
+          null in Hardcore, SOC Queue, and any future mode) and reads only
+          static libraries; the active tab is the ONLY context passed. */}
+      {simActive && <HintPanel gameMode={gameMode} surface={view} />}
     </div>
   );
 };

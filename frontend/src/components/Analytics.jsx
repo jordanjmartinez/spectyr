@@ -5,8 +5,10 @@ import { GradeCard, MttrCard } from './PerformanceGrade';
 import CampaignProgress from './CampaignProgress';
 import ActionHistory from './ActionHistory';
 import ScoreSections from './ScoreSections';
+import LearningReview from './LearningReview';
+import { SESSION_PERFORMANCE_LABEL } from './uiCopy';
 
-const Analytics = ({ onReset, analystName, setAnalyticsCount, isVisible = true }) => {
+const Analytics = ({ onReset, analystName, setAnalyticsCount, isVisible = true, reviewRequest = null }) => {
   const [report, setReport] = useState(null);
   const [levelData, setLevelData] = useState(null);
   const [actionHistory, setActionHistory] = useState([]);
@@ -72,10 +74,17 @@ const Analytics = ({ onReset, analystName, setAnalyticsCount, isVisible = true }
       {/* Campaign Progress - Full Width */}
       <CampaignProgress levelData={levelData} report={cardReport} onReset={onReset} analystName={analystName} />
 
-      {/* "Report Card" heading sits outside the container (like the other
-          section headings); the container keeps stats + grade, Grade heading removed */}
+      {/* Stage 5 commit 5.4 (ratified B-OD-1 Option 1): the Metrics tab is
+          the per-incident Learning Review home -- the one durable teaching
+          venue. Rendered above the session aggregate; the two blocks keep
+          the 3.9B labeling split (Incident Grade vs Session Performance). */}
+      <LearningReview reviewRequest={reviewRequest} isVisible={isVisible} />
+
+      {/* The session aggregate ("Session Performance", 3.9B labeling; was
+          "Report Card") sits outside the container like the other section
+          headings; the container keeps stats + grade */}
       <div>
-        <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">Report Card</h2>
+        <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">{SESSION_PERFORMANCE_LABEL}</h2>
         {progress ? (
           <div className="rounded-2xl p-4 sm:p-6" style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
             <p className="text-sm text-[#57606a]">
