@@ -5,7 +5,9 @@ import {
   NO_SUBMITTED_INCIDENTS, REVIEW_SECTION_CORRECT, REVIEW_SECTION_MISSED,
   REVIEW_SECTION_COLLATERAL, REVIEW_SECTION_ACCEPTABLE,
   REVIEW_SECTION_ATTEMPTS, REVIEW_SECTION_DETECTIONS,
-  REVIEW_SECTION_PLAYBOOK, REVIEW_SECTION_TAKEAWAY, REVIEW_NONE,
+  REVIEW_SECTION_PLAYBOOK, REVIEW_SECTION_TAKEAWAY,
+  correctDetectionCalls, NO_CORRECT_CALLS, NO_COMPLETED_REQUIRED,
+  REVIEW_EMPTY_MISSED, REVIEW_EMPTY_COLLATERAL, REVIEW_EMPTY_DETECTIONS,
   BREAKDOWN_LOAD_ERROR, CALL_CORRECT, CALL_WRONG, ACTION_LABELS,
 } from './uiCopy';
 import { deriveAchievements } from './achievements';
@@ -103,6 +105,10 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
   const missedEntries = entries.filter(e => e.bucket === 'missed' || e.reason_code === 'inaction_spoiled');
   const collateralEntries = entries.filter(e => e.bucket === 'collateral');
   const acceptableEntries = entries.filter(e => e.bucket === 'acceptable');
+  // C1 checkpoint fix (F5a): the well bucket reads BOTH ratified halves --
+  // the frozen per-detection verdicts feed the correct-calls line.
+  const detectionCalls = review?.detections || [];
+  const correctCallCount = detectionCalls.filter(d => d.correct).length;
 
   return (
     <div>
@@ -179,12 +185,30 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                 </div>
 
                 {/* The three acceptance questions (7.5), each with the
-                    frozen whys; acceptable renders only when taken. */}
-                <Section title={REVIEW_SECTION_CORRECT} entries={correctEntries} emptyLine={REVIEW_NONE} />
-                <Section title={REVIEW_SECTION_MISSED} entries={missedEntries} emptyLine={REVIEW_NONE} />
-                <Section title={REVIEW_SECTION_COLLATERAL} entries={collateralEntries} emptyLine={REVIEW_NONE} />
+                    frozen whys; acceptable renders only when taken.
+                    C1 checkpoint fix (F5a, ratified A1-B.4.1 item 3): the
+                    well bucket includes correct dispositions alongside
+                    completed required actions, and every empty state names
+                    its own category (never a bare global negative). */}
+                <div className="pt-3 border-t border-[#eef1f4]">
+                  <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium mb-1.5">{REVIEW_SECTION_CORRECT}</p>
+                  <div className="space-y-2">
+                    {correctCallCount > 0 ? (
+                      <p className="text-sm text-[#1a2332]">{correctDetectionCalls(correctCallCount, detectionCalls.length)}</p>
+                    ) : (
+                      <p className="text-sm text-[#8b949e]">{NO_CORRECT_CALLS}</p>
+                    )}
+                    {correctEntries.length === 0 ? (
+                      <p className="text-sm text-[#8b949e]">{NO_COMPLETED_REQUIRED}</p>
+                    ) : (
+                      <ul className="space-y-2">{correctEntries.map((e, i) => <EntryRow key={i} e={e} />)}</ul>
+                    )}
+                  </div>
+                </div>
+                <Section title={REVIEW_SECTION_MISSED} entries={missedEntries} emptyLine={REVIEW_EMPTY_MISSED} />
+                <Section title={REVIEW_SECTION_COLLATERAL} entries={collateralEntries} emptyLine={REVIEW_EMPTY_COLLATERAL} />
                 {acceptableEntries.length > 0 && (
-                  <Section title={REVIEW_SECTION_ACCEPTABLE} entries={acceptableEntries} emptyLine={REVIEW_NONE} />
+                  <Section title={REVIEW_SECTION_ACCEPTABLE} entries={acceptableEntries} />
                 )}
 
                 {/* Attempt history: factual, separately labeled, never a
@@ -208,7 +232,7 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                 <div className="pt-3 border-t border-[#eef1f4]">
                   <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium mb-1.5">{REVIEW_SECTION_DETECTIONS}</p>
                   {(review.detections || []).length === 0 ? (
-                    <p className="text-sm text-[#8b949e]">{REVIEW_NONE}</p>
+                    <p className="text-sm text-[#8b949e]">{REVIEW_EMPTY_DETECTIONS}</p>
                   ) : (
                     <ul className="space-y-1">
                       {review.detections.map((d, i) => (

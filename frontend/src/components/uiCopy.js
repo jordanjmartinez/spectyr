@@ -153,15 +153,29 @@ export const ACHIEVEMENT_LABELS = {
 };
 export const allDetectionsReviewed = (total) =>
   `All ${total} detection${total === 1 ? '' : 's'} reviewed`;
-export const REVIEW_SECTION_CORRECT = 'What you did correctly';
-export const REVIEW_SECTION_MISSED = 'What you missed';
-export const REVIEW_SECTION_COLLATERAL = 'Unnecessary or harmful';
-export const REVIEW_SECTION_ACCEPTABLE = 'Additional defensible steps';
+// C1 checkpoint fix (post-Stage-5 review, F5a): every bucket heading names
+// its category and every empty state names its category -- a bucket line
+// must never read as a verdict on the whole incident. The well bucket
+// carries BOTH ratified A1-B.4.1 item 3 halves (completed required actions
+// AND correct dispositions), so its heading names both.
+export const REVIEW_SECTION_CORRECT =
+  'Correct detection calls and completed response actions';
+export const REVIEW_SECTION_MISSED = 'Required response actions missed';
+export const REVIEW_SECTION_COLLATERAL = 'Unnecessary or harmful actions';
+export const REVIEW_SECTION_ACCEPTABLE = 'Additional defensible actions taken';
 export const REVIEW_SECTION_ATTEMPTS = 'Attempt history';
 export const REVIEW_SECTION_DETECTIONS = 'Detection calls';
 export const REVIEW_SECTION_PLAYBOOK = 'Response playbook';
 export const REVIEW_SECTION_TAKEAWAY = 'Key takeaway';
-export const REVIEW_NONE = 'None.';
+export const correctDetectionCalls = (n, total) =>
+  `Detection calls: ${n} of ${total} correct`;
+export const NO_CORRECT_CALLS = 'No detection calls were correct.';
+export const NO_COMPLETED_REQUIRED =
+  'No required response actions were completed.';
+export const REVIEW_EMPTY_MISSED = 'No required response actions were missed.';
+export const REVIEW_EMPTY_COLLATERAL =
+  'No unnecessary or harmful actions were taken.';
+export const REVIEW_EMPTY_DETECTIONS = 'No detection calls to review.';
 export const BREAKDOWN_LOAD_ERROR = 'The detailed breakdown could not be loaded';
 export const SELECT_REVIEW_INCIDENT = 'Select a submitted incident to review.';
 export const NO_SUBMITTED_INCIDENTS =

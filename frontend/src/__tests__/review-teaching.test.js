@@ -21,7 +21,9 @@ import { deriveAchievements } from '../components/achievements';
 import {
   REVIEW_SECTION_CORRECT, REVIEW_SECTION_MISSED, REVIEW_SECTION_COLLATERAL,
   REVIEW_SECTION_ACCEPTABLE, REVIEW_SECTION_ATTEMPTS, REVIEW_SECTION_TAKEAWAY,
-  REVIEW_NONE, BREAKDOWN_LOAD_ERROR, NO_SUBMITTED_INCIDENTS,
+  correctDetectionCalls, NO_CORRECT_CALLS, NO_COMPLETED_REQUIRED,
+  REVIEW_EMPTY_MISSED, REVIEW_EMPTY_COLLATERAL,
+  BREAKDOWN_LOAD_ERROR, NO_SUBMITTED_INCIDENTS,
   SESSION_PERFORMANCE_LABEL, LEARNING_REVIEW_TITLE,
 } from '../components/uiCopy';
 
@@ -112,6 +114,8 @@ test('renders the full frozen teaching content with bucket routing, whys, verdic
   expect(d.getByText('Rule A')).toBeInTheDocument();
   expect(d.getByText('Correct')).toBeInTheDocument();
   expect(d.getByText('Wrong')).toBeInTheDocument();
+  // C1 (F5a): the well bucket also reads the correct dispositions
+  expect(d.getByText(correctDetectionCalls(1, 2))).toBeInTheDocument();
   // educational content + playbook (moved venue) + Key takeaway
   expect(d.getByText('USB-Based Malware')).toBeInTheDocument();
   expect(d.getByText('Playbook step one')).toBeInTheDocument();
@@ -139,7 +143,7 @@ test('ruling H: a null scenario_rationale omits the Key takeaway section', async
   expect(screen.getByText('WHY-COMPLETED')).toBeInTheDocument();
 });
 
-test('7.1 inaction empty state: the canonical entry answers "correct", the other sections say None', async () => {
+test('7.1 inaction empty state: the canonical entry answers "correct", every empty state names its category', async () => {
   const inactionReview = {
     entries: [{ bucket: 'inaction', reason_code: 'inaction_correct', action: null,
       target_label: null, why: INACTION_WHY, source_action_seq: null, expected_ref: 'inaction' }],
@@ -149,9 +153,48 @@ test('7.1 inaction empty state: the canonical entry answers "correct", the other
   const detail = await screen.findByTestId('learning-review-detail');
   const d = within(detail);
   expect(d.getByText(INACTION_WHY)).toBeInTheDocument();
-  expect(d.getAllByText(REVIEW_NONE)).toHaveLength(2);         // missed + collateral
+  // C1 (F5a): category-named empty lines, never a bare global "None."
+  expect(d.getByText(REVIEW_EMPTY_MISSED)).toBeInTheDocument();
+  expect(d.getByText(REVIEW_EMPTY_COLLATERAL)).toBeInTheDocument();
+  expect(d.queryByText('None.')).toBeNull();
   expect(d.queryByText(REVIEW_SECTION_ACCEPTABLE)).toBeNull(); // none taken
   expect(d.queryByText(REVIEW_SECTION_ATTEMPTS)).toBeNull();   // empty history
+});
+
+test('A1-B.4.1 conformance (C1, F5a): correct dispositions surface in the well bucket even with zero completed response actions', async () => {
+  // The owner-observed defect case: strong classification and detection
+  // work, missed response. The well bucket must state the correct calls,
+  // and its response half names its own category instead of a bare None.
+  const review = {
+    entries: [
+      { bucket: 'missed', reason_code: 'required_not_attempted', action: 'isolate_host',
+        target_label: 'ACME-WS34', why: 'WHY-MISS-1', source_action_seq: null,
+        expected_ref: 'isolate_host:ACME-WS34' },
+      { bucket: 'missed', reason_code: 'required_not_attempted', action: 'remove_persistence',
+        target_label: "WMI subscription 'WindowsUpdConsumer'", why: 'WHY-MISS-2',
+        source_action_seq: null, expected_ref: 'remove_persistence:wmi' },
+    ],
+    attempt_history: [],
+    detections: [
+      { rule_name: 'R1', entity_label: 'H', your_call: 'promoted', correct: true },
+      { rule_name: 'R2', entity_label: 'H', your_call: 'dismissed', correct: true },
+      { rule_name: 'R3', entity_label: 'H', your_call: 'promoted', correct: true },
+      { rule_name: 'R4', entity_label: 'H', your_call: 'promoted', correct: false },
+      { rule_name: 'R5', entity_label: 'H', your_call: 'dismissed', correct: false },
+    ],
+    scenario_rationale: null,
+  };
+  const grading = { ...GRADING,
+    classification: { grade: 'A', accuracy: 100 },
+    response_review: review };
+  await renderReview({ ...SCORE_VIEW, grading });
+  const d = within(await screen.findByTestId('learning-review-detail'));
+  expect(d.getByText(correctDetectionCalls(3, 5))).toBeInTheDocument();
+  expect(d.getByText(NO_COMPLETED_REQUIRED)).toBeInTheDocument();
+  expect(d.queryByText(NO_CORRECT_CALLS)).toBeNull();
+  expect(d.getByText('WHY-MISS-1')).toBeInTheDocument();
+  expect(d.getByText('WHY-MISS-2')).toBeInTheDocument();
+  expect(d.queryByText('None.')).toBeNull();
 });
 
 test('acceptance 19: the review is deterministic from the served record and issues no writes', async () => {
