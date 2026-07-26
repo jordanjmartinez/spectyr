@@ -3109,3 +3109,1072 @@ locked Revision 3 text above is byte-unchanged; the implementation
 scaffold document is untouched (its delta is drafted in A2-6 and applied
 only after ratification); owner asset files untouched; nothing pushed;
 no product code, no Phase 1. This task ratifies nothing.*
+
+
+---
+---
+
+# AMENDMENT 3 — RETURN SEMANTICS, SURROUNDING-EVENTS REMOVAL, FINAL SUBMISSION, AND SIMPLE SEARCH (DRAFT)
+
+**Status: DRAFT. This amendment is drafted for owner and reviewer
+review; it governs nothing until the A3-R record reads RATIFIED. Four
+items, ONE ratification: F2 (expanded-search return becomes the model B
+back-stack restore), F3 (surrounding events removed from the
+player-facing product), F4b (final submission gating), F7 (simple
+search mode). They ship together in the Stage 5 closeout; the binding
+internal sequencing is recorded in A3-P.3.**
+
+Drafted 2026-07-26 at baseline `74198f2` on branch
+`stage-5-amendment-3`. The baseline INCLUDES the C1 checkpoint fixes
+(`a2cc3dc..74198f2`, docs/stage-5-checkpoint-fix-report.md): the
+evidence-surface nav badges are deleted, the Learning Review buckets
+conform to A1-B.4.1, the A1-B.3.2 workspace classification selector is
+mounted, the interim failed-return guard is live, and the Reports nav
+entry is hidden. Gates at the baseline: `run_gates.py --all` ALL GREEN
+at the C1 product tip `80878da` (backend battery complete; frontend 27
+suites / 253 tests); `74198f2` adds docs only. All file:line citations
+below are at `74198f2` unless marked otherwise.
+
+## A3-P. Preamble
+
+### A3-P.1 Discipline and relationship to prior text
+
+The locked Revision 3 text and the Amendment 1 and Amendment 2
+appendices above are byte-unchanged by this draft and remain so at
+ratification: per the established discipline, every supersession this
+amendment makes is recorded HERE, in this appendix's per-item
+supersession maps, and this appendix is the governing record for its
+items upon ratification. Where this appendix and any earlier text
+differ on an item this amendment covers, this appendix governs.
+
+The C1 checkpoint fixes are part of the baseline, not of this
+amendment: F4b builds ON the mounted workspace selector (C1 item 3),
+and F2 SUPERSEDES the C1 interim scope-read guard (C1 item 4), both
+stated explicitly below.
+
+### A3-P.2 Owner rulings encoded (closed, not reopened)
+
+The checkpoint-review directive rules the following; this amendment
+ENCODES them as normative design and does not reopen them:
+
+1. Model B replaces model A for the expanded-search return (F2), with
+   the hold contents, lifetime, discard-on-return, repeat-pivot,
+   stale-snapshot, and failed-query behaviors as specified in A3-2.
+2. Equal tabs for case evidence / expanded search are REJECTED on the
+   record (A3-2.7).
+3. Surrounding events is REMOVED from the player-facing product (F3),
+   with `descentHost()` and descent untouched, and the A2 hold
+   machinery migrating to F2 rather than dying.
+4. The checklist Ready line and the client Submit gate require every
+   observable step INCLUDING a selected classification; Submit becomes
+   a bare confirmation, never a data-entry step; the server gate is
+   untouched (F4b).
+5. Simple search ships as Option A: a frontend projection over
+   canonical LCQL; no grammar, token, parser, endpoint, or
+   snapshot-identity change; the `ip` alias is out of the first cut
+   (F7).
+
+### A3-P.3 One ratification; binding internal sequencing
+
+The four items are ratified together and ship together in the
+closeout. **Binding sequencing: F2 lands before F3, or the hold
+migrates from the surrounding path to the expanded-search path in the
+same commit.** Rationale: the single-depth hold and its zero-request
+restore (`Siem.jsx:101-102` state; write `Siem.jsx:362-363`; restore
+`Siem.jsx:374-394`) are today owned by the surrounding path. F3 alone
+would delete them; F2 alone must not fork a second hold. The scaffold
+delta (A3-8) encodes the ordering as commits A3.2 then A3.3.
+
+### A3-P.4 Presentation-only discipline and the STOP rule
+
+Everything in this amendment is presentation-layer: frontend
+components, frontend-owned copy, the frontend generator module
+(`lcqlPivots.js`, extended with the forms named in A3-5), and
+TEST-ONLY corpus extensions in `backend/test_lcql.py`. No engine,
+LCQL-grammar, token, parser, endpoint, payload, scoring, readiness,
+sealing, or snapshot-identity change is drafted. **If implementation
+surfaces any need for one, the rule is STOP and report** (the A2-P.4
+deferral rule, restated as binding here); the item waits rather than
+stretching.
+
+### A3-P.5 Ratification state
+
+One state for the whole amendment, recorded in A3-R: **DRAFT**
+(current), **RATIFIED**, or **RETURNED**. This task ratifies nothing.
+
+---
+
+## A3-1. Repository truth at `74198f2` (verified mechanics each item builds on)
+
+1. **The A2 hold.** `heldView` (`Siem.jsx:101`) holds
+   `{snapshot, queryText, scope}` written ONLY at surrounding entry
+   (`Siem.jsx:362-363`, with `preserveHoldRef` exempting that one run
+   from the drop); ANY other `execute` drops it (`Siem.jsx:252-253`);
+   `restoreHeldView` (`Siem.jsx:374-394`) restores snapshot, bar text,
+   and scope with ZERO query requests, clears error/timeline/notices,
+   resets the new-count indicator, and re-validates the selection
+   against the restored rows. Pinned by
+   `workbench-surrounding.test.js` (zero-request restore,
+   single-depth drop).
+2. **Expanded search** is derived, not stored:
+   `Siem.jsx:192` `expandedSearch = !!(activeIncidentId && scope.kind
+   === 'session')`. Entry sites: entity pivot (`pivotAndRun` sets
+   session scope), `searchAll` (`Siem.jsx:199`), and the descent
+   effect's no-context branch. Exit sites: `returnToIncident`
+   (`Siem.jsx:401-421`, carrying the C1 guard: a failed scope read
+   stays in session scope and renders `returnReadFailed` +
+   the 11.3 honesty statement, `Siem.jsx:575-585`), the case-anchor
+   effect (case change/exit), an incident-scoped descent entry, and
+   reset.
+3. **Model A return as ratified and landed:** the return re-runs the
+   CURRENT BAR TEXT under the case scope after a fresh scope read
+   (`Siem.jsx:404-411`); the bar text is retained, the rows change.
+   Ratified by A1-A.2.4 and the A1-A.5 subcopy row; pinned by
+   `workbench-cross-host.test.js` ("the return action re-runs the
+   current query under the case participant scope").
+4. **Surrounding events**: `EventInspector.jsx:231-247` control ->
+   `surroundingAndRun` (`Siem.jsx:356-368`) -> `descentHost(hostname)`
+   = `all | H | * | *` (`lcqlPivots.js:280-282`, TIMEFRAME hardcoded
+   to `all`); the event id is ONLY a client viewport target
+   (`SiemCards.jsx` / `SiemTable.jsx` focus effects); no timestamp
+   predicate exists; no backend involvement exists (the query endpoint
+   reads only `q` and `scope`). The tooltip set has exactly NINE keys
+   (`helpContent.js:24-32`), `surrounding` among them.
+5. **Submission flow at the C1 baseline:** the workspace selector is
+   mounted on sealed active incidents and drives the checklist
+   Classification line; the Submit control renders on
+   `selected.sealed && selected.ready` (`Incidents.jsx:434`), and the
+   modal flow (classifier `Incidents.jsx:461` -> category `:475` ->
+   confirm `:487`) still performs classification data entry, arriving
+   pre-filled. The server readiness gate excludes classification;
+   `_valid_classification` enforces it inside `submit_incident`
+   (400 `invalid_classification`) as the authoritative backstop.
+   "Ready" renders from the server card field at THREE sites:
+   `Incidents.jsx:291` (list chip), `Incidents.jsx:174-182` (Ready
+   view + counts), `IncidentDashboard.jsx:115` (dashboard row chip).
+6. **Query authorship:** `lcqlPivots.js` is the single generation
+   chokepoint (module contract, `lcqlPivots.js:1-5`) with ONE
+   documented bypass: the Timeframe picker's raw first-segment splice
+   (`Siem.jsx:205-214`, `indexOf('|')`). The picker edits pending
+   state only (A2-1 Q1, still true). The bar shows the executed
+   canonical after every run (`applySnapshot` write-back); the
+   canonical echo ("Results from:") and the scope token render from
+   `snapshot.identity`, server-minted and HMAC-bound
+   (`app.py:2872-2878`, `:2787-2796`).
+7. **Error mapping:** the server serializes `{position, reason,
+   suggestions?}` only; the section is derived client-side by
+   `sectionIndexAtPosition` (`lcqlPivots.js:108-126`) over the
+   SUBMITTED string, which rides the error (`Siem.jsx` execute).
+   The ruled three-line error form and `STRUCTURE_LINE`
+   (`uiCopy.js:132`) render it.
+8. **Corpora:** `GENERATED_FORMS_CORPUS` is pinned two-sided at
+   exactly 12 entries (`backend/test_lcql.py:514`,
+   `query-clarity.test.js:232`); `_PIVOT_DESCENT_FIXTURES`,
+   `OR_SCAN_CORPUS`, and `CONJUNCT_SPLIT_CORPUS` follow the same
+   shared-fixture pattern. `SOURCE_FAMILIES` is the closed sensor
+   family set (`backend/lcql.py:355-356`: Sysmon, Windows Security,
+   Proxy, DNS, Firewall, Azure AD, Veeam, Defender).
+
+---
+
+## A3-2. ITEM F2 — the expanded-search return becomes model B
+
+### A3-2.1 The model (normative)
+
+Ratified model A (the return re-runs the current query under the case
+scope) is SUPERSEDED. Model B: **entering Expanded search captures a
+single-depth hold of the pre-entry state; "Return to INC-#### evidence"
+restores it exactly, with zero requests.** The excursion is an
+excursion: what the player had before expanding comes back
+byte-identically; what they did while expanded is not carried home.
+
+- **Entry** (any transition into `expandedSearch` true: entity pivot
+  from case evidence, the search-all action, or the descent
+  no-context branch while a case is pinned) writes the hold. Re-entry
+  after an exit writes a NEW hold of the then-current case state.
+- **Return** restores the hold and consumes it. No scope read, no
+  query request: the C1 interim guard's failure mode (a failed scope
+  read on return) becomes structurally unreachable and the guard is
+  removed (A3-2.6).
+- The return ACTION label stays the ratified A-OD-1 final
+  ("Return to INC-#### evidence"); only its mechanics and subcopy
+  change (A3-6).
+
+### A3-2.2 Hold contents; what restores and what resets
+
+The hold captures what the shell owns:
+
+| Held | Restored |
+|---|---|
+| `queryText` (the bar as of entry) | exactly |
+| `snapshot` (the executed frozen snapshot object, MAY BE NULL if no case-evidence run had happened) | exactly; a null snapshot restores the case-evidence empty state with the held bar text, still zero requests |
+| `scope` (the case-evidence scope object incl. its sealed flag) | exactly; no re-read |
+| `timeline` (the active view mode: a descent context, or null) | exactly; a held descent banner and its ascending order come back |
+
+NOT held, by rule:
+
+- **Row selection** is not held; on restore the existing
+  selection-survival check runs (kept when the inspected id is in the
+  restored rows, else cleared with the existing one-line notice) —
+  the same behavior the A2 restore ships today.
+- **Child pagination and sort reset on restore.** The results
+  children own them (`SiemCards.jsx` page, `SiemTable.jsx`
+  page/sort), the shell cannot capture them, and the amendment states
+  this plainly rather than implying a pixel-perfect restore.
+- The expanded excursion's provenance dies with the return: the
+  pivot clue (`transition`), any query notice, and any expanded error
+  are cleared; the new-count indicator resets and its poll resumes on
+  the restored token (a token invalidated by reset halts neutrally via
+  the existing `countHalted` path — the A2 restore mechanics,
+  unchanged).
+
+**Recorded edge (sealed-flag lag):** a hold captured pre-seal restores
+`scope.sealed` as held, so the pre-seal telemetry note may briefly
+out-live the actual seal until the next scope read (anchor, descent,
+or Retry). Seal is monotonic and the note is observable-only; the lag
+is accepted and self-corrects. No request is added to avoid it.
+
+### A3-2.3 Hold lifetime (a change to the A2 hold, not a drop-in reuse)
+
+**This is explicitly a LIFETIME change to the A2 hold, not a reuse.**
+Today the hold is written only at surrounding entry and dropped by any
+other run (`Siem.jsx:252-253`). Under model B:
+
+- Written ONLY at expanded-search entry (the transition, never
+  mid-state).
+- **Survives every run, pivot, refine, and chip removal while
+  expanded** — the drop-on-execute rule is deleted with the
+  surrounding path (F3); `preserveHoldRef` goes with it.
+- Cleared only by: **Return** (consuming it), **case change or exit**
+  (the ratified atomic re-anchor already clears it,
+  `Siem.jsx` case-anchor effect), an **incident-scoped descent entry**
+  (an explicit navigation to a new case-evidence view, which exits
+  the expanded state without returning), and **reset**.
+- Still single-depth, never a history stack: one hold, overwritten
+  only by a fresh entry after an exit.
+
+### A3-2.4 Behavior under the one rule
+
+| Event while expanded | Behavior |
+|---|---|
+| Repeated entity pivot | Updates the clue line and the snapshot; the hold is untouched |
+| Manual query edit | Edits pending text only (no request, unchanged); the hold is untouched |
+| Run / refine / chip removal | Executes in the expanded state; the hold is untouched |
+| Case change or exit on Incidents | The atomic re-anchor clears the hold with the rest of the SIEM state (unchanged mechanics) |
+| Incident-scoped descent request | Exits Expanded search to the new case-evidence timeline; the hold is cleared, not restored |
+| Failed expanded query (parse or execution) | The 11.3 stale-results presentation, unchanged; the hold is untouched, so a subsequent Return restores the held state unchanged |
+| Return | Restores the hold exactly (A3-2.2), zero requests, and consumes it |
+| Return onto a stale held snapshot | Redisplays it frozen; the existing as-of marker ("as of seq #N" + sim time) dates it and the new-count indicator offers the refresh path — no silent refresh |
+
+Refinements made while expanded are DISCARDED by the return; the
+return subcopy states it (the A3-6 copy table row; ruled direction:
+"Your expanded refinements stay in Expanded search.", final proposed
+in A3-6).
+
+### A3-2.5 Entry capture is total
+
+Every entry site captures the hold, including entries from a degraded
+case-evidence state: an entry while the case scope read had failed
+(the designed search-all escape) holds `{queryText, snapshot: <the
+displayed snapshot or null>, scope: <the errored scope>, timeline}`;
+Return restores that state including its error presentation — the
+excursion never launders a pre-existing case-evidence error.
+
+### A3-2.6 The C1 interim guard is superseded
+
+C1 item 4 (`763b116`) guards the model A failure mode: a failed scope
+read during the return. Model B performs NO scope re-run on return, so
+the failure mode is unreachable. At F2 implementation the guard is
+REMOVED: the `returnError` state, the `returnReadFailed` string
+(`uiCopy.js:34-36`), its render block (`Siem.jsx:575-585`), its
+enumerated-scan row, and its tests (`workbench-cross-host.test.js` C1
+guard test; the anchor-path scope-error test in
+`workbench-states.test.js` is UNTOUCHED — the anchor read and its
+A-OD-3 behavior survive model B).
+
+### A3-2.7 Rejection on the record: equal tabs
+
+Equal tabs (case evidence and expanded search as two persistent
+co-equal tabs) are REJECTED. A1-A.2.4 rules "two states, not two
+modes"; the A1-A.7 supersession retired the two co-equal concepts
+(row 1) and the dual return controls (rows 12-13). Tabs would restore
+exactly the F9 two-equal-modes contradiction Delta A dissolved and
+would recreate a second return destination. The rejection is recorded
+here so it is not re-litigated at implementation.
+
+### A3-2.8 Supersession map — F2
+
+Dispositions: **S** superseded (this appendix governs), **T**
+translated (guarantee survives in new form), **U** unchanged
+(inspected, not touched), **A** augmented (text stands; reading
+recorded).
+
+| # | Item | Disp. | Governing text / note |
+|---|---|---|---|
+| 1 | A1-A.2.4 return mechanic ("keeping the existing return-chip mechanic: the current query re-runs under the case scope") | S | A3-2.1/A3-2.2 — restore, not re-run. The rest of A1-A.2.4 (one stable concept, entry sites, single return action, no-case behavior) stands |
+| 2 | A1-A.5 row "Return action" (label) | U | "Return to INC-#### evidence" unchanged (A-OD-1 final) |
+| 3 | A1-A.5 row "Return-path explainer subcopy" ("...runs this query over the case evidence again.") | S | A3-6 row F2-1 (restore semantics + the discard statement) |
+| 4 | A1-A.6 criterion 11 (single return renders and names the case; case changes only by selection) | T | A3-7 replacement 11: adds the model B semantics (exact restore, zero requests, hold lifetime) to the surviving single-return and structural-case assertions |
+| 5 | A1-A.6 criterion 13 (pinned line / block / timeline / echo never disagree) | T | A3-7 replacement 13: after a restore, all four agree with the RESTORED snapshot; the echo still carries the scope token |
+| 6 | A1-A.6 criterion 12 (stale-results statement after failed parse/execution) | U | Verified: the return is not a failed-run path; the 11.3 statements and their triggers are untouched |
+| 7 | A1-A.3 expanded-search row (block, one return action, entry/exit list) | A | Reading recorded: "exited only by the return action or by an explicit case change/exit" gains the incident-scoped descent exit (A3-2.3), and the return's mechanics are A3-2.2 |
+| 8 | §8.3 matrix row "From incident scope" (return path wording) + row "Repeat use" | T | A3-2.4 — the transition surface still names clue/expansion/return; the return path is the restore |
+| 9 | C1 interim guard (checkpoint fix 4; docs/stage-5-checkpoint-fix-report.md item 4) | S | A3-2.6 — removed at F2 implementation, failure mode unreachable |
+| 10 | A2-2.5 hold mechanics (single-depth, zero-request restore, indicator/selection treatment) | T | The MECHANISM migrates to the expanded-search path with the A3-2.3 lifetime; A2-2.5's surrounding-specific framing is superseded by F3 (A3-3.6) |
+| 11 | Tests: `workbench-cross-host.test.js` return re-run assertion; `workbench-states.test.js` search-all/return leg; C1 guard test | T/S | A3-2.9 |
+| 12 | §18 / scaffold §10 workflows W3-W5 (return leg wording) | T | A3-9 — the walk asserts the zero-request restore |
+
+### A3-2.9 Tests (binding structure; names final at implementation)
+
+- Model B battery (extends `workbench-cross-host.test.js` /
+  `workbench-states.test.js`): hold captured at each entry site
+  (pivot, search-all, degraded-entry per A3-2.5); hold SURVIVES a run,
+  a repeat pivot, a refine, and a chip removal while expanded; Return
+  restores snapshot object, bar text, scope, and timeline
+  byte-exactly with ZERO `/api/events/query` and ZERO scope requests;
+  Return consumes the hold (no second return offered); case change
+  clears it; incident-scoped descent clears it; a failed expanded run
+  leaves it restorable; the null-snapshot hold restores the empty
+  case-evidence state; selection survival and indicator reset per the
+  existing A2 assertions, retargeted.
+- Deleted with the C1 guard: the guard test (A3-2.6).
+- Translated: the model A re-run assertion becomes the restore
+  assertion; the byte-pinned subcopy test rows update to the A3-6
+  strings.
+
+### A3-2.10 Sizing
+
+**S-M.** The restore function, entry-capture, and lifetime edits are
+concentrated in `Siem.jsx` (the mechanism already exists); the bulk is
+test translation. Net product LOC roughly +30 before F3's deletions.
+
+---
+
+## A3-3. ITEM F3 — surrounding events removed from the player-facing product
+
+### A3-3.1 Removal rationale (recorded)
+
+1. **Never actually bounded.** The feature runs `all | H | * | *`
+   (`lcqlPivots.js:280-282`): the selected event's id is only a
+   client-side viewport target; no time bound around the event exists
+   or can exist without an engine change (A2-1 Q8: TIMEFRAME is a
+   closed token set with no event-anchored form).
+2. **Silent TIMEFRAME widening.** The view widens to `all` by design
+   and no copy announces it; the ruled banner names the host, not the
+   widening.
+3. **Overlap.** The emitted query is the host pivot's form modulo the
+   timeframe token; ordinary search and Pivot cover the need.
+4. The honest bounded version is DEFERRED ENGINE WORK (the ratified
+   A2 deferred register) and stays deferred; removing the dishonest
+   approximation shrinks net risk and code.
+
+### A3-3.2 The removal surface (normative, complete; lines at `74198f2`)
+
+- Inspector: the control block `EventInspector.jsx:231-247`, the
+  `onSurrounding` prop (`:92`), the `TOOLTIP_SURROUNDING` import
+  (`:5`); the shell wiring `Siem.jsx:933`.
+- Shell: `surroundingAndRun` (`Siem.jsx:356-368`); the surrounding
+  branches of the timeline banner (`Siem.jsx:818-821` banner text,
+  `:832` ascending-label ternary collapses to the descent literal,
+  `:834-843` the return-button block); the focus/centering prop chain
+  end to end (`Siem.jsx` focus props into SiemCards/SiemTable; the
+  focus effects and markers in `SiemCards.jsx` and `SiemTable.jsx`);
+  `focusSeqRef` (`Siem.jsx:103`).
+- Hold plumbing SPECIFIC to surrounding: `preserveHoldRef`
+  (`Siem.jsx:102`) and the drop-on-execute lines (`Siem.jsx:252-253`)
+  — both die as part of F2's lifetime change (A3-2.3);
+  `restoreHeldView` is MIGRATED by F2 into the return action, not
+  deleted-then-recreated (A3-P.3).
+- Copy: `TOOLTIP_SURROUNDING` (`uiCopy.js:124-125`),
+  `surroundingBanner` (`:138-139`), `OCCURRENCE_ASCENDING` (`:140`),
+  `BACK_TO_PREVIOUS_RESULTS` (`:141`); `helpContent.js:31`
+  (`surrounding` key) and the module doc's "NINE controls" wording;
+  the player-docs clause `Docs.jsx:168-169` (A3-6 row F3-1).
+- **The permanent tooltip set goes NINE -> EIGHT** (Delta B's eight
+  plus surrounding, minus surrounding): `helpContent.js` keys, the
+  literal nine-element list in `help-model.test.js`, and every
+  "nine-control" statement in test prose.
+
+### A3-3.3 What is KEPT (binding)
+
+- **`descentHost()` (`lcqlPivots.js:280-282`) is NOT deleted**: it is
+  shared with evidence descent (`Siem.jsx` descent effect) and pinned
+  by `workbench-pivots.test.js` and the generated-forms corpus.
+- **Descent is untouched** in behavior, banner, back-navigation, copy,
+  and tests: the timeline machinery is `kind`-discriminated and the
+  descent branches stand.
+- The hold machinery (state + zero-request restore) survives via F2.
+
+### A3-3.4 Supersession map — F3
+
+| # | Item | Disp. | Governing text / note |
+|---|---|---|---|
+| 1 | A2-2.1 verb-grammar row "Surrounding events" | S | Control removed; the row's other entries stand |
+| 2 | A2-2.5 "Surrounding events as temporary context" (whole section) | S | A3-3.2; the hold mechanics inside it survive via F2 (A3-2.8 row 10) |
+| 3 | A2-AC-6 / §19.25 (surrounding hold + return) | S | DELETED as a criterion; its hold/restore substance survives inside the A3-7 replacement criterion 11 (model B) |
+| 4 | A2-AC-7 / §19.26, Surrounding half ("...and the Surrounding events tooltip...") | T | A3-7: reworded to the three ruled query tooltips; the pivot-transition half stands |
+| 5 | A2-OD-1 resolved strings for surrounding (label + tooltip) and A2-R.1 ruling bullets ("Labels: ... Surrounding events keep their technical names"; "Permanent tooltips ... Surrounding events: ..."; "Surrounding events becomes reversible: ...") | S | The A2 record remains byte-unchanged as history; upon ratification these bullets are superseded by this appendix for the removed control |
+| 6 | A2-R.2 "nine-control tooltip set ... plus Surrounding events" statement; A1 Delta B tooltip-set growth records | S | The set is EIGHT (Delta B's eight); A3-3.2 |
+| 7 | A1-A.2.4 sentence "Descent and surrounding-events are VIEW MODES..." | T | Reads "Descent is a VIEW MODE..." upon ratification; the mechanics described survive for descent |
+| 8 | A1-A.7 row 21 (per-source matrix incl. surrounding) and §8.3 row "From surrounding-events view" | S | Row deleted from the matrix |
+| 9 | A2 deferred-register entry "Bounded surrounding-events time window (engine)" | S | MOOT: with the feature removed there is nothing to bound. Struck from the ACTIVE register; the historical record stands. A future bounded-context feature would be a NEW design, not this register entry |
+| 10 | Stage 4A contract appendix bullet "Surrounding events execute under the current scope as a context view (ratified interpretation...)" (docs/stage-4a-siem-workbench-contract.md, 2026-07-22 appendix) | A | That file is append-only history and is NOT edited; the bullet remains the record of shipped Stage 4/5 behavior. Upon ratification the interpretation is moot for the removed control; recorded here, in the governing appendix |
+| 11 | Scaffold merged-cycle commit (3.4) "reversible surrounding events" and its cert legs | S | A3-8 / A3-9 |
+| 12 | Tests: `workbench-surrounding.test.js` (six surrounding tests; two OR-fallback tests move); `help-model.test.js` nine-control list + surrounding assertions; `query-clarity.test.js` four-tooltip test | T/S | A3-3.5 |
+
+### A3-3.5 Tests
+
+- DELETED: the six surrounding tests in `workbench-surrounding.test.js`
+  (banner emission, zero-request return, single-depth drop, viewport
+  centering, case-scope execution, no-hostname absence) — the
+  zero-request-restore GUARANTEE does not die, it re-pins on the F2
+  model B battery (A3-2.9).
+- MOVED: the two OR-fallback tests that live in that file
+  (fresh-query notice; fresh-by-design forms) relocate to
+  `workbench-pivots.test.js`; the file is then deleted.
+- UPDATED: `help-model.test.js` (nine -> eight literal list;
+  surrounding tooltip assertions removed), `query-clarity.test.js`
+  (ruled-explanations test covers `==`, `!=`, Pivot).
+- The em-dash and forbidden-phrase scans are unaffected (deletions
+  only).
+
+### A3-3.6 Sizing
+
+**S, net-negative.** Roughly 120 lines of product code, four copy
+strings, one tooltip, one test file, and one criterion are removed;
+no new machinery. The only added text is the descent-literal collapse
+of one ternary.
+
+---
+
+## A3-4. ITEM F4b — final submission gating
+
+### A3-4.1 The model (normative)
+
+With the workspace selector mounted (C1 item 3), classification is an
+inline workspace step. **The checklist's Ready line and the client
+Submit gate require every observable step INCLUDING a selected valid
+classification; Submit performs final submission with a bare
+confirmation only, never a data-entry step.** Plainly classified:
+frontend flow reordering. No serialized field changes, no backend
+boundary moves, no frozen 3.9A test is touched; the server gate
+(`_valid_classification` inside `submit_incident`, 400
+`invalid_classification`) is untouched and remains the authoritative
+backstop.
+
+### A3-4.2 Submission-ready: one client-side definition
+
+`submissionReady(card, chosen) = card.sealed && card.ready &&
+validClassification(chosen[card.incident_id])`, where
+`validClassification` mirrors the server rule exactly (verdict
+`false_positive`, or `threat` with a non-empty category). The server
+`ready` field keeps its meaning (sealed roster fully triaged) and its
+serialization, unchanged.
+
+- **Checklist Ready line:** "Ready to submit" renders only when
+  telemetry is sealed, the roster is fully reviewed, AND a valid
+  classification is selected; otherwise "Submit pending". The line
+  strings are unchanged; only the condition changes. The response
+  line stays a neutral count and NEVER gates (a required-action count
+  is answer-key information — the standing rule, restated).
+- **Submit control:** renders once sealed; enabled only when
+  `submissionReady`; when the only missing step is classification,
+  the adjacent observable line reads the A3-6 string
+  ("Select a classification to submit."), replacing the
+  detections-remaining line once triage is complete.
+- **19.18 leak rule, reading recorded:** the checklist line set,
+  order, and copy remain constants; the Ready line now varies with
+  the player's own local selection in addition to observable card
+  fields. Both of its states are constant strings; nothing varies
+  with the answer key. The rule stands unchanged in force.
+
+### A3-4.3 One meaning of "Ready" across surfaces [A3-OD-3]
+
+"Ready" renders today at three sites from the server field alone
+(A3-1 fact 5). Requiring classification only in the workspace would
+recreate the F9 pattern (two surfaces asserting different readiness
+for the same incident). Resolution proposed as A3-OD-3
+(recommendation: ONE definition everywhere — the `chosen`
+selection state lifts from `Incidents.jsx` to the Dashboard shell
+beside `activeIncidentId`, and every Ready render site — the
+Incidents list chip, the Ready view filter and its count, the
+IncidentDashboard row chip, the checklist line, and the Submit gate —
+consumes the single `submissionReady` derivation).
+
+### A3-4.4 The bare confirmation; modal data entry retired
+
+- Submit opens ONE confirmation dialog naming the incident and the
+  classification being filed. **The landed confirm copy is kept
+  verbatim** ("Submit incident INC-####" / "Filing as {category}.
+  This locks your classification for this incident and reveals how it
+  scored. You cannot change it afterward." / Cancel / Submit
+  Incident) — it is already a bare confirmation and passes every
+  scan; no new strings are minted for it.
+- The classifier and category modal steps are RETIRED from the submit
+  flow (`Incidents.jsx:461`, `:475`): classification data entry
+  happens only in the workspace.
+- **Hardcore:** the "Hardcore: one wrong call ends the run." warning
+  currently lives in the retired modals; it moves verbatim into the
+  confirmation dialog (Hardcore only). Trust requires the warning at
+  the last gate.
+- **Check Answer** currently shares the classifier modal
+  (`Incidents.jsx:197`). Resolution proposed as A3-OD-2
+  (recommendation: Check Answer reads the SAME workspace selection —
+  the control disables until a valid classification is selected, with
+  the same A3-6 line as its adjacent hint; the modal variants of
+  `ClassificationSelector`/`CategorySelector` then have zero
+  consumers and are deleted). Check Answer's server behavior
+  (Guided-only allow-list, classification-only reveal, Assisted
+  marking) is untouched either way.
+
+### A3-4.5 Interaction verification
+
+- **Criterion 16 (count reconciliation):** verified NO interaction —
+  it binds `response_review` counts; classification plays no part.
+- **Criteria 19.17-19 (Delta B live progress):** the toast trigger
+  list and checklist leak rule stand; the T4/T5 milestone toast
+  ("All detections reviewed. INC-#### is ready to submit.") keeps its
+  ratified trigger — the observable false->true transition of the
+  SERVER ready field. Its wording remains truthful under F4b: it
+  announces triage completion; the checklist's Ready line is the
+  submission gate. Verified compatible; no toast change.
+- **3.9A boundary:** `submit_incident`, readiness, idempotency, and
+  `test_submission_gate.py` are untouched. The client cannot reach
+  the server's `invalid_classification` 400 through the gated UI; the
+  existing flash path remains as the safety net.
+
+### A3-4.6 Supersession map — F4b
+
+| # | Item | Disp. | Governing text / note |
+|---|---|---|---|
+| 1 | A1-B.3.2 Ready-line row ("Ready to submit / pending" from card `ready`) | S | A3-4.2 — the line's OBSERVABLE SOURCE becomes the client conjunction (server `ready` AND the player's own selection); both inputs remain observable/player-derived |
+| 2 | A1-B.3.2 Classification row | U | Already satisfied by C1 item 3 (the workspace selector); F4b changes nothing about the line itself |
+| 3 | A1-B.3.2 leak rule (19.18) | A | Reading recorded in A3-4.2; rule unchanged in force |
+| 4 | Locked submit-flow description (3.9B/D7: Submit -> verdict via ClassificationSelector -> confirm) and its C1-era pre-fill behavior | S | A3-4.4 — data entry moves wholly to the workspace; the modal steps retire; the confirm dialog survives verbatim |
+| 5 | Check Answer flow (shared classifier modal) | S (per A3-OD-2 resolution) | A3-4.4 |
+| 6 | "Ready" render sites (list chip, Ready view/count, IncidentDashboard chip) | T (per A3-OD-3 resolution) | A3-4.3 — one `submissionReady` definition |
+| 7 | Criterion 16; Delta B toast triggers; 3.9A server gate and suite | U | A3-4.5, verified |
+| 8 | Tests: `incidents-workspace.test.js` submit-flow tests (incl. the C1 pre-fill test), `review-teaching.test.js` 19.19 submit walk, `live-progress.test.js` checklist normalizer | T | A3-4.7 — the normalizer that erases the Ready/classification distinction must stop erasing it |
+| 9 | Cert workflow W1 (submit leg) and W7 (Hardcore leg: warning placement) | T | A3-9 |
+
+### A3-4.7 Tests (binding structure)
+
+- Ready gating: server-ready + no classification -> "Submit pending",
+  Submit disabled, the classify-to-submit line renders; selecting a
+  classification flips the line to "Ready to submit" and enables
+  Submit; clearing back (threat with category unpicked) disables
+  again. Leak leg: the checklist remains byte-identical across
+  incidents per state.
+- Bare confirmation: Submit opens the confirm directly (no classifier
+  modal, no category modal), names the workspace classification, and
+  POSTs it; Hardcore renders the warning line in the confirm.
+- Check Answer (per A3-OD-2 resolution): disabled until a valid
+  selection; checks the workspace selection; no modal.
+- One-Ready: list chip, Ready view count, dashboard chip, and
+  checklist agree for the same incident in both states (the F9
+  regression battery, extended).
+- Translated: the C1 pre-fill test (the modal it pre-fills no longer
+  exists in the submit flow) becomes the confirm-names-the-selection
+  test; the 19.19 walk drops its modal click.
+
+### A3-4.8 Sizing
+
+**S-M.** `Incidents.jsx` flow surgery + the `chosen` lift (per
+A3-OD-3) + test translation; component deletions if A3-OD-2 resolves
+as recommended. No backend work.
+
+---
+
+## A3-5. ITEM F7 — simple search mode (Option A: a projection over canonical LCQL)
+
+### A3-5.1 The model (normative)
+
+Two modes, one truth. **The canonical four-part LCQL query remains the
+single truth; simple mode is a PROJECTION over it** (the ratified
+chips principle extended from read-only to authoring). Default mode:
+**Simple.**
+
+- **Simple mode:** the query bar accepts ONLY the FILTERS expression.
+  The Timeframe picker owns the first token (it already edits pending
+  state; A2-1 Q1). NEW optional **Source** and **Event type** selects
+  own the second and third tokens, defaulting to `*` ("All sources" /
+  "All event types"). Run compiles the four parts through the
+  generator chokepoint and executes; the canonical echo
+  ("Results from:") continues to show the full four-part truth with
+  the scope token — the projection's honesty anchor, unchanged.
+- **Advanced mode:** one toggle away; the bar holds the full
+  four-part form exactly as today. All A2 rulings continue to govern
+  advanced mode verbatim.
+- The mode toggle is session-local React state (no persistence:
+  B-OD-4 stands). Default mode and mode universality are A3-OD-4
+  (recommendation: Simple is the default in ALL play modes).
+
+### A3-5.2 Controls are value-driven projections (the mode-stability mechanism)
+
+The ratified Timeframe pattern (the control's value DERIVES from the
+query text; an out-of-list value renders as its own option) is
+GENERALIZED to the new selects:
+
+- **Source select options:** `All sources` (`*`) + the closed
+  `SOURCE_FAMILIES` set (mirrored client-side and PINNED to
+  `backend/lcql.py:355-356` by a shared two-sided fixture corpus, the
+  OR_SCAN_CORPUS pattern) + the CURRENT token when it is anything
+  else (an observable hostname from a host pivot or descent renders
+  as its own option).
+- **Event type select options:** `All event types` (`*`) + the event
+  types present in the last executed snapshot's rows + the CURRENT
+  token when not among them.
+- Because every control displays whatever token the canonical
+  carries, **every server-canonical query is representable in simple
+  mode by construction** — a canonical always splits into four
+  segments (quote-aware `splitSegments`), each of which the picker,
+  selects, and FILTERS bar can hold. This satisfies the
+  mode-stability requirement structurally rather than by enumeration.
+- **After every successful run the controls re-derive from the
+  executed canonical** (the projection write-back): in simple mode
+  `applySnapshot` decomposes the canonical into picker/select values
+  and the FILTERS bar text instead of writing the whole string into
+  the bar. Refines, chip removals, and pivots (which mint full
+  canonical queries through the generator, unchanged) therefore
+  update the simple controls consistently.
+- The 11.3 edited-note rule translates: "edited" means the COMPILED
+  pending query differs from the executed canonical (field edits and
+  picker/select changes alike trigger it). Same honesty, same
+  strings.
+
+### A3-5.3 Compilation through the chokepoint; the splice migrates
+
+- ONE new generator form: `composeQuery(tf, sensor, eventType,
+  filtersText)` in `lcqlPivots.js` — joins the four parts, mapping an
+  empty or whitespace FILTERS field to `*`. Simple-mode Run compiles
+  through it; nothing else in the frontend ever assembles a query
+  string ad hoc.
+- **The Timeframe picker's raw splice migrates into the chokepoint as
+  part of this item**: `setTimeframe`'s `indexOf('|')` splice
+  (`Siem.jsx:205-214`) is replaced by a quote-aware
+  `replaceTimeframe(text, token)` generator form (built on
+  `splitSegments`) used by advanced mode; in simple mode the picker
+  feeds `composeQuery` directly. The chokepoint's one documented
+  bypass is thereby closed.
+- **Empty-run rule, mode-scoped:** advanced mode keeps A2-AC-1
+  verbatim (empty bar: Run disabled, "No query entered.", no
+  request). In simple mode a fully-empty state does not exist (the
+  picker and selects always hold tokens); an empty FILTERS field
+  compiles to `*` and legitimately runs as match-all. "No query
+  entered." never renders in simple mode.
+
+### A3-5.4 Validation: compile, server-parse, map back; the boundary rule
+
+Validation is compile-then-server-parse; the parser remains the only
+authority. The client section mapping gains the projection offset:
+
+- The submitted string is the compiled canonical-form string; the
+  server error's `position` indexes into it.
+  `sectionIndexAtPosition` names the section as today.
+- **Boundary rule (binding): an error whose position falls in the
+  FILTERS section is the player's** — the ruled three-line error form
+  renders, naming the Filters section, with the parser reason and
+  suggestions kept and the position remapped to the FILTERS FIELD
+  (position minus the segment-3 offset) as the technical detail.
+- **An error before the FILTERS section is a COMPILER DEFECT**
+  (A2-2.3 class 3, verbatim mechanism): the picker/select tokens are
+  product-generated, so a parse failure there can never be attributed
+  to the player. It fails the extended corpus and the structural
+  tests; if one ever occurs live it renders as class 2 while
+  classified DEFECT — never as a player error.
+- "Restore last working query" restores the canonical (unchanged,
+  request-free). Across modes: in simple mode the restored canonical
+  renders through the projection (picker + selects + FILTERS field);
+  the defensive total-rule stands — a restored text that fails to
+  decompose (structurally impossible for a server canonical, possible
+  only for hand-authored advanced text) opens Advanced with the full
+  form. Mode toggling never loses text: Simple -> Advanced shows the
+  compiled four-part form; Advanced -> Simple projects when the text
+  decomposes, else stays in Advanced with the existing error
+  presentation.
+
+### A3-5.5 Deferred: the `ip` alias (recorded with reasoning)
+
+An `ip ==` convenience alias is OUT of the first cut: field aliases
+were deliberately retired at Stage 4 ("Aliases: none; the old client
+alias table is superseded"), and compiling `ip` to the two-field OR
+form would collapse the chip row to one un-removable Custom filters
+chip under the ratified honesty rule — trading a typing convenience
+for the loss of chip-level removal and a second place where simple
+mode secretly writes ORs. Deferred to the register with this
+reasoning; the IP pivot remains the sanctioned OR author.
+
+### A3-5.6 Invariants untouched (verified)
+
+- No grammar, token, parser, endpoint, payload, or engine change.
+  Snapshot identity is server-minted from the parsed canonical and
+  HMAC-bound (`app.py:2872-2878`, `:2787-2796`); a frontend mode
+  cannot influence it. If implementation surfaces any engine need:
+  STOP and report (A3-P.4).
+- The `==`/`!=` tooltips and refine mechanics are UNCHANGED and
+  mode-neutral (verified: refines operate on the executed canonical
+  and re-run; in simple mode the result re-projects). Chips are
+  UNCHANGED and honest in both modes (they read the executed
+  canonical, never the editable controls).
+- Scope semantics, the case-constant model, and Expanded search are
+  orthogonal to the mode and unchanged.
+
+### A3-5.7 Corpus and parity extensions (test-only)
+
+- `GENERATED_FORMS_CORPUS` extends with `composeQuery` and
+  `replaceTimeframe` outputs x adversarial values (embedded quotes,
+  backslashes, reserved words, `*` and `|` characters in FILTERS) and
+  a picker/select combination matrix (each family, a hostname token,
+  event types, empty-FILTERS -> `*`); both sides and both hardcoded
+  counts update (`backend/test_lcql.py:514`,
+  `query-clarity.test.js:232`).
+- NEW `SOURCE_FAMILIES` parity corpus: the client family list is
+  asserted equal to `backend/lcql.py`'s tuple (two-sided, the
+  established shared-fixture pattern; backend side test-only).
+- Round-trip representability battery: for every corpus canonical,
+  decompose -> recompile -> byte-equal canonical; the projection
+  never rewrites what it displays.
+
+### A3-5.8 Supersession map — F7
+
+| # | Item | Disp. | Governing text / note |
+|---|---|---|---|
+| 1 | A2-2.4 placeholder ruling ("Example: 1h \| Sysmon \| ...") | T | Mode-scoped: advanced keeps it verbatim; simple mode's placeholder is the FILTERS-only example (A3-6 row F7-1), same Example-prefix italic rule |
+| 2 | A2-2.3 class 1 (empty, "No query entered.") and A2-AC-1 / §19.20 | T | Mode-scoped per A3-5.3: advanced verbatim; simple has no empty state (empty FILTERS compiles to `*`) |
+| 3 | A2-2.3 class 2 (section-named errors) and A2-AC-2 / §19.21 | T | A3-5.4 — the ruled three-line form stands; simple mode names the Filters section for player errors and adds the boundary rule (pre-FILTERS = defect) |
+| 4 | A2-2.3 class 3 (generated-query failure = defect) and A2-AC-5 / §19.24 | A | Extended over the new forms and the picker/select matrix (A3-5.7) |
+| 5 | A2-AC-3 / §19.22 (Restore) | A | Reading recorded: restore-the-canonical + the A3-5.4 cross-mode projection rule |
+| 6 | `STRUCTURE_LINE` (`uiCopy.js:132`) and the four-segment empty-state help panel + `QUERY_HELP_EXAMPLES` | T | Advanced-only; simple mode gets the A3-6 F7 strings. The structure line cannot name a player error in simple mode (structure is compiled) |
+| 7 | A2-2.1 rows for Run/Timeframe; A2-1 Q1 record | A | Reading recorded: the picker still edits pending state; its splice now routes through the chokepoint (A3-5.3) |
+| 8 | Delta B `==`/`!=` tooltip interaction; chips (A2-2.2, A2-AC-4 / §19.23) | U | Verified unchanged and mode-neutral (A3-5.6) |
+| 9 | Contract Section 13 / scaffold chokepoint statements ("the single query author") | A | Strengthened: the last bypass (the timeframe splice) closes |
+| 10 | A2 deferred register | A | Gains the `ip` alias entry with the A3-5.5 reasoning; "structured query builder" stays deferred and is NOT this item (simple mode is a projection, not a builder: no predicate UI, the FILTERS text stays hand-authored) |
+| 11 | Scaffold Phase 3/4 cycle; §18/§10 cert workflows | T | A3-8 / A3-9 (the W-simple walk) |
+
+### A3-5.9 Tests (binding structure)
+
+- Mode battery (`query-clarity.test.js` extension or a new
+  `simple-search.test.js`): default mode per A3-OD-4; compile on Run
+  (the wire query equals `composeQuery` of the controls); projection
+  write-back after a run; refine/chip/pivot results re-project;
+  toggle round-trips without text loss; empty-FILTERS runs as `*`
+  with no "No query entered." in simple mode; advanced empty-run
+  unchanged.
+- Error boundary: a FILTERS player error renders the ruled form with
+  the remapped detail position; a forced pre-FILTERS error is
+  asserted DEFECT-classified (structural test), and the corpus proves
+  the pickers cannot produce one.
+- Corpus/parity/round-trip per A3-5.7.
+- Timeframe migration: `replaceTimeframe` byte-matches the old splice
+  on every valid form (a translation corpus), and the picker still
+  never issues a request.
+
+### A3-5.10 Sizing
+
+**M.** The mode state, two selects, the compiler/decomposer pair, the
+error offset, mode-scoped copy, and the corpus extensions. The largest
+of the four items; no backend product code.
+
+---
+
+## A3-6. Copy table (every new or changed string; no em dashes in any string)
+
+| Row | String (proposed final) | Replaces / where |
+|---|---|---|
+| F2-1 | "Return to INC-8541 evidence restores the results you had before expanding. Queries run while expanded are not kept." | The A1-A.5 return subcopy row ("...runs this query over the case evidence again."); the expanded-search block subcopy |
+| F2-2 | (removed) `returnReadFailed` "Could not load {INC} evidence. Try the return again." | C1 guard string deleted with the guard (A3-2.6) |
+| F3-1 | Player docs sentence drops its surrounding clause: "Open Evidence Timeline on an incident or detection descends into its evidence, sorted occurrence-ascending." | `Docs.jsx:168-169` (the "...and Surrounding events centers the host timeline on the event you are inspecting." clause is deleted) |
+| F3-2 | (removed) `TOOLTIP_SURROUNDING`, `surroundingBanner(host)`, `OCCURRENCE_ASCENDING`, `BACK_TO_PREVIOUS_RESULTS` | `uiCopy.js:124-125, 138-141`; `helpContent.js:31`; the tooltip set is EIGHT |
+| F4b-1 | "Select a classification to submit." | New; the observable line beside a disabled Submit when classification is the only missing step (also the Check Answer hint under the A3-OD-2 recommendation) |
+| F4b-2 | Confirm dialog strings KEPT VERBATIM ("Submit incident INC-####"; "Filing as {category}. This locks your classification for this incident and reveals how it scored. You cannot change it afterward."; "Cancel"; "Submit Incident"); Hardcore adds the existing "Hardcore: one wrong call ends the run." line | The bare confirmation (A3-4.4); zero new confirm strings |
+| F7-1 | Placeholder (simple): "Example: command_line contains \"powershell\"" | Mode-scoped A2-2.4; advanced placeholder unchanged |
+| F7-2 | "Simple search" / "Advanced LCQL" | The mode toggle labels |
+| F7-3 | "Source" / "All sources"; "Event type" / "All event types" | The two select labels and their any-token options |
+| F7-4 | Empty-state help (simple): "Filters match fields against values. Try one of these:" with example buttons `user_account == "spatel"` and `command_line contains "powershell" and hostname == "ACME-WS12"` | Mode-scoped counterpart of the four-segment help panel; edit-only example buttons, same mechanics |
+| F7-5 | (unchanged, scope narrowed) "No query entered.", `STRUCTURE_LINE`, four-segment help panel, advanced placeholder and examples | Advanced mode only (A3-5.3, A3-5.8 rows 2/6) |
+
+Every NEW string above is ASCII-punctuated and em-dash-free; all land
+in `uiCopy.js` first (R7) and join the em-dash scan automatically; the
+F4b-1 line joins the enumerated pre-submission forbidden-phrase scan.
+Final wording is A3-OD-1.
+
+---
+
+## A3-7. Acceptance criteria (replacements in place; additions numbered 19.27+)
+
+Replacements (same numbers, new text upon ratification):
+
+- **11 (replaces the A1-A.6 translation).** While Expanded search is
+  live, exactly one return action renders and names the current case;
+  the hold is written only at entry, survives every run while
+  expanded, and is consumed by the return, which restores the held
+  snapshot, bar text, scope, and timeline mode exactly with zero
+  requests; the current case never changes except by explicit
+  selection (structural); no state is representable in which an
+  expansion origin differs from the current case.
+- **13 (replaces the A1-A.6 translation).** The pinned case line, the
+  expanded-search block, the active timeline mode, and the
+  "Results from" canonical echo each match the executed snapshot and
+  current state and never disagree — including immediately after a
+  model B restore, where all four agree with the RESTORED snapshot;
+  the echo retains the LCQL scope token.
+- **19.20 / 19.21 / 19.22 (A2-AC-1/2/3), mode-scoped** per A3-5.3 and
+  A3-5.4: advanced mode verbatim; simple mode per the boundary rule
+  (FILTERS errors are the player's, pre-FILTERS errors are defects,
+  no empty state exists, restore projects).
+- **19.25 (A2-AC-6): DELETED** (the surrounding return); its
+  hold-restore substance lives in replacement criterion 11.
+- **19.26 (A2-AC-7), reworded:** the ruled tooltips for `==`, `!=`,
+  and Pivot are permanently available, accessible, and
+  mode-universal; the pivot transition surface names the followed
+  field and value, whether the search expanded beyond the current
+  incident, and the return path.
+
+Additions:
+
+- **19.27 (F4b gating).** "Ready to submit" and an enabled Submit
+  render if and only if the incident is sealed, its roster is fully
+  reviewed, and a valid classification is selected; Submit opens a
+  bare confirmation naming the incident and the classification, with
+  no data-entry step; every player-facing "Ready" indicator for an
+  incident agrees with this definition; the server gate remains
+  untouched and unreachable through the gated UI.
+- **19.28 (F7 compile-and-parse).** In simple mode every executed
+  query is compiled through the generator chokepoint and parsed by
+  the server; the canonical echo always shows the four-part truth;
+  a parse error inside FILTERS renders the ruled form naming the
+  Filters section with a field-relative detail; a parse error outside
+  FILTERS is classified a product defect and never renders as a
+  player error.
+- **19.29 (F7 representability round-trip).** Every server-canonical
+  query decomposes into the simple-mode controls and recompiles
+  byte-identically; mode toggling never loses or rewrites query text;
+  every generator output and picker/select combination parses
+  (corpus-pinned, two-sided).
+
+---
+
+## A3-8. Scaffold delta (applied to the scaffold only after ratification)
+
+The Stage 5 phases are complete; Amendment 3 runs as ONE consolidated
+implementation cycle following the merged Phase 3/4 pattern (one
+review cycle, the ruling G analog), appended to the scaffold as the
+A3 cycle. Copy lands first (R7).
+
+- **A3.1 — copy constants + scans.** The A3-6 strings land in
+  `uiCopy.js` (removals deferred to their items); the enumerated-scan
+  rows update. Size XS.
+- **A3.2 — F2 model B.** Hold migration to the expanded-search path,
+  the A3-2.3 lifetime, the restore-with-timeline, entry-capture at
+  all sites, C1 guard removal, test translation + the model B
+  battery. Size S-M. **Binding: lands before A3.3, or A3.3's hold
+  deletion happens in this same commit.**
+- **A3.3 — F3 removal.** The A3-3.2 surface, tooltip set to eight,
+  test deletions/moves, docs sentence. Size S, net-negative.
+- **A3.4 — F4b gating.** `submissionReady`, the Ready-line condition,
+  Submit enable + the classify-to-submit line, modal retirement, the
+  Hardcore warning relocation, the `chosen` lift and one-Ready
+  unification (per A3-OD-2/3 resolutions), test translation. Size
+  S-M.
+- **A3.5 — F7 core.** Mode state + toggle, the two value-driven
+  selects, `composeQuery` + `replaceTimeframe` (the splice
+  migration), projection write-back, mode-scoped placeholder/help.
+  Size M.
+- **A3.6 — F7 validation + corpora.** The error-offset boundary,
+  restore-across-modes, the corpus/parity/round-trip extensions
+  (both sides, counts bumped). Size S-M.
+- **A3.7 — certification.** The A3-9 workflow walk, the 10.1
+  conformance-sweep updates, the closing report (serialized-field
+  disclosure expected: NONE), gate outputs. Size S.
+
+Net size: **M for the cycle** (F3's deletions offset much of F7's
+additions; the net product-LOC delta is modest). Every commit passes
+the versioned hook; never-land-red stands; the em-dash and
+forbidden-phrase scans run per commit.
+
+Scaffold Phase 2 note: no Phase 2 re-work — the copy additions ride
+A3.1 into the same `uiCopy.js` module under the same R7 rule.
+
+---
+
+## A3-9. Certification workflows (updated list) and the conformance sweep
+
+Workflow deltas from the scaffold §10 list as landed:
+
+- **W1 (Guided teaching run):** the submit leg becomes
+  workspace-classify -> gated Ready -> bare confirm; the review path
+  unchanged.
+- **W3-W5 (pivot chain / scope truth / parse-failure truth):** the
+  return leg asserts the model B restore (zero requests, exact
+  redisplay, as-of marker on a stale hold); the surrounding
+  enter/return leg is DELETED; the parse-failure leg runs in BOTH
+  modes (simple FILTERS error naming; advanced unchanged).
+- **W7 (Hardcore purity):** adds the confirm-dialog warning
+  assertion; still no coaching, no hints, no Check Answer.
+- **NEW W-simple:** a full simple-mode investigation — default mode,
+  picker + selects + FILTERS run, refine re-projection, chip removal,
+  malformed FILTERS error with the Filters section named, toggle to
+  Advanced showing the identical canonical, Restore across modes,
+  and the canonical echo matching at every step.
+- Zero-console-error sweeps continue on every walk.
+
+**Ratified-copy conformance sweep (scaffold 10.1, the C1 standing
+rule):** the sweep runs at the A3 certification with these row
+updates upon ratification — row 2 (A1-B.3.2): the Ready-line source
+becomes the A3-4.2 conjunction; row 3 (A1-A.5): the return subcopy
+row points at F2-1; row 4 (A2 finals): three ruled tooltips, the
+surrounding block rows removed; NEW row 6: the F7 mode-dependent
+strings (placeholder, empty/error copy, toggle and select labels)
+against A3-6. Each row is read ratified-sentence-against-rendered-
+surface, per the C1 rule.
+
+---
+
+## A3-10. Owner decisions surfaced (genuinely open; everything else above is closed)
+
+- **A3-OD-1 — final strings.** The A3-6 proposed finals (the F2
+  return subcopy, the classify-to-submit line, the simple-mode
+  placeholder/help/toggle/select labels, the docs sentence). The
+  confirm-dialog strings are kept verbatim and are not open.
+- **A3-OD-2 — Check Answer input source after modal retirement.**
+  RECOMMENDED: Check Answer reads the same workspace selection
+  (disabled until a valid classification is selected; the F4b-1 line
+  is its hint; the modal variants of the two selectors are then
+  deleted as consumerless). Alternative recorded: keep the classifier
+  modal for Check Answer alone (rejected by recommendation: it keeps
+  a data-entry modal alive for one Guided affordance and two input
+  paths for one fact).
+- **A3-OD-3 — one meaning of "Ready".** RECOMMENDED: the `chosen`
+  selection state lifts to the Dashboard shell and every Ready render
+  site consumes the single `submissionReady` derivation (A3-4.3).
+  Alternative recorded: leave the list/dashboard chips on the server
+  field and rename them away from "Ready" (rejected by
+  recommendation: two readiness vocabularies for one incident is the
+  F9 pattern in miniature).
+- **A3-OD-4 — simple-mode default.** RECOMMENDED: Simple is the
+  default in ALL play modes; the toggle is session-local memory only
+  (B-OD-4: no client store). Alternative recorded: Guided-only
+  default with SOC Queue/Hardcore defaulting to Advanced (rejected by
+  recommendation: the mode is a usability projection, not coaching;
+  Hardcore purity concerns copy and hints, not ergonomics).
+
+---
+
+## A3-R. Ratification record (owner; append-only)
+
+| Amendment | State | Date | Notes |
+|---|---|---|---|
+| Amendment 3 — return semantics, surrounding removal, final submission, simple search | **RATIFIED** | 2026-07-26 | Owner rulings in A3-R.1 are the governing finals; implementation authorized |
+
+*Amendment 3 drafted 2026-07-26 at baseline `74198f2` on branch
+`stage-5-amendment-3` (the C1 checkpoint tip; C1 fixes
+`a2cc3dc..74198f2` are part of the baseline and are reported in
+docs/stage-5-checkpoint-fix-report.md). Gates ALL GREEN at the C1
+product tip `80878da` (backend battery complete; frontend 27 suites /
+253 tests); `74198f2` is docs-only above it. This draft is docs-only:
+the locked Revision 3 text and the Amendment 1 and Amendment 2
+appendices above are byte-unchanged; the implementation scaffold
+document is untouched (its delta is drafted in A3-8 and applied only
+after ratification); owner asset files untouched; nothing pushed; no
+product code. This task ratifies nothing.*
+
+### A3-R.1 Owner ratification rulings (2026-07-26, recorded verbatim)
+
+> AMENDMENT 3 FINAL REVIEW VERDICT: PASS. RATIFY AND IMPLEMENT.
+>
+> A3-OD-1 — Final copy
+>
+> Use these canonical strings:
+>
+> - Return subcopy:
+>   "Return restores the incident evidence you were viewing before
+>   Expanded search. Changes made in Expanded search are not kept."
+> - Simple-search placeholder:
+>   'Example: source_ip == "10.0.1.32"'
+> - Simple-search help:
+>   "Enter a filter expression. Timeframe, source, and event type are
+>   controlled above."
+> - Advanced toggle:
+>   "Advanced LCQL"
+> - Selector labels:
+>   "Source"
+>   "Event type"
+> - Documentation distinction:
+>   "Simple search accepts a filter expression. Advanced LCQL accepts
+>   the complete four-part query."
+>
+> All copy remains em-dash-free.
+>
+> A3-OD-2 — Check Answer input
+>
+> - Check Answer consumes the workspace classification selection.
+> - Check Answer is disabled until a valid classification is selected.
+> - Delete the redundant classification-entry modal variants.
+> - No backend, score, or payload change.
+>
+> A3-OD-3 — One meaning of Ready
+>
+> - Every Ready surface derives from one shell-owned state.
+> - Ready is true only when:
+>   1. the existing server observable-readiness value is true, and
+>   2. a valid workspace classification is selected.
+> - The response-action count remains informational and never gates
+>   readiness.
+> - No surface may show Ready while Classification says not selected.
+> - Submit incident uses the same derived state.
+>
+> A3-OD-4 — Search-mode default
+>
+> - Simple search is the default in Guided, SOC Queue, and Hardcore.
+> - Advanced LCQL remains available in every mode.
+> - The mode toggle is session-local only.
+> - Do not add localStorage or server persistence.
+> - Search semantics remain identical across modes.
+
+### A3-R.2 Recording notes (what the rulings resolve and supersede)
+
+- **A3-OD-1 resolved.** The six ruled strings are the canonical
+  finals. They SUPERSEDE the drafted A3-6 proposals they touch:
+  row F2-1 (the return subcopy becomes the ruled two-sentence form,
+  id-free, so the parameterized template retires for a constant), row
+  F7-1 (the simple placeholder becomes the ruled source_ip example,
+  keeping the A2-2.4 Example-prefix italic rule), and row F7-4 (the
+  simple help line becomes the ruled sentence; the edit-only example
+  buttons keep the existing empty-state mechanics with FILTERS-only
+  example text). The ruled documentation-distinction sentence is NEW
+  and lands on the player docs page beside the F3-1 trim. Drafted
+  finals the ruling does not touch STAND as canonical: F4b-1
+  ("Select a classification to submit."), the F3-1 docs trim, the
+  "Simple search" return-toggle label (the ruled "Advanced LCQL" is
+  the enter-advanced label), and the any-token option labels
+  ("All sources" / "All event types"). Every string is em-dash-free.
+- **A3-OD-2 resolved as recommended.** Check Answer consumes the
+  workspace selection and disables until a valid classification is
+  selected; the modal variants of ClassificationSelector and
+  CategorySelector are DELETED (zero consumers remain); no backend,
+  score, or payload change.
+- **A3-OD-3 resolved as recommended.** One shell-owned selection
+  state; ONE derived readiness (server observable readiness AND a
+  valid workspace classification) consumed by every Ready surface and
+  by Submit; the response-action count stays informational and never
+  gates; no surface may show Ready while the checklist says
+  "Classification: not selected".
+- **A3-OD-4 resolved as recommended.** Simple search is the default
+  in Guided, SOC Queue, and Hardcore; Advanced LCQL is available in
+  every mode; the toggle is session-local memory only (no
+  localStorage, no server persistence; B-OD-4 stands); search
+  semantics are identical across modes.
+- **Implementation authorized:** merge `stage-5-amendment-3` into
+  `stage-5-live-run-feedback` with `--no-ff`; apply the A3-8 scaffold
+  delta; implement the four items in the binding order (F2, F3, F4b,
+  F7) as the A3.1-A3.7 cycle, each concern independently revertible,
+  gates per concern and the complete battery at the final boundary;
+  Chrome verification and the ratified-copy conformance sweep at
+  certification; the closing report update per the owner directive.
+  STOP at the final Stage 5 checkpoint: no merge to `main`, no push,
+  no final UI polish, no new stage.
+
+*Ratification recorded 2026-07-26 on branch `stage-5-amendment-3` at
+the drafted baseline; the A3-R state table above is updated to
+RATIFIED and the rulings are appended verbatim. Docs-only; owner
+asset files untouched; nothing pushed.*
