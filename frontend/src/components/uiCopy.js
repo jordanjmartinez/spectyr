@@ -199,3 +199,17 @@ export const SOURCE_LABEL = 'Source';
 export const EVENT_TYPE_LABEL = 'Event type';
 export const ALL_SOURCES = 'All sources';
 export const ALL_EVENT_TYPES = 'All event types';
+
+// === Final pass (Part III.0.1): the Response workspace ====================
+// The ruled state copy (never revealing whether inaction is correct) and
+// the neutral navigation labels (they select a target in Response and
+// execute nothing).
+export const RESPONSE_SELECT_INCIDENT = 'Select an incident to begin response.';
+export const RESPONSE_NO_PROMOTED = 'No detections have been promoted.';
+export const RESPONSE_NO_PROMOTED_SUB =
+  'You can still review incident entities and actions below.';
+export const RESPONSE_NO_TARGETS = 'No response targets are currently available.';
+export const RESPONSE_NO_ACTIONS = 'No response actions taken.';
+export const OPEN_IN_RESPONSE = 'Open in Response';
+export const RESPOND_TO_HOST = 'Respond to this host';
+export const RESPOND_ROW = 'Respond';

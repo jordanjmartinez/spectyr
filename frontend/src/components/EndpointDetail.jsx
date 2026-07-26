@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { apiFetch } from '../api';
-import { toastActionResult } from './uiToasts';
 import { StatusBadge, OsChip, IsolationBadge } from './Endpoints';
-import ConfirmDialog from './ConfirmDialog';
+import { RESPOND_TO_HOST, RESPOND_ROW } from './uiCopy';
+import { PERSIST_LABEL } from './responseActions';
 
 // Endpoint detail (Stage 1): two-pane EDR-style view over the cached session
 // snapshot. Fetched once per host; search and sort operate on the cached
 // data only. Attack rows render identically to benign rows.
-// Stage 3a: response actions. Isolate/Release live in the reserved control
-// area on Overview; Kill Process on process rows. The server renders
-// base+overlay, so a successful action shows up on refetch; failed attempts
-// return an in-fiction reason that renders as a quiet notice line.
+// Final pass Part III.0.1: this surface is INVESTIGATION ONLY. Action-state
+// indicators (Isolated, terminated rows, autorun flags) stay; every direct
+// execution moved to the Response workspace (the one action system). The
+// contextual "Respond" controls here only NAVIGATE, selecting the target
+// in Response; they execute nothing.
 
 const shortDate = (iso) => (iso ? iso.slice(0, 10) : '-');
 const shortDateTime = (iso) => (iso ? iso.slice(0, 16).replace('T', ' ') : '-');
@@ -40,7 +41,6 @@ const SignerBadge = ({ signer, signed }) => (
 // Stage 3c.5: the Autoruns surface is a persistence-artifact view. WMI
 // subscriptions must read as a distinct mechanism, never as a registry
 // autorun, so every row carries its artifact type.
-const PERSIST_LABEL = { wmi_subscription: 'WMI subscription', run_key: 'Run key' };
 
 const PersistTypeBadge = ({ type }) => (
   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-[#eef1f4] text-[#57606a] border border-[#d0d7de] whitespace-nowrap">
@@ -93,14 +93,12 @@ const EmptyRow = ({ span, text = 'None' }) => (
   <tr><td colSpan={span} className="px-4 py-6 text-center text-[#8b949e]">{text}</td></tr>
 );
 
-const EndpointDetail = ({ hostname, org, onBack }) => {
+const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
   const [snap, setSnap] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [tab, setTab] = useState('overview');
   const [procSearch, setProcSearch] = useState('');
   const [procSort, setProcSort] = useState({ key: 'pid', dir: 'asc' });
-  const [confirm, setConfirm] = useState(null); // {title, body, confirmLabel, action, target}
-  const [busy, setBusy] = useState(false);
 
   const fetchSnap = useCallback(() => {
     apiFetch(`/api/endpoints/${encodeURIComponent(hostname)}`)
@@ -113,31 +111,8 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
     setSnap(null);
     setNotFound(false);
     setTab('overview');
-    setConfirm(null);
     fetchSnap();
   }, [hostname, fetchSnap]);
-
-  const runAction = (action, target) => {
-    setBusy(true);
-    apiFetch('/api/actions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, target }),
-    })
-      .then(res => res.json())
-      .then(entry => {
-        // T2/T3 (Phase 2 commit 2.4): the toast is the one announcement;
-        // the inline notice retires (one announcement per fact).
-        toastActionResult(entry);
-        setConfirm(null);
-        setBusy(false);
-        fetchSnap();
-      })
-      .catch(() => {
-        setConfirm(null);
-        setBusy(false);
-      });
-  };
 
   const processes = useMemo(() => {
     if (!snap) return [];
@@ -278,33 +253,15 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
                   )}
                 </div>
                 <div className="mt-4 flex flex-wrap items-center gap-3">
-                  {snap.isolation === 'isolated' ? (
+                  {/* III.0.1: navigation only -- containment executes in the
+                      Response workspace. */}
+                  {onOpenResponse && (
                     <button
                       type="button"
-                      onClick={() => setConfirm({
-                        title: 'Release host',
-                        body: `Restore network connectivity for ${snap.hostname}.`,
-                        confirmLabel: 'Release',
-                        action: 'release_host',
-                        target: snap.entity_id,
-                      })}
-                      className="px-3 py-1.5 text-sm font-medium rounded-md border border-[#d0d7de] text-[#1a2332] hover:bg-[#eef1f4]"
+                      onClick={() => onOpenResponse({ kind: 'host', hostname: snap.hostname })}
+                      className="px-3 py-1.5 text-sm font-medium rounded-md border border-[#16436b]/40 text-[#16436b] hover:bg-[#16436b]/5"
                     >
-                      Release Host
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setConfirm({
-                        title: 'Isolate host',
-                        body: `Cut ${snap.hostname} off from the network. Existing connections drop; the agent channel stays up.`,
-                        confirmLabel: 'Isolate',
-                        action: 'isolate_host',
-                        target: snap.entity_id,
-                      })}
-                      className="px-3 py-1.5 text-sm font-medium rounded-md bg-[#101218] text-white hover:bg-[#1a2332]"
-                    >
-                      Isolate Host
+                      {RESPOND_TO_HOST}
                     </button>
                   )}
                 </div>
@@ -371,19 +328,14 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
                       <td className="px-3 py-2 font-mono whitespace-nowrap">{dash(p.user)}</td>
                       <td className="px-3 py-2 whitespace-nowrap text-[#57606a]">{p.memory_mb} MB</td>
                       <td className="px-3 py-2 whitespace-nowrap">
-                        {p.entity_id && (
+                        {p.entity_id && onOpenResponse && (
                           <button
                             type="button"
-                            onClick={() => setConfirm({
-                              title: 'Kill process',
-                              body: `Terminate ${p.name} (PID ${p.pid}) on ${snap.hostname}. The process record stays in the event log.`,
-                              confirmLabel: 'Kill',
-                              action: 'kill_process',
-                              target: p.entity_id,
-                            })}
-                            className="px-2.5 py-1 text-xs font-medium rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4]"
+                            onClick={() => onOpenResponse({ kind: 'process', hostname: snap.hostname, pid: p.pid })}
+                            title={`Open ${p.name} in Response`}
+                            className="px-2.5 py-1 text-xs font-medium rounded-md border border-[#16436b]/40 text-[#16436b] hover:bg-[#16436b]/5"
                           >
-                            Kill
+                            {RESPOND_ROW}
                           </button>
                         )}
                       </td>
@@ -521,38 +473,17 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
                           : <SignerBadge signer={a.signer} signed={!!a.signer} />}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap">
-                        <div className="flex flex-wrap gap-2">
-                          {a.persistence_entity_id && a.registration !== 'removed' && (
-                            <button
-                              type="button"
-                              onClick={() => setConfirm({
-                                title: 'Remove persistence',
-                                body: `Remove the ${PERSIST_LABEL[a.persist_type] || 'persistence'} "${a.name}" on ${snap.hostname}. The originating events stay in the log.`,
-                                confirmLabel: 'Remove',
-                                action: 'remove_persistence',
-                                target: a.persistence_entity_id,
-                              })}
-                              className="px-2.5 py-1 text-xs font-medium rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4]"
-                            >
-                              Remove Persistence
-                            </button>
-                          )}
-                          {a.file_entity_id && a.file_state === 'present' && (
-                            <button
-                              type="button"
-                              onClick={() => setConfirm({
-                                title: 'Delete file',
-                                body: `Delete the on-disk payload backing "${a.name}" on ${snap.hostname}. The event record is unchanged.`,
-                                confirmLabel: 'Delete',
-                                action: 'delete_file',
-                                target: a.file_entity_id,
-                              })}
-                              className="px-2.5 py-1 text-xs font-medium rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4]"
-                            >
-                              Delete File
-                            </button>
-                          )}
-                        </div>
+                        {(a.persistence_entity_id || a.file_entity_id) && onOpenResponse && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenResponse({ kind: 'autorun',
+                              entityId: a.persistence_entity_id || a.file_entity_id })}
+                            title={`Open ${a.name} in Response`}
+                            className="px-2.5 py-1 text-xs font-medium rounded-md border border-[#16436b]/40 text-[#16436b] hover:bg-[#16436b]/5"
+                          >
+                            {RESPOND_ROW}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -562,16 +493,6 @@ const EndpointDetail = ({ hostname, org, onBack }) => {
           </Card>
         )}
       </div>
-
-      <ConfirmDialog
-        open={!!confirm}
-        title={confirm?.title}
-        body={confirm?.body}
-        confirmLabel={confirm?.confirmLabel}
-        busy={busy}
-        onConfirm={() => confirm && runAction(confirm.action, confirm.target)}
-        onCancel={() => setConfirm(null)}
-      />
     </div>
   );
 };

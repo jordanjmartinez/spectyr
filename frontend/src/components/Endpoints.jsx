@@ -54,7 +54,7 @@ const COLUMNS = [
 ];
 
 const Endpoints = ({ isVisible, resetTrigger, pivotHost,
-                     activeIncidentId = null }) => {
+                     activeIncidentId = null, onOpenResponse }) => {
   const [org, setOrg] = useState({});
   const [rows, setRows] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -134,6 +134,7 @@ const Endpoints = ({ isVisible, resetTrigger, pivotHost,
         hostname={selected}
         org={org}
         onBack={() => setSelected(null)}
+        onOpenResponse={onOpenResponse}
       />
     );
   }

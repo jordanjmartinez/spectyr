@@ -25,7 +25,6 @@ export const TOOLTIPS = {
   promote: 'Promote: mark this detection as a real threat in this incident.',
   dismiss: 'Dismiss: mark this detection as not a threat (a false alarm or expected activity).',
   reopen: 'Reopen: send this detection back for review; it will need Promote or Dismiss again.',
-  feed_threats: 'Feed shows every detection, including reviewed. Threats shows only detections you promoted.',
   eq: TOOLTIP_EQ,
   neq: TOOLTIP_NEQ,
   pivot: TOOLTIP_PIVOT,
@@ -43,7 +42,7 @@ export const hintsAllowed = (gameMode) => HINT_MODES.includes(gameMode);
 const L1_MECHANICS = [
   'Review a detection: open Detections, read it, then Promote a real threat or Dismiss a false alarm. Reopen sends it back for review.',
   'Run a query: in SIEM the bar reads Time | Source | Event type | Filters. Run Query executes it; the pinned line above the results names what you are investigating.',
-  'Respond: Isolate lives on an endpoint page, Kill on a process row, identity actions on account entities in Threats.',
+  'Respond: containment and remediation run from the Response tab. Detections is for triage; Endpoints is for investigation.',
   'Submit: once every detection in the incident is reviewed, choose a classification and Submit locks in your call and grades the incident.',
 ];
 
@@ -66,6 +65,10 @@ const L2_NUDGES = {
   endpoints: [
     'Compare running processes and autoruns against what the detections claim is on the host.',
     'Check network connections for destinations that do not fit the host role.',
+  ],
+  response: [
+    'Targets are grouped by type: hosts, accounts, processes, files, and persistence.',
+    'The Response Log records every attempt, including actions that had no effect.',
   ],
   metrics: [
     'Grades appear after you submit an incident; its Learning Review then explains every call.',

@@ -80,3 +80,9 @@ test('C1 (F6 slice): the Reports nav entry is hidden until a working report work
   await waitFor(() => expect(screen.getByTitle('Incidents').textContent).toBe('Incidents1'));
   expect(screen.queryByTitle('Reports')).toBeNull();
 });
+
+test('Final pass III.0.1: Response is a primary navigation destination (badge-free like the other evidence surfaces)', async () => {
+  await renderDashboard();
+  await waitFor(() => expect(screen.getByTitle('Incidents').textContent).toBe('Incidents1'));
+  expect(screen.getByTitle('Response').textContent).toBe('Response');
+});

@@ -8,6 +8,7 @@ import IncidentDashboard from '../components/IncidentDashboard';
 import Analytics from '../components/Analytics';
 import Endpoints from '../components/Endpoints';
 import Detections from '../components/Detections';
+import Response from '../components/Response';
 import DifficultySelector from '../components/DifficultySelector';
 import GameTimer from '../components/GameTimer';
 import FailureModal from '../components/FailureModal';
@@ -41,6 +42,16 @@ const Dashboard = () => {
   const [incidentBadge, setIncidentBadge] = useState(0);
   const [simActive, setSimActive] = useState(false);
   const [pivotHost, setPivotHost] = useState(null);
+  // Final pass III.0.1 item 5: contextual navigation into the Response
+  // workspace -- {kind, hostname?, pid?, entityId?, seq}. Selection only;
+  // navigating here never executes anything.
+  const [responseFocus, setResponseFocus] = useState(null);
+  const responseSeqRef = useRef(0);
+  const handleOpenResponse = (target) => {
+    responseSeqRef.current += 1;
+    setResponseFocus({ ...target, seq: responseSeqRef.current });
+    setView('response');
+  };
   // Stage 4 P7.2: Open Evidence Timeline descent requests (contract Sections
   // 13/16). The request carries ONLY observable data supplied by the origin
   // surface (origin label, participant hostnames, the player-selected
@@ -81,7 +92,8 @@ const Dashboard = () => {
         case '3': setView('siem'); break;
         case '4': setView('detections'); break;
         case '5': setView('endpoints'); break;
-        case '6': setView('analytics'); break;
+        case '6': setView('response'); break;
+        case '7': setView('analytics'); break;
         default: break;
       }
     };
@@ -234,6 +246,11 @@ const Dashboard = () => {
       icon: 'M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z' },
     { key: 'endpoints', label: 'Endpoints',
       icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
+    // Final pass III.0.1: Response is the one action-execution workspace
+    // (Investigate -> Triage -> Respond -> Submit -> Learn). Badge-free
+    // per the C1 nav ruling.
+    { key: 'response', label: 'Response',
+      icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' },
     { key: 'analytics', label: 'Metrics', count: analyticsCount,
       icon: 'M9 19v-6m4 6V5m4 14v-9M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z' },
     // C1 checkpoint fix (F6 slice): the Reports entry is HIDDEN until a
@@ -366,11 +383,15 @@ const Dashboard = () => {
         </div>
 
         <div className={view === "detections" ? "block" : "hidden"}>
-          <Detections isVisible={view === "detections"} resetTrigger={resetTrigger} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} onEvidenceDescent={handleEvidenceDescent} />
+          <Detections isVisible={view === "detections"} resetTrigger={resetTrigger} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} onEvidenceDescent={handleEvidenceDescent} onOpenResponse={handleOpenResponse} />
         </div>
 
         <div className={view === "endpoints" ? "block" : "hidden"}>
-          <Endpoints isVisible={view === "endpoints"} resetTrigger={resetTrigger} pivotHost={pivotHost} activeIncidentId={activeIncidentId} />
+          <Endpoints isVisible={view === "endpoints"} resetTrigger={resetTrigger} pivotHost={pivotHost} activeIncidentId={activeIncidentId} onOpenResponse={handleOpenResponse} />
+        </div>
+
+        <div className={view === "response" ? "block" : "hidden"}>
+          <Response isVisible={view === "response"} resetTrigger={resetTrigger} activeIncidentId={activeIncidentId} responseFocus={responseFocus} onHostPivot={handleHostPivot} />
         </div>
 
         <div className={view === "analytics" ? "block" : "hidden"}>

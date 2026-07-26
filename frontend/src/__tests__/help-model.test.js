@@ -92,8 +92,8 @@ test('the three ruled query tooltips are the canonical finals, byte-identical', 
   expect(TOOLTIPS.pivot).toBe(TOOLTIP_PIVOT);
 });
 
-test('every one of the eight controls has a non-empty tooltip line (Surrounding events removed by A3 F3)', () => {
-  const keys = ['promote', 'dismiss', 'reopen', 'feed_threats', 'eq', 'neq',
+test('every one of the seven controls has a non-empty tooltip line (feed_threats retired with the Final-pass triage-only Detections)', () => {
+  const keys = ['promote', 'dismiss', 'reopen', 'eq', 'neq',
     'pivot', 'expanded_search'];
   expect(Object.keys(TOOLTIPS).sort()).toEqual([...keys].sort());
   for (const k of keys) {
@@ -129,14 +129,13 @@ const renderDetections = async () => {
   });
 };
 
-test('6.2: Promote, Dismiss, Reopen, and Feed/Threats carry their tooltip lines (all modes: the surface has no mode gate)', async () => {
+test('6.2: Promote, Dismiss, and Reopen carry their tooltip lines (all modes: the surface has no mode gate)', async () => {
   await renderDetections();
   await screen.findByText('Rule Open');
   const byTitle = (t) => document.querySelectorAll(`[title="${t}"]`);
   expect(byTitle(TOOLTIPS.promote).length).toBeGreaterThanOrEqual(2);
   expect(byTitle(TOOLTIPS.dismiss).length).toBeGreaterThanOrEqual(2);
   expect(byTitle(TOOLTIPS.reopen).length).toBeGreaterThanOrEqual(1); // the triaged row
-  expect(byTitle(TOOLTIPS.feed_threats).length).toBe(2);            // Feed + Threats, not Response Log
   // keyboard-reachable: the same line rides data-help on the help-tip class
   for (const el of byTitle(TOOLTIPS.promote)) {
     expect(el.getAttribute('data-help')).toBe(TOOLTIPS.promote);
