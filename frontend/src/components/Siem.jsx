@@ -13,7 +13,10 @@ import {
   SOURCE_FAMILIES,
 } from './lcqlPivots';
 import InvestigationContext from './InvestigationContext';
-import { CARD_STYLE } from './ui';
+import { CARD_STYLE, PageHeader, SegmentedToggle } from './ui';
+import { NAV_ICONS, NAV_STROKE } from './icons';
+
+const PageIcon = NAV_ICONS.siem;
 import {
   followingClue, resultsFor, ALL_EVENTS_LABEL, INITIAL_INCIDENT_EVIDENCE,
   INITIAL_EVIDENCE, SELECTED_EVENT_HIDDEN, newEventsAvailable,
@@ -487,42 +490,23 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
 
   return (
     <div>
-      {/* Header card */}
-      <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-hidden mb-4">
-        <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
-        <div className="p-4 sm:p-5 flex flex-wrap items-center gap-4">
-          <div className="w-10 h-10 rounded-lg bg-[#101218] flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" role="img" aria-label="SIEM">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-            </svg>
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332]">SIEM</h2>
-              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-[#57606a]">
-                {snapshot ? snapshot.count : 0}
-              </span>
-            </div>
-            <p className="text-sm text-[#57606a] truncate">
-              {org.name || 'ACME Corp'}: investigation workbench over the session event pool
-            </p>
-          </div>
-          <div className="ml-auto flex items-center rounded-md border border-[#d0d7de] overflow-hidden" role="group" aria-label="View">
-            {[['cards', 'Cards'], ['table', 'Table']].map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setView(key)}
-                className={`px-3 py-1.5 text-xs font-medium transition ${
-                  view === key ? 'bg-[#101218] text-white' : 'bg-white text-[#57606a] hover:bg-[#eef1f4]'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* V8: the log-search page identity (the V2 nav mapping) over the
+          shared PageHeader. Workbench density, the query controls, the
+          truthful state copy, and the evidence surfaces are untouched. */}
+      <PageHeader
+        icon={<PageIcon size={20} strokeWidth={NAV_STROKE} aria-hidden="true" />}
+        title="SIEM"
+        count={snapshot ? snapshot.count : 0}
+        subtitle={`${org.name || 'ACME Corp'}: investigation workbench over the session event pool`}
+        right={(
+          <SegmentedToggle
+            ariaLabel="View"
+            value={view}
+            onChange={setView}
+            options={[['cards', 'Cards'], ['table', 'Table']]}
+          />
+        )}
+      />
 
       {/* Case-constant context + TIMEFRAME + query bar (Final pass III.0
           item 2): ONE pinned case line, one evidence universe. The old

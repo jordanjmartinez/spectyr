@@ -8,7 +8,10 @@ import {
 } from './uiCopy';
 import { TOOLTIPS } from './helpContent';
 import { toastDisposition } from './uiToasts';
-import { SEVERITY_PILL, severityDot } from './ui';
+import { SEVERITY_PILL, severityDot, PageHeader } from './ui';
+import { NAV_ICONS, NAV_STROKE } from './icons';
+
+const PageIcon = NAV_ICONS.detections;
 
 // Detections tab (Stage 2; Final pass Part III.0.1): TRIAGE ONLY --
 // promote / dismiss / reopen. All dispositions are scored server-side;
@@ -158,26 +161,15 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
           cannot disagree. */}
       <IncidentScopeBar scope={scope} incidentId={activeIncidentId} />
 
-      {/* Header card */}
-      <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-hidden mb-4">
-        <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
-        <div className="p-4 sm:p-5 flex flex-wrap items-center gap-4">
-          <div className="w-10 h-10 rounded-lg bg-[#101218] flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" role="img" aria-label="Detections">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z" />
-            </svg>
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332]">Detections</h2>
-              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-[#57606a]">{headerCount}</span>
-            </div>
-            <p className="text-sm text-[#57606a]">
-              Triage the feed: promote real threats, dismiss false positives.
-            </p>
-          </div>
-        </div>
-      </div>
+      {/* V8: the crosshair page identity (the V2 nav mapping) over the
+          shared PageHeader; the queue itself is untouched -- triage-only,
+          no analytics above it. */}
+      <PageHeader
+        icon={<PageIcon size={20} strokeWidth={NAV_STROKE} aria-hidden="true" />}
+        title="Detections"
+        count={headerCount}
+        subtitle="Triage the feed: promote real threats, dismiss false positives."
+      />
 
       {/* OD-9 explanatory subcopy, one line each; counters use the 10.1
           vocabulary. With a case selected the counts are the CASE-SCOPED

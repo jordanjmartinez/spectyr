@@ -12,7 +12,10 @@ import {
 import { submissionReady, validClassification } from './submissionReady';
 import { toastReady } from './uiToasts';
 import { deriveAchievements } from './achievements';
-import { severityDot, gradeColor, CARD_STYLE } from './ui';
+import { severityDot, gradeColor, CARD_STYLE, PageHeader, SegmentedToggle } from './ui';
+import { NAV_ICONS, NAV_STROKE } from './icons';
+
+const PageIcon = NAV_ICONS.incidents;
 
 // Stage 3.9B: the Incidents operational workspace ("what do I need to work?").
 // Search + Active / Ready / Completed views, stable incident rows, and a
@@ -237,26 +240,26 @@ const Incidents = ({
 
   return (
     <div>
-      {/* Header + search */}
-      <div className="rounded-xl overflow-hidden mb-4" style={CARD_STYLE}>
-        <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
-        <div className="p-4 sm:p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332]">Incidents</h2>
-            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-[#57606a]">{rows.length}</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="inline-flex rounded-md border border-[#d0d7de] overflow-hidden" role="group" aria-label="Incident view">
-              {[['active', `Active ${counts.active}`], ['ready', `Ready ${counts.ready}`], ['completed', `Completed ${counts.completed}`]].map(([k, label]) => (
-                <button key={k} type="button" onClick={() => setView(k)}
-                  className={`px-3 py-1.5 text-xs font-medium transition ${view === k ? 'bg-[#101218] text-white' : 'bg-white text-[#57606a] hover:bg-[#eef1f4]'}`}>{label}</button>
-              ))}
-            </div>
+      {/* V8/V4: the siren page identity over the shared PageHeader; the
+          master-detail case workspace beneath is untouched. */}
+      <PageHeader
+        icon={<PageIcon size={20} strokeWidth={NAV_STROKE} aria-hidden="true" />}
+        title="Incidents"
+        count={rows.length}
+        subtitle="Work the case queue: investigate, triage, respond, submit."
+        right={(
+          <>
+            <SegmentedToggle
+              ariaLabel="Incident view"
+              value={view}
+              onChange={setView}
+              options={[['active', `Active ${counts.active}`], ['ready', `Ready ${counts.ready}`], ['completed', `Completed ${counts.completed}`]]}
+            />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search incidents..."
-              className="flex-1 min-w-[180px] px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#1a2332] placeholder-[#8b949e] focus:outline-none focus:ring-2 focus:ring-[#101218]/20" />
-          </div>
-        </div>
-      </div>
+              className="w-full sm:w-56 px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#1a2332] placeholder-[#8b949e] focus:outline-none focus:ring-2 focus:ring-[#101218]/20" />
+          </>
+        )}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Incident rows (stable) */}
