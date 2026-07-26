@@ -14,7 +14,8 @@ import {
 } from './lcqlPivots';
 import InvestigationContext from './InvestigationContext';
 import {
-  followingClue, RESULTS_FROM_LABEL,
+  followingClue, resultsFor, ALL_EVENTS_LABEL, INITIAL_INCIDENT_EVIDENCE,
+  INITIAL_EVIDENCE, SELECTED_EVENT_HIDDEN,
   EDITED_NOTE, STALE_RESULTS_NOTE, filterAdded, excludedFilter,
   NO_QUERY_ENTERED, PRESERVED_RESULTS_LABEL, SEARCH_NOT_RUN,
   QUERY_SECTION_NAMES, sectionCouldNotBeRead, STRUCTURE_LINE,
@@ -74,6 +75,13 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
   const [queryMode, setQueryMode] = useState(initialQueryMode);
   const [queryText, setQueryText] = useState('');
   const [snapshot, setSnapshot] = useState(null);   // {token, identity, count, rows}
+  // Final pass III.0 item 3 (search-state truth): the displayed snapshot's
+  // PROVENANCE. 'player' = the player authored the run (Run, refine, chip
+  // removal, pivot); 'prepared' = the shell executed a prepared entry query
+  // (evidence descent) the player never wrote -- labeled "Initial incident
+  // evidence", never "Results for:". Refresh re-executes the displayed
+  // identity, so it preserves the origin it refreshes.
+  const [snapshotOrigin, setSnapshotOrigin] = useState('player');
   const [error, setError] = useState(null);         // {position, reason, suggestions?}
   const [running, setRunning] = useState(false);
   // Scope state machine (contract Section 6, revised scope-error behavior):
@@ -145,6 +153,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
   useEffect(() => {
     setQueryText('');
     setSnapshot(null);
+    setSnapshotOrigin('player');
     setError(null);
     setRunning(false);
     setScope({ kind: 'session' });
@@ -172,6 +181,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
   // (ratified OD-15, structural: case selection lives on Incidents alone).
   useEffect(() => {
     setSnapshot(null);
+    setSnapshotOrigin('player');
     setError(null);
     setQueryText('');
     setTimeline(null);
@@ -236,8 +246,9 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
   // when the inspected id is present in the new rows, selection and the
   // open inspector persist; otherwise the inspector closes with a one-line
   // notice and nothing else is lost.
-  const applySnapshot = (body) => {
+  const applySnapshot = (body, origin) => {
     setSnapshot(body);
+    setSnapshotOrigin(origin);
     setError(null);
     // The bar shows the executed snapshot's canonical text (contract S6
     // Active state) -- clicks and runs teach the canonical form.
@@ -248,27 +259,32 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
     setCountHalted(false);
     // Functional update so the survival check sees the selection as of
     // REPLACEMENT time (a click during an in-flight run must not be lost).
+    // III.0 item 3: a selection hidden by the current results is NEVER
+    // silently dropped -- it is retained with the ruled notice, the pane
+    // reopens when a later result set includes the event again, and no
+    // filter is altered on the player's behalf.
     setSelectedId((sel) => {
       if (sel && !body.rows.some((r) => r.id === sel)) {
-        setSelectionNotice('The inspected event is not in the new snapshot.');
-        return null;
+        setSelectionNotice(SELECTED_EVENT_HIDDEN);
+        return sel;
       }
       setSelectionNotice(null);
       return sel;
     });
   };
 
-  // `noticeAfter`: the OR-fallback text to show once THIS run lands (null
-  // clears any stale notice from an earlier refinement -- plain Run/Refresh
-  // always pass none).
-  const execute = (q, scopeValue, noticeAfter = null) => {
+  // `noticeAfter`: the clue/OR-fallback text to show once THIS run lands
+  // (null clears any stale notice from an earlier refinement -- plain
+  // Run/Refresh always pass none). `origin` is the snapshot provenance
+  // (III.0 item 3): 'player' unless the caller executed a prepared query.
+  const execute = (q, scopeValue, noticeAfter = null, origin = 'player') => {
     if (running) return;
     setRunning(true);
     apiFetch(`/api/events/query?q=${encodeURIComponent(q)}&scope=${encodeURIComponent(scopeValue)}`)
       .then(async (res) => {
         const body = await res.json().catch(() => null);
         if (res.ok && body) {
-          applySnapshot(body);
+          applySnapshot(body, origin);
           setQueryNotice(noticeAfter);
         } else if (body && body.error && typeof body.error === 'object') {
           // A2 3.2: the submitted text rides the error so the broken
@@ -309,9 +325,11 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
 
   // Refresh re-executes the DISPLAYED snapshot's definition (its canonical
   // query and executed scope), never the editable bar text (contract S7).
+  // It refreshes what is displayed, so the provenance label is preserved
+  // (refreshed initial evidence is still initial evidence, III.0 item 3).
   const refresh = () => {
     if (!snapshot || running) return;
-    execute(snapshot.identity.canonical_query, snapshot.identity.scope);
+    execute(snapshot.identity.canonical_query, snapshot.identity.scope, null, snapshotOrigin);
   };
 
   const selectRow = (id) => {
@@ -403,12 +421,12 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
         .then((res) => { if (!res.ok) throw new Error('scope'); return res.json(); })
         .then((sc) => {
           setScope({ kind: 'incident', id: scopeIncidentId, status: 'ready', sealed: !!sc.sealed });
-          execute(query, scopeIncidentId);
+          execute(query, scopeIncidentId, null, 'prepared');
         })
         .catch(() => setScope({ kind: 'incident', id: scopeIncidentId, status: 'error' }));
     } else {
       setScope({ kind: 'session' });
-      execute(query, 'session');
+      execute(query, 'session', null, 'prepared');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [descentRequest]);
@@ -758,17 +776,28 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
           );
         })()}
 
-        {snapshot && (
+        {snapshot && (() => {
+          // III.0 item 3: the search-state label is primary. Evidence the
+          // player did not author is never labeled a player query; an
+          // executed search is identified by its READABLE filter
+          // expression, the canonical staying beside it as the technical
+          // disclosure.
+          const filters = rawFiltersOf(snapshot.identity.canonical_query);
+          const readable = filters === null || filters.trim() === '*'
+            ? ALL_EVENTS_LABEL : filters.trim();
+          const stateLabel = snapshotOrigin === 'prepared'
+            ? (snapshot.identity.scope === 'session'
+              ? INITIAL_EVIDENCE : INITIAL_INCIDENT_EVIDENCE)
+            : resultsFor(readable);
+          return (
           <div className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a] flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span data-testid="results-label" className="font-medium text-[#1a2332]">{stateLabel}</span>
             <span>
               Snapshot: <span className="font-medium text-[#1a2332]">{snapshot.count} events</span>
             </span>
             <span>as of seq #{snapshot.identity.cutoff_seq}</span>
             <span>{simTime(snapshot.identity.resolved_range.end)} sim</span>
-            <span>
-              {RESULTS_FROM_LABEL}{' '}
-              <span className="log-mono">{snapshot.identity.canonical_query}</span>
-            </span>
+            <span className="log-mono">{snapshot.identity.canonical_query}</span>
             <span className="log-mono text-[#8b949e]">scope={snapshot.identity.scope}</span>
             {newCount > 0 && (
               <span
@@ -793,7 +822,8 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
               Refresh
             </button>
           </div>
-        )}
+          );
+        })()}
 
         {timelineActive && (
           <div

@@ -12,7 +12,8 @@ import { render, screen } from '@testing-library/react';
 import Incidents from '../components/Incidents';
 import {
   investigatingCase, ALL_ACTIVITY,
-  followingClue, RESULTS_FROM_LABEL, EDITED_NOTE,
+  followingClue, resultsFor, ALL_EVENTS_LABEL, INITIAL_INCIDENT_EVIDENCE,
+  INITIAL_EVIDENCE, SELECTED_EVENT_HIDDEN, EDITED_NOTE,
   STALE_RESULTS_NOTE, TELEMETRY_LOADING, detectionsReviewed,
   detectionsRemaining, PROMOTED_LABEL, DISMISSED_LABEL, REOPENED_LABEL,
   responseActionsTaken, READY_TO_SUBMIT, SUBMITTED_GRADE_LOCKED,
@@ -85,7 +86,12 @@ const PRE_SUBMISSION_STRINGS = [
   ['investigatingCase', investigatingCase('INC-0001')],
   ['ALL_ACTIVITY', ALL_ACTIVITY],
   ['followingClue', followingClue('user_account', 'x')],
-  ['RESULTS_FROM_LABEL', RESULTS_FROM_LABEL],
+  // Final pass III.0 item 3: the search-state labels
+  ['resultsFor', resultsFor('source_ip == "10.0.1.32"')],
+  ['ALL_EVENTS_LABEL', ALL_EVENTS_LABEL],
+  ['INITIAL_INCIDENT_EVIDENCE', INITIAL_INCIDENT_EVIDENCE],
+  ['INITIAL_EVIDENCE', INITIAL_EVIDENCE],
+  ['SELECTED_EVENT_HIDDEN', SELECTED_EVENT_HIDDEN],
   ['EDITED_NOTE', EDITED_NOTE],
   ['STALE_RESULTS_NOTE', STALE_RESULTS_NOTE],
   ['TELEMETRY_LOADING', TELEMETRY_LOADING],

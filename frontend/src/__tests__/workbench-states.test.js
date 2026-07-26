@@ -168,14 +168,14 @@ test('11.3: an edited bar shows the edited note; a run that lands clears it', as
   await runQuery();
   expect(screen.queryByTestId('edited-note')).toBeNull();
   fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | * draft' } });
-  // the note carries the canonical 11.3 string plus the A2 Restore action
+  // the note carries the ruled III.0 item 3 sentence plus the A2 Restore action
   expect(screen.getByTestId('edited-note').textContent)
-    .toContain('Edited. Results below are from the last run.');
+    .toContain('Search edited but not run. Showing results from the previous search.');
   fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
   expect(screen.queryByTestId('edited-note')).toBeNull();
 });
 
-test('11.3: a failed parse states the displayed results are from the previous successful query; absent with no snapshot', async () => {
+test('a failed parse states the results are from the previous successful search; absent with no snapshot', async () => {
   apiFetch.mockImplementation((path) => {
     if (path === '/api/endpoints') return ok({ org: {}, endpoints: [] });
     if (path.startsWith(`/api/incidents/${INC}/scope`)) return scopeResponse();
@@ -194,14 +194,14 @@ test('11.3: a failed parse states the displayed results are from the previous su
   fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'broken | * | * | *' } });
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Run Query/ })); });
   expect(screen.getByRole('alert').textContent).toContain('unknown TIMEFRAME');
-  expect(screen.queryByText('Displayed results are from the previous successful query.')).toBeNull();
+  expect(screen.queryByText('Showing results from the previous successful search.')).toBeNull();
   // a successful run, then a failed parse: prior rows preserved + the statement
   await runQuery();
   expect(results().getByText(/nmap.exe launched/)).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'broken | * | * | *' } });
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Run Query/ })); });
   expect(screen.getByRole('alert').textContent)
-    .toContain('Displayed results are from the previous successful query.');
+    .toContain('Showing results from the previous successful search.');
   expect(results().getByText(/nmap.exe launched/)).toBeInTheDocument();
 });
 

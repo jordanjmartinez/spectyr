@@ -110,8 +110,8 @@ test('a malformed run produces the ruled three-line form with the broken section
   expect(alert.textContent).toContain(sectionCouldNotBeRead('Time'));
   expect(alert.textContent).toContain("unknown TIMEFRAME 'never'");
   expect(alert.textContent).toContain('Did you mean: 1h?');
-  // line 3 is the LOCKED 11.3 string, exactly because prior results persist
-  expect(alert.textContent).toContain('Displayed results are from the previous successful query.');
+  // line 3 is the ruled III.0 item 3 sentence, exactly because prior results persist
+  expect(alert.textContent).toContain('Showing results from the previous successful search.');
   expect(within(screen.getByTestId('workbench-results'))
     .getByText('clarity fixture event')).toBeInTheDocument();
 });
@@ -125,7 +125,7 @@ test('a first-run failure (no prior results) omits the stale-results line', asyn
   await run('all |  | * | *');
   const alert = screen.getByRole('alert');
   expect(alert.textContent).toContain(sectionCouldNotBeRead('Source'));
-  expect(alert.textContent).not.toContain('Displayed results are from the previous successful query.');
+  expect(alert.textContent).not.toContain('Showing results from the previous successful search.');
   expect(screen.queryByRole('button', { name: RESTORE_LAST_QUERY })).toBeNull();
 });
 

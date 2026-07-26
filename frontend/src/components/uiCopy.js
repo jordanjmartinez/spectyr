@@ -17,13 +17,25 @@ export const ALL_ACTIVITY = 'All activity';
 // RETURN_SUBCOPY, NO_RESULTS_OUTS -- retired with the expanded-search
 // state itself. followingClue lives on below as the pivot announcement.)
 
-// --- the snapshot echo label (locked contract 11.2 "Results from") ---------
-export const RESULTS_FROM_LABEL = 'Results from:';
-
-// --- 11.3 honesty notes (locked contract Section 11.3, consumed verbatim) --
-export const EDITED_NOTE = 'Edited. Results below are from the last run.';
+// --- the search-state labels (Final pass III.0 item 3; supersede the 11.2
+// "Results from" echo and the 11.3 note wordings with the ruled finals) -----
+// An executed search is identified by its READABLE filter expression
+// ("Results for: X"), the canonical staying visible as the technical
+// disclosure; evidence the player did not author is never labeled a player
+// query ("Initial incident evidence"; a caseless prepared entry reads
+// "Initial evidence" -- the flagged minimal variant, see the Part III
+// ledger). The edited / failed / hidden-selection notes are the ruled
+// sentences verbatim.
+export const resultsFor = (readable) => `Results for: ${readable}`;
+export const ALL_EVENTS_LABEL = 'all events';
+export const INITIAL_INCIDENT_EVIDENCE = 'Initial incident evidence';
+export const INITIAL_EVIDENCE = 'Initial evidence';
+export const EDITED_NOTE =
+  'Search edited but not run. Showing results from the previous search.';
 export const STALE_RESULTS_NOTE =
-  'Displayed results are from the previous successful query.';
+  'Showing results from the previous successful search.';
+export const SELECTED_EVENT_HIDDEN =
+  'The selected event is hidden by the current results. Change the filters or select another event.';
 
 // === Phase 2 commit 2.1: the complete Section 10.1 canonical vocabulary ===
 // (locked contract 10.1/10.2; consolidated scaffold). Observable-only; the

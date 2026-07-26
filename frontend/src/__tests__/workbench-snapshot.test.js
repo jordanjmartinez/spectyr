@@ -9,6 +9,7 @@
 import React from 'react';
 import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import Siem from '../components/Siem';
+import { SELECTED_EVENT_HIDDEN } from '../components/uiCopy';
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
 const { apiFetch } = require('../api');
@@ -129,10 +130,10 @@ test('selection persists across Refresh when the inspected id survives', async (
     fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
   });
   expect(document.querySelector('pre')).not.toBeNull();   // still open on e1
-  expect(screen.queryByText('The inspected event is not in the new snapshot.')).toBeNull();
+  expect(screen.queryByText(SELECTED_EVENT_HIDDEN)).toBeNull();
 });
 
-test('inspector closes with the one-line notice when the inspected id is gone', async () => {
+test('a hidden inspected event keeps its selection with the ruled notice and reopens when results include it again (III.0 item 3)', async () => {
   renderShell();
   await run('all | * | * | *');
   fireEvent.click(results().getByText(/alpha event one/));
@@ -141,11 +142,27 @@ test('inspector closes with the one-line notice when the inspected id is gone', 
   await act(async () => {
     fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
   });
-  expect(document.querySelector('pre')).toBeNull();       // inspector closed
-  expect(screen.getByText('The inspected event is not in the new snapshot.')).toBeInTheDocument();
-  // the notice clears on the next selection
+  // the pane cannot render a hidden event, but the selection is NOT
+  // silently dropped and no filter is altered on the player's behalf:
+  // the ruled notice explains the state
+  expect(document.querySelector('pre')).toBeNull();
+  expect(screen.getByText(SELECTED_EVENT_HIDDEN)).toBeInTheDocument();
+  // a later result set that includes the event again reopens the SAME
+  // selection without a new click
+  queryResponses.push(ok(snap([R3, R2, R1], { token: 'tok.three' })));
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+  });
+  expect(document.querySelector('pre')).not.toBeNull();
+  expect(screen.queryByText(SELECTED_EVENT_HIDDEN)).toBeNull();
+  // and selecting another event clears the notice path directly
+  queryResponses.push(ok(snap([R3], { token: 'tok.four' })));
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+  });
+  expect(screen.getByText(SELECTED_EVENT_HIDDEN)).toBeInTheDocument();
   fireEvent.click(results().getByText(/charlie event three/));
-  expect(screen.queryByText('The inspected event is not in the new snapshot.')).toBeNull();
+  expect(screen.queryByText(SELECTED_EVENT_HIDDEN)).toBeNull();
 });
 
 test('selection is shared across the Cards/Table view toggle', async () => {
