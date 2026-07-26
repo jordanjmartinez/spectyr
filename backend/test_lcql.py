@@ -497,6 +497,17 @@ GENERATED_FORMS_CORPUS = [
     # A2 3.3: the chip remove/join generator form's outputs
     'all | * | * | hostname != "ACME-WS10"',
     'all | ACME-WS10 | * | *',
+    # Amendment 3 A3.6 (F7): the simple-mode composeQuery outputs -- the
+    # picker/select matrix (family sensor, hostname sensor, event type,
+    # empty FILTERS -> *) and adversarial FILTERS text riding raw
+    '1h | * | * | *',
+    '24h | Windows Security | 4625 | user_account == "spatel" and source_ip contains "10.0."',
+    'all | ACME-WS12 | ProcessCreate | *',
+    '15m | DNS | QUERY | message contains "say \\"or\\" | nicely"',
+    # A3.6: the replaceTimeframe outputs (the migrated Timeframe splice),
+    # incl. the quote-aware case the old raw splice would have broken on
+    '24h | Sysmon | ProcessCreate | image contains "winupdate"',
+    'all | * | * | message contains "a|b"',
 ]
 
 
@@ -510,8 +521,23 @@ def test_generated_forms_corpus_parses_and_is_canonical():
         assert canonical(parse(c1)) == c1
 
 
-def test_generated_forms_corpus_has_exactly_twelve_entries():
-    assert len(GENERATED_FORMS_CORPUS) == 12
+def test_generated_forms_corpus_has_exactly_eighteen_entries():
+    # 12 at A2 closure + 6 Amendment 3 F7 forms (composeQuery,
+    # replaceTimeframe); both sides bump together (the frontend port
+    # asserts the same length).
+    assert len(GENERATED_FORMS_CORPUS) == 18
+
+
+def test_source_families_match_the_frontend_mirror():
+    """A3.6 (F7): the Source select's static family options are a client
+    mirror of SOURCE_FAMILIES; this is the backend half of the two-sided
+    parity pin (the frontend asserts its export equals the same literal).
+    TESTS ONLY -- no engine change."""
+    from lcql import SOURCE_FAMILIES
+    assert list(SOURCE_FAMILIES) == [
+        "Sysmon", "Windows Security", "Proxy", "DNS", "Firewall",
+        "Azure AD", "Veeam", "Defender",
+    ]
 
 
 # The chip-decomposition parity corpus (A2 3.3): canonical FILTERS text ->

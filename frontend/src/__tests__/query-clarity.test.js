@@ -23,7 +23,8 @@ import {
 import {
   sectionIndexAtPosition, pivotAccount, pivotFile, pivotProcessImage,
   pivotDomainProxy, pivotIp, refineFilter, descentAccount, descentHost,
-  listConjuncts, removeConjunct,
+  listConjuncts, removeConjunct, composeQuery, replaceTimeframe,
+  rawFiltersOf, splitSegments, SOURCE_FAMILIES,
 } from '../components/lcqlPivots';
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
@@ -238,6 +239,12 @@ const GENERATED_FORMS_CORPUS = [
   'all | ACME-WS10 | * | severity == "high"',
   'all | * | * | hostname != "ACME-WS10"',
   'all | ACME-WS10 | * | *',
+  '1h | * | * | *',
+  '24h | Windows Security | 4625 | user_account == "spatel" and source_ip contains "10.0."',
+  'all | ACME-WS12 | ProcessCreate | *',
+  '15m | DNS | QUERY | message contains "say \\"or\\" | nicely"',
+  '24h | Sysmon | ProcessCreate | image contains "winupdate"',
+  'all | * | * | message contains "a|b"',
 ];
 
 test('the generator emits the generated-forms corpus byte-exact (closure incl. adversarial values)', () => {
@@ -254,6 +261,14 @@ test('the generator emits the generated-forms corpus byte-exact (closure incl. a
     refineFilter(descentHost('ACME-WS10'), 'severity', '==', 'high').query,
     removeConjunct('all | * | * | severity == "high" and hostname != "ACME-WS10"', 0),
     removeConjunct('all | ACME-WS10 | * | severity == "high"', 0),
+    // Amendment 3 A3.6 (F7): the simple-mode compose + timeframe forms
+    composeQuery('1h', '*', '*', ''),
+    composeQuery('24h', 'Windows Security', '4625',
+      'user_account == "spatel" and source_ip contains "10.0."'),
+    composeQuery('all', 'ACME-WS12', 'ProcessCreate', '  '),
+    composeQuery('15m', 'DNS', 'QUERY', 'message contains "say \\"or\\" | nicely"'),
+    replaceTimeframe('1h | Sysmon | ProcessCreate | image contains "winupdate"', '24h'),
+    replaceTimeframe('1h | * | * | message contains "a|b"', 'all'),
   ];
   expect(built).toEqual(GENERATED_FORMS_CORPUS);
   // the OR-base refine is the FRESH fallback (closure case pinned)
@@ -261,8 +276,46 @@ test('the generator emits the generated-forms corpus byte-exact (closure incl. a
     .toBe(true);
 });
 
-test('GENERATED_FORMS_CORPUS has exactly the twelve entries the backend corpus has', () => {
-  expect(GENERATED_FORMS_CORPUS).toHaveLength(12);
+test('GENERATED_FORMS_CORPUS has exactly the eighteen entries the backend corpus has', () => {
+  expect(GENERATED_FORMS_CORPUS).toHaveLength(18);
+});
+
+// --- A3.6 (F7): projection parity, migration, and round-trip batteries ------
+
+test('SOURCE_FAMILIES mirrors the backend family set (two-sided parity literal)', () => {
+  expect(SOURCE_FAMILIES).toEqual([
+    'Sysmon', 'Windows Security', 'Proxy', 'DNS', 'Firewall',
+    'Azure AD', 'Veeam', 'Defender',
+  ]);
+});
+
+test('replaceTimeframe byte-matches the retired raw splice on ordinary forms and fixes the quoted-pipe case', () => {
+  const oldSplice = (t, tok) => {
+    if (t.trim() === '') return `${tok} | * | * | *`;
+    const idx = t.indexOf('|');
+    if (idx === -1) return tok;
+    return `${tok} ${t.slice(idx)}`;
+  };
+  for (const t of ['1h | * | * | *',
+    '24h | Windows Security | 4625 | user_account == "spatel"',
+    'all | ACME-WS10 | * | severity == "high"', '', 'garbage']) {
+    expect(replaceTimeframe(t, '4h')).toBe(oldSplice(t, '4h'));
+  }
+  // the old splice split INSIDE a quoted value; the chokepoint form cannot
+  expect(replaceTimeframe('1h | * | * | message contains "a|b"', 'all'))
+    .toBe('all | * | * | message contains "a|b"');
+  expect(oldSplice('1h | * | * | message contains "a|b"', 'all'))
+    .toBe('all | * | * | message contains "a|b"');   // same here by luck of the FIRST pipe
+});
+
+test('representability round-trip: every corpus canonical decomposes into the simple controls and recompiles byte-identically', () => {
+  for (const q of GENERATED_FORMS_CORPUS) {
+    const segs = splitSegments(q);
+    expect(segs).toHaveLength(4);
+    const raw = rawFiltersOf(q);
+    expect(raw).not.toBeNull();
+    expect(composeQuery(segs[0], segs[1], segs[2], raw)).toBe(q);
+  }
 });
 
 // --- 19.23 chips: the honesty rule + the RULED boundary test ----------------

@@ -9,7 +9,8 @@ import {
   pivotFile, pivotIp, pivotDomainProxy, pivotDomainDns, pivotEventType,
   pivotSensorFamily, descentHost, descentSessionAll, descentAccount,
   OR_FALLBACK_NOTICE, sectionIndexAtPosition, listConjuncts, removeConjunct,
-  composeQuery, replaceTimeframe, rawFiltersOf, SOURCE_FAMILIES,
+  composeQuery, replaceTimeframe, rawFiltersOf, filtersOffsetOf,
+  SOURCE_FAMILIES,
 } from './lcqlPivots';
 import InvestigationContext from './InvestigationContext';
 import { TOOLTIPS } from './helpContent';
@@ -763,7 +764,23 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
               })()}
             </span>
             <span className="block mt-1 text-[#57606a]">
-              {error.reason} <span className="text-[#8b949e]">(position {error.position})</span>
+              {error.reason}{' '}
+              <span className="text-[#8b949e]">
+                {(() => {
+                  // A3.6 (F7, the projection boundary): in simple mode a
+                  // position inside the FILTERS section remaps to the
+                  // FIELD the player actually typed in; positions before
+                  // it are compiler territory (corpus-guarded defects) and
+                  // keep the whole-query offset.
+                  const idx = sectionIndexAtPosition(error.submitted || '', error.position || 0);
+                  const off = filtersOffsetOf(error.submitted || '');
+                  if (queryMode === 'simple' && idx === 3 && off !== null
+                      && (error.position || 0) >= off) {
+                    return <>(position {error.position - off} in Filters)</>;
+                  }
+                  return <>(position {error.position})</>;
+                })()}
+              </span>
               {error.suggestions && error.suggestions.length > 0 && (
                 <> Did you mean: {error.suggestions.join(', ')}?</>
               )}

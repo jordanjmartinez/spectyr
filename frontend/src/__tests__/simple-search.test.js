@@ -132,3 +132,37 @@ test('the simple help examples are edit-only FILTERS snippets', () => {
   expect(screen.getByLabelText('Filters')).toHaveValue('source_ip == "10.0.1.32"');
   expect(queryCalls()).toEqual([]);   // nothing ran
 });
+
+test('A3.6: a FILTERS parse error renders the ruled form naming the Filters section with the field-relative position', async () => {
+  renderSimple();
+  // the compiled string is `1h | * | * | source_ip == ` (trailing op, invalid);
+  // the server errors INSIDE the FILTERS section
+  const compiled = '1h | * | * | source_ip ==';
+  queryResponses.push(Promise.resolve({ ok: false, status: 400,
+    json: () => Promise.resolve({ error: { position: compiled.length, reason: 'expected a value' } }) }));
+  fireEvent.change(screen.getByLabelText('Filters'), { target: { value: 'source_ip ==' } });
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Run Query/ })); });
+  expect(screen.getByText('This search was not run.')).toBeInTheDocument();
+  expect(screen.getByText('The Filters section could not be read.')).toBeInTheDocument();
+  // the detail position remaps into the FIELD: 25 minus the 13-char
+  // offset of the FILTERS tail = 12 (the end of "source_ip ==")
+  expect(screen.getByText(/position 12 in Filters/)).toBeInTheDocument();
+});
+
+test('A3.6: Restore last working query is request-free in simple mode and re-projects the canonical', async () => {
+  queryResponses.push(ok(snapWithQ('1h | Sysmon | * | source_ip == "10.0.1.32"')));
+  renderSimple();
+  fireEvent.change(screen.getByLabelText('Filters'), { target: { value: 'source_ip == "10.0.1.32"' } });
+  fireEvent.change(screen.getByLabelText('Source'), { target: { value: 'Sysmon' } });
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Run Query/ })); });
+  // break the field, fail a run, restore
+  queryResponses.push(Promise.resolve({ ok: false, status: 400,
+    json: () => Promise.resolve({ error: { position: 12, reason: 'nope' } }) }));
+  fireEvent.change(screen.getByLabelText('Filters'), { target: { value: 'broken ==' } });
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Run Query/ })); });
+  const before = queryCalls().length;
+  fireEvent.click(screen.getByRole('button', { name: 'Restore last working query' }));
+  expect(queryCalls().length).toBe(before);
+  expect(screen.getByLabelText('Filters')).toHaveValue('source_ip == "10.0.1.32"');
+  expect(screen.getByLabelText('Source')).toHaveValue('Sysmon');
+});

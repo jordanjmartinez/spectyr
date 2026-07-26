@@ -114,6 +114,16 @@ export function rawFiltersOf(query) {
   return query.slice(bounds[2] + 1).replace(/^\s+/, '');
 }
 
+// The character offset where rawFiltersOf's text begins inside the query
+// (A3-5.4: the projection error boundary -- a server parse position inside
+// FILTERS remaps to the simple-mode field by subtracting this offset).
+// Null when the text does not have exactly four segments.
+export function filtersOffsetOf(query) {
+  const raw = rawFiltersOf(query);
+  if (raw === null) return null;
+  return query.length - raw.length;
+}
+
 // --- conjunction-only lexical scan ---------------------------------------
 //
 // EQUIVALENCE BOUNDARY (scaffold Section 2.15, permanent notice): this
