@@ -1,0 +1,37 @@
+{
+  "attack_version": "Enterprise ATT&CK v19.1 (pinned)",
+  "tactics": [
+    "Reconnaissance",
+    "Resource Development",
+    "Initial Access",
+    "Execution",
+    "Persistence",
+    "Privilege Escalation",
+    "Stealth",
+    "Defense Impairment",
+    "Credential Access",
+    "Discovery",
+    "Lateral Movement",
+    "Collection",
+    "Command and Control",
+    "Exfiltration",
+    "Impact"
+  ],
+  "techniques": [
+    { "id": "T1003.001", "name": "OS Credential Dumping: LSASS Memory", "tactic": "Credential Access", "scenarios": 1 },
+    { "id": "T1046", "name": "Network Service Discovery", "tactic": "Discovery", "scenarios": 1 },
+    { "id": "T1071.001", "name": "Application Layer Protocol: Web Protocols", "tactic": "Command and Control", "scenarios": 1 },
+    { "id": "T1071.004", "name": "Application Layer Protocol: DNS", "tactic": "Command and Control", "scenarios": 1 },
+    { "id": "T1074.001", "name": "Data Staged: Local Data Staging", "tactic": "Collection", "scenarios": 1 },
+    { "id": "T1091", "name": "Replication Through Removable Media", "tactic": "Initial Access", "scenarios": 1 },
+    { "id": "T1110.001", "name": "Brute Force: Password Guessing", "tactic": "Credential Access", "scenarios": 1 },
+    { "id": "T1110.003", "name": "Brute Force: Password Spraying", "tactic": "Credential Access", "scenarios": 1 },
+    { "id": "T1486", "name": "Data Encrypted for Impact", "tactic": "Impact", "scenarios": 1 },
+    { "id": "T1560.001", "name": "Archive Collected Data: Archive via Utility", "tactic": "Collection", "scenarios": 1 },
+    { "id": "T1566.002", "name": "Phishing: Spearphishing Link", "tactic": "Initial Access", "scenarios": 1 },
+    { "id": "T1567.002", "name": "Exfiltration Over Web Service: Exfiltration to Cloud Storage", "tactic": "Exfiltration", "scenarios": 1 },
+    { "id": "T1583.001", "name": "Acquire Infrastructure: Domains", "tactic": "Resource Development", "scenarios": 1 },
+    { "id": "T1685", "name": "Disable or Modify Tools", "tactic": "Defense Impairment", "scenarios": 1 },
+    { "id": "T1685.005", "name": "Disable or Modify Tools: Clear Windows Event Logs", "tactic": "Defense Impairment", "scenarios": 1 }
+  ]
+}

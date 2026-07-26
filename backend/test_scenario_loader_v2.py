@@ -1079,6 +1079,80 @@ def test_no_static_values_in_v2_files():
     assert not violations, f"static values leaked into v2 files: {violations}"
 
 
+# --- the frontend ATT&CK catalog mirror (Visual pass V6a) -------------------------
+
+def test_frontend_attack_catalog_mirror(_use=None):
+    """The dashboard coverage matrix reads a static, LABEL-FREE frontend
+    mirror (frontend/src/components/attackCatalog.json) instead of a new
+    endpoint. This pin keeps the mirror equal to the corpus by
+    construction: pinned v19.1 tactics, canonical technique ids/names,
+    per-technique scenario counts from the answer keys, the
+    corpus-recorded tactic per technique, a strict key whitelist, and no
+    scenario label anywhere (the mirror must never identify an incident).
+    Detection-tag-only techniques (PINNED_DETECTION_TECHNIQUES) are
+    deliberately excluded: resemblance tags are not scenario coverage."""
+    import json as _json
+    mirror_path = os.path.join(os.path.dirname(HERE), "frontend", "src",
+                               "components", "attackCatalog.json")
+    raw = open(mirror_path, encoding="utf-8").read()
+    mirror = _json.loads(raw)
+
+    # strict shape whitelist
+    assert set(mirror.keys()) == {"attack_version", "tactics", "techniques"}, mirror.keys()
+    assert mirror["attack_version"] == "Enterprise ATT&CK v19.1 (pinned)"
+    for t in mirror["techniques"]:
+        assert set(t.keys()) == {"id", "name", "tactic", "scenarios"}, t.keys()
+
+    # the full pinned v19.1 tactic set, in canonical matrix order
+    expected_tactics = [
+        "Reconnaissance", "Resource Development", "Initial Access",
+        "Execution", "Persistence", "Privilege Escalation", "Stealth",
+        "Defense Impairment", "Credential Access", "Discovery",
+        "Lateral Movement", "Collection", "Command and Control",
+        "Exfiltration", "Impact",
+    ]
+    assert mirror["tactics"] == expected_tactics, mirror["tactics"]
+    assert set(mirror["tactics"]) == set(CANONICAL_TACTICS)
+
+    catalog, reviews = _load_corpus()
+
+    # ids exactly == the canonical answer-key technique set; names byte-equal
+    ids = [t["id"] for t in mirror["techniques"]]
+    assert len(ids) == len(set(ids)), "duplicate mirror technique ids"
+    assert set(ids) == set(CANONICAL_TECHNIQUE_NAMES), (
+        set(ids) ^ set(CANONICAL_TECHNIQUE_NAMES))
+    for t in mirror["techniques"]:
+        assert t["name"] == CANONICAL_TECHNIQUE_NAMES[t["id"]], t
+
+    # per-technique scenario counts == the loaded answer keys
+    counts = {}
+    for label, sc in catalog.items():
+        for tech in sc["answer_key"].get("techniques") or []:
+            counts[tech] = counts.get(tech, 0) + 1
+    for t in mirror["techniques"]:
+        assert t["scenarios"] == counts.get(t["id"], 0), (
+            f"{t['id']}: mirror says {t['scenarios']}, corpus says {counts.get(t['id'], 0)}")
+
+    # the recorded tactic: the review pair is authoritative; detection
+    # mitre tags for the same id must agree with the mirror too
+    review_tactic = {r["mitre"]["id"]: r["mitre"]["tactic"]
+                     for r in reviews.values() if r.get("mitre")}
+    mirror_tactic = {t["id"]: t["tactic"] for t in mirror["techniques"]}
+    for tid, tactic in mirror_tactic.items():
+        assert tactic in CANONICAL_TACTICS, (tid, tactic)
+        assert review_tactic.get(tid) == tactic, (
+            f"{tid}: mirror tactic {tactic!r} vs review {review_tactic.get(tid)!r}")
+    for label, sc in catalog.items():
+        for d in sc.get("detections") or []:
+            m = d.get("mitre")
+            if m and m["id"] in mirror_tactic:
+                assert m["tactic"] == mirror_tactic[m["id"]], (label, m)
+
+    # leak guard: no scenario label appears anywhere in the mirror text
+    for label in catalog:
+        assert label not in raw, f"scenario label {label!r} leaked into the mirror"
+
+
 # --- determinism -----------------------------------------------------------------
 
 def test_load_is_deterministic():
