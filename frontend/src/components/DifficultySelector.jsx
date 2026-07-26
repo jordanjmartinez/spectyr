@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../api';
+import { severityDot } from './ui';
 
 // Stage 3.9B Step 3: the three final modes. Guided (from the training engine)
 // opens the answer-neutral catalog picker and starts a single chosen incident;
@@ -27,7 +28,7 @@ const MODES = [
   },
 ];
 
-const SEV_DOT = { Critical: '#b45858', High: '#c08a3e', Medium: '#c0a93e', Low: '#6fa868' };
+// Visual pass VG: severity dots read the shared map (ui.jsx).
 
 const DifficultySelector = ({ onSelect, onCancel, initialName = '', initialStep = 'mode' }) => {
   const [analystName, setAnalystName] = useState(initialName);
@@ -144,7 +145,7 @@ const DifficultySelector = ({ onSelect, onCancel, initialName = '', initialStep 
                     className="w-full text-left p-3 rounded-lg border border-[#d0d7de] hover:bg-[#f6f8fa] transition-colors"
                   >
                     <span className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: SEV_DOT[e.severity] || '#8b949e' }} />
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: severityDot(e.severity) }} />
                       <span className="text-sm font-medium text-[#1a2332]">{e.title}</span>
                       <span className="text-[11px] text-[#8b949e]">{e.severity}</span>
                     </span>

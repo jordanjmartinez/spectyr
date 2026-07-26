@@ -1,5 +1,6 @@
 import React from 'react';
 import { ACTION_LABELS } from './uiCopy';
+import { Card } from './ui';
 
 // Stage 3d composite ruling, compacted by the Final pass (III.0 item 6):
 // the three large vertical Classification / Detections / Response grade
@@ -15,11 +16,7 @@ import { ACTION_LABELS } from './uiCopy';
 // (report.detection / report.response / report.composite, aggregated over
 // submitted incidents); nothing here polls a score endpoint.
 
-const Card = ({ children }) => (
-  <div className="rounded-2xl" style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
-    {children}
-  </div>
-);
+// Visual pass VG: the card surface comes from the shared module.
 
 const StatRow = ({ items }) => (
   <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-[#57606a]">

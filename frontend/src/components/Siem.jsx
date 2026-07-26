@@ -13,6 +13,7 @@ import {
   SOURCE_FAMILIES,
 } from './lcqlPivots';
 import InvestigationContext from './InvestigationContext';
+import { CARD_STYLE } from './ui';
 import {
   followingClue, resultsFor, ALL_EVENTS_LABEL, INITIAL_INCIDENT_EVIDENCE,
   INITIAL_EVIDENCE, SELECTED_EVENT_HIDDEN, newEventsAvailable,
@@ -841,7 +842,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
       {!snapshot ? (
         <div
           className="p-6 rounded-xl py-12"
-          style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+          style={CARD_STYLE}
         >
           <p className="text-sm font-medium text-[#1a2332] mb-1">Run a query to begin.</p>
           {/* A3.5 (F7): mode-scoped guidance. Simple mode teaches the
@@ -878,7 +879,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
           <FieldSidebar snapshot={snapshot} running={running} onValueClick={refineAndRun} />
           <div
             className="flex-1 min-w-0 p-6 rounded-xl flex flex-col items-center justify-center py-14"
-            style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+            style={CARD_STYLE}
           >
             <p className="text-sm text-[#1a2332] mb-1">0 events match</p>
             <p className="text-xs text-[#6e7781] log-mono">{snapshot.identity.canonical_query}</p>

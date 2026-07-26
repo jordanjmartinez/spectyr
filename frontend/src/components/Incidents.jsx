@@ -12,6 +12,7 @@ import {
 import { submissionReady, validClassification } from './submissionReady';
 import { toastReady } from './uiToasts';
 import { deriveAchievements } from './achievements';
+import { severityDot, gradeColor, CARD_STYLE } from './ui';
 
 // Stage 3.9B: the Incidents operational workspace ("what do I need to work?").
 // Search + Active / Ready / Completed views, stable incident rows, and a
@@ -21,9 +22,9 @@ import { deriveAchievements } from './achievements';
 // ticket table and the global Notable Events queue (D3/D4): the player-facing
 // object is the incident. Raw underlying events stay in SIEM (D4, unchanged).
 
-const SEV_DOT = { Critical: '#b45858', High: '#c08a3e', Medium: '#c0a93e', Low: '#6fa868' };
-const gradeColor = (g) => (!g || g === '-') ? '#8b949e' : g === 'F' ? '#b45858' : g === 'D' ? '#c08a3e' : '#6fa868';
-const CARD = { background: '#fff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' };
+// Visual pass VG: severity dots, grade colors, and the card surface come
+// from the ONE shared visual-language module (ui.jsx); nothing visual is
+// defined twice.
 const fmtTime = (iso) => { try { return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
 
 // The incident-progress checklist (Phase 2 commit 2.4, A1-B.3.2): the phase
@@ -237,7 +238,7 @@ const Incidents = ({
   return (
     <div>
       {/* Header + search */}
-      <div className="rounded-xl overflow-hidden mb-4" style={CARD}>
+      <div className="rounded-xl overflow-hidden mb-4" style={CARD_STYLE}>
         <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
         <div className="p-4 sm:p-5">
           <div className="flex items-center gap-2 mb-3">
@@ -259,14 +260,14 @@ const Incidents = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Incident rows (stable) */}
-        <div className="lg:col-span-2 rounded-xl divide-y divide-[#eef1f4]" style={CARD}>
+        <div className="lg:col-span-2 rounded-xl divide-y divide-[#eef1f4]" style={CARD_STYLE}>
           {rows.length === 0 ? (
             <p className="p-4 text-sm text-[#8b949e] text-center">No incidents in this view.</p>
           ) : rows.map(c => (
             <button key={c.incident_id} onClick={() => onSelectIncident?.(c.incident_id)}
               className={`w-full text-left p-3 flex items-center justify-between gap-2 ${c.incident_id === selectedId ? 'bg-[#16436b]/5' : 'hover:bg-[#f6f8fa]'}`}>
               <span className="min-w-0 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: SEV_DOT[c.severity] || '#8b949e' }} />
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: severityDot(c.severity) }} />
                 <span className="log-mono text-[#16436b] text-xs shrink-0">{c.incident_id}</span>
                 <span className="text-sm text-[#1a2332] truncate">{c.title}</span>
               </span>
@@ -282,7 +283,7 @@ const Incidents = ({
         </div>
 
         {/* Selected incident detail (the workspace) */}
-        <div className="lg:col-span-3 rounded-xl p-4 sm:p-5" style={CARD}>
+        <div className="lg:col-span-3 rounded-xl p-4 sm:p-5" style={CARD_STYLE}>
           {!selected ? (
             <p className="text-sm text-[#8b949e] text-center py-8">Select an incident to work it.</p>
           ) : (
@@ -291,7 +292,7 @@ const Incidents = ({
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="log-mono text-[#16436b] text-xs">{selected.incident_id}</span>
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: SEV_DOT[selected.severity] || '#8b949e' }} />
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: severityDot(selected.severity) }} />
                     <span className="text-[11px] text-[#8b949e]">{selected.severity}</span>
                     <span className="text-base font-semibold text-[#1a2332]">{selected.title}</span>
                     {selected.state === 'submitted' && selected.assisted && (

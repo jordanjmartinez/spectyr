@@ -21,9 +21,9 @@ const LOSE_ART = `██╗   ██╗ ██████╗ ██╗   ██
    ██║   ╚██████╔╝╚██████╔╝    ███████╗╚██████╔╝███████║███████║██╗
    ╚═╝    ╚═════╝  ╚═════╝     ╚══════╝ ╚═════╝ ╚══════╝╚══════╝╚═╝`;
 
-const gradeOf = (report) => report?.grade || '-';
+import { CARD_STYLE } from './ui';
 
-const CARD_STYLE = { background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' };
+const gradeOf = (report) => report?.grade || '-';
 
 // Segmented outcome bar: one cell per queue scenario, colored by result.
 // Green = correct, red = missed, neutral = still pending.

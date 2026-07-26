@@ -8,6 +8,7 @@ import {
   ACTION_LABELS, RESPONSE_SELECT_INCIDENT, RESPONSE_NO_PROMOTED,
   RESPONSE_NO_PROMOTED_SUB, RESPONSE_NO_TARGETS, RESPONSE_NO_ACTIONS,
 } from './uiCopy';
+import { CARD_STYLE, StateChip } from './ui';
 
 // Final pass Part III.0.1: the ONE canonical action-execution workspace
 // (Investigate -> Triage -> Respond -> Submit -> Learn). Actionable
@@ -20,7 +21,7 @@ import {
 // through the one action system (responseActions.js); the endpoint and
 // detection surfaces only navigate here.
 
-const CARD = { background: '#fff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' };
+// Visual pass VG: card surface + StateChip from the shared module.
 
 const shortTime = (iso) =>
   iso ? new Date(iso).toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
@@ -35,10 +36,6 @@ const OutcomeChip = ({ outcome }) => (
   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${OUTCOME_CHIP[outcome] || 'border-[#d0d7de] text-[#57606a]'}`}>
     {OUTCOME_LABEL[outcome] || outcome}
   </span>
-);
-
-const StateChip = ({ children }) => (
-  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#eef1f4] text-[#57606a]">{children}</span>
 );
 
 const VerbButton = ({ onClick, disabled, dark, children }) => (
@@ -61,7 +58,7 @@ const PromotedChips = ({ rules }) => (rules && rules.length ? (
 ) : null);
 
 const GroupCard = ({ title, count, children }) => (
-  <div className="rounded-xl overflow-hidden" style={CARD}>
+  <div className="rounded-xl overflow-hidden" style={CARD_STYLE}>
     <div className="px-4 py-2.5 border-b border-[#eef1f4] flex items-center gap-2">
       <h3 className="text-sm font-semibold text-[#1a2332]">{title}</h3>
       <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-[#57606a]">{count}</span>
@@ -262,20 +259,20 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
           </table>
         </div>
       ) : !activeIncidentId ? (
-        <div className="rounded-xl p-8 text-center text-sm text-[#57606a]" style={CARD}>
+        <div className="rounded-xl p-8 text-center text-sm text-[#57606a]" style={CARD_STYLE}>
           {RESPONSE_SELECT_INCIDENT}
         </div>
       ) : (
         <div className="space-y-4">
           {promoted.length === 0 && (
-            <div className="rounded-xl px-4 py-3 text-sm" style={CARD}>
+            <div className="rounded-xl px-4 py-3 text-sm" style={CARD_STYLE}>
               <span className="text-[#1a2332]">{RESPONSE_NO_PROMOTED}</span>{' '}
               <span className="text-[#57606a]">{RESPONSE_NO_PROMOTED_SUB}</span>
             </div>
           )}
 
           {!anyTargets ? (
-            <div className="rounded-xl p-8 text-center text-sm text-[#57606a]" style={CARD}>
+            <div className="rounded-xl p-8 text-center text-sm text-[#57606a]" style={CARD_STYLE}>
               {RESPONSE_NO_TARGETS}
             </div>
           ) : (

@@ -8,6 +8,7 @@ import {
 } from './uiCopy';
 import { TOOLTIPS } from './helpContent';
 import { toastDisposition } from './uiToasts';
+import { SEVERITY_PILL, severityDot } from './ui';
 
 // Detections tab (Stage 2; Final pass Part III.0.1): TRIAGE ONLY --
 // promote / dismiss / reopen. All dispositions are scored server-side;
@@ -16,16 +17,12 @@ import { toastDisposition } from './uiToasts';
 // only the neutral Open in Response navigation, which selects the
 // relevant target there and executes nothing.
 
-export const SEV_PILL = {
-  critical: 'bg-red-50 text-red-700 border-red-200',
-  high: 'bg-orange-50 text-orange-700 border-orange-200',
-  medium: 'bg-amber-50 text-amber-700 border-amber-200',
-};
-export const SEV_DOT = { critical: '#b26666', high: '#c28e46', medium: '#d4cc6e' };
-
+// Visual pass VG: severity pills and dots read the shared maps (ui.jsx),
+// unifying the dot palette with the Incidents/Dashboard severity dots
+// (previously a slightly different set of hexes solved the same problem).
 export const SeverityBadge = ({ severity }) => (
-  <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border ${SEV_PILL[severity] || 'border-[#d0d7de] text-[#57606a]'}`}>
-    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: SEV_DOT[severity] || '#8b949e' }} />
+  <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border ${SEVERITY_PILL[severity] || 'border-[#d0d7de] text-[#57606a]'}`}>
+    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: severityDot(severity) }} />
     {String(severity || '').toUpperCase()}
   </span>
 );

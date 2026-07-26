@@ -11,6 +11,7 @@ import {
   BREAKDOWN_LOAD_ERROR, CALL_CORRECT, CALL_WRONG, ACTION_LABELS,
 } from './uiCopy';
 import { deriveAchievements } from './achievements';
+import { CARD_STYLE, gradeColor } from './ui';
 
 // Stage 5 Phase 5 commit 5.4 (ratified B-OD-1 Option 1): the Metrics tab is
 // the ONE durable per-incident Learning Review home. Everything rendered
@@ -20,8 +21,7 @@ import { deriveAchievements } from './achievements';
 // never renders teaching content (one venue, 19.19). Labeling keeps the
 // 3.9B distinction: this block is Incident Grade, never Session Performance.
 
-const CARD = { background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' };
-const gradeColor = (g) => (!g || g === '-') ? '#8b949e' : g === 'F' ? '#b45858' : g === 'D' ? '#c08a3e' : '#6fa868';
+// Visual pass VG: card surface + grade colors from the shared module.
 
 // One teaching entry row: verb + target + the frozen why.
 const EntryRow = ({ e }) => (
@@ -116,7 +116,7 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
         <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332]">{LEARNING_REVIEW_TITLE}</h2>
         <span className="text-xs text-[#6e7781] uppercase tracking-wider">{INCIDENT_GRADE_LABEL}</span>
       </div>
-      <div className="rounded-2xl p-4 sm:p-6" style={CARD}>
+      <div className="rounded-xl p-4 sm:p-6" style={CARD_STYLE}>
         {completed.length === 0 ? (
           <p className="text-sm text-[#57606a]">{NO_SUBMITTED_INCIDENTS}</p>
         ) : (

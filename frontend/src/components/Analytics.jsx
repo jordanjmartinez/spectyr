@@ -7,6 +7,7 @@ import ActionHistory from './ActionHistory';
 import ScoreSections from './ScoreSections';
 import LearningReview from './LearningReview';
 import { SESSION_PERFORMANCE_LABEL } from './uiCopy';
+import { CARD_STYLE } from './ui';
 
 const Analytics = ({ onReset, analystName, setAnalyticsCount, isVisible = true, reviewRequest = null }) => {
   const [report, setReport] = useState(null);
@@ -86,7 +87,7 @@ const Analytics = ({ onReset, analystName, setAnalyticsCount, isVisible = true, 
       <div>
         <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">{SESSION_PERFORMANCE_LABEL}</h2>
         {progress ? (
-          <div className="rounded-2xl p-4 sm:p-6" style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+          <div className="rounded-xl p-4 sm:p-6" style={CARD_STYLE}>
             <p className="text-sm text-[#57606a]">
               Grading appears once you submit an incident. Investigate the queue, triage detections, take response actions, then submit each incident to lock in your call and see how it scored.
             </p>
@@ -97,7 +98,7 @@ const Analytics = ({ onReset, analystName, setAnalyticsCount, isVisible = true, 
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl" style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+          <div className="rounded-xl" style={CARD_STYLE}>
             <div className="grid grid-cols-1 md:grid-cols-2">
               <div className="p-4 sm:p-6 border-b md:border-b-0 md:border-r border-[#e2e6ea]">
                 <AnalystReportCard report={cardReport} />
