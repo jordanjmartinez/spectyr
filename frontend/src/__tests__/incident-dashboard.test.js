@@ -233,12 +233,16 @@ test('V6-R: the coverage radar carries no session/player overlay; grading is fet
   graded.forEach(p => expect(p).toContain('INC-3000'));
 });
 
-test('Incident Grade and Session performance are both present and distinct', async () => {
+test('VH: Session performance is a KPI tile, distinct from the per-incident grade', async () => {
   render(<IncidentDashboard gameMode="analyst" />);
   await screen.findByText('INC-3000');
-  expect(screen.getByText('Session performance')).toBeInTheDocument();
-  expect(screen.getAllByText(/71%/).length).toBeGreaterThanOrEqual(1);   // session grade C 71%
+  const kpi = screen.getByTestId('kpi-row');
+  expect(within(kpi).getByText('Session performance')).toBeInTheDocument();
+  await waitFor(() => expect(within(kpi).getByText('71%')).toBeInTheDocument());  // session C 71%
   expect(screen.getByText(/B · 84%/)).toBeInTheDocument();               // incident grade row
+  // the retired full-width banner is gone
+  expect(screen.queryByText('Run completed')).toBeNull();
+  expect(screen.queryByText('1 incident in this run')).toBeNull();
 });
 
 test('issues no state-changing (POST) call on render', async () => {
@@ -259,14 +263,15 @@ test('severity reads the observable scope + feed; grouped-alerts is never called
   expect(apiFetch.mock.calls.some(([p]) => p === '/api/grouped-alerts')).toBe(false);
 });
 
-test('SOC Queue band shows the mode label and the queue denominator', async () => {
-  render(<IncidentDashboard gameMode="analyst" />);
-  expect(await screen.findByText(/of 10 resolved/)).toBeInTheDocument();   // N of 10
-  expect(screen.getAllByText('SOC Queue').length).toBeGreaterThanOrEqual(1);
+test('VH: the queue count is one compact line inside Active investigation (SOC Queue), with the mode badge', async () => {
+  render(<IncidentDashboard gameMode="analyst" activeIncidentId="INC-2000" />);
+  const card = await screen.findByTestId('active-investigation');
+  await waitFor(() => expect(within(card).getByText('1 of 10 resolved')).toBeInTheDocument());
+  expect(within(card).getByText('SOC Queue')).toBeInTheDocument();   // compact badge beside identity
 });
 
-test('Guided band uses independent-run language, not a queue denominator', async () => {
-  render(<IncidentDashboard gameMode="guided" />);   // resolved_count 1 in the mock
-  expect(await screen.findByText('Run completed')).toBeInTheDocument();
+test('VH: Guided carries no queue denominator anywhere', async () => {
+  render(<IncidentDashboard gameMode="guided" activeIncidentId="INC-2000" />);
+  await screen.findByTestId('active-investigation');
   expect(screen.queryByText(/of 10 resolved/)).toBeNull();
 });

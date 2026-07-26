@@ -14,7 +14,7 @@ import GameTimer from '../components/GameTimer';
 import FailureModal from '../components/FailureModal';
 import HintPanel from '../components/HintPanel';
 import { NAV_ICONS, NAV_STROKE, ChromeIcons } from '../components/icons';
-import UtilityBar from '../components/UtilityBar';
+import AppHeader from '../components/AppHeader';
 
 const Dashboard = () => {
   const [groupedAlertCount, setGroupedAlertCount] = useState(0);
@@ -342,10 +342,13 @@ const Dashboard = () => {
 
       {/* Light content */}
       <main className="flex-1 min-w-0 p-4 sm:p-6 overflow-x-hidden">
-        {/* V3: the compact top utility region (real session identity + the
-            ghost avatar with its real-controls menu). No case context here
-            -- the pinned case line lives on the working surfaces. */}
-        <UtilityBar
+        {/* VH (owner correction): the clean application header -- the
+            current workspace title + the ghost avatar with its
+            real-controls menu. No mode or analyst name in the shell; no
+            case context here (the pinned case line lives on the working
+            surfaces). */}
+        <AppHeader
+          title={(tabs.find(t => t.key === view) || {}).label || 'Dashboard'}
           gameMode={gameMode}
           analystName={analystName}
           simActive={simActive}
@@ -360,11 +363,9 @@ const Dashboard = () => {
         <div className={view === "dashboard" ? "block" : "hidden"}>
           <IncidentDashboard
             gameMode={gameMode}
-            analystName={analystName}
             activeIncidentId={activeIncidentId}
             onSelectIncident={setActiveIncidentId}
             onNavigate={setView}
-            onReset={() => setShowResetModal(true)}
             isVisible={view === "dashboard"}
             chosen={chosen}
           />

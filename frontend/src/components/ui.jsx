@@ -83,21 +83,22 @@ export const Card = ({ hairline = false, className = '', style, children }) => (
   </div>
 );
 
-// The standard page-identity header: icon tile + title + count + subtitle,
-// with a right-hand slot for page-level controls (view toggles, search).
+// The standard page-identity card: icon tile + count + subtitle, with a
+// right-hand slot for page-level controls (view toggles, search). VH
+// (owner correction): the WORKSPACE TITLE lives in the one AppHeader
+// above the content -- this card no longer repeats it (no stacked
+// duplicate headers); the `title` prop remains accepted as the card's
+// accessible name.
 export const PageHeader = ({ icon, title, count = null, subtitle, right = null }) => (
   <Card hairline className="mb-4">
-    <div className="p-4 sm:p-5 flex flex-wrap items-center gap-4">
+    <div className="p-4 sm:p-5 flex flex-wrap items-center gap-4" aria-label={title || undefined}>
       {icon && (
         <div className="w-10 h-10 rounded-lg bg-[#101218] flex items-center justify-center shrink-0 text-white">
           {icon}
         </div>
       )}
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <h2 className="t-page">{title}</h2>
-          {count !== null && <CountPill>{count}</CountPill>}
-        </div>
+      <div className="min-w-0 flex items-center gap-2">
+        {count !== null && <CountPill>{count}</CountPill>}
         {subtitle && <p className="text-sm text-[#57606a] truncate">{subtitle}</p>}
       </div>
       {right && <div className="ml-auto flex flex-wrap items-center gap-2">{right}</div>}

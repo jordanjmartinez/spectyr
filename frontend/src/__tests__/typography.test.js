@@ -11,8 +11,17 @@ import React from 'react';
 import fs from 'fs';
 import path from 'path';
 import { render, screen } from '@testing-library/react';
-import { PageHeader, SectionLabel } from '../components/ui';
-import { SESSION_PERFORMANCE_LABEL } from '../components/uiCopy';
+
+jest.mock('react-router-dom', () => ({
+  Link: ({ to, children, ...rest }) => {
+    const R = require('react');
+    return R.createElement('a', { href: typeof to === 'string' ? to : '#', ...rest }, children);
+  },
+}), { virtual: true });
+
+const { PageHeader, SectionLabel } = require('../components/ui');
+const AppHeader = require('../components/AppHeader').default;
+const { SESSION_PERFORMANCE_LABEL } = require('../components/uiCopy');
 
 const css = fs.readFileSync(path.join(__dirname, '..', 'index.css'), 'utf8');
 
@@ -39,11 +48,15 @@ test('the ruled token scale is defined once, with the ruled values', () => {
 test('the shared primitives wear the tokens (every consumer inherits them)', () => {
   const { container } = render(
     <div>
+      <AppHeader title="Endpoints" simActive={false} />
       <PageHeader title="Endpoints" subtitle="x" />
       <SectionLabel>Severity distribution</SectionLabel>
     </div>,
   );
-  expect(container.querySelector('h2.t-page')).not.toBeNull();
+  // VH: the WORKSPACE TITLE lives in the one AppHeader (t-page); the
+  // page-identity card repeats no title (no stacked duplicates).
+  expect(container.querySelector('h1.t-page')).not.toBeNull();
+  expect(container.querySelectorAll('.t-page')).toHaveLength(1);
   expect(container.querySelector('p.t-overline')).not.toBeNull();
 });
 

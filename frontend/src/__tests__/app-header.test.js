@@ -1,10 +1,10 @@
 /**
- * Visual pass V3: the compact top utility region + the Spectyr ghost
- * avatar. The avatar is NOT a dead control: it opens a menu of existing
- * real controls only (Reset Simulation -> the existing confirm modal,
- * Documentation, Back to home). Nothing is invented: no user name beyond
- * the real analyst-entered one, no email, no account/subscription/cloud
- * sync/logout vocabulary anywhere in the region.
+ * VH (owner correction): the clean application header. Left: the current
+ * workspace title (t-page), never a mode or analyst name. Right: real
+ * utilities only -- the 32px circular ghost avatar (no fake search,
+ * bells, settings, or profile controls; no notification surface exists
+ * and the only Help surface is the Guided floating hint control). The
+ * avatar opens existing real controls only and is never a dead button.
  */
 import React from 'react';
 import { render, screen, waitFor, fireEvent, within, act } from '@testing-library/react';
@@ -29,7 +29,6 @@ const route = (analyst) => (path) => {
   if (path === '/api/endpoints') return ok({ org: {}, endpoints: [] });
   if (path === '/api/analytics/report_card') return ok({ state: 'in_progress', progress: {} });
   if (path === '/api/analytics/action_history') return ok([]);
-  if (path === '/api/analytics/attack_coverage') return ok({ tactics: [] });
   if (path === '/api/actions') return ok({ actions: [] });
   return ok({});
 };
@@ -41,55 +40,58 @@ const renderDashboard = async (analyst = 'Jordan') => {
 };
 
 const FORBIDDEN_IDENTITY = [/@/, /sign out/i, /log ?out/i, /account settings/i,
-  /subscription/i, /billing/i, /cloud sync/i, /profile/i, /upgrade/i];
+  /subscription/i, /billing/i, /cloud/i, /profile/i, /upgrade/i];
 
-test('the utility region shows the REAL session identity (mode + analyst name)', async () => {
+test('the header reads [current workspace title] + [avatar]; never mode or analyst as the title', async () => {
   await renderDashboard('Jordan');
-  const bar = await screen.findByTestId('utility-bar');
-  await waitFor(() => expect(bar.textContent).toContain('Jordan'));
-  expect(bar.textContent).toContain('Guided');
-  FORBIDDEN_IDENTITY.forEach((re) => expect(bar.textContent).not.toMatch(re));
+  const header = await screen.findByTestId('app-header');
+  const h1 = header.querySelector('h1.t-page');
+  expect(h1).not.toBeNull();
+  expect(h1.textContent).toBe('Dashboard');
+  // the shell never renders the analyst name or mode outside the menu
+  expect(header.textContent).toBe('Dashboard');
+  // and no invented utility controls exist beside the avatar
+  const buttons = within(header).getAllByRole('button');
+  expect(buttons).toHaveLength(1);
+  expect(buttons[0]).toHaveAccessibleName('Analyst menu');
+});
+
+test('the title follows the active workspace', async () => {
+  await renderDashboard('Jordan');
+  fireEvent.click(screen.getByTitle('Detections'));
+  expect((await screen.findByTestId('app-header')).querySelector('h1').textContent).toBe('Detections');
+  fireEvent.click(screen.getByTitle('Metrics'));
+  expect(screen.getByTestId('app-header').querySelector('h1').textContent).toBe('Metrics');
 });
 
 test('the avatar opens a menu of existing real controls; Reset routes to the existing confirm modal', async () => {
   await renderDashboard('Jordan');
   const avatar = await screen.findByRole('button', { name: 'Analyst menu' });
-  await waitFor(() => expect(screen.getByTestId('utility-bar').textContent).toContain('Jordan'));
+  expect(avatar.className).toMatch(/w-8 h-8 rounded-full/);   // ~32px circular
   fireEvent.click(avatar);
   const menu = screen.getByRole('menu', { name: 'Analyst menu' });
   expect(within(menu).getByText('Local analyst')).toBeInTheDocument();
-  expect(within(menu).getByText('Jordan')).toBeInTheDocument();
+  await waitFor(() => expect(within(menu).getByText('Jordan')).toBeInTheDocument());
   expect(within(menu).getByText('Guided mode')).toBeInTheDocument();
   expect(within(menu).getByText('Documentation')).toBeInTheDocument();
   expect(within(menu).getByText('Back to home')).toBeInTheDocument();
   FORBIDDEN_IDENTITY.forEach((re) => expect(menu.textContent).not.toMatch(re));
-  // Reset is the EXISTING control: it opens the existing confirm modal
   fireEvent.click(within(menu).getByRole('menuitem', { name: /Reset Simulation/ }));
   expect(await screen.findByText(/clear all events and incidents/)).toBeInTheDocument();
-  // and no state-changing request fired from opening things
   const posts = apiFetch.mock.calls.filter(([, o]) => o && o.method === 'POST');
   expect(posts).toHaveLength(0);
 });
 
-test('the avatar menu closes on Escape and is labeled (never a dead control)', async () => {
-  await renderDashboard('Jordan');
+test('Escape closes the labeled menu; no session keeps it honest with live destinations', async () => {
+  await renderDashboard(null);
   const avatar = await screen.findByRole('button', { name: 'Analyst menu' });
   expect(avatar).toHaveAttribute('aria-haspopup', 'menu');
   fireEvent.click(avatar);
-  expect(avatar).toHaveAttribute('aria-expanded', 'true');
+  const menu = screen.getByRole('menu', { name: 'Analyst menu' });
+  expect(within(menu).getByText('No active session')).toBeInTheDocument();
+  expect(within(menu).queryByText('Reset Simulation')).toBeNull();
+  expect(within(menu).getByText('Documentation')).toBeInTheDocument();
   fireEvent.keyDown(document, { key: 'Escape' });
   await waitFor(() => expect(screen.queryByRole('menu', { name: 'Analyst menu' })).toBeNull());
   expect(avatar).toHaveAttribute('aria-expanded', 'false');
-});
-
-test('with no active session the region is honest and the menu still has real destinations', async () => {
-  await renderDashboard(null);
-  const bar = await screen.findByTestId('utility-bar');
-  await waitFor(() => expect(bar.textContent).toContain('No active session'));
-  fireEvent.click(screen.getByRole('button', { name: 'Analyst menu' }));
-  const menu = screen.getByRole('menu', { name: 'Analyst menu' });
-  // no Reset without a session; the two navigation destinations remain
-  expect(within(menu).queryByText('Reset Simulation')).toBeNull();
-  expect(within(menu).getByText('Documentation')).toBeInTheDocument();
-  expect(within(menu).getByText('Back to home')).toBeInTheDocument();
 });

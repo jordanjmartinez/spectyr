@@ -48,7 +48,7 @@ const WidgetLabel = ({ children }) => (
 );
 
 const IncidentDashboard = ({
-  gameMode, analystName, onSelectIncident, onNavigate, onReset, isVisible = true,
+  gameMode, onSelectIncident, onNavigate, isVisible = true,
   // A3.4 (ratified A3-OD-3): the shell-owned classification selections --
   // this surface derives Ready from the SAME state as the workspace, so
   // no surface shows Ready while Classification says not selected.
@@ -193,31 +193,11 @@ const IncidentDashboard = ({
 
   return (
     <div className="space-y-4">
-      {/* Session band (session-wide) */}
-      <div className="rounded-xl p-4 sm:p-5" style={CARD_STYLE}>
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <span className="t-overline">{MODE_LABEL[gameMode] || gameMode}</span>
-            {analystName && <span className="text-sm text-[#1a2332] font-medium">{analystName}</span>}
-            <span className="text-sm text-[#57606a]">
-              {isGuided
-                ? (data.resolved_count > 0 ? 'Run completed' : '1 incident in this run')
-                : <><span className="font-medium text-[#1a2332]">{data.resolved_count}</span> of {queueLength} resolved</>}
-            </span>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="t-overline">{SESSION_PERFORMANCE_LABEL}</p>
-              <p className="text-lg font-semibold" style={{ color: gradeColor(sessionGrade?.grade) }}>
-                {sessionGrade?.grade || '-'}
-                {sessionGrade?.accuracy != null && <span className="ml-1.5 text-xs text-[#8b949e] font-normal">{sessionGrade.accuracy}%</span>}
-              </p>
-            </div>
-            <button onClick={onReset} className="px-3 py-1.5 text-xs font-medium rounded-md border bg-white hover:bg-[#eef1f4] text-[#1a2332] border-[#d0d7de]">Reset</button>
-          </div>
-        </div>
-      </div>
-
+      {/* VH (owner correction): the full-width session banner is retired.
+          Session performance is a dashboard metric (KPI tile); the mode
+          rides the Active investigation card as a compact badge; the
+          queue count is a compact line there too; Reset lives in the
+          AppHeader avatar menu. */}
       <div className="grid grid-cols-1 lg:grid-cols-[19rem_minmax(0,1fr)] gap-4 items-start">
         {/* ---- supporting column ---- */}
         <div className="space-y-4 min-w-0">
@@ -232,7 +212,8 @@ const IncidentDashboard = ({
                   <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: severityDot(focus.severity) }} />
                   <span className="log-mono text-[#16436b] text-xs">{focus.incident_id}</span>
                   <span className="text-[11px] text-[#8b949e]">{focus.severity}</span>
-                  <span className="text-[11px] text-[#8b949e]">{MODE_LABEL[gameMode] || gameMode}</span>
+                  {/* VH: the session mode as a compact badge beside identity */}
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#eef1f4] text-[#57606a]">{MODE_LABEL[gameMode] || gameMode}</span>
                 </div>
                 <p className="text-sm font-medium text-[#1a2332]">{focus.title}</p>
                 {/* VS: Investigation Progress folded in here -- the bar and
@@ -260,6 +241,11 @@ const IncidentDashboard = ({
                     : CLASSIFICATION_NOT_SELECTED}</p>
                   <p>{responseActionsTaken(focus.related_actions ?? 0)}</p>
                   <p className="text-[#8b949e]">{focus.sealed && focusReady ? READY_TO_SUBMIT : readinessChip(focus)}</p>
+                  {/* VH: the queue count is one compact line, never a
+                      full-width banner (Guided has no queue). */}
+                  {!isGuided && queueLength > 0 && (
+                    <p className="text-[#8b949e]">{data.resolved_count} of {queueLength} resolved</p>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -364,7 +350,7 @@ const IncidentDashboard = ({
         <div className="space-y-4 min-w-0">
           {/* C. KPI stat tiles: real session observables only -- no trends,
               deltas, or sparklines (no historical series exists). */}
-          <div className="grid grid-cols-2 xl:grid-cols-4 gap-3" data-testid="kpi-row">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3" data-testid="kpi-row">
             <Metric label="Detections reviewed" value={(detCounts.promoted ?? 0) + (detCounts.dismissed ?? 0)} />
             <Metric label="Response actions executed" value={actionSuccesses} />
             <Metric label="Incidents completed" value={data.completed.length} />
@@ -373,6 +359,14 @@ const IncidentDashboard = ({
               value={latest?.incident_grade?.grade || '-'}
               accent={latest ? gradeColor(latest.incident_grade?.grade) : undefined}
               sub={latest ? gradeAccuracy(latest.incident_grade) : 'No submissions yet'}
+            />
+            {/* VH: Session performance is a dashboard metric (the retired
+                banner's number), distinct from the per-incident grade. */}
+            <Metric
+              label={SESSION_PERFORMANCE_LABEL}
+              value={sessionGrade?.grade || '-'}
+              accent={sessionGrade ? gradeColor(sessionGrade.grade) : undefined}
+              sub={sessionGrade?.accuracy != null ? `${sessionGrade.accuracy}%` : 'Across submitted incidents'}
             />
           </div>
 
