@@ -376,15 +376,16 @@ const IncidentDashboard = ({
             />
           </div>
 
-          {/* D. The ATT&CK coverage radar (V6-R owner correction): one
-              polygon, catalog coverage against the authoritative pinned
-              per-tactic technique counts. No session/player overlay. */}
-          <AttackRadar isVisible={isVisible} />
-
+          {/* VL (owner correction): the radar is SECONDARY catalog context
+              in a right-side column (~1/3 of the main region); Recent
+              results occupies the wider region. Narrow screens stack the
+              radar BENEATH the operational content (DOM order = the ruled
+              hierarchy). */}
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(300px,34%)] gap-4 items-start">
           {/* E. Recent results -- submitted incidents this session, newest
               first; grades/categories are the frozen post-submission
               record. Rows navigate to the incident. */}
-          <div className="rounded-xl" style={CARD_STYLE} data-testid="recent-results">
+          <div className="rounded-xl min-w-0" style={CARD_STYLE} data-testid="recent-results">
             <div className="px-4 pt-4 pb-2 flex items-baseline gap-2">
               <p className="text-sm font-semibold text-[#1a2332]">Recent results</p>
               <span className="text-xs text-[#6e7781]">&middot; This session</span>
@@ -430,6 +431,12 @@ const IncidentDashboard = ({
                 </table>
               </div>
             )}
+          </div>
+
+          {/* D. ATT&CK catalog coverage (V6-R): one polygon against the
+              authoritative pinned per-tactic counts; supports the
+              dashboard, never dominates it. */}
+          <AttackRadar isVisible={isVisible} />
           </div>
         </div>
       </div>

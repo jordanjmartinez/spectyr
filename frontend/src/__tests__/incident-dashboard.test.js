@@ -72,7 +72,9 @@ beforeEach(() => {
 test('renders the overview grid in reading order: A, B, then the main region', async () => {
   const { container } = render(<IncidentDashboard gameMode="analyst" analystName="A" />);
   await screen.findByText('INC-2000');
-  const order = ['active-investigation', 'severity-distribution', 'environment-status', 'kpi-row', 'attack-radar', 'recent-results'];
+  // VL: the radar is SECONDARY -- it stacks beneath the operational
+  // content and Recent results (the ruled hierarchy).
+  const order = ['active-investigation', 'severity-distribution', 'environment-status', 'kpi-row', 'recent-results', 'attack-radar'];
   const nodes = order.map(id => container.querySelector(`[data-testid="${id}"]`));
   nodes.forEach(n => expect(n).not.toBeNull());
   for (let i = 0; i < nodes.length - 1; i += 1) {

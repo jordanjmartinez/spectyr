@@ -29,21 +29,33 @@ import { CARD_STYLE, SectionLabel } from './ui';
 
 const ROWS = coverageByTactic();
 
-// Two-line angle labels so 15 full tactic names stay readable.
-const AngleTick = ({ payload, x, y, textAnchor }) => {
-  const words = String(payload.value).split(' ');
-  const lines = words.length > 1
-    ? [words.slice(0, Math.ceil(words.length / 2)).join(' '),
-       words.slice(Math.ceil(words.length / 2)).join(' ')]
-    : [words[0]];
-  return (
-    <text x={x} y={y} textAnchor={textAnchor} fill="#57606a" fontSize={10.5}>
-      {lines.map((line, i) => (
-        <tspan key={line} x={x} dy={i === 0 ? 0 : 11}>{line}</tspan>
-      ))}
-    </text>
-  );
+// VL (owner correction): concise tactic labels on the chart itself; the
+// canonical full names stay exposed through the tooltip and the sr
+// table (and each label's SVG <title>).
+export const SHORT_TACTIC = {
+  'Reconnaissance': 'Recon',
+  'Resource Development': 'Resource Dev',
+  'Initial Access': 'Initial Access',
+  'Execution': 'Execution',
+  'Persistence': 'Persistence',
+  'Privilege Escalation': 'Priv Esc',
+  'Stealth': 'Stealth',
+  'Defense Impairment': 'Def Impairment',
+  'Credential Access': 'Cred Access',
+  'Discovery': 'Discovery',
+  'Lateral Movement': 'Lateral Mvmt',
+  'Collection': 'Collection',
+  'Command and Control': 'C2',
+  'Exfiltration': 'Exfil',
+  'Impact': 'Impact',
 };
+
+const AngleTick = ({ payload, x, y, textAnchor }) => (
+  <text x={x} y={y} textAnchor={textAnchor} fill="#57606a" fontSize={10}>
+    <title>{payload.value}</title>
+    {SHORT_TACTIC[payload.value] || payload.value}
+  </text>
+);
 
 const RadarTooltip = ({ active, payload }) => {
   if (!active || !payload || !payload.length) return null;
@@ -59,43 +71,47 @@ const RadarTooltip = ({ active, payload }) => {
 
 const AttackRadar = ({ isVisible = true }) => {
   const wrapRef = useRef(null);
-  const [width, setWidth] = useState(560);
+  const [width, setWidth] = useState(440);
 
   useEffect(() => {
     const measure = () => {
       const w = wrapRef.current ? wrapRef.current.clientWidth : 0;
-      setWidth(Math.max(320, Math.min(680, w || 560)));
+      // VL: near-square chart area, ~400-480px where available.
+      setWidth(Math.max(300, Math.min(480, w || 440)));
     };
     measure();
     window.addEventListener('resize', measure);
     return () => window.removeEventListener('resize', measure);
   }, []);
 
-  const height = Math.round(width * 0.66);
+  const height = Math.round(width * 0.94);
 
   return (
-    <div className="rounded-xl" style={CARD_STYLE} data-testid="attack-radar">
+    <div className="rounded-xl min-w-0" style={CARD_STYLE} data-testid="attack-radar">
       <div className="px-4 pt-4">
         <SectionLabel>ATT&amp;CK coverage</SectionLabel>
+        <p className="t-meta text-[#6e7781]">Catalog technique coverage</p>
       </div>
-      <div ref={wrapRef} className="px-2 pb-1 flex justify-center" aria-hidden="true">
+      <div ref={wrapRef} className="px-1 flex justify-center" aria-hidden="true">
         {isVisible && (
           <RadarChart
             width={width}
             height={height}
             data={ROWS}
             cx="50%"
-            cy="52%"
-            outerRadius="66%"
-            margin={{ top: 24, right: 48, bottom: 16, left: 48 }}
+            cy="50%"
+            outerRadius="76%"
+            margin={{ top: 8, right: 8, bottom: 8, left: 8 }}
           >
             <PolarGrid stroke="#e2e6ea" />
             <PolarAngleAxis dataKey="tactic" tick={<AngleTick />} />
+            {/* the radius labels sit off-axis (angle 18) so the ring
+                percentages never overlap a tactic name */}
             <PolarRadiusAxis
-              angle={90}
+              angle={18}
               domain={[0, 100]}
               tickCount={5}
-              tick={{ fill: '#8b949e', fontSize: 9.5 }}
+              tick={{ fill: '#8b949e', fontSize: 9 }}
               tickFormatter={(v) => `${v}%`}
               stroke="#e2e6ea"
               axisLine={false}
@@ -131,10 +147,18 @@ const AttackRadar = ({ isVisible = true }) => {
         </tbody>
       </table>
 
-      {/* data-source disclosure (V11) */}
-      <div className="px-4 pb-3 text-[11px] text-[#8b949e]">
-        {ATTACK_VERSION} &middot; Coverage = scenario-represented techniques / authoritative
-        techniques per tactic ({SOURCE_DATASET.tag}, parent-technique counting).
+      {/* concise footer; the full derivation rides the accessible info
+          tooltip (the existing help-tip pattern) and the sr caption */}
+      <div className="px-4 pb-3 text-[11px] text-[#8b949e] flex items-center gap-1.5">
+        <span>v19.1 &middot; represented / total techniques per tactic</span>
+        <button
+          type="button"
+          aria-label="Coverage data source"
+          data-help={`${ATTACK_VERSION}. Coverage = scenario-represented techniques divided by the authoritative Enterprise technique count per tactic (dataset ${SOURCE_DATASET.tag}, parent-technique counting).`}
+          className="help-tip w-4 h-4 rounded-full border border-[#d0d7de] text-[#8b949e] text-[10px] leading-none inline-flex items-center justify-center"
+        >
+          i
+        </button>
       </div>
     </div>
   );

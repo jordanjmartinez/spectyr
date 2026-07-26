@@ -49,17 +49,26 @@ test('renders one polygon with percentage rings and the sr-only table equivalent
   expect(caption.textContent).toMatch(/ATT&CK-v19\.1/);
   const discovery = within(table).getByText('Discovery').closest('tr');
   expect(discovery.textContent).toBe('Discovery1343%');
-  // the data-source line names the derivation
-  expect(screen.getByText(/parent-technique counting/)).toBeInTheDocument();
+  // VL: concise footer + the full derivation on the accessible info tooltip
+  expect(screen.getByText(/v19\.1 · represented \/ total techniques per tactic/)).toBeInTheDocument();
+  const info = screen.getByRole('button', { name: 'Coverage data source' });
+  expect(info.getAttribute('data-help')).toMatch(/parent-technique counting/);
+  expect(info.getAttribute('data-help')).toMatch(/ATT&CK-v19\.1/);
+  // VL: subtitle + concise visual labels, full names in the sr table
+  expect(screen.getByText('Catalog technique coverage')).toBeInTheDocument();
+  expect(within(table).getByText('Command and Control')).toBeInTheDocument();
 });
 
-test('no tabs, no list control, no matrix leftovers, no overlays, no buttons', () => {
+test('no tabs, no list control, no matrix leftovers, no overlays, no view controls', () => {
   const { container } = render(<AttackRadar />);
   expect(screen.queryByText('Catalog coverage')).toBeNull();
   expect(screen.queryByText('This session')).toBeNull();
   expect(screen.queryByText('List view')).toBeNull();
   expect(screen.queryByText('No coverage')).toBeNull();
-  expect(screen.queryAllByRole('button')).toHaveLength(0);
+  // the ONLY button is the accessible data-source info tooltip (VL)
+  const buttons = screen.queryAllByRole('button');
+  expect(buttons).toHaveLength(1);
+  expect(buttons[0]).toHaveAccessibleName('Coverage data source');
   expect(screen.queryAllByRole('tab')).toHaveLength(0);
   // no player-performance or adversary overlay vocabulary
   expect(container.textContent).not.toMatch(/submitted|Incident Grade|adversar/i);
