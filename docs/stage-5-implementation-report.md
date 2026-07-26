@@ -399,3 +399,219 @@ submission boundary from byte-frozen records; the help model is
 answer-free by construction and Guided-gated where it coaches. Stopped at
 the Stage 5 checkpoint: **no merge to main, no push, no polish, no new
 stage.**
+
+
+---
+---
+
+# Part II — C1 Checkpoint Fixes + Amendment 3 (2026-07-26, append-only)
+
+Extends the Phase 7 certification above. Two owner-directed increments
+landed on `stage-5-live-run-feedback` after the post-Stage-5 checkpoint
+product review: the C1 checkpoint fixes (defects against ratified text;
+docs/stage-5-checkpoint-fix-report.md is their own artifact) and the
+ratified Amendment 3 implementation (contract appendix A3 + the A3-R.1
+owner rulings). **NOT merged to main, NOT pushed.** Gates at the A3
+product tip `afbf93b`: `run_gates.py --all` **ALL GREEN** (backend
+battery complete incl. `test_lcql.py` 50; frontend **27 suites / 264
+tests**; was 26/244 at `a883508`).
+
+## II.1 Complete ordered commit ledger (`a883508..`)
+
+**C1 checkpoint fixes (post-review; defects against ratified text):**
+- `a2cc3dc` C1-1 (F1): evidence-surface nav badges removed (+ dead
+  setXCount paths); nav-badges.test.js
+- `0a1fcd2` C1-2 (F5a): Learning Review buckets conform to A1-B.4.1
+  (correct dispositions join the well bucket; category headings and
+  empty states; bare "None." deleted)
+- `7ac299d` C1-3 (F4a): the ratified A1-B.3.2 workspace classification
+  selector mounted (modal flow then unchanged, pre-filled)
+- `763b116` C1-4 (F2 latent): interim failed-return guard (criteria
+  10/13), later superseded by A3.2
+- `80878da` C1-5 (F6 slice): Reports nav entry hidden; lying
+  empty-state copy replaced
+- `74198f2` C1 docs: fix report + the standing scaffold 10.1
+  ratified-copy conformance sweep
+
+**Amendment 3 (drafted, ratified, implemented):**
+- `72e286b` A3 DRAFT appended after Amendment 2 (docs-only,
+  append-only verified; branch `stage-5-amendment-3`)
+- `b30ff4c` A3 RATIFIED: A3-R.1 owner rulings recorded verbatim
+  (OD-1 final copy; OD-2 Check Answer on the workspace selection with
+  the modal variants deleted; OD-3 one shell-owned Ready; OD-4 Simple
+  default everywhere, session-local)
+- `74dbd34` merge `stage-5-amendment-3` into
+  `stage-5-live-run-feedback` (`--no-ff`)
+- `393b484` A3-8 scaffold delta applied (docs-only)
+- `7acde0a` **A3.1** copy constants ahead of consumers (R7): the six
+  ruled finals + four standing drafted finals; byte pins + scan rows
+- `ed5bbc8` **A3.2 (F2)** model B: expanded-search entry captures
+  the pre-entry {queryText, snapshot, scope, timeline}; the return
+  RESTORES it exactly with zero query/scope requests and consumes it;
+  the hold survives every run while expanded; cleared by case change,
+  incident-scoped descent, and reset; ruled RETURN_SUBCOPY; the C1
+  guard removed as unreachable; the model A re-run tests translated
+  to the restore battery
+- `75e2d6d` **A3.3 (F3)** Surrounding events removed end to end
+  (control, banner branches, focus chain, the A2 hold machinery, four
+  strings, the docs clause); tooltip set NINE to EIGHT; descentHost
+  and descent untouched; the two OR-fallback tests relocated; net
+  -313 lines
+- `6a20750` **A3.4 (F4b)** final submission gating: shell-owned
+  `chosen`, the ONE `submissionReady` derivation (server readiness
+  AND a valid classification) at every Ready surface (checklist,
+  Submit, list chip, Ready view/count, IncidentDashboard chip, with
+  "Submit pending" when server-ready unclassified); the bare
+  confirmation only (landed copy verbatim + the Hardcore warning
+  relocated in); the modal variants DELETED; Check Answer consumes
+  the workspace selection and disables until it is valid
+- `680fc1b` **A3.5 (F7)** simple search: the FILTERS-only bar +
+  value-driven Source / Event type selects projecting the ONE
+  canonical pending text; composeQuery / replaceTimeframe /
+  rawFiltersOf chokepoint forms (the raw timeframe splice migrated);
+  mode-scoped placeholder/help/empty rules; Simple default in every
+  play mode, session-local toggle; Advanced unchanged one toggle
+  away; simple-search.test.js
+- `afbf93b` **A3.6 (F7)** the FILTERS-vs-compiler error boundary with
+  the field-relative position remap; GENERATED_FORMS_CORPUS 12 to 18
+  on both sides; the SOURCE_FAMILIES two-sided parity pin; the
+  splice-translation corpus; the representability round-trip battery;
+  backend test_lcql.py TESTS ONLY
+- (this commit) **A3.7** certification: the Chrome walks, the
+  conformance sweep, this report
+
+## II.2 Behavioral changes (player-facing, complete)
+
+1. **Nav rail:** no numeric badges on SIEM/Detections/Endpoints; the
+   Incidents badge stays; the Reports entry is hidden until a working
+   workflow exists.
+2. **Learning Review:** the well bucket states correct detection
+   calls ("Detection calls: N of M correct") beside completed
+   required actions; every bucket heading and empty state names its
+   category.
+3. **Classification is an inline workspace step** (the selector on
+   sealed active incidents) driving the checklist line.
+4. **Ready means submission-ready everywhere:** server observable
+   readiness AND a valid classification; a server-ready unclassified
+   incident reads "Submit pending" on every surface; Submit disables
+   with "Select a classification to submit." until then; Submit opens
+   ONE bare confirmation (no data entry; Hardcore carries its warning
+   there); Check Answer (Guided) consumes the same selection and
+   disables until valid. The server gate is untouched as the
+   authoritative backstop.
+5. **Expanded search returns by RESTORE (model B):** entering holds
+   the pre-entry view; "Return to INC-#### evidence" redisplays it
+   exactly, zero requests, hold consumed; work done while expanded is
+   not kept (the ruled subcopy says so); a restored stale snapshot is
+   dated by its existing as-of marker.
+6. **Surrounding events is REMOVED** (rationale recorded in A3-3.1);
+   evidence descent unchanged; eight permanent tooltips.
+7. **Simple search is the default search** in Guided, SOC Queue, and
+   Hardcore: a filter-expression bar + Source / Event type / Timeframe
+   controls compiling to canonical LCQL through the one generator; the
+   canonical echo keeps showing the four-part truth; Advanced LCQL is
+   one toggle away; FILTERS parse errors name the Filters section with
+   field-relative positions; pre-FILTERS errors are corpus-guarded
+   product defects, never player errors.
+
+**Serialized-field and endpoint changes: NONE in either increment.**
+Backend product code is byte-untouched (the only backend diff is
+test_lcql.py, tests only). Scoring, rosters, readiness, sealing,
+records, snapshot identity, and the LCQL engine are unchanged;
+`test_submission_gate.py` untouched at 26/26.
+
+## II.3 Final test inventory (delta)
+
+New suites: `nav-badges.test.js` (3), `simple-search.test.js` (9).
+Deleted: `workbench-surrounding.test.js` (the control is removed; its
+two OR-fallback tests live in query-clarity). Extended: the model B
+battery (workbench-cross-host + workbench-states + the
+workbench-descent timeline-restore leg), the F4b gating/one-Ready
+battery (incidents-workspace), the A1-B.4.1 conformance regression
+(review-teaching), and the corpus/parity/round-trip pins
+(query-clarity + backend test_lcql.py: GENERATED_FORMS_CORPUS 18,
+SOURCE_FAMILIES parity, 50 passing). The pre-A3 Siem batteries mount
+`initialQueryMode="advanced"` (see Deviations).
+
+## II.4 Chrome verification (2026-07-26; dev servers; zero console errors on both walks including clean reloads)
+
+- **C1 walk (Guided INC-9709, defense_evasion_log_clearing):** the
+  badge-free rail with no Reports entry; the workspace selector
+  driving the checklist live; all-correct triage + zero response
+  actions submitted A/A/F C-70; the Learning Review rendered
+  "Detection calls: 5 of 5 correct" and "No required response actions
+  were completed." beside the missed-action whys (the owner-observed
+  "None." contradiction gone).
+- **A3 walk (Guided INC-7180, defense_evasion_log_clearing):** default
+  Simple mode (ruled placeholder and help, both selects, the Advanced
+  LCQL toggle); an untouched Run compiled `1h | * | * | *` with the
+  four-part echo; the case anchored as INC-7180 evidence with
+  scope=INC-7180; the inspector shows ==, !=, Pivot and NO Surrounding
+  control; a hostname pivot entered Expanded search (clue line, ruled
+  subcopy, and the Source select showing ACME-WS17, the value-driven
+  mode-stability live); **Return restored the case evidence
+  instantly: the same snapshot marker (seq #23, 12:42:06 sim), the
+  echo back to `1h | * | * | *` scope=INC-7180, selection preserved,
+  zero requests**; 4/4 correct triage fired the milestone toast
+  (announcing triage completion) while the checklist read "Submit
+  pending" with Submit disabled and "Select a classification to
+  submit."; True Positive then Defense Evasion flipped EVERY surface
+  to Ready together (list chip, Ready 1, checklist, Submit, Check
+  Answer); the bare confirmation named the filing with no classifier
+  step; submitted A/A/F C-70, Solo Close earned.
+- **W7 (Hardcore INC-8744):** the 15:00 timer live; no "Need a
+  hint?", no consider-prompt, no Check Answer; the dashboard and list
+  chips read "Submit pending" for server-ready unclassified
+  incidents; a workspace classification flipped INC-8744 alone to
+  Ready; the confirmation carried "Hardcore: one wrong call ends the
+  run."; the walk CANCELLED the dialog (no submission).
+
+## II.5 Ratified-copy conformance sweep (scaffold 10.1, executed with the A3 row updates)
+
+| Row | Ratified source | Verified against rendered output |
+|---|---|---|
+| 1 | A1-B.4.1 item 3 (the well bucket incl. correct dispositions) | PASS: the review-teaching conformance test + the C1 walk render |
+| 2 | A1-B.3.2 line sources; Ready = the A3-4.2 conjunction | PASS: the incidents-workspace gating battery + both walks (no surface showed Ready while "Classification: not selected") |
+| 3 | A1-A.5 finals + the A3 F2-1 return subcopy | PASS: progress-vocabulary byte pins + the expanded-search block render (the ruled two-sentence subcopy on screen) |
+| 4 | A2/A3 query finals: three ruled tooltips; surrounding rows removed | PASS: the help-model eight-control pin + query-clarity + the inspector render (no surrounding control) |
+| 5 | A1-B.3.1 toasts + the B-OD-5 prompt | PASS: live-progress + the milestone toast live (announces triage completion only) + the Hardcore prompt suppression live |
+| 6 | A3-6/A3-R.1 F7 strings (placeholder, help, toggle, selects) | PASS: progress-vocabulary byte pins + the simple-mode render |
+
+## II.6 Deviations and notes (flagged per the deviation rule)
+
+- **D-II-1 (`initialQueryMode` prop):** the pre-A3 Siem test batteries
+  author four-part LCQL directly, so they mount
+  `initialQueryMode="advanced"` instead of clicking the toggle (the
+  first attempt clicked the real toggle inside the suites' outer act
+  wrappers, where React defers the nested-act flush and the control
+  is not yet in the DOM). The product always mounts the default; the
+  REAL toggle path is pinned by the simple-search round-trip test. A
+  test-harness affordance on a product component, flagged as such.
+- **D-II-2 (hold convergence shape):** the binding F2-before-F3
+  sequencing was implemented as A3.2 introducing the expanded-search
+  hold ALONGSIDE the A2 surrounding hold (each commit independently
+  revertible, both gates green), with A3.3 deleting the surrounding
+  hold; the amendment's "one hold with a changed lifetime" is the
+  FINAL state, reached at A3.3 rather than by mutating the A2
+  variable in place. Interim behavior stayed coherent (surrounding's
+  return worked until its removal).
+- **D-II-3 (milestone toast reading):** verified per A3-4.5: the
+  T4/T5 toast keeps its ratified server-readiness trigger and wording
+  ("...is ready to submit"), announcing triage completion while the
+  checklist gates submission on classification; recorded as the
+  verified-compatible reading, not reopened.
+- Known stale docs, untouched (out of scope): CLAUDE.md's UI
+  Architecture tab list; `TriageFeedback.jsx` remains orphaned;
+  `ActionHistory.jsx`'s "Post-Incident Review" heading (review item
+  5c, optional polish, unauthorized).
+- Owner assets untouched throughout
+  (`frontend/public/videos/spectyrvideo.mp4`,
+  `frontend/public/spectyr_svg.svg`); every commit passed the
+  versioned hook; `--no-verify` never used; nothing pushed.
+
+## II.7 Stop
+
+Stopped at the FINAL Stage 5 checkpoint: C1 + Amendment 3 are
+implemented and certified on `stage-5-live-run-feedback`. **No merge
+of Stage 5 into main. No push. No final UI polish begun. No new stage
+begun.**
