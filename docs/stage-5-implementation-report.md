@@ -615,3 +615,144 @@ Stopped at the FINAL Stage 5 checkpoint: C1 + Amendment 3 are
 implemented and certified on `stage-5-live-run-feedback`. **No merge
 of Stage 5 into main. No push. No final UI polish begun. No new stage
 begun.**
+
+
+---
+---
+
+# Part III — Final Product Simplification and Polish (2026-07-26, append-only)
+
+## III.0 Owner ruling (recorded before implementation; no further planning cycle)
+
+The owner authorizes the final current-product implementation pass
+before merge, at baseline `fd6b98f` (verified: branch
+`stage-5-live-run-feedback`, `--all` ALL GREEN 27/264, working tree
+clean except the two pre-existing owner assets). Eight areas:
+
+1. **Response becomes a first-class workspace** — SUPERSEDED mid-pass
+   by the broader Response information-architecture ruling (III.0.1
+   below), which governs.
+2. **Remove the remaining scope furniture**: with an active incident
+   the SIEM searches that incident's complete observable evidence
+   pool; Pivot changes the query, never the evidence universe; no
+   player evidence-scope switch, no Expanded-search state, no
+   Return action, no Search all evidence, no incident-evidence chip,
+   no repeated SIEM-level Investigating line, no hold. "All activity"
+   remains the no-case fallback with no toggle. Preserve: scope
+   loading, Retry, atomic replacement, stale-row honesty, no silent
+   broadening, query execution, Pivot, filters, chips, Simple and
+   Advanced LCQL, snapshots, scoring, and roster behavior. STOP if
+   engine invariants would move.
+3. **SIEM search-state truth**: distinguish initial evidence (never
+   labeled a player query; "Initial incident evidence"), an executed
+   search (readable filter primary in Simple mode: "Results for: X";
+   the canonical stays available as the technical disclosure), edited
+   but not run ("Search edited but not run. Showing results from the
+   previous search." -- pickers and typing never execute; explicit
+   ==/!=/chip/Pivot actions keep their ruled immediacy), failed
+   search ("This search was not run." + "Showing results from the
+   previous successful search." + the section-specific error), and a
+   selected event hidden by the results ("The selected event is
+   hidden by the current results. Change the filters or select
+   another event." -- never silently close the inspector or alter
+   filters). The placeholder stays unmistakably an example.
+4. **Replace the unclear Refresh**: the existing authoritative
+   new-count exists (the token-bound `/api/events/query/new-count`
+   poll), so the action becomes "N new events available" + "Load new
+   events"; no live tail, no silent row movement, snapshot stable
+   until invoked, truthful reset after loading, no generic Refresh
+   label, snapshot identity and atomic replacement preserved.
+5. **Rename the evidence entry action**: "Open Evidence Timeline"
+   becomes "Investigate in SIEM"; it prepares and opens the existing
+   SIEM search; no separate Timeline concept survives; an executed
+   prepared search is identified by the readable filter expression;
+   no redundant origin line.
+6. **Compact Metrics summary**: the large vertical Classification /
+   Detections / Response grade cards become one compact responsive
+   summary (Overall grade once + three equal columns; same values and
+   calculations; responsive stacking; accessible order); the detailed
+   teaching sections remain beneath; no distinct grading information
+   removed.
+7. **Reports stay hidden**; nothing may imply a report workflow
+   exists.
+8. **Tests, certification, and documentation** per the directive: the
+   permanent regression batteries, the full gate battery, the
+   ratified-copy conformance sweep, a fresh Guided Chrome playthrough
+   plus Hardcore purity checks, zero steady-state console errors, no
+   duplicate action requests, owner assets untouched, and this Part
+   III record. FINAL STOP at the product checkpoint: no merge to
+   main, no push, no further planning or feature cycle.
+
+## III.0.1 Response information-architecture ruling (superseding; recorded verbatim in substance)
+
+Binding product model: **Investigate -> Triage -> Respond -> Submit ->
+Learn.** Response is the ONE canonical action-execution workspace.
+
+- **Detections owns triage only** (Promote / Dismiss / Reopen). The
+  Threats tab, Response Log tab, Respond column, and every
+  response-action execution control leave Detections. Promotion
+  contributes context to Response but never implies a response is
+  correct or required.
+- **Endpoints own investigation only**: overview, processes, network,
+  services, users, autoruns, system state, and action-state
+  indicators stay; every direct action execution (Isolate, Kill,
+  Delete File, Remove Persistence, identity verbs) leaves. Removed
+  contextual actions are replaced by neutral navigation ("Respond to
+  this host/process/target", "Open in Response") that selects the
+  target in Response and executes nothing. No verb may remain
+  uniquely accessible through an Endpoint subpage.
+- **Response is the only execution surface**: primary navigation
+  beside SIEM / Detections / Endpoints / Metrics. Actions view groups
+  actionable incident entities by target type (Hosts, Accounts,
+  Processes, Files, Persistence, and any other type the existing
+  action system supports), each showing only factual context (target
+  identity, host or parent, related promoted detections where
+  applicable, observable action state, available existing verbs,
+  actions already executed) and never required / recommended /
+  correct / sufficient / remaining / expected or answer-key-derived
+  ordering. The Response Log moves in as the single chronological
+  history (time, action, target, result, detail).
+- **One action system**: one registry, one availability calculation,
+  one confirmation path, one request path, one state-update path, one
+  log; existing controls and handlers extracted, never reimplemented;
+  every current behavior preserved (preconditions, no-effect,
+  ordering, outcomes, action sequence identity, scoring, immutable
+  records, toasts, target-state badges, response-action count). No
+  backend / scoring / schema / endpoint / serialized-field change
+  unless repository truth proves sharing impossible; STOP first.
+- **Contextual navigation**: promoted detections may offer "Open in
+  Response"; endpoint surfaces offer "Respond to this target"; both
+  select, never execute or recommend. Response remains fully usable
+  from primary navigation alone.
+- **Empty and state behavior** (never revealing whether inaction is
+  correct): no incident -> "Select an incident to begin response.";
+  no promoted detections -> "No detections have been promoted." +
+  "You can still review incident entities and actions below."; no
+  actionable entities -> "No response targets are currently
+  available."; no actions taken -> "No response actions taken."
+- **Progress**: "Response actions taken: N" stays informational and
+  never gates Ready or Submit; the Response navigation shows no
+  correctness or required-action counts (and, consistent with the C1
+  badge ruling, no numeric nav badge).
+- Required regression coverage and Chrome verification per the
+  ruling, including the exact before/after action inventory.
+
+## III.0.2 Action inventory — before and after (exact)
+
+| Verb | Old execution location(s) | New execution location | Old surface becomes |
+|---|---|---|---|
+| isolate_host / release_host | Endpoint Overview reserved area (`EndpointDetail.jsx` Overview, target `snap.entity_id`) | Response > Actions > Hosts | Overview keeps the Isolated badge + gains "Respond to this host" |
+| kill_process | Endpoint Processes rows (`p.entity_id`) | Response > Actions > Processes | Process rows keep state display + gain "Respond" navigation |
+| delete_file | Endpoint Autoruns rows (`a.file_entity_id`, `file_state === 'present'`) | Response > Actions > Files | Autorun rows keep flag badges + gain "Respond" navigation |
+| remove_persistence | Endpoint Autoruns rows (`a.persistence_entity_id`, `registration !== 'removed'`) | Response > Actions > Persistence | same as above |
+| disable_account / revoke_sessions / force_password_reset | Detections > Threats view Respond column (target `d.entity.account_id`) | Response > Actions > Accounts | Threats view removed; promoted rows gain "Open in Response" |
+| (history) Response Log | Detections > Response Log view | Response > Response Log | view removed |
+
+Endpoint Users tab was display-only (no action moved). Services carry
+no verb in the existing action system, so no Services action group
+exists (recorded, not silently omitted). All target entity ids already
+ride existing payloads (endpoint snapshot `entity_id` /
+`p.entity_id` / `a.persistence_entity_id` / `a.file_entity_id`;
+detection `entity.account_id`), so the move is frontend-only.
+
+Implementation ledger, evidence, and verification follow in III.1+.
