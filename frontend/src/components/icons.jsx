@@ -108,7 +108,8 @@ export const platformFor = ({ platform, os = '', role = '' } = {}) => {
 };
 
 const DEVICE_GLYPH = { server: Server, workstation: Monitor, laptop: Laptop, unknown: Monitor };
-const PLATFORM_LABEL = { windows: 'Windows', macos: 'macOS', linux: 'Linux' };
+export const PLATFORM_LABELS = { windows: 'Windows', macos: 'macOS', linux: 'Linux', unknown: 'Unknown' };
+export const DEVICE_LABELS = { server: 'Server', workstation: 'Workstation', laptop: 'Laptop', unknown: 'Device' };
 
 // Device-class icon (decorative; pair it with the visible hostname).
 export const DeviceGlyph = ({ deviceKind = 'unknown', size = 16, className = '', ...rest }) => {
@@ -121,7 +122,7 @@ export const DeviceGlyph = ({ deviceKind = 'unknown', size = 16, className = '',
 export const PlatformBadge = ({ platformKey = 'unknown', size = 14, className = '' }) => {
   if (platformKey === 'windows') return <WindowsGlyph size={size} className={className} />;
   if (platformKey === 'macos') {
-    return <Apple size={size} strokeWidth={NAV_STROKE} role="img" aria-label={PLATFORM_LABEL.macos} className={className} />;
+    return <Apple size={size} strokeWidth={NAV_STROKE} role="img" aria-label={PLATFORM_LABELS.macos} className={className} />;
   }
   if (platformKey === 'linux') return <LinuxGlyph size={size} className={className} />;
   return null;

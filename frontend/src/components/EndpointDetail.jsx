@@ -3,6 +3,9 @@ import { apiFetch } from '../api';
 import { StatusBadge, OsChip, IsolationBadge } from './Endpoints';
 import { RESPOND_TO_HOST, RESPOND_ROW } from './uiCopy';
 import { PERSIST_LABEL } from './responseActions';
+import {
+  DeviceGlyph, PlatformBadge, platformFor, PLATFORM_LABELS, DEVICE_LABELS,
+} from './icons';
 
 // Endpoint detail (Stage 1): two-pane EDR-style view over the cached session
 // snapshot. Fetched once per host; search and sort operate on the cached
@@ -152,6 +155,10 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
   }
 
   const sys = snap.system;
+  // V7: the device-class + platform identity, derived from the REAL
+  // serialized fields (system.platform / os / role) -- the same mapping
+  // the endpoint list and Response target rows use.
+  const ident = platformFor({ platform: sys.platform, os: snap.os, role: snap.role });
   const procSortBtn = (key) => () =>
     setProcSort(s => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
 
@@ -164,7 +171,11 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
         <Card>
           <div className="p-4">
             <button type="button" onClick={onBack} className="text-sm text-[#16436b] hover:underline">&larr; All Endpoints</button>
-            <h3 className="mt-3 font-mono text-lg font-semibold text-[#1a2332] truncate" title={snap.hostname}>{snap.hostname}</h3>
+            <div className="mt-3 flex items-center gap-2 min-w-0">
+              <DeviceGlyph deviceKind={ident.deviceKind} size={18} className="text-[#57606a] shrink-0" />
+              <h3 className="font-mono text-lg font-semibold text-[#1a2332] truncate" title={snap.hostname}>{snap.hostname}</h3>
+              <PlatformBadge platformKey={ident.platformKey} className="text-[#57606a] shrink-0" />
+            </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               <StatusBadge status={snap.status} />
               {snap.isolation === 'isolated' && <IsolationBadge isolation="isolated" />}
@@ -215,7 +226,9 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
             <Card>
               <div className="p-5">
                 <div className="flex flex-wrap items-center gap-3">
+                  <DeviceGlyph deviceKind={ident.deviceKind} size={22} className="text-[#57606a]" />
                   <h3 className="font-mono text-2xl font-semibold text-[#1a2332]">{snap.hostname}</h3>
+                  <PlatformBadge platformKey={ident.platformKey} size={16} className="text-[#57606a]" />
                   <StatusBadge status={snap.status} />
                   {snap.isolation === 'isolated' ? (
                     <IsolationBadge isolation="isolated" />
@@ -272,7 +285,7 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
               <div className="p-5">
                 <SectionLabel>System information</SectionLabel>
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-8">
-                  {[['Platform', 'Windows', false],
+                  {[['Platform', `${PLATFORM_LABELS[ident.platformKey]} ${DEVICE_LABELS[ident.deviceKind]}`, false],
                     ['Architecture', sys.architecture, true],
                     ['Internal IP', sys.internal_ip, true],
                     ['External IP', sys.external_ip, true],

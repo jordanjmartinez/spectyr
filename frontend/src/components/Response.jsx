@@ -9,6 +9,7 @@ import {
   RESPONSE_NO_PROMOTED_SUB, RESPONSE_NO_TARGETS, RESPONSE_NO_ACTIONS,
 } from './uiCopy';
 import { CARD_STYLE, StateChip } from './ui';
+import { DeviceGlyph, PlatformBadge, platformFor } from './icons';
 
 // Final pass Part III.0.1: the ONE canonical action-execution workspace
 // (Investigate -> Triage -> Respond -> Submit -> Learn). Actionable
@@ -157,6 +158,9 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
       hostRows.push({
         hostname: h, entityId: snap.entity_id, status: snap.status,
         isolation: snap.isolation,
+        // V7: the same device/platform identity mapping as the endpoint
+        // list and detail header, from the same serialized fields.
+        ident: platformFor({ platform: snap.system?.platform, os: snap.os, role: snap.role }),
         promotedRules: promotedFor(x => x.entity?.host === h),
       });
       for (const p of snap.processes || []) {
@@ -289,10 +293,14 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                       {hostRows.map(h => (
                         <tr key={h.hostname} {...focusProps('host', h)}>
                           <td className="px-3 py-2.5">
-                            <button type="button" onClick={() => onHostPivot?.(h.hostname)}
-                              className="font-mono text-[#16436b] hover:underline" title={`Open ${h.hostname} in Endpoints`}>
-                              {h.hostname}
-                            </button>
+                            <span className="inline-flex items-center gap-1.5">
+                              <DeviceGlyph deviceKind={h.ident?.deviceKind} size={15} className="text-[#57606a]" />
+                              <button type="button" onClick={() => onHostPivot?.(h.hostname)}
+                                className="font-mono text-[#16436b] hover:underline" title={`Open ${h.hostname} in Endpoints`}>
+                                {h.hostname}
+                              </button>
+                              <PlatformBadge platformKey={h.ident?.platformKey} size={12} className="text-[#57606a]" />
+                            </span>
                             <PromotedChips rules={h.promotedRules} />
                           </td>
                           <td className="px-3 py-2.5">
