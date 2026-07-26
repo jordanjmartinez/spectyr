@@ -1039,6 +1039,37 @@ table (Section 8 here) with final test names and results; Chrome
 workflow transcripts; the copy inventory as landed; any deviation,
 flagged per the deviation-flagging rule at the time it was made.
 
+### 10.1 Ratified-copy conformance sweep (post-checkpoint addition, 2026-07-26, append-only)
+
+Added at the C1 checkpoint after the post-Stage-5 product review found
+two divergences from ratified content specifications that the Phase 7
+certification did not catch (F4a: no workspace selector despite the
+A1-B.3.2 source parenthetical; F5a: the well bucket rendered response
+entries only despite the A1-B.4.1 item 3 parenthetical). Root cause in
+both: acceptance rows tested the implementation's own routing against
+the payload shape, and no certification step diffed the RATIFIED TEXT
+against the RENDERED OUTPUT.
+
+**Standing rule: every ratified content specification for a teaching or
+progress surface gets an explicit verification row diffing the ratified
+sentence against the rendered surface.** The sweep runs at every future
+certification (this stage's checkpoint fixes included) and grows a row
+whenever an amendment ratifies new surface content. Initial rows:
+
+| # | Ratified source (contract) | Specified content | Rendered surface | Verified by |
+|---|---|---|---|---|
+| 1 | A1-B.4.1 item 3 (the review) | "what you did well (completed required actions, correct dispositions), what you missed, what was unnecessary or harmful (each with the frozen whys), per-detection verdicts, the playbook, and Key takeaway" | Metrics Learning Review sections | `review-teaching.test.js` A1-B.4.1 conformance test + C1 Chrome walk (INC-9709: "Detection calls: 5 of 5 correct" beside the missed-actions whys) |
+| 2 | A1-B.3.2 line table (checklist) | Each checklist line's OBSERVABLE SOURCE as specified, incl. Classification = "local selection state (the player's own input; the workspace selector)" | PhaseStrip lines + the workspace classification block | `incidents-workspace.test.js` A1-B.3.2 tests + C1 Chrome walk (selection updates the line pre-submit) |
+| 3 | A1-A.5 copy table (case-constant finals) | The ratified A-OD-1 strings byte-exact | Pinned line, state chip, expanded-search block, return action | `progress-vocabulary.test.js` byte-exact battery + `investigation-context.test.js` |
+| 4 | A2-3 + A2-R.1 (query clarity finals) | The four ruled tooltips, three-line error form, placeholder, Restore, surrounding block copy | SIEM bar, inspector, error box, banner | `query-clarity.test.js` + `help-model.test.js` byte pins |
+| 5 | A1-B.3.1/T1-T5 (toasts) + B-OD-5 (prompt) | Trigger list exactness; Guided-only consider-prompt | Toast container + checklist prompt | `live-progress.test.js` |
+
+A future amendment that changes any specified content MUST update the
+matching row in the same change; a certification that cannot tick every
+row is not complete. Rows verify CONTENT AGAINST RATIFIED TEXT, not
+merely that a test exists: the reviewer reads the contract sentence and
+the rendered surface side by side.
+
 ---
 
 ## 11. Ambiguities, repository disagreements, and decisions requiring ratification
