@@ -20,9 +20,10 @@ const shortDate = (iso) => (iso ? iso.slice(0, 10) : '-');
 const shortDateTime = (iso) => (iso ? iso.slice(0, 16).replace('T', ' ') : '-');
 const dash = (v) => (v === null || v === undefined || v === '' ? '-' : v);
 
+// VP16: ordinary content cards carry the subtle border on all sides; the
+// decorative dark top stripe is retired.
 const Card = ({ children, className = '' }) => (
   <div className={`bg-white border border-[#e2e6ea] rounded-xl overflow-hidden ${className}`}>
-    <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
     {children}
   </div>
 );
@@ -318,7 +319,7 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="dark-thead"><tr>
+                <thead className="data-thead"><tr>
                   <Th onClick={procSortBtn('pid')} active={procSort.key === 'pid'} dir={procSort.dir}>PID</Th>
                   <Th onClick={procSortBtn('ppid')} active={procSort.key === 'ppid'} dir={procSort.dir}>PPID</Th>
                   <Th onClick={procSortBtn('path')} active={procSort.key === 'path'} dir={procSort.dir}>File Path</Th>
@@ -366,7 +367,7 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
               <div className="p-4"><SectionLabel>Connections</SectionLabel></div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                  <thead className="dark-thead"><tr>
+                  <thead className="data-thead"><tr>
                     <Th>Proto</Th><Th>Local Address</Th><Th>Remote Address</Th><Th>State</Th><Th>Process</Th>
                   </tr></thead>
                   <tbody>
@@ -388,7 +389,7 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
               <div className="p-4"><SectionLabel>Recent DNS</SectionLabel></div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                  <thead className="dark-thead"><tr><Th>Domain</Th><Th>Resolved IPs</Th><Th>Process</Th></tr></thead>
+                  <thead className="data-thead"><tr><Th>Domain</Th><Th>Resolved IPs</Th><Th>Process</Th></tr></thead>
                   <tbody>
                     {snap.network.dns.length === 0 && <EmptyRow span={3} />}
                     {snap.network.dns.map((d, i) => (
@@ -409,7 +410,7 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
           <Card>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="dark-thead"><tr>
+                <thead className="data-thead"><tr>
                   <Th>Name</Th><Th>Display Name</Th><Th>Status</Th><Th>Startup Type</Th><Th>Path</Th><Th>Log On As</Th>
                 </tr></thead>
                 <tbody>
@@ -440,7 +441,7 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
           <Card>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="dark-thead"><tr><Th>Username</Th><Th>Type</Th><Th>Groups</Th><Th>Last Logon</Th></tr></thead>
+                <thead className="data-thead"><tr><Th>Username</Th><Th>Type</Th><Th>Groups</Th><Th>Last Logon</Th></tr></thead>
                 <tbody>
                   {snap.users.length === 0 && <EmptyRow span={4} />}
                   {snap.users.map(u => (
@@ -469,7 +470,7 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="dark-thead"><tr>
+                <thead className="data-thead"><tr>
                   <Th>Entry</Th><Th>Type</Th><Th>Location</Th><Th>Command / Image</Th><Th>State</Th><Th>Action</Th>
                 </tr></thead>
                 <tbody>

@@ -193,3 +193,22 @@ test('Practice Another (Guided) warns, cancels back, and calls back on confirm',
   fireEvent.click(screen.getByText('Clear and pick another'));       // confirm
   expect(onPracticeAnother).toHaveBeenCalled();
 });
+
+// --- VC follow-up: the exact submit payload the workspace sends ----------
+
+test('the workspace submits the selected verdict AND category verbatim', async () => {
+  render(<Host gameMode="guided" activeIncidentId="INC-4000" />);
+  await screen.findByText('brief D');
+  const ws = screen.getByTestId('workspace-classification');
+  fireEvent.click(within(ws).getByText('True Positive'));
+  fireEvent.click(within(ws).getByText('Defense Evasion'));
+  expect(screen.getByText('Classification: Defense Evasion')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+  await screen.findByText(/Filing as/);
+  fireEvent.click(screen.getByRole('button', { name: 'Submit Incident' }));
+  await waitFor(() => {
+    const post = apiFetch.mock.calls.find(([u, o]) => String(u).endsWith('/submit') && o?.method === 'POST');
+    expect(post).toBeDefined();
+    expect(JSON.parse(post[1].body)).toEqual({ verdict: 'threat', category: 'Defense Evasion' });
+  });
+});

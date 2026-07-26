@@ -74,11 +74,13 @@ export const gradeColor = (g) =>
 
 // ---- surfaces ---------------------------------------------------------------
 
-// The standard card. `hairline` stamps the page-identity gradient across
-// the top (page headers and modals use it; plain content cards do not).
+// The standard card. VP16 (owner correction): ordinary workspace cards
+// carry the subtle border on ALL sides and NO dark top stripe -- the
+// decorative accent is retired everywhere (`hairline` is accepted and
+// ignored so no caller can reintroduce it; a strong top accent may
+// return only when it communicates a real semantic state).
 export const Card = ({ hairline = false, className = '', style, children }) => (
   <div className={`rounded-xl overflow-hidden ${className}`} style={{ ...CARD_STYLE, ...style }}>
-    {hairline && <div className="h-0.5" style={{ background: HAIRLINE }} />}
     {children}
   </div>
 );

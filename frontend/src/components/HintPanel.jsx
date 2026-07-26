@@ -19,7 +19,6 @@ const HintPanel = ({ gameMode, surface }) => {
     <div className="fixed bottom-5 left-20 lg:left-60 z-40" data-testid="hint-panel">
       {open && (
         <div className="mb-2 w-80 max-w-[85vw] bg-white border border-[#e2e6ea] rounded-xl shadow-xl overflow-hidden">
-          <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
           <div className="p-4">
             <div className="flex items-center justify-between gap-2">
               <p className="t-overline">

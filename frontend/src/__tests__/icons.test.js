@@ -9,7 +9,7 @@
 import React from 'react';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import {
-  LayoutDashboard, Siren, ScanSearch, Crosshair, Monitor, ShieldCheck,
+  LayoutDashboard, AlertTriangle, ScanSearch, Crosshair, Monitor, ShieldCheck,
   LineChart,
 } from 'lucide-react';
 import {
@@ -44,7 +44,8 @@ beforeEach(() => { apiFetch.mockReset(); apiFetch.mockImplementation(route); });
 
 test('the navigation identity map is the ruled lucide mapping', () => {
   expect(NAV_ICONS.dashboard).toBe(LayoutDashboard);
-  expect(NAV_ICONS.incidents).toBe(Siren);
+  // VP16 (owner correction): Incidents returns to the caution/alert triangle
+  expect(NAV_ICONS.incidents).toBe(AlertTriangle);
   expect(NAV_ICONS.siem).toBe(ScanSearch);
   expect(NAV_ICONS.detections).toBe(Crosshair);
   expect(NAV_ICONS.endpoints).toBe(Monitor);

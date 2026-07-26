@@ -15,7 +15,6 @@ const SectionLabel = ({ children }) => (
 
 const Card = ({ children }) => (
   <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-hidden">
-    <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
     {children}
   </div>
 );

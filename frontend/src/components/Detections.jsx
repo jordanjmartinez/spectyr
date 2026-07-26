@@ -197,7 +197,7 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
       {(
         <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="dark-thead">
+            <thead className="data-thead">
               <tr>
                 <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">Severity</th>
                 <th className="px-3 sm:px-4 py-3 font-medium">Rule</th>

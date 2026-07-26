@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  LayoutDashboard, Siren, ScanSearch, Crosshair, Monitor, ShieldCheck,
+  LayoutDashboard, AlertTriangle, ScanSearch, Crosshair, Monitor, ShieldCheck,
   LineChart, BookOpen, RotateCcw, Play, Server, Laptop, Apple, Ghost,
 } from 'lucide-react';
 
@@ -31,7 +31,9 @@ export const NAV_STROKE = 1.75;
 // and Detections.
 export const NAV_ICONS = {
   dashboard: LayoutDashboard,   // analytic overview grid
-  incidents: Siren,             // the case queue
+  // VP16 (owner correction): Incidents returns to the caution/alert
+  // triangle; the other identities keep their newer distinct marks.
+  incidents: AlertTriangle,     // the case queue
   siem: ScanSearch,             // log search workbench
   detections: Crosshair,        // triage queue
   endpoints: Monitor,           // asset explorer

@@ -389,7 +389,7 @@ const IncidentDashboard = ({
             ) : (
               <div className="overflow-x-auto pb-1">
                 <table className="w-full text-left text-sm">
-                  <thead className="dark-thead">
+                  <thead className="data-thead">
                     <tr>
                       <th className="px-3 py-2 font-medium whitespace-nowrap">Incident</th>
                       <th className="px-3 py-2 font-medium whitespace-nowrap">Category</th>

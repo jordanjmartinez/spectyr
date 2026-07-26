@@ -7,7 +7,6 @@ const ConfirmDialog = ({ open, title, body, confirmLabel = 'Confirm', onConfirm,
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
       <div className="bg-white rounded-xl border border-[#e2e6ea] shadow-xl w-full max-w-sm overflow-hidden">
-        <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
         <div className="p-5">
           <h3 className="text-base font-semibold text-[#1a2332]">{title}</h3>
           <p className="mt-2 text-sm text-[#57606a]">{body}</p>

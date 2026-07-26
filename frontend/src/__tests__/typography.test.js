@@ -33,16 +33,20 @@ test('the ruled token scale is defined once, with the ruled values', () => {
   expect(css).toMatch(/\.t-nav\s*{[^}]*font-size:\s*14px[^}]*font-weight:\s*500/);
   expect(css).toMatch(/\.t-kpi\s*{[^}]*font-size:\s*28px[^}]*font-weight:\s*650[^}]*tabular-nums/);
   expect(css).toMatch(/\.t-meta\s*{[^}]*font-size:\s*12px[^}]*font-weight:\s*400/);
-  // overline: 11/600, tracking <= 0.04em, and NO uppercase transform
+  // VP16 (owner correction): micro-headings are 12px minimum, 600,
+  // line-height 1.3, tracking <= 0.03em, and NO uppercase transform
   const overline = css.match(/\.t-overline\s*{[^}]*}/)[0];
-  expect(overline).toMatch(/font-size:\s*11px/);
+  const size = parseFloat(overline.match(/font-size:\s*([\d.]+)px/)[1]);
+  expect(size).toBeGreaterThanOrEqual(12);
   expect(overline).toMatch(/font-weight:\s*600/);
+  expect(overline).toMatch(/line-height:\s*1\.3/);
   const tracking = parseFloat(overline.match(/letter-spacing:\s*([\d.]+)em/)[1]);
-  expect(tracking).toBeLessThanOrEqual(0.04);
+  expect(tracking).toBeLessThanOrEqual(0.03);
   expect(overline).toMatch(/text-transform:\s*none/);
-  // Inter leads the product body stack; table heads drop broad uppercase
+  // the ordinary subsection title token
+  expect(css).toMatch(/\.t-subsection\s*{[^}]*font-size:\s*14px[^}]*font-weight:\s*600/);
+  // Inter leads the product body stack
   expect(css).toMatch(/body\s*{[^}]*font-family:\s*'Inter'/);
-  expect(css).toMatch(/\.dark-thead th\s*{[^}]*text-transform:\s*none/);
 });
 
 test('the shared primitives wear the tokens (every consumer inherits them)', () => {

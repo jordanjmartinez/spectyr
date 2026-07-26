@@ -39,8 +39,14 @@ const AppHeader = ({ title, gameMode, analystName, simActive, onReset }) => {
   const itemCls = 'w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-[#57606a] hover:bg-[#f6f8fa] hover:text-[#1a2332]';
 
   return (
-    <header className="mb-4 flex items-center justify-between gap-4" data-testid="app-header">
-      <h1 className="t-page">{title}</h1>
+    // VP16: the dark application header is deliberate chrome (primary
+    // navigation), framed by a subtle 1px translucent outline -- no glow,
+    // no heavy shadow, following the shared radius.
+    <header
+      className="mb-4 rounded-xl bg-[#101218] px-4 py-3 flex items-center justify-between gap-4 border border-white/12"
+      data-testid="app-header"
+    >
+      <h1 className="t-page text-white">{title}</h1>
 
       <div ref={rootRef} className="relative shrink-0">
         <button
@@ -49,7 +55,7 @@ const AppHeader = ({ title, gameMode, analystName, simActive, onReset }) => {
           aria-label="Analyst menu"
           aria-haspopup="menu"
           aria-expanded={open}
-          className="flex items-center justify-center w-8 h-8 rounded-full bg-white border border-[#d0d7de] hover:border-[#8b949e] transition-colors overflow-hidden"
+          className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 border border-white/20 hover:border-white/45 transition-colors overflow-hidden"
         >
           <img src="/spectyr_logo.png" alt="" aria-hidden="true" className="w-6 h-6 object-contain" />
         </button>

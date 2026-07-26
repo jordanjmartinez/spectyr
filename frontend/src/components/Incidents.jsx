@@ -459,7 +459,6 @@ const Incidents = ({
       {pendingSubmit && pendingSubmit.action === 'submit' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
           <div className="bg-white rounded-xl border border-[#e2e6ea] shadow-xl w-full max-w-md overflow-hidden">
-            <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
             <div className="p-5">
               <h3 className="text-base font-semibold text-[#1a2332]">Submit incident {pendingSubmit.incident_id}</h3>
               <p className="mt-2 text-sm text-[#57606a]">Filing as <span className="font-medium text-[#1a2332]">{pendingSubmit.category}</span>. This locks your classification for this incident and reveals how it scored. You cannot change it afterward.</p>
@@ -529,7 +528,6 @@ const Incidents = ({
       {practiceWarn && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
           <div className="bg-white rounded-xl border border-[#e2e6ea] shadow-xl w-full max-w-md overflow-hidden">
-            <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
             <div className="p-5">
               <h3 className="text-base font-semibold text-[#1a2332]">Practice another scenario?</h3>
               <p className="mt-2 text-sm text-[#57606a]">This clears the current Guided run: its submitted incident record, your Session performance, and this Post-Incident Review. The simulation resets and returns to the scenario picker.</p>
