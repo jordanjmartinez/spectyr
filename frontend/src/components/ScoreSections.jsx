@@ -1,6 +1,6 @@
 import React from 'react';
 import { ACTION_LABELS } from './uiCopy';
-import { Card } from './ui';
+import { Card, gradeColor } from './ui';
 
 // Stage 3d composite ruling, compacted by the Final pass (III.0 item 6):
 // the three large vertical Classification / Detections / Response grade
@@ -90,25 +90,35 @@ const ScoreSections = ({ isVisible = true, report = null }) => {
     },
   ];
 
+  // Visual pass V10: the same compact summary (Overall exactly once, the
+  // same values/calculations, the same reading order) rendered as three
+  // EQUAL CARDS on desktop with responsive stacking. The slim accuracy
+  // bar is the one restrained progress visualization per card
+  // (decorative, aria-hidden: the accuracy text beside the grade IS the
+  // value; nothing is displayed twice). No trend exists because no
+  // historical series exists.
   return (
     <div>
       <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">Score Summary</h2>
-      <Card>
-        <div className="p-4 sm:p-6">
-          {/* the Overall grade, exactly once */}
-          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 pb-4 border-b border-[#eef1f4]">
+      <div className="space-y-3">
+        {/* the Overall grade, exactly once */}
+        <Card>
+          <div className="p-4 sm:p-5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <p className="text-sm font-medium text-[#1a2332]">Overall grade</p>
             <p className="text-right">
-              <span className="text-3xl font-semibold text-[#1a2332] leading-none">{composite?.grade || '-'}</span>
+              <span className="text-3xl font-semibold leading-none" style={{ color: gradeColor(composite?.grade) }}>{composite?.grade || '-'}</span>
               <span className="ml-2 text-xs text-[#6e7781]">
                 {composite?.accuracy != null ? `${composite.accuracy}% accuracy` : 'Not graded yet'}
               </span>
             </p>
           </div>
-          {/* three equal columns; stacked on small screens in the same order */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-[#eef1f4]">
-            {columns.map((col) => (
-              <div key={col.name} className="py-4 sm:py-2 sm:px-5 sm:first:pl-0 sm:last:pr-0 space-y-2">
+        </Card>
+
+        {/* three equal cards; stacked on small screens in the same order */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {columns.map((col) => (
+            <Card key={col.name}>
+              <div className="p-4 space-y-2">
                 <div className="flex items-baseline justify-between gap-2">
                   <p className="text-sm font-semibold text-[#1a2332]">{col.name}</p>
                   <p className="text-right shrink-0">
@@ -118,26 +128,39 @@ const ScoreSections = ({ isVisible = true, report = null }) => {
                     </span>
                   </p>
                 </div>
+                {col.graded > 0 && (
+                  <div aria-hidden="true" className="h-1.5 rounded-full bg-[#eef1f4] overflow-hidden">
+                    <div className="h-full rounded-full" style={{
+                      width: `${Math.max(0, Math.min(100, col.accuracy))}%`,
+                      background: gradeColor(col.grade),
+                    }} />
+                  </div>
+                )}
                 <p className="text-xs text-[#6e7781]">{col.desc}</p>
                 <StatRow items={col.items} />
               </div>
-            ))}
-          </div>
+            </Card>
+          ))}
         </div>
+
         {/* the detailed teaching sections remain beneath the summary */}
-        {acceptableTaken?.count > 0 && (
-          <FactualBlock title={`Acceptable response (${acceptableTaken.count})`}
-                        entries={acceptableTaken.entries} />
+        {(acceptableTaken?.count > 0 || notExecuted?.count > 0 || noEffect?.count > 0) && (
+          <Card>
+            {acceptableTaken?.count > 0 && (
+              <FactualBlock title={`Acceptable response (${acceptableTaken.count})`}
+                            entries={acceptableTaken.entries} />
+            )}
+            {notExecuted?.count > 0 && (
+              <FactualBlock title={`Attempted, not executed (${notExecuted.count})`}
+                            entries={notExecuted.entries} />
+            )}
+            {noEffect?.count > 0 && (
+              <FactualBlock title={`No effect, already in state (${noEffect.count})`}
+                            entries={noEffect.entries} />
+            )}
+          </Card>
         )}
-        {notExecuted?.count > 0 && (
-          <FactualBlock title={`Attempted, not executed (${notExecuted.count})`}
-                        entries={notExecuted.entries} />
-        )}
-        {noEffect?.count > 0 && (
-          <FactualBlock title={`No effect, already in state (${noEffect.count})`}
-                        entries={noEffect.entries} />
-        )}
-      </Card>
+      </div>
     </div>
   );
 };

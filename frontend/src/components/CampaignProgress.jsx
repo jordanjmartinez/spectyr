@@ -62,7 +62,10 @@ const OutcomeBar = ({ total, results }) => {
   );
 };
 
-const CampaignProgress = ({ levelData, onReset, analystName, report }) => {
+// Visual pass V10: this component no longer renders the page heading or
+// its own Reset control -- the Metrics PageHeader (Analytics.jsx) owns
+// both. Content (the outcome bar + the completed banner) is unchanged.
+const CampaignProgress = ({ levelData, analystName, report }) => {
   const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
@@ -87,15 +90,6 @@ const CampaignProgress = ({ levelData, onReset, analystName, report }) => {
         : `Not bad${analystName ? `, ${analystName}` : ''}. A few slipped by, but you held the line.`;
     return (
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332]">Metrics</h2>
-          <button
-            onClick={onReset}
-            className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 bg-white hover:bg-[#eef1f4] text-[#1a2332] border-[#d0d7de]"
-          >
-            <span className="sm:hidden">Reset Sim</span><span className="hidden sm:inline">Reset Simulation</span>
-          </button>
-        </div>
         <div className="px-6 pt-8 pb-6 rounded-xl" style={CARD_STYLE}>
           <div className={`flex flex-col items-center text-center transition-all duration-700 ease-out ${revealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
             <pre
@@ -120,7 +114,6 @@ const CampaignProgress = ({ levelData, onReset, analystName, report }) => {
 
   return (
     <div>
-      <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">Metrics</h2>
       <div className="rounded-xl p-5 sm:p-6" style={CARD_STYLE}>
         <OutcomeBar total={total_levels} results={results} />
       </div>

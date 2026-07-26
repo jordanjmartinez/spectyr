@@ -7,7 +7,10 @@ import ActionHistory from './ActionHistory';
 import ScoreSections from './ScoreSections';
 import LearningReview from './LearningReview';
 import { SESSION_PERFORMANCE_LABEL } from './uiCopy';
-import { CARD_STYLE } from './ui';
+import { CARD_STYLE, PageHeader } from './ui';
+import { NAV_ICONS, NAV_STROKE } from './icons';
+
+const PageIcon = NAV_ICONS.analytics;
 
 const Analytics = ({ onReset, analystName, setAnalyticsCount, isVisible = true, reviewRequest = null }) => {
   const [report, setReport] = useState(null);
@@ -72,8 +75,25 @@ const Analytics = ({ onReset, analystName, setAnalyticsCount, isVisible = true, 
 
   return (
     <div className="space-y-6">
+      {/* V10/V4: the Metrics page identity (Learning Review dashboard);
+          Reset lives in the header right slot (CampaignProgress no longer
+          carries its own page heading). */}
+      <PageHeader
+        icon={<PageIcon size={20} strokeWidth={NAV_STROKE} aria-hidden="true" />}
+        title="Metrics"
+        subtitle="Learning Review and Session Performance for this run."
+        right={(
+          <button
+            onClick={onReset}
+            className="px-3 py-1.5 text-xs font-medium rounded-md border transition bg-white hover:bg-[#eef1f4] text-[#1a2332] border-[#d0d7de]"
+          >
+            Reset Simulation
+          </button>
+        )}
+      />
+
       {/* Campaign Progress - Full Width */}
-      <CampaignProgress levelData={levelData} report={cardReport} onReset={onReset} analystName={analystName} />
+      <CampaignProgress levelData={levelData} report={cardReport} analystName={analystName} />
 
       {/* Stage 5 commit 5.4 (ratified B-OD-1 Option 1): the Metrics tab is
           the per-incident Learning Review home -- the one durable teaching
