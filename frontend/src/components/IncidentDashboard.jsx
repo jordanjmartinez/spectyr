@@ -7,6 +7,7 @@ import {
 } from './uiCopy';
 import { submissionReady, validClassification } from './submissionReady';
 import { severityDot, gradeColor, CARD_STYLE } from './ui';
+import { platformFor, PLATFORM_LABELS, DEVICE_LABELS } from './icons';
 import AttackRadar from './AttackRadar';
 
 // ============================================================================
@@ -56,9 +57,13 @@ const IncidentDashboard = ({
 }) => {
   const [data, setData] = useState({ active: [], completed: [], queue_length: 0, resolved_count: 0 });
   const [session, setSession] = useState(null);
-  const [stats, setStats] = useState(null);          // /api/incidents stats (severity)
   const [env, setEnv] = useState(null);              // endpoints summary
   const [detCounts, setDetCounts] = useState({ open: 0, promoted: 0, dismissed: 0 });
+  const [feed, setFeed] = useState([]);              // sanitized detections feed
+  // The FOCUS incident's observable scope (detection ids), feeding the
+  // severity bars. Observable data only; refreshed on the same poll.
+  const [focusScope, setFocusScope] = useState({ forId: null, ids: null });
+  const focusIdRef = useRef(null);
   const [actionSuccesses, setActionSuccesses] = useState(0);
   // Post-submission records: incident_id -> {grading, techId}. Fetched
   // ONCE per submitted id (score view + disclosed triage review); never
@@ -67,10 +72,21 @@ const IncidentDashboard = ({
   const fetchedRef = useRef(new Set());
 
   const fetchAll = useCallback(() => {
-    apiFetch('/api/incidents').then(r => r.json()).then(d => { setData(d); setStats(d.stats || null); }).catch(() => {});
+    apiFetch('/api/incidents').then(r => r.json()).then(setData).catch(() => {});
     apiFetch('/api/analytics/report_card').then(r => r.json()).then(setSession).catch(() => {});
     apiFetch('/api/endpoints').then(r => r.json()).then(d => setEnv(d.endpoints || [])).catch(() => {});
-    apiFetch('/api/detections').then(r => r.json()).then(d => setDetCounts(d.counts || { open: 0, promoted: 0, dismissed: 0 })).catch(() => {});
+    apiFetch('/api/detections').then(r => r.json()).then(d => {
+      setDetCounts(d.counts || { open: 0, promoted: 0, dismissed: 0 });
+      setFeed(d.detections || []);
+    }).catch(() => {});
+    const fid = focusIdRef.current;
+    if (fid) {
+      apiFetch(`/api/incidents/${fid}/scope`).then(r => (r.ok ? r.json() : null))
+        .then(sc => {
+          if (sc) setFocusScope({ forId: fid, ids: new Set(sc.detection_ids || []) });
+        })
+        .catch(() => {});
+    }
     apiFetch('/api/actions').then(r => r.json())
       .then(d => setActionSuccesses((d.actions || []).filter(a => a.outcome === 'success').length))
       .catch(() => {});
@@ -112,7 +128,6 @@ const IncidentDashboard = ({
   const sessionGrade = session?.state === 'submitted' ? session.grading?.composite : null;
   const queueLength = data.queue_length || 0;
   const isGuided = gameMode === 'guided' || gameMode === 'training';
-  const sev = stats?.severity_breakdown || {};
   const online = (env || []).filter(e => e.status === 'online').length;
   const offline = (env || []).length - online;
 
@@ -123,6 +138,44 @@ const IncidentDashboard = ({
   // else the oldest active (drip order).
   const focus = data.active.find(c => c.incident_id === activeIncidentId) || data.active[0] || null;
   const otherActive = data.active.filter(c => focus && c.incident_id !== focus.incident_id);
+  const focusId = focus?.incident_id || null;
+  focusIdRef.current = focusId;
+
+  // Fetch the focus scope the moment the focus is known (the poll keeps
+  // it fresh as the roster attaches); observable data only.
+  useEffect(() => {
+    if (!focusId) { setFocusScope({ forId: null, ids: null }); return undefined; }
+    let cancelled = false;
+    apiFetch(`/api/incidents/${focusId}/scope`).then(r => (r.ok ? r.json() : null))
+      .then(sc => {
+        if (!cancelled && sc) setFocusScope({ forId: focusId, ids: new Set(sc.detection_ids || []) });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [focusId]);
+
+  // Severity bars (VS owner correction): the ACTIVE incident's observable
+  // detections by severity, exact counts, scaled against the largest
+  // displayed count (no percentage implied).
+  const scopedIds = focus && focusScope.forId === focus.incident_id ? focusScope.ids : null;
+  const sevRows = ['critical', 'high', 'medium', 'low'].map(k => ({
+    key: k,
+    label: k.charAt(0).toUpperCase() + k.slice(1),
+    count: scopedIds ? feed.filter(d => scopedIds.has(d.id) && String(d.severity).toLowerCase() === k).length : 0,
+  }));
+  const sevMax = Math.max(...sevRows.map(r => r.count));
+
+  // Environment status (VS owner correction): current observable state
+  // only -- no uptime claims, no history. Platform breakdown from the
+  // REAL serialized fields via the one shared mapping.
+  const managed = (env || []).length;
+  const availabilityPct = managed ? Math.round((online / managed) * 100) : 0;
+  const platformGroups = {};
+  for (const r of env || []) {
+    const ident = platformFor(r);
+    const label = `${PLATFORM_LABELS[ident.platformKey]} ${DEVICE_LABELS[ident.deviceKind]}`;
+    platformGroups[label] = (platformGroups[label] || 0) + 1;
+  }
 
   const readinessChip = (c) => (!c.sealed ? 'Loading'
     : submissionReady(c, chosen) ? 'Ready'
@@ -182,13 +235,31 @@ const IncidentDashboard = ({
                   <span className="text-[11px] text-[#8b949e]">{MODE_LABEL[gameMode] || gameMode}</span>
                 </div>
                 <p className="text-sm font-medium text-[#1a2332]">{focus.title}</p>
+                {/* VS: Investigation Progress folded in here -- the bar and
+                    its exact textual equivalent live with the incident's
+                    facts, not in a separate fragmenting card. */}
+                {focus.sealed && (
+                  <div
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={triage.total}
+                    aria-valuenow={triage.triaged}
+                    aria-label={detectionsReviewed(triage.triaged, triage.total)}
+                    className="h-2 rounded-full bg-[#eef1f4] overflow-hidden"
+                  >
+                    <div
+                      className="h-full rounded-full bg-[#16436b] transition-[width] duration-300 motion-reduce:transition-none"
+                      style={{ width: `${triage.total ? Math.round((triage.triaged / triage.total) * 100) : 0}%` }}
+                    />
+                  </div>
+                )}
                 <div className="text-xs text-[#57606a] space-y-0.5">
                   <p>{focus.sealed ? detectionsReviewed(triage.triaged, triage.total) : TELEMETRY_LOADING}</p>
                   <p>{validClassification(focusChosen)
                     ? classificationSelected(focusChosen.category)
                     : CLASSIFICATION_NOT_SELECTED}</p>
                   <p>{responseActionsTaken(focus.related_actions ?? 0)}</p>
-                  <p className="text-[#8b949e]">{readinessChip(focus)}</p>
+                  <p className="text-[#8b949e]">{focus.sealed && focusReady ? READY_TO_SUBMIT : readinessChip(focus)}</p>
                 </div>
                 <button
                   type="button"
@@ -216,52 +287,76 @@ const IncidentDashboard = ({
             )}
           </div>
 
-          {/* B. Investigation Progress: a linear bar with its exact textual
-              equivalent (the accessible form; a gauge adds nothing here). */}
-          <div className="rounded-xl p-4" style={CARD_STYLE} data-testid="investigation-progress">
-            <WidgetLabel>Investigation Progress</WidgetLabel>
-            {!focus ? (
-              <p className="text-sm text-[#8b949e]">Progress appears when an investigation is active.</p>
-            ) : !focus.sealed ? (
-              <p className="text-xs text-[#8b949e] italic">{TELEMETRY_LOADING}</p>
+          {/* Severity distribution (VS owner correction): compact
+              horizontal bars over the ACTIVE incident's observable
+              detections -- exact counts, bars scaled to the largest
+              displayed count (no percentage implied), label + count text
+              beside every bar (never color alone). */}
+          <div className="rounded-xl p-4" style={CARD_STYLE} data-testid="severity-distribution">
+            <WidgetLabel>Severity distribution</WidgetLabel>
+            <p className="text-xs text-[#8b949e] mb-2">Active incident</p>
+            {sevMax === 0 ? (
+              <p className="text-sm text-[#57606a]">No detections observed yet.</p>
             ) : (
-              <div className="space-y-2">
-                <div
-                  role="progressbar"
-                  aria-valuemin={0}
-                  aria-valuemax={triage.total}
-                  aria-valuenow={triage.triaged}
-                  aria-label={detectionsReviewed(triage.triaged, triage.total)}
-                  className="h-2 rounded-full bg-[#eef1f4] overflow-hidden"
-                >
-                  <div
-                    className="h-full rounded-full bg-[#16436b] transition-[width] duration-300 motion-reduce:transition-none"
-                    style={{ width: `${triage.total ? Math.round((triage.triaged / triage.total) * 100) : 0}%` }}
-                  />
-                </div>
-                <div className="text-xs text-[#57606a] space-y-0.5">
-                  <p>{detectionsReviewed(triage.triaged, triage.total)}</p>
-                  <p>{validClassification(focusChosen)
-                    ? classificationSelected(focusChosen.category)
-                    : CLASSIFICATION_NOT_SELECTED}</p>
-                  <p>{focusReady ? READY_TO_SUBMIT : SUBMIT_PENDING}</p>
-                </div>
+              <div className="space-y-1.5">
+                {sevRows.map(r => (
+                  <div key={r.key} className="flex items-center gap-2 text-sm">
+                    <span className="w-16 shrink-0 text-[#57606a]">{r.label}</span>
+                    <span className="flex-1 h-2 rounded-full bg-[#eef1f4] overflow-hidden" aria-hidden="true">
+                      <span
+                        className="block h-full rounded-full"
+                        style={{ width: `${sevMax ? Math.round((r.count / sevMax) * 100) : 0}%`, background: severityDot(r.key) }}
+                      />
+                    </span>
+                    <span className="w-6 shrink-0 text-right font-medium text-[#1a2332] log-mono">{r.count}</span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
 
-          {/* Severity + Environment (session-wide observables, unchanged sources) */}
-          <div className="rounded-xl p-4" style={CARD_STYLE}>
-            <WidgetLabel>Severity distribution</WidgetLabel>
-            {['critical', 'high', 'medium', 'low'].map(k => (
-              <p key={k} className="text-sm text-[#57606a] flex justify-between"><span className="capitalize">{k}</span><span className="font-medium text-[#1a2332]">{sev[k] ?? 0}</span></p>
-            ))}
-          </div>
-          <div className="rounded-xl p-4" style={CARD_STYLE}>
-            <WidgetLabel>Environment</WidgetLabel>
-            <p className="text-sm text-[#57606a]"><span className="font-semibold text-[#6fa868]">{online}</span> online</p>
-            <p className="text-sm text-[#57606a]"><span className="font-semibold text-[#b45858]">{offline}</span> offline</p>
-            <p className="text-xs text-[#8b949e] mt-1">{(env || []).length} managed hosts</p>
+          {/* Environment status (VS owner correction): current observable
+              state only -- no gauges, no history, no uptime claims. */}
+          <div className="rounded-xl p-4" style={CARD_STYLE} data-testid="environment-status">
+            <WidgetLabel>Environment status</WidgetLabel>
+            {managed === 0 ? (
+              <p className="text-sm text-[#57606a]">No managed hosts available.</p>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-2xl font-semibold text-[#1a2332]">{managed}<span className="ml-1.5 text-sm font-normal text-[#57606a]">managed host{managed === 1 ? '' : 's'}</span></p>
+                <p className="text-sm text-[#57606a] flex items-center gap-1.5">
+                  <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full" style={{ background: '#6fa868' }} />
+                  <span><span className="font-medium text-[#1a2332]">{online}</span> online</span>
+                  <span className="text-[#d0d7de]">·</span>
+                  <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full" style={{ background: '#b45858' }} />
+                  <span><span className="font-medium text-[#1a2332]">{offline}</span> offline</span>
+                </p>
+                <div>
+                  <p className="text-xs text-[#6e7781] mb-1">Availability</p>
+                  <div className="flex items-center gap-2">
+                    <span className="flex-1 h-1.5 rounded-full bg-[#eef1f4] overflow-hidden" aria-hidden="true">
+                      <span className="block h-full rounded-full bg-[#6fa868]" style={{ width: `${availabilityPct}%` }} />
+                    </span>
+                    <span className="text-xs font-medium text-[#1a2332]">{availabilityPct}%</span>
+                  </div>
+                  <p className="sr-only">{online} of {managed} managed hosts online ({availabilityPct}% availability).</p>
+                </div>
+                {Object.keys(platformGroups).length > 0 && (
+                  <p className="text-xs text-[#57606a]">
+                    {Object.entries(platformGroups).map(([label, n], i) => (
+                      <span key={label}>{i > 0 && <span className="text-[#d0d7de]"> · </span>}{label} {n}</span>
+                    ))}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => onNavigate?.('endpoints')}
+                  className="text-xs font-medium text-[#16436b] hover:underline"
+                >
+                  View endpoints
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

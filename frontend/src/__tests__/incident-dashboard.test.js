@@ -38,14 +38,30 @@ const SCORE_3000 = {
     composite: { grade: 'B', accuracy: 84.0 },
   },
 };
+const ENDPOINTS = {
+  endpoints: [
+    { hostname: 'ACME-SVR02', status: 'online', os: 'Windows Server 2019', platform: 'windows', role: 'file' },
+    { hostname: 'ACME-WS12', status: 'online', os: 'Windows 11 Pro', platform: 'windows', role: 'workstation' },
+    { hostname: 'ACME-WS13', status: 'offline', os: 'Windows 11 Pro', platform: 'windows', role: 'workstation' },
+  ],
+};
+// the focus incident's observable roster: 1 critical + 2 high detections
+const FEED = {
+  counts: { open: 4, promoted: 2, dismissed: 3 },
+  detections: [
+    { id: 'da', severity: 'critical' }, { id: 'db', severity: 'high' },
+    { id: 'dc', severity: 'high' }, { id: 'dz', severity: 'low' },   // dz out of scope
+  ],
+};
 const routeJson = (path) => {
   if (path === '/api/incidents') return INCIDENTS;
   if (path === '/api/analytics/report_card') return { state: 'submitted', grading: { composite: { grade: 'C', accuracy: 71.0 } } };
-  if (path === '/api/endpoints') return { endpoints: [{ hostname: 'H1', status: 'online' }] };
-  if (path === '/api/detections') return { counts: { open: 4, promoted: 2, dismissed: 3 } };
+  if (path === '/api/endpoints') return ENDPOINTS;
+  if (path === '/api/detections') return FEED;
   if (path === '/api/actions') return { actions: [{ outcome: 'success' }, { outcome: 'no_op' }, { outcome: 'success' }, { outcome: 'failed_precondition' }] };
   if (path === '/api/incidents/INC-3000/score') return SCORE_3000;
   if (path === '/api/incidents/INC-3000/triage-review') return { mitre: { id: 'T1486', name: 'Data Encrypted for Impact', tactic: 'Impact' } };
+  if (path.endsWith('/scope')) return { incident_id: path.split('/')[3], sealed: true, hosts: [], accounts: [], detection_ids: ['da', 'db', 'dc'] };
   return {};
 };
 beforeEach(() => {
@@ -56,7 +72,7 @@ beforeEach(() => {
 test('renders the overview grid in reading order: A, B, then the main region', async () => {
   const { container } = render(<IncidentDashboard gameMode="analyst" analystName="A" />);
   await screen.findByText('INC-2000');
-  const order = ['active-investigation', 'investigation-progress', 'kpi-row', 'attack-radar', 'recent-results'];
+  const order = ['active-investigation', 'severity-distribution', 'environment-status', 'kpi-row', 'attack-radar', 'recent-results'];
   const nodes = order.map(id => container.querySelector(`[data-testid="${id}"]`));
   nodes.forEach(n => expect(n).not.toBeNull());
   for (let i = 0; i < nodes.length - 1; i += 1) {
@@ -87,15 +103,77 @@ test('A: the Active Investigation card shows observable fields only and Resume n
   expect(within(card).getByText('INC-1000')).toBeInTheDocument();
 });
 
-test('B: Investigation Progress renders an accessible bar with its exact textual equivalent', async () => {
+test('VS: progress is folded INTO Active Investigation (accessible bar + exact text, no separate card)', async () => {
   render(<IncidentDashboard gameMode="analyst" activeIncidentId="INC-2000" chosen={{ 'INC-2000': { verdict: 'false_positive', category: 'False Positive' } }} />);
-  const card = await screen.findByTestId('investigation-progress');
+  const card = await screen.findByTestId('active-investigation');
   const bar = within(card).getByRole('progressbar');
   expect(bar).toHaveAttribute('aria-valuenow', '3');
   expect(bar).toHaveAttribute('aria-valuemax', '3');
   expect(within(card).getByText('Detections reviewed: 3 of 3')).toBeInTheDocument();
   expect(within(card).getByText('Classification: False Positive')).toBeInTheDocument();
   expect(within(card).getByText('Ready to submit')).toBeInTheDocument();
+  // the fragmenting card is gone
+  expect(screen.queryByTestId('investigation-progress')).toBeNull();
+  expect(screen.queryByText('Investigation Progress')).toBeNull();
+});
+
+test('VS: severity bars show the active incident detections in order with exact counts', async () => {
+  render(<IncidentDashboard gameMode="analyst" activeIncidentId="INC-2000" />);
+  const card = await screen.findByTestId('severity-distribution');
+  await waitFor(() => expect(within(card).getByText('Critical')).toBeInTheDocument());
+  // row order + exact right-aligned counts (dz stays out: not in the scope)
+  const rows = within(card).getAllByText(/^(Critical|High|Medium|Low)$/).map(el => el.textContent);
+  expect(rows).toEqual(['Critical', 'High', 'Medium', 'Low']);
+  const counts = Array.from(card.querySelectorAll('.log-mono')).map(el => el.textContent);
+  expect(counts).toEqual(['1', '2', '0', '0']);
+  expect(within(card).getByText('Active incident')).toBeInTheDocument();
+  // no percentages implied, no correctness/hidden-answer vocabulary
+  expect(card.textContent).not.toMatch(/%/);
+  expect(card.textContent).not.toMatch(/correct|expected|true.positive|disposition/i);
+});
+
+test('VS: all-zero severity shows the honest empty state, never empty bars', async () => {
+  apiFetch.mockImplementation((path) => Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve(path.endsWith('/scope')
+      ? { incident_id: path.split('/')[3], sealed: false, hosts: [], accounts: [], detection_ids: [] }
+      : routeJson(path)),
+  }));
+  render(<IncidentDashboard gameMode="analyst" activeIncidentId="INC-1000" />);
+  const card = await screen.findByTestId('severity-distribution');
+  await waitFor(() => expect(within(card).getByText('No detections observed yet.')).toBeInTheDocument());
+  expect(card.querySelectorAll('[style*="width"]')).toHaveLength(0);
+});
+
+test('VS: environment status shows managed count, indicators, real availability, and real platform breakdown', async () => {
+  const onNavigate = jest.fn();
+  render(<IncidentDashboard gameMode="analyst" onNavigate={onNavigate} />);
+  const card = await screen.findByTestId('environment-status');
+  await waitFor(() => expect(within(card).getByText('3')).toBeInTheDocument());
+  expect(card.textContent).toContain('managed hosts');
+  expect(within(card).getByText('2')).toBeInTheDocument();       // online
+  expect(within(card).getByText('1')).toBeInTheDocument();       // offline
+  // availability = online / managed, exact and visible + sr equivalent
+  expect(within(card).getByText('67%')).toBeInTheDocument();
+  expect(card.textContent).toContain('2 of 3 managed hosts online (67% availability).');
+  // platform breakdown from REAL fields only
+  expect(card.textContent).toContain('Windows Server 1');
+  expect(card.textContent).toContain('Windows Workstation 2');
+  // no invented history or uptime claims
+  expect(card.textContent).not.toMatch(/uptime|trend|last (week|month)|history/i);
+  fireEvent.click(within(card).getByRole('button', { name: 'View endpoints' }));
+  expect(onNavigate).toHaveBeenCalledWith('endpoints');
+});
+
+test('VS: zero managed hosts renders the honest environment empty state', async () => {
+  apiFetch.mockImplementation((path) => Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve(path === '/api/endpoints' ? { endpoints: [] } : routeJson(path)),
+  }));
+  render(<IncidentDashboard gameMode="analyst" />);
+  const card = await screen.findByTestId('environment-status');
+  await waitFor(() => expect(within(card).getByText('No managed hosts available.')).toBeInTheDocument());
+  expect(card.textContent).not.toMatch(/%/);
 });
 
 test('C: KPI tiles carry real session values only (no trends, deltas, or sparklines)', async () => {
@@ -132,7 +210,7 @@ test('empty states are honest before any activity', async () => {
   }));
   render(<IncidentDashboard gameMode="analyst" />);
   expect(await screen.findByText('No active investigations.')).toBeInTheDocument();
-  expect(screen.getByText('Progress appears when an investigation is active.')).toBeInTheDocument();
+  expect(screen.getByText('No detections observed yet.')).toBeInTheDocument();
   expect(screen.getByText(/No incidents submitted yet this session/)).toBeInTheDocument();
 });
 
@@ -168,29 +246,25 @@ test('issues no state-changing (POST) call on render', async () => {
   expect(posts).toHaveLength(0);
 });
 
-// P8.2 migration guard: the severity widget renders from /api/incidents
-// stats.severity_breakdown, and the retired /api/grouped-alerts is NEVER
-// called by the Dashboard.
-test('severity widget renders from /api/incidents stats; grouped-alerts is never called', async () => {
-  render(<IncidentDashboard gameMode="training" />);
-  const label = await screen.findByText('Severity distribution');
-  const widget = label.parentElement;
-  expect(widget.textContent).toContain('critical2');
-  expect(widget.textContent).toContain('high1');
-  expect(widget.textContent).toContain('medium0');
-  expect(widget.textContent).toContain('low3');
+// P8.2 migration guard (retargeted by the VS correction): the severity
+// card now reads the active incident's observable scope + the sanitized
+// detections feed; the retired /api/grouped-alerts is STILL never called.
+test('severity reads the observable scope + feed; grouped-alerts is never called', async () => {
+  render(<IncidentDashboard gameMode="training" activeIncidentId="INC-2000" />);
+  await screen.findByTestId('severity-distribution');
+  await waitFor(() =>
+    expect(apiFetch.mock.calls.some(([p]) => p === '/api/incidents/INC-2000/scope')).toBe(true));
   expect(apiFetch.mock.calls.some(([p]) => p === '/api/grouped-alerts')).toBe(false);
 });
 
 test('SOC Queue band shows the mode label and the queue denominator', async () => {
   render(<IncidentDashboard gameMode="analyst" />);
-  await screen.findAllByText('SOC Queue');
-  expect(screen.getByText(/of 10 resolved/)).toBeInTheDocument();   // N of 10
+  expect(await screen.findByText(/of 10 resolved/)).toBeInTheDocument();   // N of 10
+  expect(screen.getAllByText('SOC Queue').length).toBeGreaterThanOrEqual(1);
 });
 
 test('Guided band uses independent-run language, not a queue denominator', async () => {
   render(<IncidentDashboard gameMode="guided" />);   // resolved_count 1 in the mock
-  await screen.findAllByText('Guided');
-  expect(screen.getByText('Run completed')).toBeInTheDocument();
+  expect(await screen.findByText('Run completed')).toBeInTheDocument();
   expect(screen.queryByText(/of 10 resolved/)).toBeNull();
 });
