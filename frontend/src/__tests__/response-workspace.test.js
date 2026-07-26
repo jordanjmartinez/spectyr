@@ -1,7 +1,7 @@
 /**
- * Final pass Part III.0.1: the Response workspace -- the ONE canonical
- * action-execution surface (Investigate -> Triage -> Respond -> Submit ->
- * Learn).
+ * Final pass Part III.0.1 (+ Visual pass V9): the Response workspace --
+ * the ONE canonical action-execution surface (Investigate -> Triage ->
+ * Respond -> Submit -> Learn).
  *  - actionable incident entities group by target type with factual
  *    context only (identity, state, promoted-detection chips, verbs,
  *    executed state); never correctness/required/remaining copy
@@ -225,4 +225,33 @@ test('no pre-submission correctness or answer-key phrasing renders', async () =>
     /sufficient/i, /remaining/i, /expected/i, /—/]) {
     expect(text).not.toMatch(bad);
   }
+});
+
+// --- Visual pass V9: command-center structure guards ------------------------
+
+test('V9: exactly the five actionable target groups render; no Services group exists', async () => {
+  // FLAGGED V9 DEVIATION (documented in Response.jsx): no service verb
+  // exists in the eight-action vocabulary, so an actionless Services
+  // table would duplicate the Endpoints investigation surface and imply
+  // a verb the product does not have.
+  mockApi();
+  await renderResponse();
+  await screen.findByText('Hosts');
+  for (const g of ['Hosts', 'Accounts', 'Processes', 'Files', 'Persistence']) {
+    expect(screen.getByText(g)).toBeInTheDocument();
+  }
+  expect(screen.queryByText('Services')).toBeNull();
+  expect(screen.queryByRole('button', { name: /stop service/i })).toBeNull();
+});
+
+test('V9: no correctness, recommendation, or expected-count vocabulary anywhere in the workspace', async () => {
+  mockApi();
+  const { container } = render(<Response isVisible resetTrigger={0} activeIncidentId="INC-A" />);
+  await screen.findByText('Hosts');
+  const text = container.textContent;
+  expect(text).not.toMatch(/recommend/i);
+  expect(text).not.toMatch(/expected action/i);
+  expect(text).not.toMatch(/required action/i);
+  expect(text).not.toMatch(/\bremaining\b/i);
+  expect(text).not.toMatch(/correct(ly)?\b/i);
 });

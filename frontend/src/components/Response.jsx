@@ -8,8 +8,10 @@ import {
   ACTION_LABELS, RESPONSE_SELECT_INCIDENT, RESPONSE_NO_PROMOTED,
   RESPONSE_NO_PROMOTED_SUB, RESPONSE_NO_TARGETS, RESPONSE_NO_ACTIONS,
 } from './uiCopy';
-import { CARD_STYLE, StateChip } from './ui';
-import { DeviceGlyph, PlatformBadge, platformFor } from './icons';
+import { CARD_STYLE, StateChip, PageHeader, SegmentedToggle } from './ui';
+import { DeviceGlyph, PlatformBadge, platformFor, NAV_ICONS, NAV_STROKE } from './icons';
+
+const PageIcon = NAV_ICONS.response;
 
 // Final pass Part III.0.1: the ONE canonical action-execution workspace
 // (Investigate -> Triage -> Respond -> Submit -> Learn). Actionable
@@ -21,6 +23,16 @@ import { DeviceGlyph, PlatformBadge, platformFor } from './icons';
 // Response Log is the single chronological history. Everything executes
 // through the one action system (responseActions.js); the endpoint and
 // detection surfaces only navigate here.
+//
+// Visual pass V9 -- FLAGGED DEVIATION (Services group omitted): the V9
+// spec lists a sixth target group, Services, but NO service verb exists
+// in the eight-action vocabulary (services stop only through the kill
+// cascade), so an actionless Services table in the EXECUTION workspace
+// would duplicate the Endpoints Services investigation tab and imply a
+// verb the product does not have (the expressibility rule forbids
+// stretching one). The five actionable groups below match the pinned
+// Guided hint copy. A service verb is response-vocabulary-v2 backlog
+// material; the group joins this workspace when its verb exists.
 
 // Visual pass VG: card surface + StateChip from the shared module.
 
@@ -204,35 +216,23 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
     <div>
       <IncidentScopeBar scope={scope} incidentId={activeIncidentId} />
 
-      {/* Header */}
-      <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-hidden mb-4">
-        <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
-        <div className="p-4 sm:p-5 flex flex-wrap items-center gap-4">
-          <div className="w-10 h-10 rounded-lg bg-[#101218] flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" role="img" aria-label="Response">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332]">Response</h2>
-            </div>
-            <p className="text-sm text-[#57606a]">
-              {view === 'log'
-                ? 'Every response action this session, in order.'
-                : 'Containment and remediation for the incident targets below.'}
-            </p>
-          </div>
-          <div className="ml-auto flex items-center rounded-md border border-[#d0d7de] overflow-hidden" role="group" aria-label="Response view">
-            {[['actions', 'Actions'], ['log', 'Response Log']].map(([key, label]) => (
-              <button key={key} type="button" onClick={() => setView(key)}
-                className={`px-3 py-1.5 text-xs font-medium transition ${view === key ? 'bg-[#101218] text-white' : 'bg-white text-[#57606a] hover:bg-[#eef1f4]'}`}>
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* V9: the shield-check command-center identity over the shared
+          PageHeader; Actions + Response Log stay the two views. */}
+      <PageHeader
+        icon={<PageIcon size={20} strokeWidth={NAV_STROKE} aria-hidden="true" />}
+        title="Response"
+        subtitle={view === 'log'
+          ? 'Every response action this session, in order.'
+          : 'Containment and remediation for the incident targets below.'}
+        right={(
+          <SegmentedToggle
+            ariaLabel="Response view"
+            value={view}
+            onChange={setView}
+            options={[['actions', 'Actions'], ['log', 'Response Log']]}
+          />
+        )}
+      />
 
       {view === 'log' ? (
         <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-x-auto">
