@@ -18,7 +18,7 @@ import {
   NO_QUERY_ENTERED, PRESERVED_RESULTS_LABEL, SEARCH_NOT_RUN,
   QUERY_SECTION_NAMES, sectionCouldNotBeRead, STRUCTURE_LINE,
   RESTORE_LAST_QUERY, surroundingBanner, OCCURRENCE_ASCENDING,
-  BACK_TO_PREVIOUS_RESULTS, returnReadFailed,
+  BACK_TO_PREVIOUS_RESULTS,
 } from './uiCopy';
 
 // SIEM Investigation Workbench shell (Stage 4 Phase 4). Analyst-driven:
@@ -101,11 +101,14 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
   const [heldView, setHeldView] = useState(null);
   const preserveHoldRef = useRef(false);
   const focusSeqRef = useRef(0);
-  // C1 checkpoint fix (F2 latent defect): a failed case-evidence read on
-  // the return action keeps the Expanded search presentation (labels and
-  // rows must agree, criteria 10/13); this holds the failed target id so
-  // the notice can name it. Cleared by any run, the case anchor, and reset.
-  const [returnError, setReturnError] = useState(null);
+  // Amendment 3 F2 (model B): the single-depth hold behind Expanded
+  // search -- the pre-entry evidence view {queryText, snapshot, scope,
+  // timeline}, written ONLY at entry (every entry site), surviving every
+  // run/pivot/refine while expanded, consumed by the return action,
+  // cleared by a case change, an incident-scoped descent, and reset.
+  // This is deliberately NOT the A2 surrounding hold (heldView above,
+  // which keeps its drop-on-execute lifetime until F3 removes it).
+  const [expandedHold, setExpandedHold] = useState(null);
   // Phase 4 commit 4.1 (OD-5 Option A): selection visibly connects to the
   // ONE shared inspector -- scroll-into-view (block nearest), a single
   // emphasis run, and focus moved to the container exactly once per
@@ -148,7 +151,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
     setTimeline(null);
     setTransition(null);
     setHeldView(null);
-    setReturnError(null);
+    setExpandedHold(null);
   }, [resetTrigger]);
 
   const loadIncidentScope = (id) => {
@@ -176,10 +179,10 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
     setTimeline(null);
     setTransition(null);
     setHeldView(null);
+    setExpandedHold(null);
     setQueryNotice(null);
     setSelectedId(null);
     setSelectionNotice(null);
-    setReturnError(null);
     if (activeIncidentId) loadIncidentScope(activeIncidentId);
     else setScope({ kind: 'session' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -196,8 +199,21 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
   // stays pinned. Deliberately NOT gated on the case-evidence read -- the
   // expanded state needs no case scope and is the designed exploration
   // path out of a failed scope read.
+  // Amendment 3 F2: every entry into Expanded search captures the
+  // pre-entry hold. Reads inside the same handler still see the pre-entry
+  // values (state writes are queued), so capture placement is safe at any
+  // point before the re-render. Entering from a degraded case-evidence
+  // state (failed scope read) holds that state too -- the excursion never
+  // launders a pre-existing error (A3-2.5).
+  const captureExpandedHold = () => {
+    if (activeIncidentId && scope.kind === 'incident') {
+      setExpandedHold({ queryText, snapshot, scope, timeline });
+    }
+  };
+
   const searchAll = () => {
     if (running || queryText.trim() === '') return;
+    captureExpandedHold();
     setScope({ kind: 'session' });
     execute(queryText, 'session');
   };
@@ -251,7 +267,6 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
     // (single-depth, never a history stack)
     if (!preserveHoldRef.current) setHeldView(null);
     preserveHoldRef.current = false;
-    setReturnError(null);
     setRunning(true);
     apiFetch(`/api/events/query?q=${encodeURIComponent(q)}&scope=${encodeURIComponent(scopeValue)}`)
       .then(async (res) => {
@@ -342,6 +357,9 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
     const query = PIVOT_FORMS[kind](tf, value);
     // 8.2 clue naming: the followed field + value ride the transition
     // provenance; the block's clue line renders under the identity guard.
+    // A repeat pivot while ALREADY expanded updates the clue and snapshot
+    // only -- captureExpandedHold's kind guard leaves the hold untouched.
+    captureExpandedHold();
     setTransition({ query, clue: field ? { field, value } : null });
     setScope({ kind: 'session' });
     setQueryText(query);
@@ -393,30 +411,38 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
     setHeldView(null);
   };
 
-  // The single return action (A1-A.2 point 4): "Return to INC-#### evidence"
-  // re-runs the query currently in the bar under the case's participant
-  // scope -- the existing Stage 4 return mechanic, now the ONE exit from
-  // Expanded search. Uses the same scope-read + error behavior as the
-  // case anchor (never a silent fallback).
-  const returnToIncident = (id) => {
-    if (running) return;
-    setReturnError(null);
-    setScope({ kind: 'incident', id, status: 'loading' });
-    apiFetch(`/api/incidents/${id}/scope`)
-      .then((res) => { if (!res.ok) throw new Error('scope'); return res.json(); })
-      .then((sc) => {
-        setScope({ kind: 'incident', id, status: 'ready', sealed: !!sc.sealed });
-        execute(queryText, id);
-      })
-      // C1 checkpoint fix (F2 latent defect, criteria 10/13): a failed
-      // read must NOT relabel the view as incident evidence over the
-      // still-displayed expanded (session) rows. Stay in Expanded search,
-      // surface the failure, keep the return chip as the retry. This is a
-      // minimal guard; Amendment 3's model B hold restore supersedes it.
-      .catch(() => {
-        setScope({ kind: 'session' });
-        setReturnError(id);
-      });
+  // The single return action (A1-A.2 point 4; Amendment 3 F2, model B):
+  // "Return to INC-#### evidence" RESTORES the pre-entry hold exactly --
+  // snapshot (may be null: the case-evidence empty state), bar text,
+  // scope (no re-read: the C1 guard's failure mode is unreachable), and
+  // timeline mode -- with ZERO requests, and consumes it. The excursion's
+  // provenance (clue, notices, expanded errors) dies with the return;
+  // selection survives when the restored rows still contain it; the
+  // new-count poll resumes on the restored token (an invalidated token
+  // halts neutrally through countHalted). A held pre-seal scope flag may
+  // lag the actual seal until the next scope read (recorded A3-2.2 edge).
+  const returnToIncident = () => {
+    if (running || !expandedHold) return;
+    setSnapshot(expandedHold.snapshot);
+    setQueryText(expandedHold.queryText);
+    setScope(expandedHold.scope);
+    setTimeline(expandedHold.timeline);
+    setError(null);
+    setTransition(null);
+    setQueryNotice(null);
+    setNewCount(0);
+    setPoolGrowth(0);
+    setCountHalted(false);
+    setSelectedId((sel) => {
+      const rows = expandedHold.snapshot ? expandedHold.snapshot.rows : [];
+      if (sel && !rows.some((r) => r.id === sel)) {
+        setSelectionNotice('The inspected event is not in the new snapshot.');
+        return null;
+      }
+      setSelectionNotice(null);
+      return sel;
+    });
+    setExpandedHold(null);
   };
 
   // P7.2/P7.4 Open Evidence Timeline descent (contract Sections 13/16; R17
@@ -443,6 +469,10 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
     setTimeline({ kind: 'descent', origin, backView, host,
                   account: account || null, query });
     if (scopeIncidentId) {
+      // A3-2.3: an incident-scoped descent is an explicit navigation to a
+      // NEW case-evidence view; it exits Expanded search without a
+      // restore, so the hold is cleared, never replayed later.
+      setExpandedHold(null);
       setScope({ kind: 'incident', id: scopeIncidentId, status: 'loading' });
       apiFetch(`/api/incidents/${scopeIncidentId}/scope`)
         .then((res) => { if (!res.ok) throw new Error('scope'); return res.json(); })
@@ -452,6 +482,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
         })
         .catch(() => setScope({ kind: 'incident', id: scopeIncidentId, status: 'error' }));
     } else {
+      captureExpandedHold();
       setScope({ kind: 'session' });
       execute(query, 'session');
     }
@@ -565,23 +596,10 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
                        && snapshot.identity.canonical_query === transition.query)
                   ? transition.clue : null,
                 noResults: !!(snapshot && snapshot.count === 0),
-                onReturn: () => returnToIncident(activeIncidentId),
+                onReturn: () => returnToIncident(),
               }
             : null}
         />
-        {/* C1 checkpoint fix (F2 latent defect): the failed-return notice.
-            The state stays Expanded search so labels and rows agree; the
-            displayed results are truthfully the last successful query's. */}
-        {expandedSearch && returnError && (
-          <div
-            data-testid="return-read-error"
-            role="alert"
-            className="px-3 py-2 rounded-md border border-[#e2e6ea] bg-[#faf6f0] text-xs text-[#1a2332]"
-          >
-            <span>{returnReadFailed(returnError)}</span>{' '}
-            <span className="text-[#57606a]">{STALE_RESULTS_NOTE}</span>
-          </div>
-        )}
         <div className="flex flex-wrap items-center gap-2 text-xs">
           {activeIncidentId && scope.kind === 'incident' && (
             <span

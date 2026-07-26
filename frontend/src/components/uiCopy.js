@@ -23,21 +23,12 @@ export const expandedSearchExplanation = (incidentId) =>
   `Searching all evidence. Your case ${incidentId} stays open.`;
 export const returnToCaseEvidence = (incidentId) =>
   `Return to ${incidentId} evidence`;
-export const returnSubcopy = (incidentId) =>
-  `Return to ${incidentId} evidence runs this query over the case evidence again.`;
 // Amendment 3 (ratified A3-R.1) return subcopy: the model B restore.
-// Lands ahead of its consumer per R7; returnSubcopy above retires with
-// the model A mechanics in the F2 commit.
+// The model A subcopy and the C1 interim guard string retired with the
+// model A mechanics (F2: the return performs no scope re-run, so the
+// guarded failure mode is unreachable).
 export const RETURN_SUBCOPY =
   'Return restores the incident evidence you were viewing before Expanded search. Changes made in Expanded search are not kept.';
-// C1 checkpoint fix (post-Stage-5 review, F2 latent defect): a failed
-// case-evidence read on the return action must not relabel the view as
-// incident evidence over the still-displayed expanded rows (criteria
-// 10/13). The state stays Expanded search; this line surfaces the failure
-// and the return chip itself is the retry. Superseded by the Amendment 3
-// model B hold restore when that ships.
-export const returnReadFailed = (incidentId) =>
-  `Could not load ${incidentId} evidence. Try the return again.`;
 
 // --- the snapshot echo label (locked contract 11.2 "Results from") ---------
 export const RESULTS_FROM_LABEL = 'Results from:';

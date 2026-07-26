@@ -120,9 +120,11 @@ test('search-all enters Expanded search visibly: block, explanation, exactly one
   expect(within(block).getByRole('button').textContent).toBe(returnToCaseEvidence(INC));
   // the case stays pinned through the expansion
   expect(screen.getByTestId('pinned-case-line').textContent).toBe(investigatingCase(INC));
-  // returning restores the case evidence
+  // returning RESTORES the case evidence (Amendment 3 model B): zero
+  // requests, the pre-entry state redisplays, the block dies
+  const callsBefore = queryCalls().length;
   await act(async () => { fireEvent.click(screen.getByTestId('return-chip')); });
-  expect(queryCalls().pop()).toMatch(new RegExp(`scope=${INC}$`));
+  expect(queryCalls().length).toBe(callsBefore);
   expect(screen.queryByTestId('expanded-search-block')).toBeNull();
   expect(screen.getByTestId('scope-chip').textContent).toContain(caseEvidenceLabel(INC));
 });

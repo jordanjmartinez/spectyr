@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   ALL_ACTIVITY, EXPANDED_SEARCH_TITLE, followingClue,
-  expandedSearchExplanation, returnToCaseEvidence, returnSubcopy,
+  expandedSearchExplanation, returnToCaseEvidence, RETURN_SUBCOPY,
   NO_RESULTS_OUTS,
 } from './uiCopy';
 
@@ -55,7 +55,7 @@ const InvestigationContext = ({ incidentId, expandedSearch }) => (
           {returnToCaseEvidence(incidentId)}
         </button>
         <span className="w-full text-[11px] text-[#8b949e]">
-          {returnSubcopy(incidentId)}
+          {RETURN_SUBCOPY}
         </span>
         {expandedSearch.noResults && (
           <span className="w-full text-[11px] text-[#8b949e]">

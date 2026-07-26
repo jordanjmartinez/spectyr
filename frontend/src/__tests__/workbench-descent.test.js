@@ -376,6 +376,31 @@ test('a refinement from the identity-descent OR timeline mints a fresh standalon
     .toHaveTextContent('Started a new query; the previous one mixed or-conditions.');
 });
 
+test('model B (A3.2): a search-all excursion from a descent view restores the descent timeline on return', async () => {
+  queryResponses.push(ok(snapWith(ROWS_UNORDERED, 'all | ACME-WS10 | * | *', 'INC-9368')));
+  await act(async () => {
+    renderSiem({
+      activeIncidentId: 'INC-9368',
+      descentRequest: { origin: 'INC-9368', hosts: ['ACME-WS10'], scopeIncidentId: 'INC-9368', backView: 'incidents', seq: 1 },
+      onNavigate: () => {},
+    });
+  });
+  expect(screen.getByTestId('descent-banner')).toBeInTheDocument();
+  // broaden by hand, then deliberately expand: the hold captures the
+  // pre-entry state INCLUDING the active descent timeline mode
+  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
+  queryResponses.push(ok(snapWith(ROWS_UNORDERED, 'all | * | * | *')));
+  await act(async () => { fireEvent.click(screen.getByTestId('search-all')); });
+  expect(screen.getByTestId('expanded-search-block')).toBeInTheDocument();
+  expect(screen.queryByTestId('descent-banner')).toBeNull();   // banner dies with its snapshot
+  await act(async () => { fireEvent.click(screen.getByTestId('return-chip')); });
+  // the held descent view is back: banner, timeline mode, case scope
+  const banner = screen.getByTestId('descent-banner');
+  expect(banner).toHaveTextContent('Evidence timeline for ACME-WS10, from INC-9368');
+  expect(screen.getByTestId('scope-chip').textContent).toContain('INC-9368 evidence');
+  expect(screen.queryByTestId('expanded-search-block')).toBeNull();
+});
+
 test('re-descending with a new seq re-executes the same timeline', async () => {
   const props = {
     descentRequest: { origin: 'DET-42', hosts: ['ACME-WS10'], scopeIncidentId: null, backView: 'detections', seq: 1 },

@@ -13,12 +13,12 @@ import Incidents from '../components/Incidents';
 import {
   investigatingCase, ALL_ACTIVITY, caseEvidenceLabel, EXPANDED_SEARCH_TITLE,
   followingClue, expandedSearchExplanation, returnToCaseEvidence,
-  returnSubcopy, SEARCH_ALL_EVIDENCE, RESULTS_FROM_LABEL, EDITED_NOTE,
+  SEARCH_ALL_EVIDENCE, RESULTS_FROM_LABEL, EDITED_NOTE,
   STALE_RESULTS_NOTE, TELEMETRY_LOADING, detectionsReviewed,
   detectionsRemaining, PROMOTED_LABEL, DISMISSED_LABEL, REOPENED_LABEL,
   responseActionsTaken, READY_TO_SUBMIT, SUBMITTED_GRADE_LOCKED,
   completedStrip, toReview, FEED_SUBCOPY, THREATS_SUBCOPY, filterAdded,
-  excludedFilter, returnReadFailed, RETURN_SUBCOPY, CLASSIFY_TO_SUBMIT,
+  excludedFilter, RETURN_SUBCOPY, CLASSIFY_TO_SUBMIT,
   SIMPLE_PLACEHOLDER, SIMPLE_HELP, SIMPLE_TOGGLE, ADVANCED_TOGGLE,
   SOURCE_LABEL, EVENT_TYPE_LABEL, ALL_SOURCES, ALL_EVENT_TYPES,
 } from '../components/uiCopy';
@@ -54,8 +54,6 @@ test('the case-constant terms are the ratified A-OD-1 finals, byte-exact', () =>
     .toBe('Searching all evidence. Your case INC-8541 stays open.');
   expect(returnToCaseEvidence('INC-8541')).toBe('Return to INC-8541 evidence');
   expect(SEARCH_ALL_EVIDENCE).toBe('Search all evidence');
-  expect(returnSubcopy('INC-8541'))
-    .toBe('Return to INC-8541 evidence runs this query over the case evidence again.');
 });
 
 test('the Amendment 3 ratified finals are byte-exact (A3-R.1 + standing drafted finals)', () => {
@@ -100,7 +98,6 @@ const PRE_SUBMISSION_STRINGS = [
   ['followingClue', followingClue('user_account', 'x')],
   ['expandedSearchExplanation', expandedSearchExplanation('INC-0001')],
   ['returnToCaseEvidence', returnToCaseEvidence('INC-0001')],
-  ['returnSubcopy', returnSubcopy('INC-0001')],
   ['SEARCH_ALL_EVIDENCE', SEARCH_ALL_EVIDENCE],
   ['RESULTS_FROM_LABEL', RESULTS_FROM_LABEL],
   ['EDITED_NOTE', EDITED_NOTE],
@@ -120,8 +117,8 @@ const PRE_SUBMISSION_STRINGS = [
   ['THREATS_SUBCOPY', THREATS_SUBCOPY],
   ['filterAdded', filterAdded('a', 'b')],
   ['excludedFilter', excludedFilter('a', 'b')],
-  ['returnReadFailed', returnReadFailed('INC-0001')],   // C1 (F2 guard)
-  // Amendment 3 (A3.1): the pre-submission additions
+  // Amendment 3 (A3.1): the pre-submission additions (the C1 guard string
+  // and the model A subcopy retired with the F2 model B mechanics)
   ['RETURN_SUBCOPY', RETURN_SUBCOPY],
   ['CLASSIFY_TO_SUBMIT', CLASSIFY_TO_SUBMIT],
   ['SIMPLE_PLACEHOLDER', SIMPLE_PLACEHOLDER],

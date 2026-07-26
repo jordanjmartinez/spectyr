@@ -11,7 +11,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import InvestigationContext from '../components/InvestigationContext';
 import {
   investigatingCase, ALL_ACTIVITY, EXPANDED_SEARCH_TITLE, followingClue,
-  expandedSearchExplanation, returnToCaseEvidence, returnSubcopy,
+  expandedSearchExplanation, returnToCaseEvidence, RETURN_SUBCOPY,
 } from '../components/uiCopy';
 
 const INC = 'INC-8541';
@@ -49,7 +49,7 @@ test('expanded-search block: title, clue line, explanation, and exactly ONE retu
   const buttons = block.querySelectorAll('button');
   expect(buttons).toHaveLength(1);
   expect(buttons[0].textContent).toBe(returnToCaseEvidence(INC));
-  expect(block.textContent).toContain(returnSubcopy(INC));
+  expect(block.textContent).toContain(RETURN_SUBCOPY);
   fireEvent.click(buttons[0]);
   expect(onReturn).toHaveBeenCalledTimes(1);
 });
