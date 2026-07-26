@@ -880,3 +880,231 @@ LCQL, snapshots, scoring, and roster behavior -- moved nowhere; every FP
 commit is frontend-only. Branch `stage-5-live-run-feedback` stands at
 FP7 + this record. Per the directive: NO merge to main, NO push, NO
 further planning or feature cycle. The final product pass is COMPLETE.
+
+---
+
+# Part IV. Visual Identity and Dashboard Polish
+
+Authorized as the visual-identity pass over the completed Stage 5
+product. Behavior, scoring, the incident engine, response
+centralization, query semantics, and the Learning Review model were
+already complete and are unchanged here. Seventeen concern-separated
+commits, `908e2d7..3d41d1a`, each landing green.
+
+## IV.1 Provenance note (recorded first)
+
+This pass was requested "before the merge," but the Stage 5 merge had
+already completed under the preceding FINAL MERGE AUTHORIZATION
+(`fed2ce1`, closure record `6ec048b`). The work therefore ran on
+`stage-5-live-run-feedback`, which still stood exactly at the approved
+tip `e3bfbdf`. Preconditions verified before the first commit: branch
+tip `e3bfbdf`; FP0-FP8 all ancestors of it; `run_gates.py --all` exit 0
+(29 backend suites, frontend 30/271); the two owner assets untouched
+(`spectyrvideo.mp4` SHA256 `1FF6F983...`, `spectyr_svg.svg`
+`48CD642E...`). Bringing this pass into `main` needs a fresh merge
+authorization.
+
+## IV.2 Design principles
+
+1. Solve each visual problem ONCE. `components/ui.jsx` is the single
+   visual-language module (tokens, card surface, severity/grade maps,
+   PageHeader, SegmentedToggle, Btn, StateChip, empty/loading/error
+   states); `components/icons.jsx` is the single icon system;
+   `index.css` holds the one type scale and the one table system.
+2. Uniformity is the visual language, never the layout. Each workspace
+   keeps the information architecture its function needs.
+3. Dark surfaces are reserved for chrome: primary navigation, the app
+   header, selected segmented controls, primary buttons. Data surfaces
+   are light.
+4. Data truth over decoration: every number names a real source; no
+   trends, deltas, or sparklines exist because no historical series
+   exists; correctness is never disclosed before submission.
+5. Never color alone: every state carries a word, an icon, or a text
+   equivalent.
+
+## IV.3 Commit ledger
+
+| # | Commit | Concern |
+|---|--------|---------|
+| VP1 | `908e2d7` | Remove the pre-submission Check Answer (V1) |
+| VP2 | `b48d464` | Shared visual-language module + design tokens (VG) |
+| VP3 | `b24ee2c` | One icon system, distinct nav identities (V2) |
+| VP4 | `0741ec7` | Platform/device identity on endpoint surfaces (V2b/V7) |
+| VP5 | `2623715` | Shell utility region + ghost avatar (V3) |
+| VP6 | `cb9c6a7` | ATT&CK catalog mirror + corpus pin gate (V6a) |
+| VP7 | `8d7c216` | Dashboard analytic overview grid (V5/V6b) |
+| VP8 | `02ffe8b` | Page identities: Detections, SIEM, Incidents (V8/V4) |
+| VP9 | `4cd1c62` | Response command-center identity (V9) |
+| VP10 | `a3ecb6a` | Metrics identity + three-cards Score summary (V10) |
+| VP11 | `99f3f12` | ATT&CK coverage RADAR replaces the matrix (owner correction) |
+| VP12 | `acc0922` | Severity bars, Environment status, folded progress (owner) |
+| VP13 | `a26199d` | Inter-first typography + type tokens (owner) |
+| VP14 | `0edc998` | Radar to the right-hand supporting column (owner) |
+| VP15 | `d35df79` | Clean app header; session banner retired (owner) |
+| VP16 | `f11bff4` | Light table system, no card stripes, micro-heading scale (owner) |
+| VP16f | `3d41d1a` | Header title ink fix (found in Chrome) |
+
+## IV.4 Icon inventory
+
+One family (lucide-react, already installed; audited before any
+dependency question). Navigation renders at 19px, inline identity at
+15-18px, all strokeWidth 1.75; icons are decorative (`aria-hidden`)
+with the accessible name on the control; no emoji anywhere.
+
+| Surface | Icon |
+|---|---|
+| Dashboard | `LayoutDashboard` |
+| Incidents | `AlertTriangle` (restored by the VP16 correction) |
+| SIEM | `ScanSearch` |
+| Detections | `Crosshair` |
+| Endpoints | `Monitor` |
+| Response | `ShieldCheck` |
+| Metrics | `LineChart` |
+| Rail chrome | `BookOpen`, `RotateCcw`, `Play`, `Ghost` |
+
+Device/platform layer: `platformFor()` maps the REAL serialized fields
+(`system.platform`, `os`, `role`) to a device class + platform key;
+`DeviceGlyph` (server / workstation / laptop / generic), `PlatformBadge`
+(local Windows four-pane mark, lucide `Apple`, local Linux silhouette;
+`role="img"` + label). **Unknown platforms render NO badge**; the
+PAN-OS appliance is the live case. lucide ships no Windows or Linux
+brand mark, so two local glyphs on the same 24-unit grid were drawn
+rather than adding a brand-icon dependency (reported, not silently
+done).
+
+## IV.5 Page-identity inventory
+
+| Workspace | Anatomy |
+|---|---|
+| Dashboard | Analytic overview grid: supporting column (Active investigation with folded progress, Severity distribution, Environment status) + main region (KPI tiles, Recent results, ATT&CK radar) |
+| Incidents | Master-detail case workspace |
+| SIEM | Query and evidence workbench |
+| Detections | Triage queue |
+| Endpoints | Asset explorer (list + two-pane detail) |
+| Response | Action command center (Actions / Response log, grouped targets) |
+| Metrics | Learning Review dashboard + Score summary |
+
+The workspace title lives in the ONE application header; page-identity
+cards carry icon, count, subtitle, and controls but never repeat the
+title (asserted: exactly one `t-page` per screen).
+
+## IV.6 Typography tokens
+
+`t-page` 26/650/1.2 - `t-section` 18/600/1.3 - `t-subsection` 14/600 -
+`t-card` 14/600 - `t-body` 14/400/1.5 - `t-nav` 14/500 - `t-kpi`
+28/650 tabular - `t-meta` 12/400 - `t-overline` 12/600/1.3 at 0.03em,
+no uppercase transform. Inter leads the product stack. Mono
+(`log-mono` / `font-mono`) is reserved for LCQL, raw events, IPs,
+hostnames, INC ids, technique ids, timestamps, PIDs, and account
+strings; identifiers are never lowercased or humanized.
+
+## IV.7 Dashboard data sources
+
+| Element | Source | Truth note |
+|---|---|---|
+| Active investigation | `/api/incidents` active card | Observable only; no correctness |
+| Progress bar + text | card `triage` + shell classification state | Folded into the card |
+| Severity distribution | incident `/scope` detection ids joined to `/api/detections` | Active incident; exact counts; bars scaled to the largest count; no percentage implied |
+| Environment status | `/api/endpoints` | Current state only; availability = online/managed; platform breakdown from real fields; no uptime claim |
+| Detections reviewed | `/api/detections` counts (promoted+dismissed) | Session observable |
+| Response actions executed | `/api/actions`, success outcomes | Session observable |
+| Incidents completed | `/api/incidents` completed | Session observable |
+| Latest incident grade | newest submitted card `incident_grade` | Post-submission |
+| Session performance | `/api/analytics/report_card` composite | Post-submission, aggregate |
+| Recent results | per-incident frozen `/score` records | Post-submission; labeled "This session" |
+| ATT&CK radar | static corpus mirror | Catalog coverage; no player overlay |
+
+Omitted for lack of data (stated, not faked): trend lines, deltas,
+sparklines, historical accuracy, MTTR-over-time, cross-session mastery.
+
+## IV.8 ATT&CK radar data contract
+
+One polygon over the 15 canonical pinned v19.1 tactics. Axis value =
+Spectyr-represented techniques in that tactic divided by the
+authoritative Enterprise technique count in that tactic.
+
+- **Denominators**: derived from the official pinned STIX dataset
+  (github.com/mitre/cti tag `ATT&CK-v19.1`,
+  `enterprise-attack/enterprise-attack.json`), downloaded and
+  sha256-VERIFIED byte-identical to the repo pin
+  `fc783039...2cf1c97d`. No STOP condition applied.
+- **Counting rule (both sides)**: parent techniques only
+  (sub-techniques roll up), excluding revoked and deprecated objects,
+  counted once per kill-chain tactic; 222 parents, e.g. Discovery 34,
+  Stealth 30, Persistence 22, Lateral Movement 9.
+- **Numerators**: the corpus answer keys under the same rule
+  (Credential Access = T1003 + T1110 = 2, not 3).
+- Percentages are plain represented/total, NEVER normalized against
+  the largest Spectyr category. Honest range: 0-18%.
+- Rings 0/25/50/75/100; radius labels off-axis (angle 18) so they never
+  overlap a tactic name; concise visual labels with canonical names in
+  the tooltip, each label SVG `<title>`, and the sr-only table; no
+  animation; no adversary or player overlay.
+- Guard: `test_scenario_loader_v2.test_frontend_attack_catalog_mirror`
+  pins the provenance sha256, the exact 15 denominators, ids/names vs
+  the canonical map, counts vs the corpus, and numerator <= denominator.
+
+## IV.9 Tests
+
+Frontend **36 suites / 317 tests**, backend **29 suites** (loader now
+65). New permanent batteries: `no-check-answer` (6), `icons` (7),
+`app-header` (4, replacing `utility-bar`), `attack-radar` (4),
+`typography` (4), `surface-system` (5), plus additions to `endpoints`,
+`incidents-workspace`, `response-workspace`, `score-sections`, and a
+rewritten `incident-dashboard` (13). Final battery:
+`python backend/run_gates.py --all` exit 0, ALL GREEN.
+
+## IV.10 Chrome verification
+
+Live Guided run (`INC-8340`, log-clearing) at 1536x960: mode picker
+(V1 copy, "hints available", no Check Answer), Dashboard empty /
+active / after-submission, Detections queue + detail, Incidents
+workspace + submit flow, Metrics Learning Review, Endpoints list. The
+light table system, the radar in its right column, the dark header with
+its outline, and the platform identity all render as specified. Zero
+steady-state console errors observed. **VP16f was found here**, not by
+a suite: the workspace title rendered dark-on-dark because the
+`.t-page` token ink outranks a Tailwind utility.
+
+## IV.11 Deviations and honest gaps
+
+1. **Provenance** (IV.1): the pass ran post-merge on the stage branch.
+2. **v19.1 tactic list**: the V6 brief listed the pre-v19 tactics
+   (Defense Evasion); the corpus is pinned to v19.1, where Stealth and
+   Defense Impairment replace it. The pin wins.
+3. **Services group omitted from Response** (V9): no service verb
+   exists in the eight-action vocabulary; an actionless table would
+   imply one. Backlogged to `response-vocabulary-v2`.
+4. **Related-host identity stays text-only** (V7): the Incidents scope
+   line is a comma-joined inline list where a per-host glyph pair does
+   not fit (the "where space permits" clause).
+5. **Batch-swap encoding damage**: a PowerShell pass wrote BOMs and
+   mangled sort-caret glyphs; both were detected and repaired inside the
+   same change, before any commit.
+6. **Narrow-width Chrome verification NOT completed**: `resize_window`
+   reported success but the rendered viewport stayed at desktop width,
+   so tablet and narrow layouts are evidenced only by the responsive
+   class structure and DOM reading-order assertions, not by a confirmed
+   narrow screenshot. Stated rather than claimed.
+7. **One unexplained live grade**: a Guided submission of True Positive
+   plus "Defense Evasion" on the log-clearing scenario returned
+   Classification F. Both halves were then proven correct in isolation:
+   a new UI test asserts the submitted body is exactly
+   `{verdict:'threat', category:'Defense Evasion'}`, and an engine probe
+   shows `_classification_grade` returns A for that pair (F only when
+   `actual_category` is None). The originating session could not be
+   re-examined: a diagnostic script that imported `app.py` while the dev
+   server was live triggered the boot-time orphan sweep and deleted the
+   running session log directory (the known dev-environment hazard
+   recorded in Part III). Flagged UNRESOLVED, needing one clean
+   reproduction; no evidence implicates the visual pass, which touched
+   no scoring path.
+8. **`react-scripts` act() warnings** in the Siem/Incidents tests are
+   pre-existing noise, unchanged by this pass.
+
+## IV.12 Final state
+
+Branch `stage-5-live-run-feedback`, tip **`3d41d1a`**. The working tree
+carries ONLY the two owner asset items (`spectyrvideo.mp4` modified,
+`spectyr_svg.svg` untracked), both byte-identical to their pre-pass
+hashes. NOT merged, NOT pushed. Stopped at the visual-polish checkpoint.
