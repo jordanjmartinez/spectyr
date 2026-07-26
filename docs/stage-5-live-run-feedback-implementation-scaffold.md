@@ -1241,3 +1241,67 @@ Phase 1 and completed as the canonical vocabulary module in Phase 2.
 **Legacy-record conclusion: accepted.** Submissions are memory-only; no
 pre-Stage-5 persisted records require migration or backfill; the
 degraded missing-breakdown UI remains a defensive fallback only.
+
+---
+
+## Appendix: Amendment 3 cycle (applied at ratification, 2026-07-26, append-only)
+
+The ratified Amendment 3 (contract appendix A3; rulings A3-R.1)
+authorizes ONE consolidated implementation cycle on
+`stage-5-live-run-feedback`, following the merged Phase 3/4 pattern
+(one review cycle). Binding order: F2 lands before F3 (the hold
+machinery converges at F3); copy lands first (R7). Each commit is one
+concern, independently revertible, hook battery green.
+
+- **A3.1 — copy constants + scans.** The ratified A3-R.1 finals and
+  the standing drafted finals land in `uiCopy.js` ahead of their
+  consumers; the enumerated forbidden/em-dash scan rows and byte-exact
+  pins land with them. Retiring strings die with their consumers in
+  the later commits. Size XS.
+- **A3.2 — F2 model B.** The expanded-search hold (entry capture at
+  every entry site, survives every run while expanded, consumed by
+  Return, cleared by case change / incident-scoped descent / reset),
+  the zero-request restore incl. timeline mode, the ruled subcopy,
+  C1-guard removal, and the model B test battery (the model A re-run
+  assertions translate). The surrounding path keeps its own A2 hold
+  until A3.3 deletes it (the convergence). Size S-M.
+- **A3.3 — F3 removal.** The complete A3-3.2 surface: inspector
+  control, surrounding timeline branches, focus/centering chain, the
+  A2 hold machinery (now superseded by A3.2's), four copy strings,
+  tooltip set nine -> eight, the docs-page clause, test
+  deletions/moves (the two OR-fallback tests relocate). `descentHost`
+  and descent untouched. Size S, net-negative.
+- **A3.4 — F4b gating.** The shell-owned selection state (`chosen`
+  lifts to Dashboard), the ONE `submissionReady` derivation consumed
+  by every Ready surface (checklist line, Submit gate, Incidents list
+  chip + Ready view/count, IncidentDashboard chip), the bare
+  confirmation (landed confirm copy verbatim + the Hardcore warning
+  relocated into it), Check Answer on the workspace selection
+  (disabled until valid), modal variants DELETED. Size S-M.
+- **A3.5 — F7 core.** `queryMode` (default Simple, all modes,
+  session-local), the FILTERS-only bar projection over the ONE pending
+  canonical text, the value-driven Source / Event type selects, the
+  `composeQuery` + `replaceTimeframe` chokepoint forms (the timeframe
+  raw-splice migrates), mode-scoped placeholder/help/empty-state, the
+  docs-page distinction sentence. Size M.
+- **A3.6 — F7 validation + corpora.** The FILTERS-vs-compiler error
+  boundary with the field-relative detail offset, restore-across-modes,
+  the GENERATED_FORMS_CORPUS extension (both sides, counts bumped),
+  the SOURCE_FAMILIES two-sided parity corpus, the timeframe-migration
+  translation corpus, and the representability round-trip battery.
+  Size S-M.
+- **A3.7 — certification.** The A3-9 Chrome workflows (model B return
+  walk; gated-submit walk; W-simple; Hardcore confirm-warning check),
+  the ratified-copy conformance sweep (Section 10.1) with its A3 row
+  updates, the full `--all` battery at the boundary, and the closing
+  report update (docs/stage-5-implementation-report.md gains the C1 +
+  Amendment 3 record, behavioral changes, tests, workflows,
+  deviations, and the complete ordered commit ledger). Size S.
+
+Certification workflow deltas (Section 10 list, in force for this
+cycle): W1's submit leg = workspace-classify -> gated Ready -> bare
+confirm; W3-W5's return leg = the zero-request model B restore; the
+surrounding legs are DELETED; the parse-failure leg runs in BOTH
+search modes; W7 adds the Hardcore confirm-warning assertion; NEW
+W-simple walks the default simple mode end to end. The Section 10.1
+conformance sweep rows update per contract A3-9.
