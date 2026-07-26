@@ -318,8 +318,10 @@ describe('inspector wired into the shell', () => {
     });
   });
 
-  const renderShell = () =>
-    render(<Siem resetTrigger={0} onHostPivot={() => {}} />);
+  const renderShell = () => {
+    const utils = render(<Siem initialQueryMode="advanced" resetTrigger={0} onHostPivot={() => {}} />);
+    return utils;
+  };
 
   const run = async (text) => {
     fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: text } });

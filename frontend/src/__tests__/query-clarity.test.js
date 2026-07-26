@@ -59,8 +59,10 @@ beforeEach(() => {
   });
 });
 
-const renderShell = () =>
-  render(<Siem resetTrigger={0} onHostPivot={() => {}} />);
+const renderShell = () => {
+  const utils = render(<Siem initialQueryMode="advanced" resetTrigger={0} onHostPivot={() => {}} />);
+  return utils;
+};
 const queryCalls = () =>
   apiFetch.mock.calls.map((c) => c[0]).filter((p) => p.startsWith('/api/events/query?'));
 const run = async (text) => {

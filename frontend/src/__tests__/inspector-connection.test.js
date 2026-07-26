@@ -54,8 +54,10 @@ beforeEach(() => {
   });
 });
 
-const renderShell = () =>
-  render(<Siem resetTrigger={0} onHostPivot={() => {}} />);
+const renderShell = () => {
+  const utils = render(<Siem initialQueryMode="advanced" resetTrigger={0} onHostPivot={() => {}} />);
+  return utils;
+};
 const run = async () => {
   fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Run Query/ })); });

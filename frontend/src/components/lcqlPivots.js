@@ -52,6 +52,68 @@ export function splitSegments(query) {
   return segs.map((s) => s.trim());
 }
 
+// --- Amendment 3 F7: simple-mode composition forms ------------------------
+// The simple-search projection compiles through THESE forms only (the
+// chokepoint gains forms, never a second author). The canonical four-part
+// text stays the single truth; the controls are its projection.
+
+// The closed sensor-family set, mirrored from backend/lcql.py
+// SOURCE_FAMILIES and pinned by a two-sided parity corpus (the
+// OR_SCAN_CORPUS pattern): the Source select's static options.
+export const SOURCE_FAMILIES = [
+  'Sysmon', 'Windows Security', 'Proxy', 'DNS', 'Firewall',
+  'Azure AD', 'Veeam', 'Defender',
+];
+
+// Compose the four-part canonical-form query from the simple controls.
+// The FILTERS text rides RAW (live typing survives); an effectively empty
+// FILTERS field compiles to `*` (simple mode's legitimate match-all).
+export function composeQuery(tf, sensor, eventType, filtersText) {
+  const f = filtersText || '';
+  return `${tf} | ${sensor} | ${eventType} | ${f.trim() === '' ? '*' : f}`;
+}
+
+// Replace the first segment in place (the Timeframe picker's advanced-mode
+// edit), quote-aware: the old raw indexOf('|') splice migrated into the
+// chokepoint (A3-5.3) -- byte-identical output on every valid form, but a
+// pipe inside a quoted value can no longer split.
+export function replaceTimeframe(query, token) {
+  if (query.trim() === '') return `${token} | * | * | *`;
+  let quote = null;
+  for (let i = 0; i < query.length; i++) {
+    const c = query[i];
+    if (quote) {
+      if (c === '\\' && i + 1 < query.length) { i += 1; continue; }
+      if (c === quote) quote = null;
+      continue;
+    }
+    if (c === '"' || c === "'") { quote = c; continue; }
+    if (c === '|') return `${token} ${query.slice(i)}`;
+  }
+  return token;
+}
+
+// The RAW FILTERS tail of a four-segment text (quote-aware, the segment
+// after the THIRD top-level pipe), leading whitespace dropped so the
+// compose round trip is stable while trailing whitespace survives live
+// typing. Null when the text does not have exactly four segments.
+export function rawFiltersOf(query) {
+  const bounds = [];
+  let quote = null;
+  for (let i = 0; i < query.length; i++) {
+    const c = query[i];
+    if (quote) {
+      if (c === '\\' && i + 1 < query.length) { i += 1; continue; }
+      if (c === quote) quote = null;
+      continue;
+    }
+    if (c === '"' || c === "'") { quote = c; continue; }
+    if (c === '|') bounds.push(i);
+  }
+  if (bounds.length !== 3) return null;
+  return query.slice(bounds[2] + 1).replace(/^\s+/, '');
+}
+
 // --- conjunction-only lexical scan ---------------------------------------
 //
 // EQUIVALENCE BOUNDARY (scaffold Section 2.15, permanent notice): this

@@ -71,8 +71,10 @@ const queryCalls = () =>
   apiFetch.mock.calls.map((c) => c[0]).filter((p) => p.startsWith('/api/events/query?'))
     .map(decodeURIComponent);
 
-const renderSiem = (props = {}) =>
-  render(<Siem resetTrigger={0} onHostPivot={() => {}} {...props} />);
+const renderSiem = (props = {}) => {
+  const utils = render(<Siem initialQueryMode="advanced" resetTrigger={0} onHostPivot={() => {}} {...props} />);
+  return utils;
+};
 
 // --- the shell consumes descent requests -------------------------------------
 
@@ -411,7 +413,7 @@ test('re-descending with a new seq re-executes the same timeline', async () => {
   const before = queryCalls().length;
   await act(async () => {
     utils.rerender(
-      <Siem resetTrigger={0} onHostPivot={() => {}}
+      <Siem initialQueryMode="advanced" resetTrigger={0} onHostPivot={() => {}}
             descentRequest={{ ...props.descentRequest, seq: 2 }} onNavigate={() => {}} />
     );
   });

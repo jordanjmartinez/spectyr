@@ -63,9 +63,11 @@ beforeEach(() => {
   });
 });
 
-const renderShell = (props = {}) =>
-  render(<Siem resetTrigger={0} onHostPivot={() => {}}
+const renderShell = (props = {}) => {
+  const utils = render(<Siem initialQueryMode="advanced" resetTrigger={0} onHostPivot={() => {}}
                activeIncidentId={INC} {...props} />);
+  return utils;
+};
 
 const runQuery = async () => {
   fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
@@ -79,13 +81,13 @@ const queryCalls = () =>
 
 test('a selected case anchors the SIEM to case evidence; the anchor is announced, never silent', async () => {
   const props = { resetTrigger: 0, onHostPivot: () => {} };
-  const { rerender } = render(<Siem {...props} activeIncidentId={null} />);
+  const { rerender } = render(<Siem initialQueryMode="advanced" {...props} activeIncidentId={null} />);
   // no case: All activity, no state chip, no scope read
   expect(screen.getByTestId('pinned-case-line').textContent).toBe(ALL_ACTIVITY);
   expect(screen.queryByTestId('scope-chip')).toBeNull();
   expect(apiFetch.mock.calls.map(c => c[0]).filter(p => p.includes('/scope'))).toEqual([]);
   // a case is selected on Incidents -> the SIEM re-anchors, visibly
-  await act(async () => { rerender(<Siem {...props} activeIncidentId={INC} />); });
+  await act(async () => { rerender(<Siem initialQueryMode="advanced" {...props} activeIncidentId={INC} />); });
   expect(screen.getByTestId('pinned-case-line').textContent).toBe(investigatingCase(INC));
   expect(screen.getByTestId('scope-chip').textContent).toContain(caseEvidenceLabel(INC));
   expect(apiFetch.mock.calls.map(c => c[0]).filter(p => p.includes('/scope')).length)

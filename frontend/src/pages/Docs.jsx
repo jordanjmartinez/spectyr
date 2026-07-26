@@ -168,6 +168,10 @@ const Docs = () => {
                 sorted occurrence-ascending.
               </p>
               <p>
+                Simple search accepts a filter expression. Advanced LCQL accepts the complete
+                four-part query.
+              </p>
+              <p>
                 Quoting rules for filter values: values containing spaces or any of{' '}
                 <span className="log-mono">&quot; &#39; = ! | *</span> must be quoted, and the bare
                 words and, or, not, contains must be quoted to match literally. Double-quoted and

@@ -9,6 +9,7 @@ import {
   pivotFile, pivotIp, pivotDomainProxy, pivotDomainDns, pivotEventType,
   pivotSensorFamily, descentHost, descentSessionAll, descentAccount,
   OR_FALLBACK_NOTICE, sectionIndexAtPosition, listConjuncts, removeConjunct,
+  composeQuery, replaceTimeframe, rawFiltersOf, SOURCE_FAMILIES,
 } from './lcqlPivots';
 import InvestigationContext from './InvestigationContext';
 import { TOOLTIPS } from './helpContent';
@@ -17,7 +18,9 @@ import {
   EDITED_NOTE, STALE_RESULTS_NOTE, filterAdded, excludedFilter,
   NO_QUERY_ENTERED, PRESERVED_RESULTS_LABEL, SEARCH_NOT_RUN,
   QUERY_SECTION_NAMES, sectionCouldNotBeRead, STRUCTURE_LINE,
-  RESTORE_LAST_QUERY,
+  RESTORE_LAST_QUERY, SIMPLE_PLACEHOLDER, SIMPLE_HELP, SIMPLE_TOGGLE,
+  ADVANCED_TOGGLE, SOURCE_LABEL, EVENT_TYPE_LABEL, ALL_SOURCES,
+  ALL_EVENT_TYPES,
 } from './uiCopy';
 
 // SIEM Investigation Workbench shell (Stage 4 Phase 4). Analyst-driven:
@@ -37,6 +40,13 @@ export const QUERY_HELP_EXAMPLES = [
   '24h | Windows Security | 4625 | user_account == "spatel" and source_ip contains "10.0."',
 ];
 
+// A3.5 (F7): the simple-mode edit-only examples are FILTERS expressions
+// (the pickers own the other tokens).
+export const SIMPLE_HELP_EXAMPLES = [
+  'source_ip == "10.0.1.32"',
+  'user_account == "spatel" and command_line contains "powershell"',
+];
+
 export const TF_TOKENS = ['15m', '1h', '4h', '12h', '24h', 'all'];
 
 // The TIMEFRAME control derives its value FROM the text (single source of
@@ -50,9 +60,18 @@ const firstSegmentToken = (text) => {
 };
 
 const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
-                descentRequest, onNavigate }) => {
+                descentRequest, onNavigate,
+                initialQueryMode = 'simple' }) => {
   const [org, setOrg] = useState({});
   const [view, setView] = useState('cards');
+  // Amendment 3 F7 (ratified A3-OD-4): Simple search is the DEFAULT in
+  // every play mode; Advanced LCQL is one toggle away. Session-local
+  // memory only -- no localStorage, no server persistence (B-OD-4).
+  // Search semantics are identical across modes: simple mode compiles to
+  // the same canonical four-part query the advanced bar holds.
+  // (initialQueryMode exists for the pre-A3 test batteries, which author
+  // four-part LCQL directly; the product always mounts the default.)
+  const [queryMode, setQueryMode] = useState(initialQueryMode);
   const [queryText, setQueryText] = useState('');
   const [snapshot, setSnapshot] = useState(null);   // {token, identity, count, rows}
   const [error, setError] = useState(null);         // {position, reason, suggestions?}
@@ -200,24 +219,63 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
   };
 
   const searchAll = () => {
-    if (running || queryText.trim() === '') return;
+    if (running) return;
+    // A3.5: in simple mode an untouched bar still has a runnable compiled
+    // form (the controls always hold tokens); advanced keeps the
+    // empty-bar gate.
+    const q = queryText.trim() === ''
+      ? (queryMode === 'simple' ? composeFromControls() : '')
+      : queryText;
+    if (q === '') return;
     captureExpandedHold();
     setScope({ kind: 'session' });
-    execute(queryText, 'session');
+    execute(q, 'session');
+  };
+
+  // --- Amendment 3 F7: the simple-search projection ----------------------
+  // The canonical four-part text (queryText) stays the ONE pending truth;
+  // simple mode PROJECTS it: the bar holds only the FILTERS expression,
+  // the Timeframe picker and the Source / Event type selects own the
+  // other tokens. Every control's value DERIVES from the text (the
+  // ratified Timeframe pattern generalized), so every server-canonical
+  // query is representable in simple mode by construction; edits
+  // recompose through the generator chokepoint (composeQuery).
+  const segs = splitSegments(queryText);
+  const simpleParts = segs.length === 4
+    ? { tf: segs[0], sensor: segs[1], et: segs[2] }
+    : { tf: '1h', sensor: '*', et: '*' };
+  const rawFilters = rawFiltersOf(queryText);
+  const simpleFiltersDisplay = rawFilters === null || rawFilters.trim() === '*'
+    ? '' : rawFilters;
+  const simpleProjectable = queryText.trim() === '' || segs.length === 4;
+  const composeFromControls = (over = {}) => composeQuery(
+    over.tf ?? simpleParts.tf,
+    over.sensor ?? simpleParts.sensor,
+    over.et ?? simpleParts.et,
+    over.filters ?? simpleFiltersDisplay,
+  );
+  const setSimplePart = (part, value) => {
+    setQueryText(composeFromControls({ [part]: value }));
   };
 
   const setTimeframe = (tok) => {
-    setQueryText((t) => {
-      if (t.trim() === '') return `${tok} | * | * | *`;
-      const idx = t.indexOf('|');
-      // the text up to the first pipe IS the first segment; replace it in
-      // place (no pipe: the whole text is the first segment)
-      if (idx === -1) return tok;
-      return `${tok} ${t.slice(idx)}`;
-    });
+    if (queryMode === 'simple') { setSimplePart('tf', tok); return; }
+    // Advanced: replace the first segment in place through the chokepoint
+    // (A3-5.3: the raw indexOf splice migrated to replaceTimeframe).
+    setQueryText((t) => replaceTimeframe(t, tok));
   };
   const tfValue = firstSegmentToken(queryText) ||
     (queryText.trim() === '' ? '1h' : '');
+  // The two value-driven selects: static families / snapshot-derived event
+  // types, plus the CURRENT token whenever it is anything else (a hostname
+  // sensor from a pivot renders as its own option -- mode stability).
+  const sensorOptions = ['*', ...SOURCE_FAMILIES];
+  if (!sensorOptions.includes(simpleParts.sensor)) sensorOptions.push(simpleParts.sensor);
+  const snapshotEventTypes = snapshot
+    ? [...new Set(snapshot.rows.map((r) => r.event_type).filter(Boolean))].sort()
+    : [];
+  const eventTypeOptions = ['*', ...snapshotEventTypes];
+  if (!eventTypeOptions.includes(simpleParts.et)) eventTypeOptions.push(simpleParts.et);
 
   // Atomic replacement: the new snapshot object swaps in whole; a failed
   // run leaves the prior snapshot untouched. Selection survival (P5.1):
@@ -271,10 +329,18 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
   };
 
   const runQuery = () => {
-    // A2 3.2 (ruled): Run disables ONLY on a truly empty bar -- an empty
-    // query is guidance territory, never an error; a malformed non-empty
-    // query RUNS and receives a section-named teaching error.
-    if (running || scopeBlocked || queryText.trim() === '') return;
+    // A2 3.2 (ruled): in ADVANCED mode Run disables ONLY on a truly empty
+    // bar -- an empty query is guidance territory, never an error; a
+    // malformed non-empty query RUNS and receives a section-named teaching
+    // error. In SIMPLE mode (A3-5.3) a fully-empty state does not exist:
+    // the controls always hold tokens and an empty FILTERS field compiles
+    // to `*`, the legitimate match-all.
+    if (running || scopeBlocked) return;
+    if (queryMode === 'simple') {
+      execute(queryText.trim() === '' ? composeFromControls() : queryText, scopeParam);
+      return;
+    }
+    if (queryText.trim() === '') return;
     execute(queryText, scopeParam);
   };
 
@@ -561,7 +627,8 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
               type="button"
               data-testid="search-all"
               onClick={searchAll}
-              disabled={running || queryText.trim() === ''}
+              disabled={running
+                || (queryMode === 'advanced' && queryText.trim() === '')}
               title={TOOLTIPS.expanded_search}
               data-help={TOOLTIPS.expanded_search}
               className="help-tip inline-flex items-center gap-1 px-2 py-1 rounded-full border border-[#16436b]/40 text-[#16436b] text-xs hover:bg-[#16436b]/5 disabled:opacity-50"
@@ -569,7 +636,41 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
               {SEARCH_ALL_EVIDENCE}
             </button>
           )}
-          <label className="flex items-center gap-1.5 text-[#6e7781] ml-auto">
+          {/* A3.5 (F7): the simple-mode Source / Event type selects own
+              their tokens; value-driven (the current token always renders,
+              a hostname sensor included), edits recompose through the
+              chokepoint. Advanced mode hides them (the bar holds all). */}
+          {queryMode === 'simple' && (
+            <label className="flex items-center gap-1.5 text-[#6e7781] ml-auto">
+              {SOURCE_LABEL}
+              <select
+                value={simpleParts.sensor}
+                onChange={(e) => setSimplePart('sensor', e.target.value)}
+                aria-label={SOURCE_LABEL}
+                className="px-2.5 py-1.5 rounded-md border border-[#d0d7de] bg-white text-[#1a2332] max-w-[11rem]"
+              >
+                {sensorOptions.map((s) => (
+                  <option key={s} value={s}>{s === '*' ? ALL_SOURCES : s}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          {queryMode === 'simple' && (
+            <label className="flex items-center gap-1.5 text-[#6e7781]">
+              {EVENT_TYPE_LABEL}
+              <select
+                value={simpleParts.et}
+                onChange={(e) => setSimplePart('et', e.target.value)}
+                aria-label={EVENT_TYPE_LABEL}
+                className="px-2.5 py-1.5 rounded-md border border-[#d0d7de] bg-white text-[#1a2332] max-w-[11rem]"
+              >
+                {eventTypeOptions.map((t) => (
+                  <option key={t} value={t}>{t === '*' ? ALL_EVENT_TYPES : t}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label className={`flex items-center gap-1.5 text-[#6e7781] ${queryMode === 'simple' ? '' : 'ml-auto'}`}>
             Timeframe
             <select
               value={tfValue}
@@ -581,6 +682,19 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
               {TF_TOKENS.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </label>
+          {/* A3.5 (F7): one toggle between the modes; a hand-authored
+              advanced text that does not split into four sections cannot
+              project, so the toggle disables with the structure line. */}
+          <button
+            type="button"
+            data-testid="query-mode-toggle"
+            onClick={() => setQueryMode((m) => (m === 'simple' ? 'advanced' : 'simple'))}
+            disabled={queryMode === 'advanced' && !simpleProjectable}
+            title={queryMode === 'advanced' && !simpleProjectable ? STRUCTURE_LINE : undefined}
+            className="px-2 py-1 rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4] disabled:opacity-50"
+          >
+            {queryMode === 'simple' ? ADVANCED_TOGGLE : SIMPLE_TOGGLE}
+          </button>
         </div>
 
         {scope.kind === 'incident' && scope.status === 'error' && (
@@ -602,23 +716,30 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
         )}
 
         <div className="flex gap-2">
+          {/* A3.5 (F7): one input, two projections. Simple mode holds ONLY
+              the FILTERS expression (edits recompose the canonical text
+              through the chokepoint); Advanced holds the four-part form. */}
           <input
             type="text"
             ref={queryInputRef}
-            placeholder={QUERY_PLACEHOLDER}
-            value={queryText}
-            onChange={(e) => setQueryText(e.target.value)}
+            placeholder={queryMode === 'simple' ? SIMPLE_PLACEHOLDER : QUERY_PLACEHOLDER}
+            value={queryMode === 'simple' ? simpleFiltersDisplay : queryText}
+            onChange={(e) => (queryMode === 'simple'
+              ? setSimplePart('filters', e.target.value)
+              : setQueryText(e.target.value))}
             onKeyDown={(e) => { if (e.key === 'Enter') runQuery(); }}
             readOnly={running}
             maxLength={300}
-            aria-label="LCQL query"
+            aria-label={queryMode === 'simple' ? 'Filters' : 'LCQL query'}
             className="log-mono flex-1 pl-4 pr-4 py-2 rounded-md bg-white border border-[#e2e6ea] text-[#1a2332] text-sm placeholder-[#8b949e] placeholder:italic focus:border-[#8b949e] focus:outline-none transition-colors"
           />
           <button
             type="button"
             onClick={runQuery}
-            disabled={running || scopeBlocked || queryText.trim() === ''}
-            title={queryText.trim() === '' ? NO_QUERY_ENTERED : 'Run the query in the bar.'}
+            disabled={running || scopeBlocked
+              || (queryMode === 'advanced' && queryText.trim() === '')}
+            title={queryMode === 'advanced' && queryText.trim() === ''
+              ? NO_QUERY_ENTERED : 'Run the query in the bar.'}
             className="px-4 py-2 text-xs font-medium rounded-md bg-[#101218] text-white disabled:opacity-50"
           >
             {running ? 'Running' : 'Run Query'}
@@ -661,9 +782,10 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
             )}
           </div>
         )}
-        {snapshot && !error && queryText.trim() === '' && (
-          // A2 3.2: the truly-empty bar is guidance, not an error; the
-          // preserved results stay labeled.
+        {queryMode === 'advanced' && snapshot && !error && queryText.trim() === '' && (
+          // A2 3.2 (advanced only; simple mode has no empty state, A3-5.3):
+          // the truly-empty bar is guidance, not an error; the preserved
+          // results stay labeled.
           <div role="status" data-testid="empty-note" className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a] flex items-center gap-2">
             <span>{NO_QUERY_ENTERED} {PRESERVED_RESULTS_LABEL}</span>
             <button
@@ -816,15 +938,22 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
           style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
         >
           <p className="text-sm font-medium text-[#1a2332] mb-1">Run a query to begin.</p>
+          {/* A3.5 (F7): mode-scoped guidance. Simple mode teaches the
+              filter expression (the ruled help sentence); advanced keeps
+              the four-segment teaching. Example buttons stay edit-only. */}
           <p className="text-xs text-[#57606a] mb-3">
-            LCQL has four segments: TIMEFRAME | SENSOR | EVENT TYPE | FILTERS. Try one of these:
+            {queryMode === 'simple'
+              ? SIMPLE_HELP
+              : 'LCQL has four segments: TIMEFRAME | SENSOR | EVENT TYPE | FILTERS. Try one of these:'}
           </p>
           <div className="flex flex-col gap-1.5 mb-4">
-            {QUERY_HELP_EXAMPLES.map((ex) => (
+            {(queryMode === 'simple' ? SIMPLE_HELP_EXAMPLES : QUERY_HELP_EXAMPLES).map((ex) => (
               <button
                 key={ex}
                 type="button"
-                onClick={() => setQueryText(ex)}
+                onClick={() => (queryMode === 'simple'
+                  ? setSimplePart('filters', ex)
+                  : setQueryText(ex))}
                 className="log-mono text-left text-xs px-3 py-1.5 rounded-md border border-[#d0d7de] bg-[#f6f8fa] text-[#1a2332] hover:bg-[#eef1f4]"
               >
                 {ex}

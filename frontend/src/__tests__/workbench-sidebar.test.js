@@ -187,7 +187,7 @@ describe('sidebar pinned to the displayed snapshot (fake timers)', () => {
   afterEach(() => { jest.useRealTimers(); });
 
   test('clicking a sidebar value executes a well-formed refined query end-to-end (catches signature-mismatch regressions)', async () => {
-    render(<Siem resetTrigger={0} onHostPivot={() => {}} />);
+    render(<Siem initialQueryMode="advanced" resetTrigger={0} onHostPivot={() => {}} />);
     fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Run Query/ }));
@@ -203,7 +203,7 @@ describe('sidebar pinned to the displayed snapshot (fake timers)', () => {
   });
 
   test('sidebar values and counts remain unchanged while the underlying pool grows but the snapshot does not', async () => {
-    render(<Siem resetTrigger={0} onHostPivot={() => {}} />);
+    render(<Siem initialQueryMode="advanced" resetTrigger={0} onHostPivot={() => {}} />);
     fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Run Query/ }));
