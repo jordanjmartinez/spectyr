@@ -4064,7 +4064,7 @@ surface, per the C1 rule.
 
 | Amendment | State | Date | Notes |
 |---|---|---|---|
-| Amendment 3 — return semantics, surrounding removal, final submission, simple search | **DRAFT** | 2026-07-26 | Awaiting owner and reviewer review; one ratification for all four items |
+| Amendment 3 — return semantics, surrounding removal, final submission, simple search | **RATIFIED** | 2026-07-26 | Owner rulings in A3-R.1 are the governing finals; implementation authorized |
 
 *Amendment 3 drafted 2026-07-26 at baseline `74198f2` on branch
 `stage-5-amendment-3` (the C1 checkpoint tip; C1 fixes
@@ -4077,3 +4077,104 @@ appendices above are byte-unchanged; the implementation scaffold
 document is untouched (its delta is drafted in A3-8 and applied only
 after ratification); owner asset files untouched; nothing pushed; no
 product code. This task ratifies nothing.*
+
+### A3-R.1 Owner ratification rulings (2026-07-26, recorded verbatim)
+
+> AMENDMENT 3 FINAL REVIEW VERDICT: PASS. RATIFY AND IMPLEMENT.
+>
+> A3-OD-1 — Final copy
+>
+> Use these canonical strings:
+>
+> - Return subcopy:
+>   "Return restores the incident evidence you were viewing before
+>   Expanded search. Changes made in Expanded search are not kept."
+> - Simple-search placeholder:
+>   'Example: source_ip == "10.0.1.32"'
+> - Simple-search help:
+>   "Enter a filter expression. Timeframe, source, and event type are
+>   controlled above."
+> - Advanced toggle:
+>   "Advanced LCQL"
+> - Selector labels:
+>   "Source"
+>   "Event type"
+> - Documentation distinction:
+>   "Simple search accepts a filter expression. Advanced LCQL accepts
+>   the complete four-part query."
+>
+> All copy remains em-dash-free.
+>
+> A3-OD-2 — Check Answer input
+>
+> - Check Answer consumes the workspace classification selection.
+> - Check Answer is disabled until a valid classification is selected.
+> - Delete the redundant classification-entry modal variants.
+> - No backend, score, or payload change.
+>
+> A3-OD-3 — One meaning of Ready
+>
+> - Every Ready surface derives from one shell-owned state.
+> - Ready is true only when:
+>   1. the existing server observable-readiness value is true, and
+>   2. a valid workspace classification is selected.
+> - The response-action count remains informational and never gates
+>   readiness.
+> - No surface may show Ready while Classification says not selected.
+> - Submit incident uses the same derived state.
+>
+> A3-OD-4 — Search-mode default
+>
+> - Simple search is the default in Guided, SOC Queue, and Hardcore.
+> - Advanced LCQL remains available in every mode.
+> - The mode toggle is session-local only.
+> - Do not add localStorage or server persistence.
+> - Search semantics remain identical across modes.
+
+### A3-R.2 Recording notes (what the rulings resolve and supersede)
+
+- **A3-OD-1 resolved.** The six ruled strings are the canonical
+  finals. They SUPERSEDE the drafted A3-6 proposals they touch:
+  row F2-1 (the return subcopy becomes the ruled two-sentence form,
+  id-free, so the parameterized template retires for a constant), row
+  F7-1 (the simple placeholder becomes the ruled source_ip example,
+  keeping the A2-2.4 Example-prefix italic rule), and row F7-4 (the
+  simple help line becomes the ruled sentence; the edit-only example
+  buttons keep the existing empty-state mechanics with FILTERS-only
+  example text). The ruled documentation-distinction sentence is NEW
+  and lands on the player docs page beside the F3-1 trim. Drafted
+  finals the ruling does not touch STAND as canonical: F4b-1
+  ("Select a classification to submit."), the F3-1 docs trim, the
+  "Simple search" return-toggle label (the ruled "Advanced LCQL" is
+  the enter-advanced label), and the any-token option labels
+  ("All sources" / "All event types"). Every string is em-dash-free.
+- **A3-OD-2 resolved as recommended.** Check Answer consumes the
+  workspace selection and disables until a valid classification is
+  selected; the modal variants of ClassificationSelector and
+  CategorySelector are DELETED (zero consumers remain); no backend,
+  score, or payload change.
+- **A3-OD-3 resolved as recommended.** One shell-owned selection
+  state; ONE derived readiness (server observable readiness AND a
+  valid workspace classification) consumed by every Ready surface and
+  by Submit; the response-action count stays informational and never
+  gates; no surface may show Ready while the checklist says
+  "Classification: not selected".
+- **A3-OD-4 resolved as recommended.** Simple search is the default
+  in Guided, SOC Queue, and Hardcore; Advanced LCQL is available in
+  every mode; the toggle is session-local memory only (no
+  localStorage, no server persistence; B-OD-4 stands); search
+  semantics are identical across modes.
+- **Implementation authorized:** merge `stage-5-amendment-3` into
+  `stage-5-live-run-feedback` with `--no-ff`; apply the A3-8 scaffold
+  delta; implement the four items in the binding order (F2, F3, F4b,
+  F7) as the A3.1-A3.7 cycle, each concern independently revertible,
+  gates per concern and the complete battery at the final boundary;
+  Chrome verification and the ratified-copy conformance sweep at
+  certification; the closing report update per the owner directive.
+  STOP at the final Stage 5 checkpoint: no merge to `main`, no push,
+  no final UI polish, no new stage.
+
+*Ratification recorded 2026-07-26 on branch `stage-5-amendment-3` at
+the drafted baseline; the A3-R state table above is updated to
+RATIFIED and the rulings are appended verbatim. Docs-only; owner
+asset files untouched; nothing pushed.*
