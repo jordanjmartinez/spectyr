@@ -420,7 +420,7 @@ const Dashboard = () => {
             </button>
             <h3 className="text-lg font-semibold text-[#1a2332] mb-4">Reset Simulation</h3>
             <p className="text-[#57606a] mb-6">
-              This will clear all events, alerts, and reports. Your progress will be reset. This action cannot be undone.
+              This will clear all events and incidents. Your progress will be reset. This action cannot be undone.
             </p>
             <div className="flex justify-end gap-2">
               <button

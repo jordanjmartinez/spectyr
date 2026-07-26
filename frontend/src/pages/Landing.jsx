@@ -4,12 +4,13 @@ import { Menu, X, Play } from 'lucide-react';
 
 const VIDEO_URL = '/videos/spectyrvideo.mp4';
 
+// Final pass III.0 item 7: no Reports destination exists (nothing may
+// imply a report workflow).
 const NAV_LINKS = [
   { label: 'Queue', to: '/docs#queue' },
   { label: 'Game Modes', to: '/docs#game-modes' },
   { label: 'Scenarios', to: '/docs#scenarios' },
   { label: 'Analytics', to: '/docs#analytics' },
-  { label: 'Reports', to: '/docs#reports' },
 ];
 
 // Single full-viewport cinematic hero — no scrolling, no additional sections

@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+// Final pass III.0 item 7: the Reports section is gone (nothing may imply
+// a report workflow exists).
 const SECTIONS = [
   { id: 'queue', label: 'Queue' },
   { id: 'game-modes', label: 'Game Modes' },
   { id: 'siem', label: 'SIEM Workbench' },
   { id: 'scenarios', label: 'Scenarios' },
   { id: 'analytics', label: 'Analytics' },
-  { id: 'reports', label: 'Reports' },
 ];
 
 const Section = ({ id, title, children }) => (
@@ -116,8 +117,8 @@ const Docs = () => {
                 SIEM, mixing routine network activity with active threats.
               </p>
               <p>
-                Investigate alerts, follow related users, hosts, and IPs, classify each scenario,
-                and submit a short incident report.
+                Investigate incidents, follow related users, hosts, and IPs, classify each one,
+                and submit your verdict.
               </p>
             </div>
 
@@ -212,12 +213,6 @@ const Docs = () => {
               <p>Your analytics show accuracy, queue progress, recent decisions, and final grade.</p>
             </Section>
 
-            <Section id="reports" title="Reports">
-              <p>
-                Submit a report for each scenario describing what happened, which systems or users
-                were affected, and what action was taken.
-              </p>
-            </Section>
           </div>
         </main>
       </div>
