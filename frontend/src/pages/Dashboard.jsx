@@ -6,7 +6,6 @@ import Siem from '../components/Siem';
 import Incidents from '../components/Incidents';
 import IncidentDashboard from '../components/IncidentDashboard';
 import Analytics from '../components/Analytics';
-import Reports from '../components/Reports';
 import Endpoints from '../components/Endpoints';
 import Detections from '../components/Detections';
 import DifficultySelector from '../components/DifficultySelector';
@@ -16,7 +15,6 @@ import HintPanel from '../components/HintPanel';
 
 const Dashboard = () => {
   const [groupedAlertCount, setGroupedAlertCount] = useState(0);
-  const [reportCount, setReportCount] = useState(0);
   const [analyticsCount, setAnalyticsCount] = useState(0);
   const [view, setView] = useState("dashboard");
   // Stage 3.9B: the active-incident context (opaque INC id). Pure UI state, never
@@ -78,7 +76,6 @@ const Dashboard = () => {
         case '4': setView('detections'); break;
         case '5': setView('endpoints'); break;
         case '6': setView('analytics'); break;
-        case '7': setView('reports'); break;
         default: break;
       }
     };
@@ -232,8 +229,11 @@ const Dashboard = () => {
       icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
     { key: 'analytics', label: 'Metrics', count: analyticsCount,
       icon: 'M9 19v-6m4 6V5m4 14v-9M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z' },
-    { key: 'reports', label: 'Reports', count: reportCount,
-      icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+    // C1 checkpoint fix (F6 slice): the Reports entry is HIDDEN until a
+    // working report workflow exists (the ruled default). The tab was a
+    // read-only shell over a store nothing writes (no create path since
+    // 3.9B retired the Alerts flow), permanently stuck on an empty state
+    // that cited that retired workflow.
   ];
 
   return (
@@ -365,10 +365,6 @@ const Dashboard = () => {
 
         <div className={view === "analytics" ? "block" : "hidden"}>
           <Analytics onReset={() => setShowResetModal(true)} analystName={analystName} setAnalyticsCount={setAnalyticsCount} isVisible={view === "analytics"} reviewRequest={reviewRequest} />
-        </div>
-
-        <div className={view === "reports" ? "block" : "hidden"}>
-          <Reports setReportCount={setReportCount} reportCount={reportCount} analystName={analystName} resetTrigger={resetTrigger} />
         </div>
       </main>
 

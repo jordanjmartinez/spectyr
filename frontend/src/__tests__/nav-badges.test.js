@@ -74,3 +74,9 @@ test('the Incidents nav entry keeps its active-incident badge', async () => {
   await renderDashboard();
   await waitFor(() => expect(screen.getByTitle('Incidents').textContent).toBe('Incidents1'));
 });
+
+test('C1 (F6 slice): the Reports nav entry is hidden until a working report workflow exists', async () => {
+  await renderDashboard();
+  await waitFor(() => expect(screen.getByTitle('Incidents').textContent).toBe('Incidents1'));
+  expect(screen.queryByTitle('Reports')).toBeNull();
+});
