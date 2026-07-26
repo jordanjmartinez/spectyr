@@ -13,6 +13,7 @@ import DifficultySelector from '../components/DifficultySelector';
 import GameTimer from '../components/GameTimer';
 import FailureModal from '../components/FailureModal';
 import HintPanel from '../components/HintPanel';
+import { NAV_ICONS, NAV_STROKE, ChromeIcons } from '../components/icons';
 
 const Dashboard = () => {
   const [groupedAlertCount, setGroupedAlertCount] = useState(0);
@@ -231,29 +232,28 @@ const Dashboard = () => {
     setShowDifficultyModal(true);
   };
 
+  // Visual pass V2: every primary destination carries a DISTINCT identity
+  // from the one icon system (components/icons.jsx NAV_ICONS) -- the old
+  // rail drew inline paths and shared one triangle between Incidents and
+  // Detections. Labels + title attributes stay the accessible names; the
+  // icons are decorative (aria-hidden), so the active state never relies
+  // on the icon alone.
   const tabs = [
-    { key: 'dashboard', label: 'Dashboard', count: 0,
-      icon: 'M4 5a1 1 0 011-1h5a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM14 13a1 1 0 011-1h4a1 1 0 011 1v6a1 1 0 01-1 1h-4a1 1 0 01-1-1v-6zM4 15a1 1 0 011-1h5a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4z' },
-    { key: 'incidents', label: 'Incidents', count: groupedAlertCount,
-      icon: 'M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z' },
+    { key: 'dashboard', label: 'Dashboard', count: 0 },
+    { key: 'incidents', label: 'Incidents', count: groupedAlertCount },
     // C1 checkpoint fix (post-Stage-5 review, F1): the evidence-surface nav
     // entries (SIEM, Detections, Endpoints) carry NO numeric badge. The old
     // badges read unfiltered session payloads while the page headers rendered
     // case-scoped counts, so badge and header could not agree with a case
     // pinned; the Incidents badge stays (cases are a global concept).
-    { key: 'siem', label: 'SIEM',
-      icon: 'M4 6h16M4 10h16M4 14h16M4 18h16' },
-    { key: 'detections', label: 'Detections',
-      icon: 'M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z' },
-    { key: 'endpoints', label: 'Endpoints',
-      icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
+    { key: 'siem', label: 'SIEM' },
+    { key: 'detections', label: 'Detections' },
+    { key: 'endpoints', label: 'Endpoints' },
     // Final pass III.0.1: Response is the one action-execution workspace
     // (Investigate -> Triage -> Respond -> Submit -> Learn). Badge-free
     // per the C1 nav ruling.
-    { key: 'response', label: 'Response',
-      icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' },
-    { key: 'analytics', label: 'Metrics', count: analyticsCount,
-      icon: 'M9 19v-6m4 6V5m4 14v-9M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z' },
+    { key: 'response', label: 'Response' },
+    { key: 'analytics', label: 'Metrics', count: analyticsCount },
     // C1 checkpoint fix (F6 slice): the Reports entry is HIDDEN until a
     // working report workflow exists (the ruled default). The tab was a
     // read-only shell over a store nothing writes (no create path since
@@ -277,6 +277,7 @@ const Dashboard = () => {
         <nav className="flex-1 py-3 px-2 lg:px-3 flex flex-col gap-1">
           {tabs.map(t => {
             const active = view === t.key;
+            const Icon = NAV_ICONS[t.key];
             return (
               <button
                 key={t.key}
@@ -287,9 +288,7 @@ const Dashboard = () => {
                 }`}
               >
                 {active && <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-white" />}
-                <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d={t.icon} />
-                </svg>
+                <Icon size={19} strokeWidth={NAV_STROKE} aria-hidden="true" className="shrink-0" />
                 <span className="hidden lg:inline flex-1 text-left">{t.label}</span>
                 {t.count > 0 && <span className="hidden lg:inline text-xs text-gray-400">{t.count}</span>}
                 {t.count > 0 && <span className="lg:hidden absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-white/70" />}
@@ -304,9 +303,7 @@ const Dashboard = () => {
             title="Documentation"
             className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-gray-400 hover:bg-white/5 hover:text-white transition-colors"
           >
-            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.247m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.247" />
-            </svg>
+            <ChromeIcons.BookOpen size={19} strokeWidth={NAV_STROKE} aria-hidden="true" className="shrink-0" />
             <span className="hidden lg:inline">Docs</span>
           </Link>
         </div>
@@ -319,9 +316,7 @@ const Dashboard = () => {
               title="Reset Simulation"
               className="liquid-btn flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-white"
             >
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+              <ChromeIcons.RotateCcw size={16} strokeWidth={NAV_STROKE} aria-hidden="true" className="shrink-0" />
               <span className="hidden lg:inline">Reset</span>
             </button>
           ) : (
@@ -330,9 +325,7 @@ const Dashboard = () => {
               title="Start Simulation"
               className="liquid-btn flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold text-white"
             >
-              <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
+              <ChromeIcons.Play size={16} strokeWidth={NAV_STROKE} aria-hidden="true" className="shrink-0" />
               <span className="hidden lg:inline">Start</span>
             </button>
           )}
