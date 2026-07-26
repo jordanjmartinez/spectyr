@@ -165,8 +165,7 @@ const Docs = () => {
                 follow the clue across all available evidence. With a case open that is Expanded
                 search: your case stays pinned and one action returns to its evidence.
                 Open Evidence Timeline on an incident or detection descends into its evidence,
-                sorted occurrence-ascending, and Surrounding events centers the host timeline on
-                the event you are inspecting.
+                sorted occurrence-ascending.
               </p>
               <p>
                 Quoting rules for filter values: values containing spaces or any of{' '}

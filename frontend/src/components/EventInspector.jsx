@@ -2,7 +2,7 @@ import React from 'react';
 import { sourceColor, sanitizeEvent, renderFieldValue } from './siemUtils';
 import kvpCatalogOrder from './kvpCatalogOrder.json';
 import {
-  TOOLTIP_EQ, TOOLTIP_NEQ, TOOLTIP_PIVOT, TOOLTIP_SURROUNDING,
+  TOOLTIP_EQ, TOOLTIP_NEQ, TOOLTIP_PIVOT,
 } from './uiCopy';
 
 // Event inspector (Stage 4 Phase 6.3, contract Section 12). One lens over
@@ -89,7 +89,7 @@ const SectionLabel = ({ children }) => (
   </div>
 );
 
-const EventInspector = ({ event, onFilter, onHostPivot, onPivot, onSurrounding }) => {
+const EventInspector = ({ event, onFilter, onHostPivot, onPivot }) => {
   if (!event) return null;
 
   let view = null;
@@ -228,23 +228,6 @@ const EventInspector = ({ event, onFilter, onHostPivot, onPivot, onSurrounding }
 {JSON.stringify(sanitizeEvent(event), null, 2)}
       </pre>
 
-      {/* P7.3 Surrounding events (contract Sections 12/13): the host's full
-          timeline, occurrence ascending, viewport centered on THIS event.
-          Host-anchored -- an event without a hostname (identity-provider
-          telemetry) has no host to anchor, so no control. */}
-      {event.hostname && onSurrounding && (
-        <div className="mt-3 pt-2 border-t border-[#eef1f4]">
-          <button
-            type="button"
-            onClick={() => onSurrounding(event.hostname, event.id)}
-            title={TOOLTIP_SURROUNDING}
-            data-help={TOOLTIP_SURROUNDING}
-            className="help-tip px-2.5 py-1 text-xs rounded-md border border-[#d0d7de] text-[#16436b] hover:bg-[#eef1f4]"
-          >
-            Surrounding events
-          </button>
-        </div>
-      )}
     </div>
   );
 };

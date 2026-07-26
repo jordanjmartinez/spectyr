@@ -3,10 +3,11 @@
 //
 // Two layers, strictly separated:
 // - TOOLTIPS: permanent accessible one-line control explanations for the
-//   NINE controls (Promote, Dismiss, Reopen, Feed/Threats, ==, !=, Pivot,
-//   Expanded search, Surrounding events). Mode-universal under the
-//   recorded invariant-7 reading: passive, player-invoked, mechanics-only,
-//   so Hardcore carries them; coaching stays out of Hardcore.
+//   EIGHT controls (Promote, Dismiss, Reopen, Feed/Threats, ==, !=,
+//   Pivot, Expanded search; Surrounding events removed by Amendment 3
+//   F3). Mode-universal under the recorded invariant-7 reading: passive,
+//   player-invoked, mechanics-only, so Hardcore carries them; coaching
+//   stays out of Hardcore.
 // - The Guided "Need a hint?" flow: Level 1 mechanics help + Level 2
 //   generic investigation nudges, allow-list gated (HINT_MODES, the
 //   GUIDED_MODES pattern - Hardcore and SOC Queue excluded by default).
@@ -17,7 +18,7 @@
 // truth, grading state, or correctness. hintsFor is a pure function of
 // exactly (surface, level); the structural test pins its inputs.
 import {
-  TOOLTIP_EQ, TOOLTIP_NEQ, TOOLTIP_PIVOT, TOOLTIP_SURROUNDING,
+  TOOLTIP_EQ, TOOLTIP_NEQ, TOOLTIP_PIVOT,
 } from './uiCopy';
 
 export const TOOLTIPS = {
@@ -28,7 +29,6 @@ export const TOOLTIPS = {
   eq: TOOLTIP_EQ,
   neq: TOOLTIP_NEQ,
   pivot: TOOLTIP_PIVOT,
-  surrounding: TOOLTIP_SURROUNDING,
   expanded_search: 'Search all evidence: run this query beyond the case evidence. Your case stays open, and one control returns you to it.',
 };
 

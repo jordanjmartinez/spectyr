@@ -16,7 +16,7 @@ import React from 'react';
 import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import Siem, { QUERY_PLACEHOLDER } from '../components/Siem';
 import {
-  TOOLTIP_EQ, TOOLTIP_NEQ, TOOLTIP_PIVOT, TOOLTIP_SURROUNDING,
+  TOOLTIP_EQ, TOOLTIP_NEQ, TOOLTIP_PIVOT,
   NO_QUERY_ENTERED, SEARCH_NOT_RUN, sectionCouldNotBeRead, STRUCTURE_LINE,
   RESTORE_LAST_QUERY, PRESERVED_RESULTS_LABEL,
 } from '../components/uiCopy';
@@ -173,7 +173,7 @@ test('the placeholder is unmistakably an example', () => {
     .toBe(QUERY_PLACEHOLDER);
 });
 
-test('the ruled permanent explanations sit on ==, !=, Pivot, and Surrounding events', async () => {
+test('the ruled permanent explanations sit on ==, !=, and Pivot (Surrounding events removed by A3 F3)', async () => {
   renderShell();
   await run('all | * | * | *');
   fireEvent.click(within(screen.getByTestId('workbench-results'))
@@ -184,8 +184,39 @@ test('the ruled permanent explanations sit on ==, !=, Pivot, and Surrounding eve
     .toBe(TOOLTIP_NEQ);
   expect(screen.getAllByLabelText(/^Pivot /)[0].getAttribute('title'))
     .toContain(TOOLTIP_PIVOT);
-  expect(screen.getByRole('button', { name: 'Surrounding events' }).getAttribute('title'))
-    .toBe(TOOLTIP_SURROUNDING);
+  expect(screen.queryByRole('button', { name: 'Surrounding events' })).toBeNull();
+});
+
+// --- OR-fallback UX (moved from the retired surrounding suite at A3.3):
+// exact notice on refinement, never on fresh forms -------------------------
+
+const OR_CANONICAL = 'all | * | * | source_ip == "10.0.1.5" or destination_ip == "10.0.1.5"';
+const snapWithQ = (canonical) => ({ ...SNAP, identity: { ...SNAP.identity, canonical_query: canonical } });
+
+test('refining an OR snapshot mints a fresh standalone query and shows the EXACT approved notice', async () => {
+  queryResponses.push(ok(snapWithQ(OR_CANONICAL)));
+  renderShell();
+  await run(OR_CANONICAL);
+  fireEvent.click(within(screen.getByTestId('workbench-results')).getByText('clarity fixture event'));
+  queryResponses.push(ok(snapWithQ('all | * | * | hostname == "ACME-WS12"')));
+  await act(async () => {
+    fireEvent.click(screen.getByLabelText('Filter hostname equals'));
+  });
+  expect(decodeURIComponent(queryCalls().pop())).toBe(
+    '/api/events/query?q=all | * | * | hostname == "ACME-WS12"&scope=session');
+  expect(screen.getByTestId('query-notice'))
+    .toHaveTextContent('Started a new query; the previous one mixed or-conditions.');
+});
+
+test('fresh-by-design forms (entity pivot) never show the OR notice', async () => {
+  queryResponses.push(ok(snapWithQ(OR_CANONICAL)));
+  renderShell();
+  await run(OR_CANONICAL);
+  fireEvent.click(within(screen.getByTestId('workbench-results')).getByText('clarity fixture event'));
+  await act(async () => {
+    fireEvent.click(screen.getByLabelText('Pivot hostname'));
+  });
+  expect(screen.queryByTestId('query-notice')).toBeNull();
 });
 
 // --- 19.24 the generated-forms corpus (frontend half) ---------------------

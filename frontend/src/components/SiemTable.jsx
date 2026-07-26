@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { sevColor } from './siemUtils';
 
 // SIEM table view: presentational. Receives the frozen snapshot rows from
@@ -16,12 +16,11 @@ const SORTABLE = [
   { key: 'destination_ip', label: 'Dst IP' },
 ];
 
-const SiemTable = ({ alerts, resetTrigger, selectedId, onSelect, focus }) => {
+const SiemTable = ({ alerts, resetTrigger, selectedId, onSelect }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [alertsPerPage, setAlertsPerPage] = useState(20);
   const [sort, setSort] = useState(null); // { key, dir } or null = server canonical order
   const [pageSizeOpen, setPageSizeOpen] = useState(false);
-  const focusRef = useRef(null);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -51,20 +50,6 @@ const SiemTable = ({ alerts, resetTrigger, selectedId, onSelect, focus }) => {
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / alertsPerPage));
   const currentAlerts = sorted.slice((currentPage - 1) * alertsPerPage, currentPage * alertsPerPage);
-
-  // P7.3 surrounding-events centering: jump to the focus event's page (in
-  // the DISPLAYED order), then scroll its row into the viewport center.
-  useEffect(() => {
-    if (!focus || !focus.id) return;
-    const idx = sorted.findIndex((a) => a.id === focus.id);
-    if (idx !== -1) setCurrentPage(Math.floor(idx / alertsPerPage) + 1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focus && focus.seq]);
-  useEffect(() => {
-    if (focus && focusRef.current && typeof focusRef.current.scrollIntoView === 'function') {
-      focusRef.current.scrollIntoView({ block: 'center' });
-    }
-  }, [focus && focus.seq, currentPage]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const changePage = (n) => { if (n >= 1 && n <= totalPages) setCurrentPage(n); };
   // Selection is controlled by the shell (P5.1): one inspector, id-keyed.
@@ -185,8 +170,6 @@ const SiemTable = ({ alerts, resetTrigger, selectedId, onSelect, focus }) => {
                 {currentAlerts.map((alert) => (
                   <tr
                       key={alert.id}
-                      ref={focus && alert.id === focus.id ? focusRef : undefined}
-                      data-focused={focus && alert.id === focus.id ? 'true' : undefined}
                       aria-selected={alert.id === selectedId}
                       // OD-5 Option A (Phase 4): the strong selected treatment
                       // equivalent to the cards' ring -- background + an inset

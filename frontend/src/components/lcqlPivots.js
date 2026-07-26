@@ -14,8 +14,9 @@
 // TIMEFRAME token explicitly as a parameter -- callers extract it from
 // `snapshot.identity.canonical_query`'s first segment. Descent forms
 // (`descentHost`, `descentSessionAll`) are hardcoded to `all` regardless of
-// the caller's timeframe (contract Section 13: "Surrounding events ...
-// `all | H | * | *`"; Section 3 row 3 / Section 13's descent row).
+// the caller's timeframe (contract Section 13's descent rows; the
+// surrounding-events consumer of `descentHost` was removed by A3 F3 --
+// evidence descent keeps the form).
 
 // --- GD-5 escaping ------------------------------------------------------
 

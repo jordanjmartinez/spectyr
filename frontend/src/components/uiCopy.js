@@ -117,8 +117,6 @@ export const NO_RESULTS_OUTS =
 export const TOOLTIP_EQ = 'Show only events matching this value.';
 export const TOOLTIP_NEQ = 'Exclude events matching this value.';
 export const TOOLTIP_PIVOT = 'Follow this clue across all available evidence.';
-export const TOOLTIP_SURROUNDING =
-  'Temporarily show activity around the selected event.';
 export const NO_QUERY_ENTERED = 'No query entered.';
 export const PRESERVED_RESULTS_LABEL = 'Results below are from the last run.';
 export const SEARCH_NOT_RUN = 'This search was not run.';
@@ -128,13 +126,9 @@ export const sectionCouldNotBeRead = (section) =>
 export const STRUCTURE_LINE = 'The query needs four sections separated by |.';
 export const RESTORE_LAST_QUERY = 'Restore last working query';
 
-// === Merged Phase 3/4 commit 3.4: reversible surrounding events ============
-// The ruled block copy (A2-R.1): temporary context with ONE clear return
-// that redisplays the prior frozen results with zero requests.
-export const surroundingBanner = (host) =>
-  `Activity around the selected event on ${host}`;
-export const OCCURRENCE_ASCENDING = 'Occurrence ascending';
-export const BACK_TO_PREVIOUS_RESULTS = 'Back to previous results';
+// (The reversible-surrounding-events block copy was removed with the
+// control by Amendment 3 F3; its hold-and-restore mechanic lives on as
+// the F2 model B expanded-search return.)
 
 // === Phase 5 commit 5.4: Case Closed + Learning Review (A1-B.4) ============
 // The payoff vocabulary: the Case Closed moment, the six ratified

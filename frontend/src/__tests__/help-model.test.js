@@ -14,7 +14,7 @@ import {
   TOOLTIPS, HINT_MODES, hintsAllowed, hintsFor,
 } from '../components/helpContent';
 import {
-  TOOLTIP_EQ, TOOLTIP_NEQ, TOOLTIP_PIVOT, TOOLTIP_SURROUNDING,
+  TOOLTIP_EQ, TOOLTIP_NEQ, TOOLTIP_PIVOT,
   CONSIDER_PROMPT,
 } from '../components/uiCopy';
 import HintPanel from '../components/HintPanel';
@@ -86,16 +86,15 @@ test('no tooltip or hint string carries category names, scenario labels, correct
   }
 });
 
-test('the four ruled query tooltips are the canonical finals, byte-identical', () => {
+test('the three ruled query tooltips are the canonical finals, byte-identical', () => {
   expect(TOOLTIPS.eq).toBe(TOOLTIP_EQ);
   expect(TOOLTIPS.neq).toBe(TOOLTIP_NEQ);
   expect(TOOLTIPS.pivot).toBe(TOOLTIP_PIVOT);
-  expect(TOOLTIPS.surrounding).toBe(TOOLTIP_SURROUNDING);
 });
 
-test('every one of the nine controls has a non-empty tooltip line', () => {
+test('every one of the eight controls has a non-empty tooltip line (Surrounding events removed by A3 F3)', () => {
   const keys = ['promote', 'dismiss', 'reopen', 'feed_threats', 'eq', 'neq',
-    'pivot', 'surrounding', 'expanded_search'];
+    'pivot', 'expanded_search'];
   expect(Object.keys(TOOLTIPS).sort()).toEqual([...keys].sort());
   for (const k of keys) {
     expect(typeof TOOLTIPS[k]).toBe('string');
@@ -145,20 +144,20 @@ test('6.2: Promote, Dismiss, Reopen, and Feed/Threats carry their tooltip lines 
   }
 });
 
-test('6.2: the four query controls and Surrounding events carry the ruled finals in the inspector', () => {
+test('6.2: the three ruled query controls carry the ruled finals in the inspector (no surrounding control)', () => {
   const event = {
     id: 'e1', event_seq: 1, timestamp: '2026-03-17T04:00:01+00:00',
     event_type: 'ProcessCreate', source_type: 'Sysmon', severity: 'high',
     hostname: 'ACME-WS12', message: 'proc', key_value_pairs: {},
   };
   render(<EventInspector event={event} onFilter={() => {}} onPivot={() => {}}
-    onSurrounding={() => {}} onHostPivot={() => {}} />);
+    onHostPivot={() => {}} />);
   expect(document.querySelectorAll(`[title="${TOOLTIP_EQ}"]`).length).toBeGreaterThan(0);
   expect(document.querySelectorAll(`[title="${TOOLTIP_NEQ}"]`).length).toBeGreaterThan(0);
   const pivots = Array.from(document.querySelectorAll('[title]'))
     .filter(el => el.getAttribute('title').startsWith(TOOLTIP_PIVOT));
   expect(pivots.length).toBeGreaterThan(0);
-  expect(document.querySelectorAll(`[title="${TOOLTIP_SURROUNDING}"]`).length).toBe(1);
+  expect(screen.queryByText('Surrounding events')).toBeNull();
   for (const el of document.querySelectorAll('.help-tip')) {
     expect(el.getAttribute('data-help')).toBeTruthy();
   }
