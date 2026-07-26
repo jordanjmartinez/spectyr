@@ -37,6 +37,14 @@ export const STALE_RESULTS_NOTE =
 export const SELECTED_EVENT_HIDDEN =
   'The selected event is hidden by the current results. Change the filters or select another event.';
 
+// --- the new-events action (Final pass III.0 item 4; replaces the generic
+// Refresh label). The token-bound new-count poll is the ONE authority: the
+// count line and the action render together only while it reports new
+// events; the snapshot stays stable until the action is invoked.
+export const newEventsAvailable = (n) =>
+  `${n} new event${n === 1 ? '' : 's'} available`;
+export const LOAD_NEW_EVENTS = 'Load new events';
+
 // === Phase 2 commit 2.1: the complete Section 10.1 canonical vocabulary ===
 // (locked contract 10.1/10.2; consolidated scaffold). Observable-only; the
 // forbidden class (correctness phrasing, answer-key totals) never appears

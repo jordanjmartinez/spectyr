@@ -159,8 +159,9 @@ const Docs = () => {
               <p className="log-mono text-[#1a2332]">TIMEFRAME | SENSOR | EVENT TYPE | FILTERS</p>
               <p>
                 Run Query executes the bar as a frozen snapshot: results never move until you run
-                again or press Refresh, and a new-events badge counts telemetry that arrived since
-                the snapshot. Sidebar values and per-field inspector actions refine the executed
+                again, and when new matching telemetry arrives a count appears with a Load new
+                events action that brings the snapshot up to date. Sidebar values and per-field
+                inspector actions refine the executed
                 query; entity pivots (host, account, IP, domain, process, file, event type, sensor)
                 follow the clue across the evidence you are searching. With an incident selected
                 the SIEM searches that incident&apos;s evidence; with none it searches all activity.

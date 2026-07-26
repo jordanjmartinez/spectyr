@@ -15,7 +15,8 @@ import {
 import InvestigationContext from './InvestigationContext';
 import {
   followingClue, resultsFor, ALL_EVENTS_LABEL, INITIAL_INCIDENT_EVIDENCE,
-  INITIAL_EVIDENCE, SELECTED_EVENT_HIDDEN,
+  INITIAL_EVIDENCE, SELECTED_EVENT_HIDDEN, newEventsAvailable,
+  LOAD_NEW_EVENTS,
   EDITED_NOTE, STALE_RESULTS_NOTE, filterAdded, excludedFilter,
   NO_QUERY_ENTERED, PRESERVED_RESULTS_LABEL, SEARCH_NOT_RUN,
   QUERY_SECTION_NAMES, sectionCouldNotBeRead, STRUCTURE_LINE,
@@ -79,8 +80,8 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
   // PROVENANCE. 'player' = the player authored the run (Run, refine, chip
   // removal, pivot); 'prepared' = the shell executed a prepared entry query
   // (evidence descent) the player never wrote -- labeled "Initial incident
-  // evidence", never "Results for:". Refresh re-executes the displayed
-  // identity, so it preserves the origin it refreshes.
+  // evidence", never "Results for:". Load new events re-executes the
+  // displayed identity, so it preserves the origin it loads.
   const [snapshotOrigin, setSnapshotOrigin] = useState('player');
   const [error, setError] = useState(null);         // {position, reason, suggestions?}
   const [running, setRunning] = useState(false);
@@ -88,12 +89,13 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
   // {kind:'session'} | {kind:'incident', id, status:'loading'|'ready'|'error', sealed}
   const [scope, setScope] = useState({ kind: 'session' });
   // P5.1: ONE inspector selection, keyed by event id, owned by the shell so
-  // it persists across view toggles and Refresh (when the id survives).
+  // it persists across view toggles and Load new events (when the id
+  // survives).
   const [selectedId, setSelectedId] = useState(null);
   const [selectionNotice, setSelectionNotice] = useState(null);
   // P6.1/6.2: the OR-fallback notice from a sidebar/inspector refinement
   // (distinct lifecycle from selectionNotice -- set only when refineFilter
-  // reports `fresh`, cleared by any subsequent plain Run/Refresh).
+  // reports `fresh`, cleared by any subsequent plain Run / load).
   const [queryNotice, setQueryNotice] = useState(null);
   // P5.2: the new-events indicator (contract Section 8, R16 refresh-now).
   // Token-bound: the poll carries ONLY the executed snapshot's token, so
@@ -275,7 +277,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
 
   // `noticeAfter`: the clue/OR-fallback text to show once THIS run lands
   // (null clears any stale notice from an earlier refinement -- plain
-  // Run/Refresh always pass none). `origin` is the snapshot provenance
+  // Run / Load new events always pass none). `origin` is the snapshot provenance
   // (III.0 item 3): 'player' unless the caller executed a prepared query.
   const execute = (q, scopeValue, noticeAfter = null, origin = 'player') => {
     if (running) return;
@@ -323,11 +325,15 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
     setError(null);
   };
 
-  // Refresh re-executes the DISPLAYED snapshot's definition (its canonical
-  // query and executed scope), never the editable bar text (contract S7).
-  // It refreshes what is displayed, so the provenance label is preserved
-  // (refreshed initial evidence is still initial evidence, III.0 item 3).
-  const refresh = () => {
+  // Load new events (III.0 item 4; replaces the generic Refresh):
+  // re-executes the DISPLAYED snapshot's definition (its canonical query
+  // and executed scope), never the editable bar text (contract S7). The
+  // action renders ONLY beside a nonzero authoritative new-count, so the
+  // snapshot is stable until deliberately invoked; a landed load resets
+  // the count truthfully (applySnapshot). Loading what is displayed
+  // preserves its provenance label (loaded initial evidence is still
+  // initial evidence, III.0 item 3).
+  const loadNewEvents = () => {
     if (!snapshot || running) return;
     execute(snapshot.identity.canonical_query, snapshot.identity.scope, null, snapshotOrigin);
   };
@@ -804,7 +810,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
                 data-testid="new-events-indicator"
                 className={`px-2 py-0.5 rounded-full text-white bg-[#16436b] font-medium ${indicatorStale ? 'opacity-50' : ''}`}
               >
-                {newCount} new{indicatorStale ? ' (last run)' : ''}
+                {newEventsAvailable(newCount)}{indicatorStale ? ' (last run)' : ''}
               </span>
             )}
             {poolGrowth > 0 && (
@@ -812,15 +818,17 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
                 pool: +{poolGrowth}
               </span>
             )}
-            <button
-              type="button"
-              onClick={refresh}
-              disabled={running}
-              title={poolGrowth > 0 ? `pool: +${poolGrowth} events` : undefined}
-              className="ml-auto px-2.5 py-1 text-xs font-medium rounded-md border border-[#d0d7de] bg-white text-[#1a2332] hover:bg-[#eef1f4] disabled:opacity-50"
-            >
-              Refresh
-            </button>
+            {newCount > 0 && (
+              <button
+                type="button"
+                data-testid="load-new-events"
+                onClick={loadNewEvents}
+                disabled={running}
+                className="ml-auto px-2.5 py-1 text-xs font-medium rounded-md border border-[#d0d7de] bg-white text-[#1a2332] hover:bg-[#eef1f4] disabled:opacity-50"
+              >
+                {LOAD_NEW_EVENTS}
+              </button>
+            )}
           </div>
           );
         })()}

@@ -35,12 +35,14 @@ const EVENT = {
 };
 
 let queryResponses;
+let countResponse;
 beforeEach(() => {
   queryResponses = [];
+  countResponse = () => ok({ new_count: 0, pool_growth: 0 });
   apiFetch.mockReset();
   apiFetch.mockImplementation((p) => {
     if (p === '/api/endpoints') return ok({ org: {}, endpoints: [] });
-    if (p.startsWith('/api/events/query/new-count')) return ok({ new_count: 0, pool_growth: 0 });
+    if (p.startsWith('/api/events/query/new-count')) return countResponse();
     if (p.startsWith('/api/events/query')) {
       if (queryResponses.length) return queryResponses.shift();
       const q = decodeURIComponent(p);
@@ -89,23 +91,33 @@ test('a match-all player search reads "Results for: all events", never a bare st
     .toBe(resultsFor(ALL_EVENTS_LABEL));
 });
 
-test('a prepared incident entry is labeled "Initial incident evidence", never a player query; Refresh preserves it; a player run replaces it', async () => {
-  await act(async () => {
-    render(<Siem initialQueryMode="advanced" resetTrigger={0} onHostPivot={() => {}}
-      activeIncidentId="INC-9368" onNavigate={() => {}}
-      descentRequest={{ origin: 'INC-9368', hosts: ['ACME-WS10'], scopeIncidentId: 'INC-9368', backView: 'incidents', seq: 1 }}
-    />);
-  });
-  expect(queryCalls().pop()).toBe('/api/events/query?q=all | ACME-WS10 | * | *&scope=INC-9368');
-  expect(screen.getByTestId('results-label').textContent).toBe(INITIAL_INCIDENT_EVIDENCE);
-  expect(screen.getByTestId('results-label').textContent).not.toContain('Results for');
-  // Refresh re-executes the displayed identity: still initial evidence
-  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Refresh' })); });
-  expect(screen.getByTestId('results-label').textContent).toBe(INITIAL_INCIDENT_EVIDENCE);
-  // the player authors a run: the label becomes an executed search
-  await run('all | ACME-WS10 | * | user_account == "ACME\\nkhan"');
-  expect(screen.getByTestId('results-label').textContent)
-    .toBe(resultsFor('user_account == "ACME\\nkhan"'));
+test('a prepared incident entry is labeled "Initial incident evidence", never a player query; loading new events preserves it; a player run replaces it', async () => {
+  jest.useFakeTimers();
+  try {
+    await act(async () => {
+      render(<Siem initialQueryMode="advanced" resetTrigger={0} onHostPivot={() => {}}
+        activeIncidentId="INC-9368" onNavigate={() => {}}
+        descentRequest={{ origin: 'INC-9368', hosts: ['ACME-WS10'], scopeIncidentId: 'INC-9368', backView: 'incidents', seq: 1 }}
+      />);
+    });
+    expect(queryCalls().pop()).toBe('/api/events/query?q=all | ACME-WS10 | * | *&scope=INC-9368');
+    expect(screen.getByTestId('results-label').textContent).toBe(INITIAL_INCIDENT_EVIDENCE);
+    expect(screen.getByTestId('results-label').textContent).not.toContain('Results for');
+    // Load new events re-executes the displayed identity: still initial evidence
+    countResponse = () => ok({ new_count: 2, pool_growth: 2 });
+    await act(async () => { jest.advanceTimersByTime(3000); });
+    await act(async () => {});
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Load new events' }));
+    });
+    expect(screen.getByTestId('results-label').textContent).toBe(INITIAL_INCIDENT_EVIDENCE);
+    // the player authors a run: the label becomes an executed search
+    await run('all | ACME-WS10 | * | user_account == "ACME\\nkhan"');
+    expect(screen.getByTestId('results-label').textContent)
+      .toBe(resultsFor('user_account == "ACME\\nkhan"'));
+  } finally {
+    jest.useRealTimers();
+  }
 });
 
 test('a caseless prepared entry is labeled "Initial evidence" (no incident to name)', async () => {

@@ -4,7 +4,7 @@ import { sevColor, sourceColor } from './siemUtils';
 // SIEM card view: event cards color-coded by source family. Presentational
 // only; renders the frozen snapshot rows. Selection is CONTROLLED by the
 // workbench shell (Stage 4 P5.1: one inspector, selection keyed by event
-// id, persisting across view toggles and surviving Refresh when the id
+// id, persisting across view toggles and surviving Load new events when the id
 // survives). The selected card's full detail renders in the shared
 // EventInspector below the results (Stage 4 P6.3) -- this component only
 // highlights which card is selected; it has no inline expansion.
