@@ -756,3 +756,127 @@ ride existing payloads (endpoint snapshot `entity_id` /
 detection `entity.account_id`), so the move is frontend-only.
 
 Implementation ledger, evidence, and verification follow in III.1+.
+
+## III.1 Implementation ledger (one concern per commit, never landed red)
+
+| Commit | Area | Substance |
+|---|---|---|
+| `b2b480f` FP1 | III.0.1 | Response is the one canonical action-execution workspace (Actions grouped by target type + Response Log); Detections triage-only; Endpoint surfaces investigation-only with neutral Respond navigation; one action system (`responseActions.js`); ruled empty states; `feed_threats` tooltip retired; new `response-workspace.test.js` battery |
+| `114c2d2` FP2 | III.0 item 2 | One evidence universe: with an active incident every SIEM search runs in that incident's observable pool; Pivot changes the QUERY, never the universe, announced via `followingClue` on the one notice line; Expanded-search state/block, model B hold + return, Search all evidence, the case-evidence chip, and the repeated SIEM-level case labeling all removed; scope-error recovery is Retry alone; descent untouched (locked Stage 4 contract) |
+| `ca31f38` FP3 | III.0 item 3 | Search-state truth: snapshot provenance (`prepared` vs `player`); "Initial incident evidence" / "Initial evidence" for prepared entries, "Results for: X" (readable filters; match-all reads "all events") for player runs with the canonical kept as the technical disclosure; ruled edited / failed sentences; hidden selection RETAINED with the ruled notice; placeholder example guarded; new `search-state-truth.test.js` |
+| `ce0bfc1` FP4 | III.0 item 4 | "N new events available" + "Load new events", rendered ONLY beside the nonzero token-bound count; no generic Refresh label survives; action re-executes the displayed identity, preserves provenance, resets the count truthfully; fake-timer Load battery in `workbench-snapshot.test.js` |
+| `c9551af` FP5 | III.0 item 5 | "Open Evidence Timeline" becomes "Investigate in SIEM" on Incidents + DetectionDetail + Docs + the Guided nudge; NO separate Timeline concept survives (origin banner, breadcrumb Back, occurrence-ascending re-sort, `timeline` state, and the Siem `onNavigate` prop all removed); entry requests slim to observable `{hosts, account, scopeIncidentId}`; "host timeline" pivot label becomes "host activity" |
+| `efaa6f1` FP6 | III.0 item 6 | The three vertical grade cards become ONE compact responsive Score Summary: Overall grade exactly once, three equal columns (same values and calculations), `grid-cols-1 -> sm:grid-cols-3` stacking in accessible DOM order, the factual teaching blocks beneath; the Session Performance composite ring untouched |
+| `f2d280a` FP7 | III.0 item 7 | Remaining report-workflow implications removed: player Docs Reports section + nav entry + intro sentence, landing Reports link, reset-modal copy (also correcting stale pre-3.9B "alerts" naming); permanent guard `no-report-workflow.test.js` (the hidden nav tab stays guarded by `nav-badges.test.js`) |
+| (docs) FP8 | III.0 item 8 | This record; full battery + Chrome verification below |
+
+## III.2 Flagged deviations and rulings of necessity (deviation-flagging rule)
+
+1. **TOOLTIP_PIVOT (A2 ratified final) reworded** -- FLAGGED consequential
+   change: item 2 removed the pivot's scope broadening, so the ruled
+   sentence "Follow this clue across all available evidence." became
+   untrue. It now reads "Follow this clue across the evidence you are
+   searching."; the SIEM Guided nudge and the player Docs paragraph follow
+   the same truth. The A2 `==`/`!=` finals are untouched.
+2. **The 11.3 locked note wordings superseded** -- item 3 itself rules the
+   new sentences ("Search edited but not run. Showing results from the
+   previous search." / "Showing results from the previous successful
+   search."), so this is the authorized supersession, recorded here
+   because the old strings were locked contract finals.
+3. **`INITIAL_EVIDENCE` minimal variant** -- item 3 names only "Initial
+   incident evidence"; a prepared entry can also exist with NO case (a
+   session-wide detection entry), where naming an incident would be false.
+   That state reads "Initial evidence". Flagged as the one string the
+   ruling did not letter.
+4. **Hidden-selection retention** -- the pre-pass behavior CLEARED a
+   selection missing from new results; item 3's "never silently close the
+   inspector" is implemented as retention: the id is kept, the ruled
+   notice explains, the pane reopens when a later result set includes the
+   event, and no filter is altered on the player's behalf.
+5. **Entry-request slimming** -- `origin` and `backView` left the descent
+   request shape (Incidents / DetectionDetail -> Dashboard -> Siem); they
+   carried nothing but the removed banner and Back link. Observable-data
+   discipline is unchanged.
+6. **Known edge (inherited, recorded)** -- a detection opened while the
+   case's scope read is in a FAILED state descends session-wide under the
+   locked Stage 4 rule ("the player-selected incident context when the
+   entry carries one"); with the banner gone, that state is disclosed by
+   the technical `scope=session` line beside the pinned case line. It is
+   reachable only from a degraded scope read and exits on the next case
+   re-anchor.
+7. **Dev-environment observation (backend untouched, not fixed here)** --
+   during verification the long-running dev backend held an in-memory
+   session whose log directory no longer existed; its drip thread dies on
+   the first append and the run never injects. Fresh sessions are
+   unaffected; the session-lifecycle code predates this pass and is out of
+   its authorized scope. Recorded for a future hardening ticket
+   (recreate the session dir on start), not acted on.
+
+## III.3 Verification evidence (III.0 item 8)
+
+- **Full gate battery**: `python backend/run_gates.py --all` exit 0,
+  `[gate] ALL GREEN` -- all 29 backend suites (test_scenario_loader_v2
+  through fairness_check, re-confirmed in a second per-suite run) plus
+  the frontend suite at 30 suites / 271 tests (up from 27/262 at the
+  `fd6b98f` baseline: `search-state-truth`, `no-report-workflow`, and
+  `response-workspace` added; every retranslated suite green). The
+  versioned pre-commit hook ran the frontend battery at every FP commit;
+  no commit landed red and `--no-verify` was never used.
+- **Ratified-copy conformance**: the pinned-copy suites
+  (`progress-vocabulary`, `help-model`, `score-sections`,
+  `search-state-truth`) carry the Part III finals byte-exact; the retired
+  strings (`caseEvidenceLabel`, `SEARCH_ALL_EVIDENCE`,
+  `EXPANDED_SEARCH_TITLE`, `expandedSearchExplanation`,
+  `returnToCaseEvidence`, `RETURN_SUBCOPY`, `NO_RESULTS_OUTS`,
+  `RESULTS_FROM_LABEL`, `TOOLTIPS.expanded_search`) are gone from the
+  module and every consumer.
+- **Fresh Guided Chrome playthrough** (scenario
+  `defense_evasion_log_clearing`, INC-7599, unassisted): Investigate in
+  SIEM opened the prepared host search labeled "Initial incident
+  evidence" over the one "Investigating INC-7599" line -- no chip, no
+  search-all, no banner, rows as served; a `source_type` pivot executed
+  under `scope=INC-7599` announcing "Following clue: source_type =
+  \"Sysmon\"" and the label became "Results for: all events" with the
+  canonical disclosed beside it; changing a picker executed nothing and
+  surfaced the ruled edited sentence with Restore; 5/5 detections triaged
+  in triage-only Detections (promoted rows offering only "Open in
+  Response"); Isolate Host + Remove Persistence (the WMI subscription)
+  executed from the Response workspace through the confirm dialogs, the
+  Response Log holding exactly one row per action; submit through the
+  one boundary produced Incident Grade A · 100 on all three components
+  (Classification / Detection dispositions / Response actions, composite
+  A · 100, all six achievements, `assisted: false`); the Learning Review
+  and the Metrics tab rendered the SAME numbers, with the compact Score
+  Summary showing the Overall grade exactly once and the three equal
+  columns in accessible order.
+- **Load new events**: at rest with a zero count NO load control and NO
+  generic Refresh label exist anywhere on the surface (verified by DOM
+  probe live; the completed Guided run's pool is static, so the hidden
+  control is the truthful state). The nonzero flow -- count-paired
+  existence, identity binding, truthful reset, selection survival -- is
+  pinned by the fake-timer battery.
+- **Hardcore purity**: a fresh Hardcore run (3 incidents in flight,
+  15:00 timer live) shows NO Check Answer, NO hint affordance, NO
+  Guided consider-prompt in the checklist; "Investigate in SIEM" and the
+  triage tooltips remain (mode-universal).
+- **Zero steady-state console errors** across the entire walk (reset
+  flows, playthrough, submit, review, Hardcore) and **no duplicate
+  action requests** (the authoritative Response Log recorded exactly one
+  attempt per executed action; a duplicate would surface as a `no_op`
+  row).
+- **Owner assets untouched**: the working tree before and after the pass
+  carries exactly the two pre-existing owner assets
+  (`frontend/public/videos/spectyrvideo.mp4` modified,
+  `frontend/public/spectyr_svg.svg` untracked) and nothing else; no FP
+  commit stages them.
+
+## III.4 Final product checkpoint (FINAL STOP)
+
+All eight authorized areas are implemented, tested, Chrome-verified, and
+recorded. The engine invariants named in III.0 item 2's preserve list --
+scope loading, Retry, atomic replacement, stale-row honesty, no silent
+broadening, query execution, Pivot, filters, chips, Simple and Advanced
+LCQL, snapshots, scoring, and roster behavior -- moved nowhere; every FP
+commit is frontend-only. Branch `stage-5-live-run-feedback` stands at
+FP7 + this record. Per the directive: NO merge to main, NO push, NO
+further planning or feature cycle. The final product pass is COMPLETE.
