@@ -384,24 +384,23 @@ const Incidents = ({
                 </div>
               ) : null}
 
-              {/* P7.2 Open Evidence Timeline (contract Section 13 naming
-                  ruling; Section 16 descent-sets-scope). Supplies ONLY the
-                  observable participant scope; the SIEM shell generates the
-                  query. Evidence stays reviewable after submission. */}
+              {/* "Investigate in SIEM" (III.0 item 5 rename of the P7.2
+                  entry; Section 16 descent-sets-scope). Prepares and opens
+                  the existing SIEM search from ONLY the observable
+                  participant scope; the SIEM shell generates the query.
+                  Evidence stays reviewable after submission. */}
               {scope && scope.incident_id === selected.incident_id && onEvidenceDescent && (
                 <div>
                   <button
                     type="button"
                     onClick={() => onEvidenceDescent({
-                      origin: selected.incident_id,
                       hosts: scope.hosts || [],
                       account: null,
                       scopeIncidentId: selected.incident_id,
-                      backView: 'incidents',
                     })}
                     className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#16436b] hover:bg-[#eef1f4]"
                   >
-                    Open Evidence Timeline
+                    Investigate in SIEM
                   </button>
                 </div>
               )}

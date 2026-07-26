@@ -51,7 +51,7 @@ const L1_MECHANICS = [
 // ACTIVE SURFACE only. Static and scenario-independent by construction.
 const L2_NUDGES = {
   incidents: [
-    'Read the briefing, then open the evidence timeline to see what actually happened on the related hosts.',
+    'Read the briefing, then use Investigate in SIEM to see what actually happened on the related hosts.',
     'The checklist under the briefing shows what still needs attention before Submit.',
   ],
   siem: [

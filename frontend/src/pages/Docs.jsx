@@ -165,8 +165,8 @@ const Docs = () => {
                 query; entity pivots (host, account, IP, domain, process, file, event type, sensor)
                 follow the clue across the evidence you are searching. With an incident selected
                 the SIEM searches that incident&apos;s evidence; with none it searches all activity.
-                Open Evidence Timeline on an incident or detection descends into its evidence,
-                sorted occurrence-ascending.
+                Investigate in SIEM on an incident or detection opens the SIEM with that
+                evidence already searched.
               </p>
               <p>
                 Simple search accepts a filter expression. Advanced LCQL accepts the complete

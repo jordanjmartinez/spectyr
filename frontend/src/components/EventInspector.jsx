@@ -32,7 +32,7 @@ const CANONICAL_COMMONS = ['hostname', 'user_account', 'source_ip', 'destination
 // field can enter query generation through this map. `kind` selects the
 // documented Section 13 generator form in the shell.
 export const PIVOT_MAP = {
-  hostname: { kind: 'host', label: 'host timeline' },
+  hostname: { kind: 'host', label: 'host activity' },
   user_account: { kind: 'account', label: 'account activity' },
   source_ip: { kind: 'ip', label: 'IP activity' },
   destination_ip: { kind: 'ip', label: 'IP activity' },

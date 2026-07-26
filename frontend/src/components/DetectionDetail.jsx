@@ -134,28 +134,27 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
             )}
           </div>
           <h2 className="mt-2 text-xl sm:text-2xl font-semibold text-[#1a2332]">{det.rule_name}</h2>
-          {/* P7.2/P7.4 Open Evidence Timeline (contract Section 13; OD-9
-              naming ruling -- never "View Triggering Evidence"; R17 uniform
-              control). Descent anchors to the detection's OBSERVABLE
-              ENTITY: host-entity detections descend host-anchored,
-              identity (account-entity) detections descend account-anchored.
-              One control, one request grammar for every detection kind --
-              presence and content depend only on the visible entity, never
-              on disposition, scenario membership, or any answer-key state. */}
+          {/* "Investigate in SIEM" (III.0 item 5 rename of the P7.2/P7.4
+              entry; R17 uniform control -- never "View Triggering
+              Evidence"). Prepares and opens the existing SIEM search
+              anchored to the detection's OBSERVABLE ENTITY: host-entity
+              detections prepare the host search, identity (account-entity)
+              detections the account search. One control, one request
+              grammar for every detection kind -- presence and content
+              depend only on the visible entity, never on disposition,
+              scenario membership, or any answer-key state. */}
           {(det.entity?.host || det.entity?.account) && onEvidenceDescent && (
             <div className="mt-2">
               <button
                 type="button"
                 onClick={() => onEvidenceDescent({
-                  origin: det.id,
                   hosts: det.entity.host ? [det.entity.host] : [],
                   account: det.entity.host ? null : det.entity.account,
                   scopeIncidentId: descentScopeIncidentId || null,
-                  backView: 'detections',
                 })}
                 className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#16436b] hover:bg-[#eef1f4]"
               >
-                Open Evidence Timeline
+                Investigate in SIEM
               </button>
             </div>
           )}

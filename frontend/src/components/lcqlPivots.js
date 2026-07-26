@@ -344,11 +344,11 @@ export function pivotSensorFamily(tf, family) {
   return `${tf} | ${family} | * | *`;
 }
 
-// --- descent forms (contract Section 13; UI wiring is Phase 7) -----------
+// --- prepared-entry forms (contract Section 13; UI wiring is Phase 7;
+// the entry action is "Investigate in SIEM" since III.0 item 5) ----------
 // Pure string generation only, per the Phase 6 boundary clarification: the
-// Open Evidence Timeline controls, navigation, banners, breadcrumbs, and
-// scope behavior that USE these strings are Phase 7. Always `all`,
-// regardless of the caller's current timeframe.
+// entry controls and scope behavior that USE these strings live in the
+// SIEM shell. Always `all`, regardless of the caller's current timeframe.
 
 export function descentHost(hostname) {
   return `all | ${hostname} | * | *`;
@@ -361,8 +361,8 @@ export function descentSessionAll() {
 // Identity-detection descent (Phase 7.5 ruling): the UNIFORM two-field OR
 // for every identity/account detection. UPN-carrying families (Azure AD)
 // store the visible account in kvp UserPrincipalName while DOMAIN\username
-// families store it in user_account, so a single-field anchor lands on an
-// empty timeline for one of them (the live P7.4 finding). No branching on
+// families store it in user_account, so a single-field anchor lands on
+// empty results for one of them (the live P7.4 finding). No branching on
 // account format, source family, or anything else -- one shape always;
 // correlating UPN identity with DOMAIN\username host activity remains
 // player investigation work through pivots. Always `all`; scope follows

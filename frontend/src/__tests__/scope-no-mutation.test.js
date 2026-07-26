@@ -90,11 +90,11 @@ test('P7 descent, pivot, and refinement issue reads only', async () => {
       <Siem
         resetTrigger={0} onHostPivot={() => {}}
         activeIncidentId="INC-A" onNavigate={() => {}}
-        descentRequest={{ origin: 'INC-A', hosts: ['ACME-WS10'], scopeIncidentId: 'INC-A', backView: 'incidents', seq: 1 }}
+        descentRequest={{ hosts: ['ACME-WS10'], scopeIncidentId: 'INC-A', seq: 1 }}
       />
     );
   });
-  await waitFor(() => expect(screen.getByTestId('descent-banner')).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByTestId('workbench-results')).toBeInTheDocument());
 
   // entity pivot from the case evidence (stays in the case's pool)
   fireEvent.click(within(screen.getByTestId('workbench-results')).getByText('no-mutation fixture event'));
@@ -117,7 +117,7 @@ test('P7.4 identity descent issues reads only', async () => {
       <Siem
         resetTrigger={0} onHostPivot={() => {}}
         activeIncidentId="INC-A" onNavigate={() => {}}
-        descentRequest={{ origin: 'det-ids1', hosts: [], account: 'ACME\\dlee', scopeIncidentId: 'INC-A', backView: 'detections', seq: 1 }}
+        descentRequest={{ hosts: [], account: 'ACME\\dlee', scopeIncidentId: 'INC-A', seq: 1 }}
       />
     );
   });

@@ -52,11 +52,12 @@ const Dashboard = () => {
     setResponseFocus({ ...target, seq: responseSeqRef.current });
     setView('response');
   };
-  // Stage 4 P7.2: Open Evidence Timeline descent requests (contract Sections
-  // 13/16). The request carries ONLY observable data supplied by the origin
-  // surface (origin label, participant hostnames, the player-selected
-  // incident context); the SIEM shell generates the query through the one
-  // generator. seq retriggers identical consecutive descents.
+  // Stage 4 P7.2 entry, renamed "Investigate in SIEM" (III.0 item 5). The
+  // request carries ONLY observable data supplied by the origin surface
+  // (participant hostnames / account, the player-selected incident
+  // context); the SIEM shell generates and executes the prepared search
+  // through the one generator. seq retriggers identical consecutive
+  // entries.
   const [descentRequest, setDescentRequest] = useState(null);
   const descentSeqRef = useRef(0);
   // Stage 5 commit 5.4: "Review what you learned" requests -- opens the
@@ -379,7 +380,7 @@ const Dashboard = () => {
         </div>
 
         <div className={view === "siem" ? "block" : "hidden"}>
-          <Siem resetTrigger={resetTrigger} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} descentRequest={descentRequest} onNavigate={setView} />
+          <Siem resetTrigger={resetTrigger} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} descentRequest={descentRequest} />
         </div>
 
         <div className={view === "detections" ? "block" : "hidden"}>

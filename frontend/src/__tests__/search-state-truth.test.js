@@ -97,7 +97,7 @@ test('a prepared incident entry is labeled "Initial incident evidence", never a 
     await act(async () => {
       render(<Siem initialQueryMode="advanced" resetTrigger={0} onHostPivot={() => {}}
         activeIncidentId="INC-9368" onNavigate={() => {}}
-        descentRequest={{ origin: 'INC-9368', hosts: ['ACME-WS10'], scopeIncidentId: 'INC-9368', backView: 'incidents', seq: 1 }}
+        descentRequest={{ hosts: ['ACME-WS10'], scopeIncidentId: 'INC-9368', seq: 1 }}
       />);
     });
     expect(queryCalls().pop()).toBe('/api/events/query?q=all | ACME-WS10 | * | *&scope=INC-9368');
@@ -124,7 +124,7 @@ test('a caseless prepared entry is labeled "Initial evidence" (no incident to na
   await act(async () => {
     render(<Siem initialQueryMode="advanced" resetTrigger={0} onHostPivot={() => {}}
       onNavigate={() => {}}
-      descentRequest={{ origin: 'DET-42', hosts: ['ACME-WS10'], scopeIncidentId: null, backView: 'detections', seq: 1 }}
+      descentRequest={{ hosts: ['ACME-WS10'], scopeIncidentId: null, seq: 1 }}
     />);
   });
   expect(queryCalls().pop()).toBe('/api/events/query?q=all | ACME-WS10 | * | *&scope=session');

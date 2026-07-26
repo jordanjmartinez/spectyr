@@ -62,7 +62,7 @@ const firstSegmentToken = (text) => {
 };
 
 const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
-                descentRequest, onNavigate,
+                descentRequest,
                 initialQueryMode = 'simple' }) => {
   const [org, setOrg] = useState({});
   const [view, setView] = useState('cards');
@@ -110,12 +110,12 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
   // observable evidence pool; 'session' is the no-case All activity
   // fallback. The case itself is the activeIncidentId prop -- selected on
   // Incidents, never changeable from here (ratified OD-15, structural).
-  // P7.2: the evidence-timeline context ({kind:'descent', origin, backView,
-  // host, query}). Pure UI provenance (contract Section 12: the breadcrumb
-  // "implies nothing about any row"); the banner and the ascending display
-  // render ONLY while the displayed snapshot's canonical query is the
-  // timeline's own query, so they can never mislabel another snapshot.
-  const [timeline, setTimeline] = useState(null);
+  // (Final pass III.0 item 5: the separate Timeline concept is retired.
+  // The evidence entry -- now "Investigate in SIEM" -- prepares and opens
+  // the existing SIEM search; the executed prepared search is identified
+  // by the readable filter expression in the bar/controls plus the
+  // "Initial incident evidence" state label. No origin banner, no
+  // breadcrumb, no special occurrence-ascending presentation.)
   // Final pass III item 2: the Expanded-search state, its hold, the
   // search-all action, the case-evidence chip, and the return action are
   // REMOVED. With an active incident the SIEM always searches that
@@ -162,7 +162,6 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
     setSelectedId(null);
     setSelectionNotice(null);
     setQueryNotice(null);
-    setTimeline(null);
   }, [resetTrigger]);
 
   const loadIncidentScope = (id) => {
@@ -186,7 +185,6 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
     setSnapshotOrigin('player');
     setError(null);
     setQueryText('');
-    setTimeline(null);
     setQueryNotice(null);
     setSelectedId(null);
     setSelectionNotice(null);
@@ -397,30 +395,32 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
   // version is deferred engine work. Evidence descent and descentHost()
   // are untouched.
 
-  // P7.2/P7.4 Open Evidence Timeline descent (contract Sections 13/16; R17
-  // uniform control): descent explicitly establishes scope for this entry
-  // and anchors to the OBSERVABLE ENTITY. An account-entity detection
-  // descends account-anchored (all | * | * | user_account == "A"); one
-  // participant host anchors that host's timeline (all | H | * | *);
-  // several -- or none known yet -- anchor the scoped session query
-  // (all | * | * | *) under the incident's participant scope. Scope
-  // follows ONE rule for every anchor kind: the player-selected incident
-  // context when the entry carries one, Session-wide otherwise -- identity
-  // descent is deliberately NOT special-cased, so an incident-scoped
-  // account timeline may honestly show zero rows when the account's events
-  // lack participant hostnames; leaving the case on Incidents is the
-  // designed path out (III.0 item 2: no SIEM-level scope control exists).
-  // The request carries ONLY observable data from the origin
-  // surface; the query is generated HERE through the one generator.
+  // P7.2/P7.4 "Investigate in SIEM" entry (contract Sections 13/16; R17
+  // uniform control; renamed by III.0 item 5): the entry prepares and
+  // opens the existing SIEM search, explicitly establishing scope and
+  // anchoring to the OBSERVABLE ENTITY. An account-entity detection
+  // prepares the account form (user_account == "A" or UserPrincipalName
+  // == "A"); one participant host prepares that host's search
+  // (all | H | * | *); several -- or none known yet -- prepare the
+  // whole-pool query (all | * | * | *) under the incident's participant
+  // scope. Scope follows ONE rule for every anchor kind: the
+  // player-selected incident context when the entry carries one,
+  // Session-wide otherwise -- identity entries are deliberately NOT
+  // special-cased, so an incident-scoped account search may honestly show
+  // zero rows when the account's events lack participant hostnames;
+  // leaving the case on Incidents is the designed path out (III.0 item 2:
+  // no SIEM-level scope control exists). The request carries ONLY
+  // observable data from the origin surface; the query is generated HERE
+  // through the one generator, lands as a 'prepared' snapshot (III.0
+  // item 3), and displays exactly like any executed search (item 5: no
+  // separate Timeline presentation).
   useEffect(() => {
     if (!descentRequest) return;
-    const { origin, hosts, account, scopeIncidentId, backView } = descentRequest;
+    const { hosts, account, scopeIncidentId } = descentRequest;
     const host = !account && hosts && hosts.length === 1 ? hosts[0] : null;
     const query = account ? descentAccount(account)
       : host ? descentHost(host) : descentSessionAll();
     setQueryText(query);
-    setTimeline({ kind: 'descent', origin, backView, host,
-                  account: account || null, query });
     if (scopeIncidentId) {
       setScope({ kind: 'incident', id: scopeIncidentId, status: 'loading' });
       apiFetch(`/api/incidents/${scopeIncidentId}/scope`)
@@ -480,17 +480,9 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
       : new Date(t).toLocaleTimeString('en-GB', { hour12: false });
   };
 
-  // Timeline presentation (contract Section 13: "sorted occurrence
-  // ascending"): active only while the displayed snapshot IS the timeline's
-  // query. The ascending order is client view state over the frozen row set
-  // -- applied at display time, before the components' own column sorting.
-  const timelineActive = !!(timeline && snapshot
-    && snapshot.identity.canonical_query === timeline.query);
-  const occAsc = (a, b) =>
-    String(a.timestamp || '').localeCompare(String(b.timestamp || ''))
-    || (a.event_seq || 0) - (b.event_seq || 0);
-  const displayRows = !snapshot ? []
-    : timelineActive ? [...snapshot.rows].sort(occAsc) : snapshot.rows;
+  // (III.0 item 5: no separate Timeline presentation -- a prepared entry's
+  // rows display exactly as served, like any executed search; the Table
+  // view's own column sorting remains the ordering control.)
 
   return (
     <div>
@@ -833,31 +825,6 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
           );
         })()}
 
-        {timelineActive && (
-          <div
-            data-testid="descent-banner"
-            role="status"
-            className="px-3 py-1.5 rounded-md border border-[#16436b]/30 bg-[#16436b]/5 text-xs text-[#1a2332] flex flex-wrap items-center gap-x-2 gap-y-1"
-          >
-            <span>
-              Evidence timeline
-              {timeline.host || timeline.account
-                ? <> for <span className="log-mono font-medium">{timeline.host || timeline.account}</span></>
-                : ' (all participant hosts)'}
-              , from <span className="log-mono text-[#16436b]">{timeline.origin}</span>
-            </span>
-            <span className="text-[#8b949e]">occurrence ascending</span>
-            {timeline.kind === 'descent' && timeline.backView && onNavigate && (
-              <button
-                type="button"
-                onClick={() => onNavigate(timeline.backView)}
-                className="ml-auto text-[#16436b] hover:underline"
-              >
-                Back to {timeline.backView === 'incidents' ? 'Incidents' : 'Detections'}
-              </button>
-            )}
-          </div>
-        )}
         {selectionNotice && (
           <div role="status" className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a]">
             {selectionNotice}
@@ -922,10 +889,10 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
           <FieldSidebar snapshot={snapshot} running={running} onValueClick={refineAndRun} />
           <div data-testid="workbench-results" className="flex-1 min-w-0">
             {view === 'cards' ? (
-              <SiemCards alerts={displayRows} resetTrigger={resetTrigger}
+              <SiemCards alerts={snapshot.rows} resetTrigger={resetTrigger}
                          selectedId={selectedId} onSelect={selectRow} />
             ) : (
-              <SiemTable alerts={displayRows} resetTrigger={resetTrigger}
+              <SiemTable alerts={snapshot.rows} resetTrigger={resetTrigger}
                          selectedId={selectedId} onSelect={selectRow} />
             )}
             <div
