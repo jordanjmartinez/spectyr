@@ -18,7 +18,9 @@ import {
   detectionsRemaining, PROMOTED_LABEL, DISMISSED_LABEL, REOPENED_LABEL,
   responseActionsTaken, READY_TO_SUBMIT, SUBMITTED_GRADE_LOCKED,
   completedStrip, toReview, FEED_SUBCOPY, THREATS_SUBCOPY, filterAdded,
-  excludedFilter, returnReadFailed,
+  excludedFilter, returnReadFailed, RETURN_SUBCOPY, CLASSIFY_TO_SUBMIT,
+  SIMPLE_PLACEHOLDER, SIMPLE_HELP, SIMPLE_TOGGLE, ADVANCED_TOGGLE,
+  SOURCE_LABEL, EVENT_TYPE_LABEL, ALL_SOURCES, ALL_EVENT_TYPES,
 } from '../components/uiCopy';
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
@@ -54,6 +56,21 @@ test('the case-constant terms are the ratified A-OD-1 finals, byte-exact', () =>
   expect(SEARCH_ALL_EVIDENCE).toBe('Search all evidence');
   expect(returnSubcopy('INC-8541'))
     .toBe('Return to INC-8541 evidence runs this query over the case evidence again.');
+});
+
+test('the Amendment 3 ratified finals are byte-exact (A3-R.1 + standing drafted finals)', () => {
+  expect(RETURN_SUBCOPY).toBe(
+    'Return restores the incident evidence you were viewing before Expanded search. Changes made in Expanded search are not kept.');
+  expect(CLASSIFY_TO_SUBMIT).toBe('Select a classification to submit.');
+  expect(SIMPLE_PLACEHOLDER).toBe('Example: source_ip == "10.0.1.32"');
+  expect(SIMPLE_HELP).toBe(
+    'Enter a filter expression. Timeframe, source, and event type are controlled above.');
+  expect(SIMPLE_TOGGLE).toBe('Simple search');
+  expect(ADVANCED_TOGGLE).toBe('Advanced LCQL');
+  expect(SOURCE_LABEL).toBe('Source');
+  expect(EVENT_TYPE_LABEL).toBe('Event type');
+  expect(ALL_SOURCES).toBe('All sources');
+  expect(ALL_EVENT_TYPES).toBe('All event types');
 });
 
 test('the Section 8.2 clue-naming forms are byte-exact', () => {
@@ -104,6 +121,17 @@ const PRE_SUBMISSION_STRINGS = [
   ['filterAdded', filterAdded('a', 'b')],
   ['excludedFilter', excludedFilter('a', 'b')],
   ['returnReadFailed', returnReadFailed('INC-0001')],   // C1 (F2 guard)
+  // Amendment 3 (A3.1): the pre-submission additions
+  ['RETURN_SUBCOPY', RETURN_SUBCOPY],
+  ['CLASSIFY_TO_SUBMIT', CLASSIFY_TO_SUBMIT],
+  ['SIMPLE_PLACEHOLDER', SIMPLE_PLACEHOLDER],
+  ['SIMPLE_HELP', SIMPLE_HELP],
+  ['SIMPLE_TOGGLE', SIMPLE_TOGGLE],
+  ['ADVANCED_TOGGLE', ADVANCED_TOGGLE],
+  ['SOURCE_LABEL', SOURCE_LABEL],
+  ['EVENT_TYPE_LABEL', EVENT_TYPE_LABEL],
+  ['ALL_SOURCES', ALL_SOURCES],
+  ['ALL_EVENT_TYPES', ALL_EVENT_TYPES],
 ];
 
 test('no pre-submission canonical string carries the forbidden class', () => {

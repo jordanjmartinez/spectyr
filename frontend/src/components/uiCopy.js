@@ -25,6 +25,11 @@ export const returnToCaseEvidence = (incidentId) =>
   `Return to ${incidentId} evidence`;
 export const returnSubcopy = (incidentId) =>
   `Return to ${incidentId} evidence runs this query over the case evidence again.`;
+// Amendment 3 (ratified A3-R.1) return subcopy: the model B restore.
+// Lands ahead of its consumer per R7; returnSubcopy above retires with
+// the model A mechanics in the F2 commit.
+export const RETURN_SUBCOPY =
+  'Return restores the incident evidence you were viewing before Expanded search. Changes made in Expanded search are not kept.';
 // C1 checkpoint fix (post-Stage-5 review, F2 latent defect): a failed
 // case-evidence read on the return action must not relabel the view as
 // incident evidence over the still-displayed expanded rows (criteria
@@ -190,3 +195,22 @@ export const NO_SUBMITTED_INCIDENTS =
   'No submitted incidents yet. Submit an incident to unlock its Learning Review.';
 export const CALL_CORRECT = 'Correct';
 export const CALL_WRONG = 'Wrong';
+
+// === Amendment 3 cycle commit A3.1: the ratified A3-R.1 finals and the ===
+// === standing drafted finals, landed ahead of their consumers (R7). ======
+
+// F4b (A3-4.2): the observable line beside a disabled Submit (and the
+// disabled Check Answer hint) when classification is the only step left.
+export const CLASSIFY_TO_SUBMIT = 'Select a classification to submit.';
+
+// F7 (A3-5, ruled + standing finals): simple search as a projection over
+// canonical LCQL. The mode toggle labels name the mode you switch TO.
+export const SIMPLE_PLACEHOLDER = 'Example: source_ip == "10.0.1.32"';
+export const SIMPLE_HELP =
+  'Enter a filter expression. Timeframe, source, and event type are controlled above.';
+export const SIMPLE_TOGGLE = 'Simple search';
+export const ADVANCED_TOGGLE = 'Advanced LCQL';
+export const SOURCE_LABEL = 'Source';
+export const EVENT_TYPE_LABEL = 'Event type';
+export const ALL_SOURCES = 'All sources';
+export const ALL_EVENT_TYPES = 'All event types';
