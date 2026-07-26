@@ -46,7 +46,9 @@ const AppHeader = ({ title, gameMode, analystName, simActive, onReset }) => {
       className="mb-4 rounded-xl bg-[#101218] px-4 py-3 flex items-center justify-between gap-4 border border-white/12"
       data-testid="app-header"
     >
-      <h1 className="t-page text-white">{title}</h1>
+      {/* the token carries the light-surface ink, so the dark-chrome
+          override is inline (it must win over the token's color) */}
+      <h1 className="t-page" style={{ color: '#ffffff' }}>{title}</h1>
 
       <div ref={rootRef} className="relative shrink-0">
         <button
