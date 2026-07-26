@@ -1,21 +1,19 @@
 import React from 'react';
 import { ACTION_LABELS } from './uiCopy';
 
-// Stage 3d composite ruling: the 40/30/30 composite is the headline grade
-// (rendered by GradeCard); Classification, Detections, and Response render
-// here as independent scored sections beneath it, each showing its own
-// details, misses, collateral, acceptable actions, and failed attempts, so
-// no weak component hides behind the composite. The Response card surfaces
-// failed/no-op attempts factually (count + entries), score-neutral.
+// Stage 3d composite ruling, compacted by the Final pass (III.0 item 6):
+// the three large vertical Classification / Detections / Response grade
+// cards become ONE compact responsive summary -- the Overall (composite)
+// grade shown once, then three equal columns with the SAME values and
+// calculations as before (component grade, accuracy, counts). Columns
+// stack on small screens; DOM order (Overall, Classification, Detections,
+// Response) matches the visual reading order. The detailed teaching
+// sections (the factual Response attempt blocks) remain beneath the
+// summary; no distinct grading information was removed.
 //
-// Stage 3.9A: all three sections read from the SUBMISSION-GATED report prop
-// (report.detection / report.response, aggregated over submitted incidents).
-// This component no longer polls the detection_score / action_score endpoints;
-// nothing is shown until at least one incident is submitted (its parent only
-// mounts it once grading exists).
-
-// ACTION_LABELS centralized in uiCopy (Phase 2 commit 2.4) -- one
-// definition, consumed here, in Detections, and by the toast module.
+// Stage 3.9A: all values read from the SUBMISSION-GATED report prop
+// (report.detection / report.response / report.composite, aggregated over
+// submitted incidents); nothing here polls a score endpoint.
 
 const Card = ({ children }) => (
   <div className="rounded-2xl" style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
@@ -23,17 +21,8 @@ const Card = ({ children }) => (
   </div>
 );
 
-const GradeBlock = ({ grade, accuracy, graded }) => (
-  <div className="text-right shrink-0">
-    <p className="text-4xl font-semibold text-[#1a2332] leading-none">{grade || '-'}</p>
-    <p className="mt-1 text-xs text-[#6e7781]">
-      {graded > 0 ? `${accuracy}% accuracy` : 'Not graded yet'}
-    </p>
-  </div>
-);
-
 const StatRow = ({ items }) => (
-  <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-[#57606a]">
+  <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-[#57606a]">
     {items.map(([label, value]) => (
       <span key={label}>
         <span className="font-medium text-[#1a2332]">{value}</span> {label}
@@ -45,6 +34,7 @@ const StatRow = ({ items }) => (
 const ScoreSections = ({ isVisible = true, report = null }) => {
   const detScore = report?.detection ?? null;
   const actScore = report?.response ?? null;
+  const composite = report?.composite ?? null;
 
   const notExecuted = actScore?.not_executed;
   const noEffect = actScore?.no_effect;
@@ -65,79 +55,92 @@ const ScoreSections = ({ isVisible = true, report = null }) => {
     </div>
   );
 
-  const clsComp = report?.composite?.components?.classification;
-  const clsThreats = report?.threats_caught ?? 0;
-  const clsWrong = report?.wrong_category ?? 0;
-  const clsFpCaught = report?.fp_identified ?? 0;
-  const clsFpMissed = report?.fp_missed ?? 0;
+  const clsComp = composite?.components?.classification;
+
+  const columns = [
+    {
+      name: 'Classification',
+      desc: 'Threat vs false-positive calls and attack category.',
+      grade: clsComp?.grade, accuracy: clsComp?.accuracy ?? 0, graded: clsComp?.graded ?? 0,
+      items: [
+        ['threats caught', report?.threats_caught ?? 0],
+        ['wrong category', report?.wrong_category ?? 0],
+        ['FP caught', report?.fp_identified ?? 0],
+        ['FP missed', report?.fp_missed ?? 0],
+      ],
+    },
+    {
+      name: 'Detections',
+      desc: 'Triage decisions against the detection feed.',
+      grade: detScore?.grade, accuracy: detScore?.accuracy ?? 0, graded: detScore?.graded ?? 0,
+      items: [
+        ['correct', detScore?.correct ?? 0],
+        ['wrong', detScore?.wrong ?? 0],
+        ['open', detScore?.open ?? 0],
+      ],
+    },
+    {
+      name: 'Response',
+      desc: 'Response actions against the incident scope.',
+      grade: actScore?.grade, accuracy: actScore?.accuracy ?? 0, graded: actScore?.graded ?? 0,
+      items: [
+        ['required', actScore?.required ?? 0],
+        ['correct', actScore?.correct ?? 0],
+        ['missed', actScore?.missed ?? 0],
+        ['collateral', actScore?.collateral ?? 0],
+        ...(actScore?.order_violations ? [['out of order', actScore.order_violations]] : []),
+      ],
+    },
+  ];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">Classification</h2>
-        <Card>
-          <div className="p-4 sm:p-6 flex items-start justify-between gap-4">
-            <div className="space-y-2">
-              <p className="text-sm text-[#57606a]">Threat vs false-positive calls and attack category.</p>
-              <StatRow items={[
-                ['threats caught', clsThreats],
-                ['wrong category', clsWrong],
-                ['FP caught', clsFpCaught],
-                ['FP missed', clsFpMissed],
-              ]} />
-            </div>
-            <GradeBlock grade={clsComp?.grade} accuracy={clsComp?.accuracy ?? 0} graded={clsComp?.graded ?? 0} />
+    <div>
+      <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">Score Summary</h2>
+      <Card>
+        <div className="p-4 sm:p-6">
+          {/* the Overall grade, exactly once */}
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 pb-4 border-b border-[#eef1f4]">
+            <p className="text-sm font-medium text-[#1a2332]">Overall grade</p>
+            <p className="text-right">
+              <span className="text-3xl font-semibold text-[#1a2332] leading-none">{composite?.grade || '-'}</span>
+              <span className="ml-2 text-xs text-[#6e7781]">
+                {composite?.accuracy != null ? `${composite.accuracy}% accuracy` : 'Not graded yet'}
+              </span>
+            </p>
           </div>
-        </Card>
-      </div>
-
-      <div>
-        <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">Detections</h2>
-        <Card>
-          <div className="p-4 sm:p-6 flex items-start justify-between gap-4">
-            <div className="space-y-2">
-              <p className="text-sm text-[#57606a]">Triage decisions against the detection feed.</p>
-              <StatRow items={[
-                ['correct', detScore?.correct ?? 0],
-                ['wrong', detScore?.wrong ?? 0],
-                ['open', detScore?.open ?? 0],
-              ]} />
-            </div>
-            <GradeBlock grade={detScore?.grade} accuracy={detScore?.accuracy ?? 0} graded={detScore?.graded ?? 0} />
+          {/* three equal columns; stacked on small screens in the same order */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-[#eef1f4]">
+            {columns.map((col) => (
+              <div key={col.name} className="py-4 sm:py-2 sm:px-5 sm:first:pl-0 sm:last:pr-0 space-y-2">
+                <div className="flex items-baseline justify-between gap-2">
+                  <p className="text-sm font-semibold text-[#1a2332]">{col.name}</p>
+                  <p className="text-right shrink-0">
+                    <span className="text-2xl font-semibold text-[#1a2332] leading-none">{col.grade || '-'}</span>
+                    <span className="ml-1.5 text-xs text-[#6e7781]">
+                      {col.graded > 0 ? `${col.accuracy}% accuracy` : 'Not graded yet'}
+                    </span>
+                  </p>
+                </div>
+                <p className="text-xs text-[#6e7781]">{col.desc}</p>
+                <StatRow items={col.items} />
+              </div>
+            ))}
           </div>
-        </Card>
-      </div>
-
-      <div>
-        <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">Response</h2>
-        <Card>
-          <div className="p-4 sm:p-6 flex items-start justify-between gap-4">
-            <div className="space-y-2 min-w-0">
-              <p className="text-sm text-[#57606a]">Response actions against the incident scope.</p>
-              <StatRow items={[
-                ['required', actScore?.required ?? 0],
-                ['correct', actScore?.correct ?? 0],
-                ['missed', actScore?.missed ?? 0],
-                ['collateral', actScore?.collateral ?? 0],
-                ...(actScore?.order_violations ? [['out of order', actScore.order_violations]] : []),
-              ]} />
-            </div>
-            <GradeBlock grade={actScore?.grade} accuracy={actScore?.accuracy ?? 0} graded={actScore?.graded ?? 0} />
-          </div>
-          {acceptableTaken?.count > 0 && (
-            <FactualBlock title={`Acceptable response (${acceptableTaken.count})`}
-                          entries={acceptableTaken.entries} />
-          )}
-          {notExecuted?.count > 0 && (
-            <FactualBlock title={`Attempted, not executed (${notExecuted.count})`}
-                          entries={notExecuted.entries} />
-          )}
-          {noEffect?.count > 0 && (
-            <FactualBlock title={`No effect, already in state (${noEffect.count})`}
-                          entries={noEffect.entries} />
-          )}
-        </Card>
-      </div>
+        </div>
+        {/* the detailed teaching sections remain beneath the summary */}
+        {acceptableTaken?.count > 0 && (
+          <FactualBlock title={`Acceptable response (${acceptableTaken.count})`}
+                        entries={acceptableTaken.entries} />
+        )}
+        {notExecuted?.count > 0 && (
+          <FactualBlock title={`Attempted, not executed (${notExecuted.count})`}
+                        entries={notExecuted.entries} />
+        )}
+        {noEffect?.count > 0 && (
+          <FactualBlock title={`No effect, already in state (${noEffect.count})`}
+                        entries={noEffect.entries} />
+        )}
+      </Card>
     </div>
   );
 };
