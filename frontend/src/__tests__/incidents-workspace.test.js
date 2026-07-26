@@ -6,7 +6,7 @@
  * Both neutral readiness messages are reachable; no POST fires on render.
  */
 import React from 'react';
-import { render, screen, waitFor, fireEvent, within, act } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import Incidents from '../components/Incidents';
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
@@ -32,7 +32,6 @@ const routeJson = (path) => {
   if (path.endsWith('/scope')) return scopeFor(path.split('/')[3]);
   if (path.endsWith('/score')) return { state: 'submitted', assisted: false, grading: { classification: GRADE, detection: GRADE, response: GRADE, composite: GRADE } };
   if (path.endsWith('/triage-review')) return { what_is_it: { title: 'What', description: 'Why' } };
-  if (path.endsWith('/check-answer')) return { assisted: true, classification: { correct: true, your_category: 'False Positive', actual_category: 'False Positive' } };
   return {};
 };
 beforeEach(() => {
@@ -91,7 +90,11 @@ test('a submitted incident renders the Case Closed summary with the Review what 
   expect(onOpenLearningReview).toHaveBeenCalledWith('INC-3000');
 });
 
-test('completed detail shows the Assisted badge iff Check Answer was used', async () => {
+test('completed detail shows the Assisted badge iff the frozen record is assisted', async () => {
+  // The badge renders SERVER RECORD truth (the immutable per-incident
+  // `assisted` flag). Visual pass V1 removed the player-facing Check
+  // Answer entry point, so in-product runs never mark it; the display
+  // stays because the record schema keeps the field.
   // assisted submitted incident -> badge shows
   const a = render(<Incidents gameMode="training" activeIncidentId="INC-3001" />);
   expect(await screen.findByText('brief E')).toBeInTheDocument();
@@ -110,29 +113,9 @@ test('issues no state-changing (POST) call on render', async () => {
   expect(posts).toHaveLength(0);
 });
 
-test('Check Answer is offered in Guided on a sealed incident (disabled until classified), and hidden in Hardcore', async () => {
-  const g = render(<Incidents gameMode="training" activeIncidentId="INC-2000" />);   // guided, sealed
-  // A3.4 (ratified A3-OD-2): present but disabled until a valid
-  // classification is selected in the workspace.
-  expect(await g.findByText('Check Answer')).toBeInTheDocument();
-  expect(g.getByRole('button', { name: 'Check Answer' })).toBeDisabled();
-  g.unmount();
-  render(<Incidents gameMode="hardcore" activeIncidentId="INC-2000" />);
-  await screen.findByText('brief B');
-  expect(screen.queryByText('Check Answer')).toBeNull();
-});
-
-test('Check Answer consumes the workspace selection (A3-OD-2), reads nested classification.correct, and marks Assisted', async () => {
-  render(<Host gameMode="training" activeIncidentId="INC-2000" />);   // guided, sealed
-  await screen.findByText('brief B');
-  fireEvent.click(within(screen.getByTestId('workspace-classification')).getByText('False Positive'));
-  const check = screen.getByRole('button', { name: 'Check Answer' });
-  expect(check).not.toBeDisabled();
-  await act(async () => { fireEvent.click(check); });   // no modal: direct check
-  expect(await screen.findByText('Classification correct')).toBeInTheDocument();
-  expect(screen.getByText(/now marked/)).toBeInTheDocument();   // Assisted note
-  expect(screen.queryByTestId('classification-modal')).toBeNull();
-});
+// (Visual pass V1: the two Check Answer workspace tests moved to the
+// permanent removal battery, no-check-answer.test.js -- the control no
+// longer exists in any mode.)
 
 // --- the ratified A1-B.3.2 workspace selector (C1) + F4b gating (A3.4) ----
 

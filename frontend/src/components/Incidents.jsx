@@ -100,8 +100,6 @@ const Incidents = ({
     setChosen?.(c => ({ ...c, [incidentId]: { verdict: 'threat', category: clabel, categoryId: cid } }));
   };
   const [submitBusy, setSubmitBusy] = useState(false);
-  const [checkResult, setCheckResult] = useState(null);      // Guided Check Answer feedback
-  const [checkBusy, setCheckBusy] = useState(false);
   const [practiceWarn, setPracticeWarn] = useState(false);   // Practice Another reset warning
   const [notice, setNotice] = useState('');
   const [review, setReview] = useState(null);     // {incidentId, title, grading, assisted, triage}
@@ -195,35 +193,12 @@ const Incidents = ({
       action: 'submit', verdict: sel.verdict, category: sel.category });
   };
 
-  // Check Answer (Guided only; ratified A3-OD-2): consumes the WORKSPACE
-  // classification selection (disabled until one is valid) and reveals
-  // ONLY whether it is correct, without submitting; permanently marks the
-  // incident Assisted. Never reveals detection, response, or composite
-  // grading (server-enforced).
-  const beginCheck = () => {
-    if (!isGuided || !selected || selected.state !== 'in_progress' || !selected.sealed) return;
-    const sel = chosen[selected.incident_id];
-    if (!validClassification(sel)) return;
-    doCheck({ incident_id: selected.incident_id, title: selected.title,
-      action: 'check', verdict: sel.verdict, category: sel.category });
-  };
-
-  const doCheck = async (p) => {
-    setCheckBusy(true);
-    try {
-      const res = await apiFetch(`/api/incidents/${p.incident_id}/check-answer`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ verdict: p.verdict, category: p.category }),
-      });
-      const b = await res.json().catch(() => ({}));
-      setPendingSubmit(null);
-      // check-answer nests correctness under `classification` (never top-level).
-      if (res.ok) { setCheckResult({ correct: !!(b.classification && b.classification.correct) }); fetchList(); }
-      else { flash(b.error || 'Check Answer is available in Guided mode only.'); }
-    } catch { flash('Could not check the answer.'); }
-    finally { setCheckBusy(false); }
-  };
-
+  // Visual pass V1: the pre-submission Check Answer workflow is REMOVED.
+  // Classification correctness is disclosed only across the submission
+  // boundary (the submitted Learning Review); every mode reaches it the
+  // same way, through Submit. The backend /check-answer endpoint stays as
+  // intentionally dormant server capability (the frozen 3.9A temporal
+  // leak-guard suite exercises it); no player-facing surface calls it.
   const doSubmit = async () => {
     if (!pendingSubmit) return;
     setSubmitBusy(true);
@@ -464,12 +439,6 @@ const Incidents = ({
                         </span>
                       </>
                     )}
-                    {isGuided && selected.sealed && (
-                      <button onClick={beginCheck}
-                        disabled={!validClassification(chosen[selected.incident_id])}
-                        title={!validClassification(chosen[selected.incident_id]) ? CLASSIFY_TO_SUBMIT : undefined}
-                        className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4] disabled:opacity-50">Check Answer</button>
-                    )}
                   </div>
                 )}
               </div>
@@ -498,26 +467,6 @@ const Incidents = ({
                   className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4] disabled:opacity-60">Cancel</button>
                 <button type="button" onClick={doSubmit} disabled={submitBusy}
                   className="px-3 py-1.5 text-sm rounded-md bg-[#101218] text-white hover:bg-[#1a2332] disabled:opacity-60">{submitBusy ? 'Submitting…' : 'Submit Incident'}</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Guided Check Answer result: classification correctness ONLY */}
-      {checkResult && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
-          <div className="bg-white rounded-xl border border-[#e2e6ea] shadow-xl w-full max-w-md overflow-hidden">
-            <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
-            <div className="p-5">
-              <p className="text-[11px] uppercase tracking-wider text-[#6e7781]">Check Answer</p>
-              <h3 className="text-base font-semibold mt-0.5" style={{ color: checkResult.correct ? '#6fa868' : '#b45858' }}>
-                {checkResult.correct ? 'Classification correct' : 'Not the right classification'}
-              </h3>
-              <p className="mt-2 text-sm text-[#57606a]">This reveals the classification only; detection and response are graded when you submit. This incident is now marked <span className="font-medium text-[#1a2332]">Assisted</span>.</p>
-              <div className="mt-5 flex justify-end">
-                <button type="button" onClick={() => setCheckResult(null)}
-                  className="px-3 py-1.5 text-sm rounded-md bg-[#101218] text-white hover:bg-[#1e2330]">Close</button>
               </div>
             </div>
           </div>

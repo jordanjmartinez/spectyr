@@ -8,8 +8,9 @@ const CLASSIFICATIONS = [
 // Amendment 3 F4b (ratified A3-OD-2): the workspace classification
 // selector, grid-only. The modal variant is DELETED -- classification is
 // an inline workspace step (ratified A1-B.3.2 source), consumed by the
-// checklist line, the Ready derivation, Submit, and Guided Check Answer;
-// the submit flow performs no data entry.
+// checklist line, the Ready derivation, and Submit; the submit flow
+// performs no data entry. (Visual pass V1: the Guided Check Answer
+// consumer is removed; correctness is disclosed only at submission.)
 const ClassificationSelector = ({ onSelect, selected = null }) => (
   <div className="grid grid-cols-2 gap-2">
     {CLASSIFICATIONS.map((c) => {

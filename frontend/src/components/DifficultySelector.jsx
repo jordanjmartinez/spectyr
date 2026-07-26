@@ -11,7 +11,7 @@ const MODES = [
     id: 'guided',
     label: 'Guided',
     image: '/ghost_training.PNG',
-    points: ['Learn the workflow', 'Pick one scenario. Unlimited time, Check Answer available.'],
+    points: ['Learn the workflow', 'Pick one scenario. Unlimited time, hints available.'],
   },
   {
     id: 'analyst',

@@ -140,7 +140,7 @@ const Docs = () => {
             <Section id="game-modes" title="Game Modes">
               <div>
                 <p className="text-[#1a2332] font-medium mb-1">Guided</p>
-                <p>Pick one scenario from the catalog and work it with unlimited time. Check Answer reveals whether your classification is correct before you submit, and marks the incident Assisted.</p>
+                <p>Pick one scenario from the catalog and work it with unlimited time. Hints are available while you investigate; your classification is graded when you submit the incident.</p>
               </div>
               <div>
                 <p className="text-[#1a2332] font-medium mb-1">SOC Queue</p>

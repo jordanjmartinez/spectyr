@@ -192,8 +192,8 @@ export const CALL_WRONG = 'Wrong';
 // === Amendment 3 cycle commit A3.1: the ratified A3-R.1 finals and the ===
 // === standing drafted finals, landed ahead of their consumers (R7). ======
 
-// F4b (A3-4.2): the observable line beside a disabled Submit (and the
-// disabled Check Answer hint) when classification is the only step left.
+// F4b (A3-4.2): the observable line beside a disabled Submit when
+// classification is the only step left.
 export const CLASSIFY_TO_SUBMIT = 'Select a classification to submit.';
 
 // F7 (A3-5, ruled + standing finals): simple search as a projection over
