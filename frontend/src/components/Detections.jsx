@@ -84,7 +84,7 @@ const IdentityStateChips = ({ state }) => {
 const shortTime = (iso) =>
   iso ? new Date(iso).toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
 
-const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot,
+const Detections = ({ isVisible, resetTrigger, onHostPivot,
                       activeIncidentId = null, onEvidenceDescent }) => {
   const [feed, setFeed] = useState([]);
   const [counts, setCounts] = useState({ open: 0, promoted: 0, dismissed: 0 });
@@ -110,10 +110,9 @@ const Detections = ({ isVisible, resetTrigger, setDetectionCount, onHostPivot,
       .then(data => {
         setFeed(data.detections || []);
         setCounts(data.counts || { open: 0, promoted: 0, dismissed: 0 });
-        setDetectionCount?.((data.counts || {}).open || 0);
       })
       .catch(() => {});
-  }, [setDetectionCount]);
+  }, []);
 
   const fetchLog = useCallback(() => {
     apiFetch('/api/actions')

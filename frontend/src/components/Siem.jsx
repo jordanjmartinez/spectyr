@@ -50,7 +50,7 @@ const firstSegmentToken = (text) => {
   return TF_TOKENS.includes(head) ? head : null;
 };
 
-const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
+const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
                 descentRequest, onNavigate }) => {
   const [org, setOrg] = useState({});
   const [view, setView] = useState('cards');
@@ -144,10 +144,6 @@ const Siem = ({ setSiemCount, resetTrigger, onHostPivot, activeIncidentId,
     setTransition(null);
     setHeldView(null);
   }, [resetTrigger]);
-
-  useEffect(() => {
-    setSiemCount?.(snapshot ? snapshot.count : 0);
-  }, [snapshot, setSiemCount]);
 
   const loadIncidentScope = (id) => {
     setScope({ kind: 'incident', id, status: 'loading' });

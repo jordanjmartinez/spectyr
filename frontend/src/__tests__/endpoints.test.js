@@ -129,7 +129,7 @@ const assertCleanCopy = (container) => {
 test('endpoints list renders fixture rows with clean copy', async () => {
   mockApi();
   const { container } = render(
-    <Endpoints isVisible resetTrigger={0} setEndpointCount={() => {}} pivotHost={null} />
+    <Endpoints isVisible resetTrigger={0} pivotHost={null} />
   );
   expect(await screen.findByText('ACME-WS12')).toBeInTheDocument();
   expect(screen.getByText('1 online · 1 offline')).toBeInTheDocument();

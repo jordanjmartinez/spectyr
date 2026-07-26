@@ -106,7 +106,7 @@ test('feed renders detections and triages them', async () => {
   let promoted = false;
   mockApi({ onDisposition: () => { promoted = true; } });
   const { container } = render(
-    <Detections isVisible resetTrigger={0} setDetectionCount={() => {}} onHostPivot={() => {}} />
+    <Detections isVisible resetTrigger={0} onHostPivot={() => {}} />
   );
   expect(await screen.findByText('LSASS Process Memory Access')).toBeInTheDocument();
   expect(screen.getByText('2 open · 2 promoted · 0 dismissed')).toBeInTheDocument();
@@ -134,7 +134,7 @@ test('threats view offers identity actions on any account-bearing detection', as
     return Promise.resolve({ ok: true, json: () => Promise.resolve(FEED) });
   });
   const { container } = render(
-    <Detections isVisible resetTrigger={0} setDetectionCount={() => {}} onHostPivot={() => {}} />
+    <Detections isVisible resetTrigger={0} onHostPivot={() => {}} />
   );
   await screen.findByText('LSASS Process Memory Access');
   fireEvent.click(screen.getByRole('button', { name: /Threats/ }));
@@ -160,7 +160,7 @@ test('threats view offers identity actions on any account-bearing detection', as
 test('response log renders every attempt with outcomes', async () => {
   mockApi();
   const { container } = render(
-    <Detections isVisible resetTrigger={0} setDetectionCount={() => {}} onHostPivot={() => {}} />
+    <Detections isVisible resetTrigger={0} onHostPivot={() => {}} />
   );
   await screen.findByText('LSASS Process Memory Access');
   fireEvent.click(screen.getByRole('button', { name: 'Response Log' }));

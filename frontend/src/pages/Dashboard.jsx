@@ -15,7 +15,6 @@ import FailureModal from '../components/FailureModal';
 import HintPanel from '../components/HintPanel';
 
 const Dashboard = () => {
-  const [alertCount, setAlertCount] = useState(0);
   const [groupedAlertCount, setGroupedAlertCount] = useState(0);
   const [reportCount, setReportCount] = useState(0);
   const [analyticsCount, setAnalyticsCount] = useState(0);
@@ -37,8 +36,6 @@ const Dashboard = () => {
   const [gameMode, setGameMode] = useState('training');
   const [incidentBadge, setIncidentBadge] = useState(0);
   const [simActive, setSimActive] = useState(false);
-  const [endpointCount, setEndpointCount] = useState(0);
-  const [detectionCount, setDetectionCount] = useState(0);
   const [pivotHost, setPivotHost] = useState(null);
   // Stage 4 P7.2: Open Evidence Timeline descent requests (contract Sections
   // 13/16). The request carries ONLY observable data supplied by the origin
@@ -222,11 +219,16 @@ const Dashboard = () => {
       icon: 'M4 5a1 1 0 011-1h5a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM14 13a1 1 0 011-1h4a1 1 0 011 1v6a1 1 0 01-1 1h-4a1 1 0 01-1-1v-6zM4 15a1 1 0 011-1h5a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4z' },
     { key: 'incidents', label: 'Incidents', count: groupedAlertCount,
       icon: 'M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z' },
-    { key: 'siem', label: 'SIEM', count: alertCount,
+    // C1 checkpoint fix (post-Stage-5 review, F1): the evidence-surface nav
+    // entries (SIEM, Detections, Endpoints) carry NO numeric badge. The old
+    // badges read unfiltered session payloads while the page headers rendered
+    // case-scoped counts, so badge and header could not agree with a case
+    // pinned; the Incidents badge stays (cases are a global concept).
+    { key: 'siem', label: 'SIEM',
       icon: 'M4 6h16M4 10h16M4 14h16M4 18h16' },
-    { key: 'detections', label: 'Detections', count: detectionCount,
+    { key: 'detections', label: 'Detections',
       icon: 'M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z' },
-    { key: 'endpoints', label: 'Endpoints', count: endpointCount,
+    { key: 'endpoints', label: 'Endpoints',
       icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
     { key: 'analytics', label: 'Metrics', count: analyticsCount,
       icon: 'M9 19v-6m4 6V5m4 14v-9M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z' },
@@ -350,15 +352,15 @@ const Dashboard = () => {
         </div>
 
         <div className={view === "siem" ? "block" : "hidden"}>
-          <Siem setSiemCount={setAlertCount} resetTrigger={resetTrigger} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} descentRequest={descentRequest} onNavigate={setView} />
+          <Siem resetTrigger={resetTrigger} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} descentRequest={descentRequest} onNavigate={setView} />
         </div>
 
         <div className={view === "detections" ? "block" : "hidden"}>
-          <Detections isVisible={view === "detections"} resetTrigger={resetTrigger} setDetectionCount={setDetectionCount} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} onEvidenceDescent={handleEvidenceDescent} />
+          <Detections isVisible={view === "detections"} resetTrigger={resetTrigger} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} onEvidenceDescent={handleEvidenceDescent} />
         </div>
 
         <div className={view === "endpoints" ? "block" : "hidden"}>
-          <Endpoints isVisible={view === "endpoints"} resetTrigger={resetTrigger} setEndpointCount={setEndpointCount} pivotHost={pivotHost} activeIncidentId={activeIncidentId} />
+          <Endpoints isVisible={view === "endpoints"} resetTrigger={resetTrigger} pivotHost={pivotHost} activeIncidentId={activeIncidentId} />
         </div>
 
         <div className={view === "analytics" ? "block" : "hidden"}>

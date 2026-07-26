@@ -126,7 +126,7 @@ const renderDetections = async () => {
     return ok({});
   });
   await act(async () => {
-    render(<Detections isVisible resetTrigger={0} setDetectionCount={() => {}} activeIncidentId={null} />);
+    render(<Detections isVisible resetTrigger={0} activeIncidentId={null} />);
   });
 };
 

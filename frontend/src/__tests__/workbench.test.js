@@ -57,7 +57,7 @@ beforeEach(() => {
 });
 
 const renderShell = () =>
-  render(<Siem setSiemCount={() => {}} resetTrigger={0} onHostPivot={() => {}} />);
+  render(<Siem resetTrigger={0} onHostPivot={() => {}} />);
 
 const run = async (text) => {
   fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: text } });

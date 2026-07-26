@@ -53,7 +53,7 @@ const COLUMNS = [
   { key: 'isolation', label: 'Isolation' },
 ];
 
-const Endpoints = ({ isVisible, resetTrigger, setEndpointCount, pivotHost,
+const Endpoints = ({ isVisible, resetTrigger, pivotHost,
                      activeIncidentId = null }) => {
   const [org, setOrg] = useState({});
   const [rows, setRows] = useState([]);
@@ -74,10 +74,9 @@ const Endpoints = ({ isVisible, resetTrigger, setEndpointCount, pivotHost,
       .then(data => {
         setOrg(data.org || {});
         setRows(data.endpoints || []);
-        setEndpointCount?.((data.endpoints || []).length);
       })
       .catch(() => {});
-  }, [setEndpointCount]);
+  }, []);
 
   useEffect(() => {
     if (isVisible) fetchList();

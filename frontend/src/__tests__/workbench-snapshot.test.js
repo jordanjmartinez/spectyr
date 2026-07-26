@@ -53,7 +53,7 @@ beforeEach(() => {
 });
 
 const renderShell = () =>
-  render(<Siem setSiemCount={() => {}} resetTrigger={0} onHostPivot={() => {}} />);
+  render(<Siem resetTrigger={0} onHostPivot={() => {}} />);
 
 const run = async (text) => {
   fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: text } });
@@ -217,7 +217,7 @@ describe('indicator (fake timers)', () => {
   test('a failed Expanded search entry keeps the prior snapshot de-emphasized (scope divergence honesty)', async () => {
     queryResponses.push(ok(snap([R2, R1], { scope: 'INC-1', canonical: 'all | * | * | *' })));
     await act(async () => {
-      render(<Siem setSiemCount={() => {}} resetTrigger={0} onHostPivot={() => {}}
+      render(<Siem resetTrigger={0} onHostPivot={() => {}}
                    activeIncidentId="INC-1" />);
     });
     fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });

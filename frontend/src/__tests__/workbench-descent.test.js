@@ -72,7 +72,7 @@ const queryCalls = () =>
     .map(decodeURIComponent);
 
 const renderSiem = (props = {}) =>
-  render(<Siem setSiemCount={() => {}} resetTrigger={0} onHostPivot={() => {}} {...props} />);
+  render(<Siem resetTrigger={0} onHostPivot={() => {}} {...props} />);
 
 // --- the shell consumes descent requests -------------------------------------
 
@@ -386,7 +386,7 @@ test('re-descending with a new seq re-executes the same timeline', async () => {
   const before = queryCalls().length;
   await act(async () => {
     utils.rerender(
-      <Siem setSiemCount={() => {}} resetTrigger={0} onHostPivot={() => {}}
+      <Siem resetTrigger={0} onHostPivot={() => {}}
             descentRequest={{ ...props.descentRequest, seq: 2 }} onNavigate={() => {}} />
     );
   });

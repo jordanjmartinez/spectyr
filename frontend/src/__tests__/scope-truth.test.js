@@ -99,7 +99,7 @@ test('Detections: pinned header and rows agree across loading, ready, and post-r
   let settled = false;
   mockApi(() => (settled ? ok(SCOPE) : { ok: true, json: () => d1.p }));
   const { container, rerender } = render(
-    <Detections isVisible resetTrigger={0} setDetectionCount={() => {}}
+    <Detections isVisible resetTrigger={0}
       onHostPivot={() => {}} activeIncidentId="INC-0001" />
   );
   // loading: pinned case header, loading copy, ZERO rows, NO toggle
@@ -116,7 +116,7 @@ test('Detections: pinned header and rows agree across loading, ready, and post-r
   expect(pinnedLine()).toBe(investigatingCase('INC-0001'));
   // post-reset: refetch resolves and every signal still agrees
   rerender(
-    <Detections isVisible resetTrigger={1} setDetectionCount={() => {}}
+    <Detections isVisible resetTrigger={1}
       onHostPivot={() => {}} activeIncidentId="INC-0001" />
   );
   expect(await screen.findByText('LSASS Process Memory Access')).toBeInTheDocument();
@@ -128,7 +128,7 @@ test('Detections: pinned header and rows agree across loading, ready, and post-r
 test('Detections: no case selected is the All activity state with the full feed', async () => {
   mockApi(() => ok(SCOPE));
   const { container } = render(
-    <Detections isVisible resetTrigger={0} setDetectionCount={() => {}}
+    <Detections isVisible resetTrigger={0}
       onHostPivot={() => {}} activeIncidentId={null} />
   );
   expect(await screen.findByText('LSASS Process Memory Access')).toBeInTheDocument();
@@ -146,7 +146,7 @@ test('Endpoints: pinned header and rows agree across loading, ready, and All act
   let settled = false;
   mockApi(() => (settled ? ok(SCOPE) : { ok: true, json: () => d1.p }));
   const { rerender } = render(
-    <Endpoints isVisible resetTrigger={0} setEndpointCount={() => {}}
+    <Endpoints isVisible resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
   expect(pinnedLine()).toBe(investigatingCase('INC-0001'));
@@ -160,7 +160,7 @@ test('Endpoints: pinned header and rows agree across loading, ready, and All act
   expect(screen.queryByText('ACME-SVR02')).toBeNull();
   // clearing the case (explicitly, on Incidents) lands the All activity state
   rerender(
-    <Endpoints isVisible resetTrigger={0} setEndpointCount={() => {}}
+    <Endpoints isVisible resetTrigger={0}
       pivotHost={null} activeIncidentId={null} />
   );
   expect(await screen.findByText('ACME-SVR02')).toBeInTheDocument();
@@ -171,7 +171,7 @@ test('a slow scope read never renders a selected case over unfiltered rows', asy
   const never = new Promise(() => {});
   mockApi(() => ({ ok: true, json: () => never }));
   render(
-    <Detections isVisible resetTrigger={0} setDetectionCount={() => {}}
+    <Detections isVisible resetTrigger={0}
       onHostPivot={() => {}} activeIncidentId="INC-0001" />
   );
   expect((await screen.findAllByText('Loading incident scope')).length).toBeGreaterThanOrEqual(1);
@@ -184,7 +184,7 @@ test('a failed scope load with no prior rows renders the empty error state with 
   let failing = true;
   mockApi(() => (failing ? fail() : ok(SCOPE)));
   const { container } = render(
-    <Endpoints isVisible resetTrigger={0} setEndpointCount={() => {}}
+    <Endpoints isVisible resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
   expect((await screen.findAllByText('Incident scope could not be loaded.')).length).toBeGreaterThanOrEqual(1);
@@ -205,7 +205,7 @@ test('a failed scope load with no prior rows renders the empty error state with 
 test('a persistent scope failure keeps zero rows: no broadening path exists on the page', async () => {
   mockApi(() => fail());
   render(
-    <Endpoints isVisible resetTrigger={0} setEndpointCount={() => {}}
+    <Endpoints isVisible resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
   expect((await screen.findAllByText('Incident scope could not be loaded.')).length).toBeGreaterThanOrEqual(1);
@@ -220,7 +220,7 @@ test('a failed scope refresh with prior scoped rows preserves them and states th
   let failing = false;
   mockApi(() => (failing ? fail() : ok(SCOPE)));
   const { container, rerender } = render(
-    <Endpoints isVisible resetTrigger={0} setEndpointCount={() => {}}
+    <Endpoints isVisible resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
   expect(await screen.findByText('ACME-WS12')).toBeInTheDocument();
@@ -228,11 +228,11 @@ test('a failed scope refresh with prior scoped rows preserves them and states th
   // visibility change triggers the refetch, which now fails
   failing = true;
   rerender(
-    <Endpoints isVisible={false} resetTrigger={0} setEndpointCount={() => {}}
+    <Endpoints isVisible={false} resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
   rerender(
-    <Endpoints isVisible resetTrigger={0} setEndpointCount={() => {}}
+    <Endpoints isVisible resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
   expect(await screen.findByText(/Displayed rows are from the last successful scope read\./))
@@ -249,18 +249,18 @@ test('a scope refresh with scoped rows already displayed replaces them atomicall
   let hold = false;
   mockApi(() => (hold ? { ok: true, json: () => d2.p } : ok(SCOPE)));
   const { rerender } = render(
-    <Endpoints isVisible resetTrigger={0} setEndpointCount={() => {}}
+    <Endpoints isVisible resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
   expect(await screen.findByText('ACME-WS12')).toBeInTheDocument();
   // trigger the refresh (visibility change); leave the new read pending
   hold = true;
   rerender(
-    <Endpoints isVisible={false} resetTrigger={0} setEndpointCount={() => {}}
+    <Endpoints isVisible={false} resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
   rerender(
-    <Endpoints isVisible resetTrigger={0} setEndpointCount={() => {}}
+    <Endpoints isVisible resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
   // retained: old scoped rows stay; still never unfiltered
@@ -280,7 +280,7 @@ test('Detections: the scope read joins the 2.5s feed poll while a case is select
   let scopeCalls = 0;
   mockApi(() => { scopeCalls += 1; return ok(SCOPE); });
   const { rerender } = render(
-    <Detections isVisible resetTrigger={0} setDetectionCount={() => {}}
+    <Detections isVisible resetTrigger={0}
       onHostPivot={() => {}} activeIncidentId="INC-0001" />
   );
   await act(async () => {});
@@ -291,7 +291,7 @@ test('Detections: the scope read joins the 2.5s feed poll while a case is select
   expect(scopeCalls).toBe(initial + 1);
   // with the case cleared (on Incidents) the poll stops refetching the scope
   rerender(
-    <Detections isVisible resetTrigger={0} setDetectionCount={() => {}}
+    <Detections isVisible resetTrigger={0}
       onHostPivot={() => {}} activeIncidentId={null} />
   );
   await act(async () => {});
@@ -306,7 +306,7 @@ test('Endpoints: scope refetches on tab-visibility change and never from a timer
   let scopeCalls = 0;
   mockApi(() => { scopeCalls += 1; return ok(SCOPE); });
   const { rerender } = render(
-    <Endpoints isVisible resetTrigger={0} setEndpointCount={() => {}}
+    <Endpoints isVisible resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
   await act(async () => {});
@@ -318,12 +318,12 @@ test('Endpoints: scope refetches on tab-visibility change and never from a timer
   expect(scopeCalls).toBe(initial);
   // a visibility change refetches
   rerender(
-    <Endpoints isVisible={false} resetTrigger={0} setEndpointCount={() => {}}
+    <Endpoints isVisible={false} resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
   await act(async () => {});
   rerender(
-    <Endpoints isVisible resetTrigger={0} setEndpointCount={() => {}}
+    <Endpoints isVisible resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
   await act(async () => {});

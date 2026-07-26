@@ -61,7 +61,7 @@ beforeEach(() => {
 });
 
 const renderShell = (props = {}) =>
-  render(<Siem setSiemCount={() => {}} resetTrigger={0} onHostPivot={() => {}}
+  render(<Siem resetTrigger={0} onHostPivot={() => {}}
                activeIncidentId={INC} {...props} />);
 
 const runQuery = async () => {
@@ -75,7 +75,7 @@ const queryCalls = () =>
     .map(decodeURIComponent);
 
 test('a selected case anchors the SIEM to case evidence; the anchor is announced, never silent', async () => {
-  const props = { setSiemCount: () => {}, resetTrigger: 0, onHostPivot: () => {} };
+  const props = { resetTrigger: 0, onHostPivot: () => {} };
   const { rerender } = render(<Siem {...props} activeIncidentId={null} />);
   // no case: All activity, no state chip, no scope read
   expect(screen.getByTestId('pinned-case-line').textContent).toBe(ALL_ACTIVITY);

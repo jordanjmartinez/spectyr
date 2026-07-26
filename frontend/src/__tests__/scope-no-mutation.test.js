@@ -88,7 +88,7 @@ test('P7 descent, pivot, scope switch, and return-to-incident issue reads only',
   await act(async () => {
     render(
       <Siem
-        setSiemCount={() => {}} resetTrigger={0} onHostPivot={() => {}}
+        resetTrigger={0} onHostPivot={() => {}}
         activeIncidentId="INC-A" onNavigate={() => {}}
         descentRequest={{ origin: 'INC-A', hosts: ['ACME-WS10'], scopeIncidentId: 'INC-A', backView: 'incidents', seq: 1 }}
       />
@@ -122,7 +122,7 @@ test('P7.4 identity descent issues reads only', async () => {
   await act(async () => {
     render(
       <Siem
-        setSiemCount={() => {}} resetTrigger={0} onHostPivot={() => {}}
+        resetTrigger={0} onHostPivot={() => {}}
         activeIncidentId="INC-A" onNavigate={() => {}}
         descentRequest={{ origin: 'det-ids1', hosts: [], account: 'ACME\\dlee', scopeIncidentId: 'INC-A', backView: 'detections', seq: 1 }}
       />
