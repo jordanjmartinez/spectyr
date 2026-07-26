@@ -237,13 +237,16 @@ test('19.19 one venue: the Case Closed modal after submit carries the moment + a
     if (path.endsWith('/score')) return ok(SCORE_VIEW);
     return ok({});
   });
-  render(<Incidents gameMode="soc_queue" activeIncidentId="INC-4000"
+  const Host = (props) => {
+    const [chosen, setChosen] = React.useState({});
+    return <Incidents chosen={chosen} setChosen={setChosen} {...props} />;
+  };
+  render(<Host gameMode="soc_queue" activeIncidentId="INC-4000"
     onOpenLearningReview={onOpenLearningReview} />);
-  fireEvent.click(await screen.findByRole('button', { name: 'Submit' }));
-  // C1 (F4a): the workspace selector also renders 'False Positive'; the
-  // submit flow's click is scoped to the modal.
-  const cmodal = await screen.findByTestId('classification-modal');
-  await act(async () => { fireEvent.click(within(cmodal).getByText('False Positive')); });
+  // A3.4 (F4b): classification is a workspace step; Submit opens the bare
+  // confirmation directly (the classifier modal is retired).
+  fireEvent.click(within(await screen.findByTestId('workspace-classification')).getByText('False Positive'));
+  fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Submit Incident' })); });
   const modal = await screen.findByTestId('case-closed-modal');
   const m = within(modal);

@@ -21,6 +21,12 @@ const Dashboard = () => {
   // a server mutation; scopes the incident-aware tabs when set, session-wide when
   // null. Selecting/switching never mutates world/scoring/readiness/submission.
   const [activeIncidentId, setActiveIncidentId] = useState(null);
+  // A3.4 (ratified A3-OD-3): the SHELL-OWNED classification selection per
+  // incident ({verdict, category, categoryId}). Every player-facing Ready
+  // surface (Incidents workspace + list, this dashboard's rows) derives
+  // readiness from this one state through submissionReady(); local input
+  // only, never a request; cleared with the session.
+  const [chosen, setChosen] = useState({});
   const [resetTrigger, setResetTrigger] = useState(0);
   const [showResetModal, setShowResetModal] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -190,8 +196,9 @@ const Dashboard = () => {
       });
       // A reset destroys the session's incidents; no case survives it, so
       // the pinned case clears here (explicit destructive act, not an
-      // implicit case change).
+      // implicit case change). The classification selections die with it.
       setActiveIncidentId(null);
+      setChosen({});
       setResetTrigger(prev => prev + 1);
       setShowResetModal(false);
     } catch (err) {
@@ -331,6 +338,7 @@ const Dashboard = () => {
             onNavigate={setView}
             onReset={() => setShowResetModal(true)}
             isVisible={view === "dashboard"}
+            chosen={chosen}
           />
         </div>
 
@@ -348,6 +356,8 @@ const Dashboard = () => {
             onPracticeAnother={handlePracticeAnother}
             onEvidenceDescent={handleEvidenceDescent}
             onOpenLearningReview={handleOpenLearningReview}
+            chosen={chosen}
+            setChosen={setChosen}
           />
         </div>
 

@@ -7,8 +7,9 @@ import {
   responseActionsTaken, READY_TO_SUBMIT, toReview, completedStrip,
   SUBMITTED_GRADE_LOCKED, CLASSIFICATION_NOT_SELECTED,
   classificationSelected, CONSIDER_PROMPT, SUBMIT_PENDING,
-  caseClosed, REVIEW_WHAT_YOU_LEARNED,
+  caseClosed, REVIEW_WHAT_YOU_LEARNED, CLASSIFY_TO_SUBMIT,
 } from './uiCopy';
+import { submissionReady, validClassification } from './submissionReady';
 import { toastReady } from './uiToasts';
 import { deriveAchievements } from './achievements';
 
@@ -67,28 +68,24 @@ const Incidents = ({
   isVisible, resetTrigger, onHardcoreFailure, onReset, gameMode = 'training',
   activeIncidentId, onSelectIncident, onNavigate, setGroupedAlertCount, onPracticeAnother,
   onEvidenceDescent, onOpenLearningReview,
+  // A3.4 (ratified A3-OD-3): the classification selection state is
+  // SHELL-OWNED (Dashboard) so every Ready surface derives from the one
+  // state; this component receives it and its setter.
+  chosen = {}, setChosen,
 }) => {
   const [data, setData] = useState({ active: [], completed: [], queue_length: 0, resolved_count: 0 });
   const [view, setView] = useState('active');    // 'active' | 'ready' | 'completed'
   const [search, setSearch] = useState('');
   const [scope, setScope] = useState(null);       // selected incident /scope
 
-  const [showClassifier, setShowClassifier] = useState(false);
-  const [showCategory, setShowCategory] = useState(false);
-  const [pendingSubmit, setPendingSubmit] = useState(null);  // {..., action: 'submit' | 'check'}
-  // 2.4 checklist: the player's own tentative classification per incident
-  // (observable local input; feeds ONLY the checklist line and the modal
-  // pre-fill). C1 checkpoint fix (F4a): now written by the ratified
-  // A1-B.3.2 WORKSPACE selector (the checklist line's specified source),
-  // shape { verdict, category, categoryId } per incident.
-  const [chosen, setChosen] = useState({});
-  useEffect(() => { setChosen({}); prevReadyRef.current = {}; }, [resetTrigger]);
+  const [pendingSubmit, setPendingSubmit] = useState(null);  // {..., action: 'submit'}
+  useEffect(() => { prevReadyRef.current = {}; }, [resetTrigger]);
   const verdictOptionId = (v) =>
     v === 'threat' ? 'true_positive' : v === 'false_positive' ? 'false_positive' : null;
   // Workspace classification handlers: local input only, no request; a
   // threat verdict completes when its category is picked.
   const setWorkspaceVerdict = (incidentId, id) => {
-    setChosen(c => {
+    setChosen?.(c => {
       const prev = c[incidentId] || {};
       if (id === 'false_positive') {
         return { ...c, [incidentId]: { verdict: 'false_positive', category: 'False Positive', categoryId: null } };
@@ -100,7 +97,7 @@ const Incidents = ({
     });
   };
   const setWorkspaceCategory = (incidentId, cid, clabel) => {
-    setChosen(c => ({ ...c, [incidentId]: { verdict: 'threat', category: clabel, categoryId: cid } }));
+    setChosen?.(c => ({ ...c, [incidentId]: { verdict: 'threat', category: clabel, categoryId: cid } }));
   };
   const [submitBusy, setSubmitBusy] = useState(false);
   const [checkResult, setCheckResult] = useState(null);      // Guided Check Answer feedback
@@ -171,33 +168,44 @@ const Incidents = ({
 
   const all = [...data.active.map(c => ({ ...c })), ...data.completed.map(c => ({ ...c }))];
   const q = search.trim().toLowerCase();
+  // A3.4: the Ready view means submission-ready (the ONE derivation).
   const byView = (c) => view === 'completed' ? c.state === 'submitted'
-    : view === 'ready' ? (c.state === 'in_progress' && c.sealed && c.ready)
+    : view === 'ready' ? (c.state === 'in_progress' && submissionReady(c, chosen))
     : c.state === 'in_progress';
   const rows = all.filter(c => byView(c) && (!q || (c.title || '').toLowerCase().includes(q) || (c.incident_id || '').toLowerCase().includes(q)));
   const selected = all.find(c => c.incident_id === selectedId) || null;
 
   const counts = {
     active: data.active.length,
-    ready: data.active.filter(c => c.sealed && c.ready).length,
+    ready: data.active.filter(c => c.state === 'in_progress' && submissionReady(c, chosen)).length,
     completed: data.completed.length,
   };
 
+  // A3.4 (F4b): Submit is FINAL submission -- the classification comes
+  // from the workspace selection (never a data-entry step); the click
+  // opens the bare confirmation only. The server gate stays the
+  // authoritative backstop behind this client gate.
   const beginSubmit = () => {
     if (!selected || selected.state !== 'in_progress') return;
     if (!selected.sealed) { flash(TELEMETRY_LOADING); return; }
     if (!selected.ready) { flash(detectionsRemaining(selected.open_detections ?? 0)); return; }
-    setPendingSubmit({ incident_id: selected.incident_id, title: selected.title, action: 'submit' });
-    setShowClassifier(true);
+    const sel = chosen[selected.incident_id];
+    if (!validClassification(sel)) { flash(CLASSIFY_TO_SUBMIT); return; }
+    setPendingSubmit({ incident_id: selected.incident_id, title: selected.title,
+      action: 'submit', verdict: sel.verdict, category: sel.category });
   };
 
-  // Check Answer (Guided only): pick a classification and reveal ONLY whether it
-  // is correct, without submitting; permanently marks the incident Assisted. It
-  // never reveals detection, response, or composite grading (server-enforced).
+  // Check Answer (Guided only; ratified A3-OD-2): consumes the WORKSPACE
+  // classification selection (disabled until one is valid) and reveals
+  // ONLY whether it is correct, without submitting; permanently marks the
+  // incident Assisted. Never reveals detection, response, or composite
+  // grading (server-enforced).
   const beginCheck = () => {
     if (!isGuided || !selected || selected.state !== 'in_progress' || !selected.sealed) return;
-    setPendingSubmit({ incident_id: selected.incident_id, title: selected.title, action: 'check' });
-    setShowClassifier(true);
+    const sel = chosen[selected.incident_id];
+    if (!validClassification(sel)) return;
+    doCheck({ incident_id: selected.incident_id, title: selected.title,
+      action: 'check', verdict: sel.verdict, category: sel.category });
   };
 
   const doCheck = async (p) => {
@@ -288,7 +296,11 @@ const Incidents = ({
                 <span className="text-sm text-[#1a2332] truncate">{c.title}</span>
               </span>
               <span className="text-[11px] shrink-0 whitespace-nowrap" style={{ color: c.state === 'submitted' ? gradeColor(c.incident_grade?.grade) : '#8b949e' }}>
-                {c.state === 'submitted' ? (c.incident_grade?.grade || '-') : !c.sealed ? 'Loading' : c.ready ? 'Ready' : toReview(c.open_detections)}
+                {c.state === 'submitted' ? (c.incident_grade?.grade || '-')
+                  : !c.sealed ? 'Loading'
+                  : submissionReady(c, chosen) ? 'Ready'
+                  : c.ready ? SUBMIT_PENDING
+                  : toReview(c.open_detections)}
               </span>
             </button>
           ))}
@@ -339,7 +351,7 @@ const Incidents = ({
                 ) : (
                   <PhaseStrip sealed={selected.sealed}
                     triage={selected.triage} related={selected.related_actions}
-                    ready={selected.ready}
+                    ready={submissionReady(selected, chosen)}
                     classification={chosen[selected.incident_id]?.category || null}
                     showPrompt={gameMode === 'guided'} />
                 )}
@@ -353,11 +365,11 @@ const Incidents = ({
               {selected.state !== 'submitted' && selected.sealed && (
                 <div className="pt-3 border-t border-[#eef1f4] space-y-2" data-testid="workspace-classification">
                   <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium">Classification</p>
-                  <ClassificationSelector variant="inline"
+                  <ClassificationSelector
                     selected={verdictOptionId(chosen[selected.incident_id]?.verdict)}
                     onSelect={(id) => setWorkspaceVerdict(selected.incident_id, id)} />
                   {chosen[selected.incident_id]?.verdict === 'threat' && (
-                    <CategorySelector variant="inline"
+                    <CategorySelector
                       selected={chosen[selected.incident_id]?.categoryId || null}
                       onSelect={(cid, clabel) => setWorkspaceCategory(selected.incident_id, cid, clabel)} />
                   )}
@@ -432,8 +444,18 @@ const Incidents = ({
                 ) : (
                   <div className="flex items-center gap-2 flex-wrap">
                     {selected.sealed && selected.ready ? (
-                      <button onClick={beginSubmit}
-                        className="px-3 py-1.5 text-sm rounded-md bg-[#101218] text-white hover:bg-[#1e2330]">Submit</button>
+                      <>
+                        {/* A3.4 (F4b): Submit gates on the ONE derived
+                            readiness (server observable AND a valid
+                            workspace classification); the observable line
+                            names the remaining step. */}
+                        <button onClick={beginSubmit}
+                          disabled={!submissionReady(selected, chosen)}
+                          className="px-3 py-1.5 text-sm rounded-md bg-[#101218] text-white hover:bg-[#1e2330] disabled:opacity-50">Submit</button>
+                        {!validClassification(chosen[selected.incident_id]) && (
+                          <span className="text-xs text-[#8b949e]">{CLASSIFY_TO_SUBMIT}</span>
+                        )}
+                      </>
                     ) : (
                       <>
                         <button onClick={() => { onSelectIncident?.(selected.incident_id); onNavigate?.('detections'); }}
@@ -445,7 +467,9 @@ const Incidents = ({
                     )}
                     {isGuided && selected.sealed && (
                       <button onClick={beginCheck}
-                        className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4]">Check Answer</button>
+                        disabled={!validClassification(chosen[selected.incident_id])}
+                        title={!validClassification(chosen[selected.incident_id]) ? CLASSIFY_TO_SUBMIT : undefined}
+                        className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4] disabled:opacity-50">Check Answer</button>
                     )}
                   </div>
                 )}
@@ -455,42 +479,21 @@ const Incidents = ({
         </div>
       </div>
 
-      {/* Submit / Check-Answer classifier flow (note-free per A1/C2). Both Submit
-          and Guided Check Answer share the verdict/category pickers; the pending
-          action routes the completed classification to submit or check. */}
-      {showClassifier && pendingSubmit && (
-        <ClassificationSelector isHardcore={gameMode === 'hardcore'}
-          selected={verdictOptionId(chosen[pendingSubmit.incident_id]?.verdict)}
-          onSelect={(id) => {
-            setShowClassifier(false);
-            if (id === 'false_positive') {
-              const p = { ...pendingSubmit, verdict: 'false_positive', category: 'False Positive' };
-              setPendingSubmit(p);
-              setChosen(c => ({ ...c, [p.incident_id]: { verdict: 'false_positive', category: 'False Positive', categoryId: null } }));
-              if (p.action === 'check') doCheck(p);
-            } else { setPendingSubmit(p => ({ ...p, verdict: 'threat' })); setShowCategory(true); }
-          }}
-          onCancel={() => { setShowClassifier(false); setPendingSubmit(null); }} />
-      )}
-      {showCategory && pendingSubmit && (
-        <CategorySelector isHardcore={gameMode === 'hardcore'} scenarioInfo={pendingSubmit}
-          selected={chosen[pendingSubmit.incident_id]?.categoryId || null}
-          onSelect={(cid, clabel) => {
-            setShowCategory(false);
-            const p = { ...pendingSubmit, category: clabel };
-            setPendingSubmit(p);
-            setChosen(c => ({ ...c, [p.incident_id]: { verdict: 'threat', category: clabel, categoryId: cid } }));
-            if (p.action === 'check') doCheck(p);
-          }}
-          onCancel={() => { setShowCategory(false); setPendingSubmit(null); }} />
-      )}
-      {pendingSubmit && pendingSubmit.action === 'submit' && pendingSubmit.verdict && !showClassifier && !showCategory && (
+      {/* A3.4 (F4b): the bare confirmation -- Submit performs FINAL
+          submission of the workspace classification; the classifier and
+          category modal steps are retired (ratified A3-OD-2), so this
+          dialog never performs data entry. The Hardcore warning relocates
+          here from the retired modals (the last gate). */}
+      {pendingSubmit && pendingSubmit.action === 'submit' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
           <div className="bg-white rounded-xl border border-[#e2e6ea] shadow-xl w-full max-w-md overflow-hidden">
             <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
             <div className="p-5">
               <h3 className="text-base font-semibold text-[#1a2332]">Submit incident {pendingSubmit.incident_id}</h3>
               <p className="mt-2 text-sm text-[#57606a]">Filing as <span className="font-medium text-[#1a2332]">{pendingSubmit.category}</span>. This locks your classification for this incident and reveals how it scored. You cannot change it afterward.</p>
+              {gameMode === 'hardcore' && (
+                <p className="mt-2 text-sm font-medium text-[#b26666]">Hardcore: one wrong call ends the run.</p>
+              )}
               <div className="mt-5 flex justify-end gap-2">
                 <button type="button" onClick={() => setPendingSubmit(null)} disabled={submitBusy}
                   className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4] disabled:opacity-60">Cancel</button>

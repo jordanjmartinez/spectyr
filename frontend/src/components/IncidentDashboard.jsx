@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '../api';
-import { toReview } from './uiCopy';
+import { toReview, SUBMIT_PENDING } from './uiCopy';
+import { submissionReady } from './submissionReady';
 
 // Stage 3.9B Dashboard: the SESSION-WIDE OVERVIEW ("what is happening?"). It
 // carries only compact, overview-level surfaces and navigation-level actions.
@@ -26,6 +27,10 @@ const Metric = ({ label, value, accent }) => (
 
 const IncidentDashboard = ({
   gameMode, analystName, onSelectIncident, onNavigate, onReset, isVisible = true,
+  // A3.4 (ratified A3-OD-3): the shell-owned classification selections --
+  // this surface derives Ready from the SAME state as the workspace, so
+  // no surface shows Ready while Classification says not selected.
+  chosen = {},
 }) => {
   const [data, setData] = useState({ active: [], completed: [], queue_length: 0, resolved_count: 0 });
   const [session, setSession] = useState(null);
@@ -112,7 +117,10 @@ const IncidentDashboard = ({
                   <span className="text-sm text-[#1a2332] truncate">{c.title}</span>
                 </span>
                 <span className="text-xs text-[#8b949e] shrink-0 whitespace-nowrap">
-                  {!c.sealed ? 'Loading' : c.ready ? 'Ready' : toReview(c.open_detections)}
+                  {!c.sealed ? 'Loading'
+                    : submissionReady(c, chosen) ? 'Ready'
+                    : c.ready ? SUBMIT_PENDING
+                    : toReview(c.open_detections)}
                 </span>
               </button>
             ))}
