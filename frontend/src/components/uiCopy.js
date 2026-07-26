@@ -25,6 +25,14 @@ export const returnToCaseEvidence = (incidentId) =>
   `Return to ${incidentId} evidence`;
 export const returnSubcopy = (incidentId) =>
   `Return to ${incidentId} evidence runs this query over the case evidence again.`;
+// C1 checkpoint fix (post-Stage-5 review, F2 latent defect): a failed
+// case-evidence read on the return action must not relabel the view as
+// incident evidence over the still-displayed expanded rows (criteria
+// 10/13). The state stays Expanded search; this line surfaces the failure
+// and the return chip itself is the retry. Superseded by the Amendment 3
+// model B hold restore when that ships.
+export const returnReadFailed = (incidentId) =>
+  `Could not load ${incidentId} evidence. Try the return again.`;
 
 // --- the snapshot echo label (locked contract 11.2 "Results from") ---------
 export const RESULTS_FROM_LABEL = 'Results from:';

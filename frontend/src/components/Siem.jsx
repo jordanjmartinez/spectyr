@@ -18,7 +18,7 @@ import {
   NO_QUERY_ENTERED, PRESERVED_RESULTS_LABEL, SEARCH_NOT_RUN,
   QUERY_SECTION_NAMES, sectionCouldNotBeRead, STRUCTURE_LINE,
   RESTORE_LAST_QUERY, surroundingBanner, OCCURRENCE_ASCENDING,
-  BACK_TO_PREVIOUS_RESULTS,
+  BACK_TO_PREVIOUS_RESULTS, returnReadFailed,
 } from './uiCopy';
 
 // SIEM Investigation Workbench shell (Stage 4 Phase 4). Analyst-driven:
@@ -101,6 +101,11 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
   const [heldView, setHeldView] = useState(null);
   const preserveHoldRef = useRef(false);
   const focusSeqRef = useRef(0);
+  // C1 checkpoint fix (F2 latent defect): a failed case-evidence read on
+  // the return action keeps the Expanded search presentation (labels and
+  // rows must agree, criteria 10/13); this holds the failed target id so
+  // the notice can name it. Cleared by any run, the case anchor, and reset.
+  const [returnError, setReturnError] = useState(null);
   // Phase 4 commit 4.1 (OD-5 Option A): selection visibly connects to the
   // ONE shared inspector -- scroll-into-view (block nearest), a single
   // emphasis run, and focus moved to the container exactly once per
@@ -143,6 +148,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
     setTimeline(null);
     setTransition(null);
     setHeldView(null);
+    setReturnError(null);
   }, [resetTrigger]);
 
   const loadIncidentScope = (id) => {
@@ -173,6 +179,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
     setQueryNotice(null);
     setSelectedId(null);
     setSelectionNotice(null);
+    setReturnError(null);
     if (activeIncidentId) loadIncidentScope(activeIncidentId);
     else setScope({ kind: 'session' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -244,6 +251,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
     // (single-depth, never a history stack)
     if (!preserveHoldRef.current) setHeldView(null);
     preserveHoldRef.current = false;
+    setReturnError(null);
     setRunning(true);
     apiFetch(`/api/events/query?q=${encodeURIComponent(q)}&scope=${encodeURIComponent(scopeValue)}`)
       .then(async (res) => {
@@ -392,6 +400,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
   // case anchor (never a silent fallback).
   const returnToIncident = (id) => {
     if (running) return;
+    setReturnError(null);
     setScope({ kind: 'incident', id, status: 'loading' });
     apiFetch(`/api/incidents/${id}/scope`)
       .then((res) => { if (!res.ok) throw new Error('scope'); return res.json(); })
@@ -399,7 +408,15 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
         setScope({ kind: 'incident', id, status: 'ready', sealed: !!sc.sealed });
         execute(queryText, id);
       })
-      .catch(() => setScope({ kind: 'incident', id, status: 'error' }));
+      // C1 checkpoint fix (F2 latent defect, criteria 10/13): a failed
+      // read must NOT relabel the view as incident evidence over the
+      // still-displayed expanded (session) rows. Stay in Expanded search,
+      // surface the failure, keep the return chip as the retry. This is a
+      // minimal guard; Amendment 3's model B hold restore supersedes it.
+      .catch(() => {
+        setScope({ kind: 'session' });
+        setReturnError(id);
+      });
   };
 
   // P7.2/P7.4 Open Evidence Timeline descent (contract Sections 13/16; R17
@@ -552,6 +569,19 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
               }
             : null}
         />
+        {/* C1 checkpoint fix (F2 latent defect): the failed-return notice.
+            The state stays Expanded search so labels and rows agree; the
+            displayed results are truthfully the last successful query's. */}
+        {expandedSearch && returnError && (
+          <div
+            data-testid="return-read-error"
+            role="alert"
+            className="px-3 py-2 rounded-md border border-[#e2e6ea] bg-[#faf6f0] text-xs text-[#1a2332]"
+          >
+            <span>{returnReadFailed(returnError)}</span>{' '}
+            <span className="text-[#57606a]">{STALE_RESULTS_NOTE}</span>
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-2 text-xs">
           {activeIncidentId && scope.kind === 'incident' && (
             <span

@@ -53,8 +53,10 @@ const snapWith = (rows, extra = {}) => ({
 });
 
 let queryResponses;
+let scopeFails;
 beforeEach(() => {
   queryResponses = [];
+  scopeFails = false;
   apiFetch.mockReset();
   apiFetch.mockImplementation((p) => {
     if (p === '/api/endpoints') return ok({ org: {}, endpoints: [] });
@@ -63,6 +65,7 @@ beforeEach(() => {
       return queryResponses.length ? queryResponses.shift() : ok(snapWith([PIVOT_EVENT]));
     }
     if (p === '/api/incidents/INC-A/scope') {
+      if (scopeFails) return Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) });
       return ok({ incident_id: 'INC-A', sealed: true, hosts: ['ACME-WS12'], accounts: [], detection_ids: [] });
     }
     return ok({});
@@ -168,6 +171,37 @@ test('the return action re-runs the current query under the case participant sco
   expect(queryCalls().pop()).toBe(`/api/events/query?q=${barText}&scope=INC-A`);
   expect(screen.queryByTestId('expanded-search-block')).toBeNull();  // back home
   expect(screen.queryByTestId('return-chip')).toBeNull();
+  expect(screen.getByTestId('scope-chip').textContent).toContain('INC-A evidence');
+});
+
+test('C1 guard (F2): a failed case-evidence read on return keeps Expanded search and states the honesty line', async () => {
+  await act(async () => { renderShell({ activeIncidentId: 'INC-A' }); });
+  await run('all | * | * | *');
+  selectEvent();
+  await act(async () => {
+    fireEvent.click(screen.getByLabelText('Pivot hostname'));
+  });
+  const before = queryCalls().length;
+  scopeFails = true;
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('return-chip'));
+  });
+  // no relabel over session rows: the state stays Expanded search, no
+  // case-evidence chip renders, and no query ran (criteria 10/13)
+  expect(screen.getByTestId('expanded-search-block')).toBeInTheDocument();
+  expect(screen.getByTestId('return-chip')).toBeInTheDocument();
+  expect(screen.queryByTestId('scope-chip')).toBeNull();
+  expect(queryCalls().length).toBe(before);
+  const notice = screen.getByTestId('return-read-error');
+  expect(notice).toHaveTextContent('Could not load INC-A evidence. Try the return again.');
+  expect(notice).toHaveTextContent('Displayed results are from the previous successful query.');
+  // the return chip is the retry: a recovered read completes the return
+  scopeFails = false;
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('return-chip'));
+  });
+  expect(screen.queryByTestId('return-read-error')).toBeNull();
+  expect(queryCalls().pop()).toContain('&scope=INC-A');
   expect(screen.getByTestId('scope-chip').textContent).toContain('INC-A evidence');
 });
 

@@ -7,11 +7,14 @@
  * scope). With no case the SIEM is the All activity state. Expanded search
  * is entered ONLY through an entity pivot or the explicit search-all
  * action; exactly ONE return action restores the case evidence. The
- * scope-error behavior keeps M1's guarantees: state label retained, prior
- * snapshot preserved, Run disabled, recovery by Retry (ratified A-OD-3) --
+ * scope-error behavior keeps M1's guarantees on the ANCHOR read: state
+ * label retained, Run disabled, recovery by Retry (ratified A-OD-3) --
  * the deliberate Expanded search remains available as the designed
- * exploration path. Plus: the pre-seal banner, and the TIMEFRAME control
- * proving control and text cannot disagree in either direction.
+ * exploration path. A failed RETURN read is governed by the C1 guard
+ * (workbench-cross-host suite): the state stays Expanded search, so an
+ * incident label never sits over expanded session rows. Plus: the
+ * pre-seal banner, and the TIMEFRAME control proving control and text
+ * cannot disagree in either direction.
  */
 import React from 'react';
 import { render, screen, fireEvent, act, within } from '@testing-library/react';
@@ -154,27 +157,23 @@ test('a sealed case shows no pre-seal banner; submitted incidents stay anchorabl
   expect(screen.getByRole('button', { name: /Run Query/ })).not.toBeDisabled();
 });
 
-test('scope-error: label retained, prior snapshot preserved, Run disabled, Retry-only recovery; Expanded search stays available', async () => {
-  await act(async () => { renderShell(); });
-  await runQuery();
-  expect(results().getByText(/nmap.exe launched/)).toBeInTheDocument();
-
-  // enter Expanded search, then return while the scope read FAILS
-  await act(async () => { fireEvent.click(screen.getByTestId('search-all')); });
-  const callsBefore = apiFetch.mock.calls.length;
+test('scope-error on the case read: label retained, Run disabled, Retry-only recovery; Expanded search stays available', async () => {
+  // The case-evidence read fails at the ANCHOR (ratified A-OD-3 behavior,
+  // unchanged): the label keeps the case with the error marker, Run is
+  // blocked, recovery is Retry or the deliberate Expanded search. The
+  // failed-RETURN path is governed by the C1 guard instead (cross-host
+  // suite): it stays in Expanded search, so an incident label can never
+  // sit over expanded session rows on this surface.
   scopeResponse = () => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) });
-  await act(async () => { fireEvent.click(screen.getByTestId('return-chip')); });
+  await act(async () => { renderShell(); });
 
-  // state label retained with the case id; the notice shows
   expect(screen.getByTestId('scope-chip').textContent).toContain(caseEvidenceLabel(INC));
   expect(screen.getByRole('alert').textContent).toContain('Incident scope could not be loaded.');
-  // prior snapshot untouched
-  expect(results().getByText(/nmap.exe launched/)).toBeInTheDocument();
-  // Run disabled; NO query was issued by the failed return
+  // with bar text present, Run stays disabled by the scope block alone
+  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
   expect(screen.getByRole('button', { name: /Run Query/ })).toBeDisabled();
-  const eventCalls = apiFetch.mock.calls.slice(callsBefore).map(c => c[0])
-    .filter(p => p.startsWith('/api/events/query?'));
-  expect(eventCalls).toEqual([]);
+  // no query was issued by the failed read
+  expect(queryCalls()).toEqual([]);
   // A-OD-3: Retry is the recovery; no Use Session-wide control exists
   expect(screen.queryByRole('button', { name: 'Use Session-wide' })).toBeNull();
   // the deliberate Expanded search remains available (the designed path out)

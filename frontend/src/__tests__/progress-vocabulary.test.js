@@ -18,7 +18,7 @@ import {
   detectionsRemaining, PROMOTED_LABEL, DISMISSED_LABEL, REOPENED_LABEL,
   responseActionsTaken, READY_TO_SUBMIT, SUBMITTED_GRADE_LOCKED,
   completedStrip, toReview, FEED_SUBCOPY, THREATS_SUBCOPY, filterAdded,
-  excludedFilter,
+  excludedFilter, returnReadFailed,
 } from '../components/uiCopy';
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
@@ -103,6 +103,7 @@ const PRE_SUBMISSION_STRINGS = [
   ['THREATS_SUBCOPY', THREATS_SUBCOPY],
   ['filterAdded', filterAdded('a', 'b')],
   ['excludedFilter', excludedFilter('a', 'b')],
+  ['returnReadFailed', returnReadFailed('INC-0001')],   // C1 (F2 guard)
 ];
 
 test('no pre-submission canonical string carries the forbidden class', () => {
