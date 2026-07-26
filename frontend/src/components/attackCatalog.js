@@ -35,15 +35,41 @@ import catalog from './attackCatalog.json';
 export const ATTACK_VERSION = catalog.attack_version;
 export const ATTACK_TACTICS = catalog.tactics;
 export const ATTACK_TECHNIQUES = catalog.techniques;
+export const TACTIC_TOTALS = catalog.tactic_totals;
+export const SOURCE_DATASET = catalog.source_dataset;
 
-// tactic -> [technique entries], in catalog (id) order; tactics with no
-// represented technique map to an empty list (the muted matrix columns).
+// tactic -> [technique entries], in catalog (id) order.
 export const techniquesByTactic = () => {
   const map = new Map(ATTACK_TACTICS.map((t) => [t, []]));
   for (const tech of ATTACK_TECHNIQUES) {
     if (map.has(tech.tactic)) map.get(tech.tactic).push(tech);
   }
   return map;
+};
+
+// V6-R (owner correction): the radar's per-tactic coverage rows.
+// Numerator and denominator share ONE counting rule (the mirror's
+// `counting` note): parent techniques only, so T1110.001 + T1110.003
+// roll up to the single represented technique T1110; the denominator is
+// the authoritative per-tactic parent-technique count derived from the
+// pinned v19.1 STIX dataset (sha256-verified, recorded in
+// source_dataset). Percentages are plain represented/total -- never
+// normalized against Spectyr's own largest category.
+export const coverageByTactic = () => {
+  const parents = new Map(ATTACK_TACTICS.map((t) => [t, new Set()]));
+  for (const tech of ATTACK_TECHNIQUES) {
+    if (parents.has(tech.tactic)) parents.get(tech.tactic).add(tech.id.split('.')[0]);
+  }
+  return ATTACK_TACTICS.map((tactic) => {
+    const represented = parents.get(tactic).size;
+    const total = TACTIC_TOTALS[tactic];
+    return {
+      tactic,
+      represented,
+      total,
+      pct: total ? Math.round((represented / total) * 100) : 0,
+    };
+  });
 };
 
 export default catalog;

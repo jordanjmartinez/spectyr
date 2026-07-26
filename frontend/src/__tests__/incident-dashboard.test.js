@@ -56,7 +56,7 @@ beforeEach(() => {
 test('renders the overview grid in reading order: A, B, then the main region', async () => {
   const { container } = render(<IncidentDashboard gameMode="analyst" analystName="A" />);
   await screen.findByText('INC-2000');
-  const order = ['active-investigation', 'investigation-progress', 'kpi-row', 'attack-matrix', 'recent-results'];
+  const order = ['active-investigation', 'investigation-progress', 'kpi-row', 'attack-radar', 'recent-results'];
   const nodes = order.map(id => container.querySelector(`[data-testid="${id}"]`));
   nodes.forEach(n => expect(n).not.toBeNull());
   for (let i = 0; i < nodes.length - 1; i += 1) {
@@ -136,16 +136,16 @@ test('empty states are honest before any activity', async () => {
   expect(screen.getByText(/No incidents submitted yet this session/)).toBeInTheDocument();
 });
 
-test('the session-view matrix state comes ONLY from submitted incidents; active ids are never graded', async () => {
+test('V6-R: the coverage radar carries no session/player overlay; grading is fetched ONLY for submitted ids', async () => {
   render(<IncidentDashboard gameMode="analyst" />);
-  await screen.findByTestId('attack-matrix');
-  // the submitted incident's technique lands (T1486, composite B/84 -> success)
-  fireEvent.click(screen.getByRole('button', { name: 'This session' }));
-  await waitFor(() => {
-    const cell = screen.getByTitle(/T1486 .*: submitted/);
-    expect(cell).toBeInTheDocument();
-  });
-  // grading/triage endpoints were touched ONLY for the submitted id
+  const radar = await screen.findByTestId('attack-radar');
+  // catalog-coverage only: no tabs, no player-performance vocabulary
+  expect(within(radar).queryByText('This session')).toBeNull();
+  expect(within(radar).queryByText('Catalog coverage')).toBeNull();
+  expect(radar.textContent).not.toMatch(/Incident Grade|submitted/i);
+  // the frozen records feed Recent results alone; grading/triage endpoints
+  // were touched ONLY for the submitted id (active ids never graded)
+  await waitFor(() => expect(screen.getByText('Malware')).toBeInTheDocument());
   const graded = apiFetch.mock.calls
     .map(([p]) => String(p))
     .filter(p => p.includes('/score') || p.includes('/triage-review'));

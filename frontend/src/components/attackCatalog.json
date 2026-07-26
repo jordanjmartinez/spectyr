@@ -1,5 +1,12 @@
 {
   "attack_version": "Enterprise ATT&CK v19.1 (pinned)",
+  "source_dataset": {
+    "repo": "github.com/mitre/cti",
+    "tag": "ATT&CK-v19.1",
+    "file": "enterprise-attack/enterprise-attack.json",
+    "sha256": "fc783039f17fba646f79448f1322996457c658a9474f6d14c3bc924a2cf1c97d"
+  },
+  "counting": "Techniques are parent techniques (sub-techniques roll up to their parent), excluding revoked and deprecated objects, counted once per tactic named in their mitre-attack kill_chain_phases. tactic_totals are derived from the pinned dataset above; the represented numerator applies the same rule to the scenario answer keys.",
   "tactics": [
     "Reconnaissance",
     "Resource Development",
@@ -17,6 +24,23 @@
     "Exfiltration",
     "Impact"
   ],
+  "tactic_totals": {
+    "Reconnaissance": 12,
+    "Resource Development": 9,
+    "Initial Access": 11,
+    "Execution": 20,
+    "Persistence": 22,
+    "Privilege Escalation": 13,
+    "Stealth": 30,
+    "Defense Impairment": 18,
+    "Credential Access": 17,
+    "Discovery": 34,
+    "Lateral Movement": 9,
+    "Collection": 17,
+    "Command and Control": 18,
+    "Exfiltration": 9,
+    "Impact": 15
+  },
   "techniques": [
     { "id": "T1003.001", "name": "OS Credential Dumping: LSASS Memory", "tactic": "Credential Access", "scenarios": 1 },
     { "id": "T1046", "name": "Network Service Discovery", "tactic": "Discovery", "scenarios": 1 },

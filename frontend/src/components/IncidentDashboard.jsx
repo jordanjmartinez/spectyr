@@ -7,7 +7,7 @@ import {
 } from './uiCopy';
 import { submissionReady, validClassification } from './submissionReady';
 import { severityDot, gradeColor, CARD_STYLE } from './ui';
-import AttackMatrix from './AttackMatrix';
+import AttackRadar from './AttackRadar';
 
 // ============================================================================
 // Stage 3.9B Dashboard, redesigned by Visual pass V5: the analytic
@@ -128,18 +128,6 @@ const IncidentDashboard = ({
     : submissionReady(c, chosen) ? 'Ready'
       : c.ready ? SUBMIT_PENDING
         : toReview(c.open_detections));
-
-  // Session-view matrix inputs: submitted-only.
-  const sessionMap = {};
-  let fpSubmittedCount = 0;
-  for (const [, rec] of Object.entries(records)) {
-    if (!rec.techId) { fpSubmittedCount += 1; continue; }
-    const acc = rec.grading?.composite?.accuracy;
-    const grade = rec.grading?.composite?.grade;
-    if (acc == null) continue;
-    const prev = sessionMap[rec.techId];
-    if (!prev || acc > prev.accuracy) sessionMap[rec.techId] = { grade, accuracy: acc };
-  }
 
   // Latest submitted incident (KPI tile + newest-first results ordering).
   const completedSorted = [...(data.completed || [])]
@@ -293,12 +281,10 @@ const IncidentDashboard = ({
             />
           </div>
 
-          {/* D. ATT&CK Coverage Matrix (catalog mirror + submitted-session state) */}
-          <AttackMatrix
-            sessionMap={sessionMap}
-            activeCount={data.active.length}
-            fpSubmittedCount={fpSubmittedCount}
-          />
+          {/* D. The ATT&CK coverage radar (V6-R owner correction): one
+              polygon, catalog coverage against the authoritative pinned
+              per-tactic technique counts. No session/player overlay. */}
+          <AttackRadar isVisible={isVisible} />
 
           {/* E. Recent results -- submitted incidents this session, newest
               first; grades/categories are the frozen post-submission
