@@ -1,28 +1,22 @@
 /**
- * Workbench pane states, translated to the case-constant model (Stage 5
- * Phase 1, Amendment 1 Delta A over the Stage 4 Phase 4.2 battery).
+ * Workbench pane states under the one-evidence-universe model (Final pass
+ * III.0 item 2 over the Stage 5 Phase 1 case-constant translation).
  *
- * A selected case ANCHORS the SIEM to case evidence (the pinned header and
- * the "INC-#### evidence" state label announce it; queries carry the case
- * scope). With no case the SIEM is the All activity state. Expanded search
- * is entered ONLY through an entity pivot or the explicit search-all
- * action; exactly ONE return action restores the case evidence. The
- * scope-error behavior keeps M1's guarantees on the ANCHOR read: state
- * label retained, Run disabled, recovery by Retry (ratified A-OD-3) --
- * the deliberate Expanded search remains available as the designed
- * exploration path. A failed RETURN read is governed by the C1 guard
- * (workbench-cross-host suite): the state stays Expanded search, so an
- * incident label never sits over expanded session rows. Plus: the
- * pre-seal banner, and the TIMEFRAME control proving control and text
- * cannot disagree in either direction.
+ * A selected case ANCHORS the SIEM to that case's evidence: the pinned
+ * header announces it and every query carries the case scope. With no case
+ * the SIEM is the All activity state. There is NO player evidence-scope
+ * switch, NO expanded-search state, NO search-all action, NO return
+ * action, and NO case-evidence chip: the pinned line is the one context
+ * marker. The scope-error behavior keeps M1's guarantees on the ANCHOR
+ * read: pinned case retained, Run disabled, recovery by Retry (ratified
+ * A-OD-3) with no session escape of any kind. Plus: the pre-seal banner,
+ * and the TIMEFRAME control proving control and text cannot disagree in
+ * either direction.
  */
 import React from 'react';
 import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import Siem from '../components/Siem';
-import {
-  investigatingCase, ALL_ACTIVITY, caseEvidenceLabel, EXPANDED_SEARCH_TITLE,
-  returnToCaseEvidence, SEARCH_ALL_EVIDENCE,
-} from '../components/uiCopy';
+import { investigatingCase, ALL_ACTIVITY } from '../components/uiCopy';
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
 const { apiFetch } = require('../api');
@@ -82,14 +76,12 @@ const queryCalls = () =>
 test('a selected case anchors the SIEM to case evidence; the anchor is announced, never silent', async () => {
   const props = { resetTrigger: 0, onHostPivot: () => {} };
   const { rerender } = render(<Siem initialQueryMode="advanced" {...props} activeIncidentId={null} />);
-  // no case: All activity, no state chip, no scope read
+  // no case: All activity, no scope read
   expect(screen.getByTestId('pinned-case-line').textContent).toBe(ALL_ACTIVITY);
-  expect(screen.queryByTestId('scope-chip')).toBeNull();
   expect(apiFetch.mock.calls.map(c => c[0]).filter(p => p.includes('/scope'))).toEqual([]);
   // a case is selected on Incidents -> the SIEM re-anchors, visibly
   await act(async () => { rerender(<Siem initialQueryMode="advanced" {...props} activeIncidentId={INC} />); });
   expect(screen.getByTestId('pinned-case-line').textContent).toBe(investigatingCase(INC));
-  expect(screen.getByTestId('scope-chip').textContent).toContain(caseEvidenceLabel(INC));
   expect(apiFetch.mock.calls.map(c => c[0]).filter(p => p.includes('/scope')).length)
     .toBeGreaterThanOrEqual(1);
 });
@@ -101,49 +93,34 @@ test('no case: All activity; queries carry scope=session', async () => {
   expect(queryCalls().pop()).toMatch(/scope=session$/);
 });
 
-test('case evidence is the default with a case: queries carry the case scope', async () => {
+test('case evidence is the only state with a case: queries carry the case scope', async () => {
   await act(async () => { renderShell(); });
-  expect(screen.getByTestId('scope-chip').textContent).toContain(caseEvidenceLabel(INC));
+  expect(screen.getByTestId('pinned-case-line').textContent).toBe(investigatingCase(INC));
   await runQuery();
   expect(queryCalls().pop()).toMatch(new RegExp(`scope=${INC}$`));
 });
 
-test('search-all enters Expanded search visibly: block, explanation, exactly one return action', async () => {
+test('no scope furniture exists with a case: no chip, no search-all, no return, no expanded block (III.0 item 2)', async () => {
   await act(async () => { renderShell(); });
   await runQuery();
+  expect(screen.queryByTestId('scope-chip')).toBeNull();
+  expect(screen.queryByTestId('search-all')).toBeNull();
+  expect(screen.queryByTestId('return-chip')).toBeNull();
   expect(screen.queryByTestId('expanded-search-block')).toBeNull();
-  await act(async () => {
-    fireEvent.click(screen.getByTestId('search-all'));
-  });
-  expect(queryCalls().pop()).toMatch(/scope=session$/);
-  const block = screen.getByTestId('expanded-search-block');
-  expect(block.textContent).toContain(EXPANDED_SEARCH_TITLE);
-  expect(within(block).getAllByRole('button')).toHaveLength(1);
-  expect(within(block).getByRole('button').textContent).toBe(returnToCaseEvidence(INC));
-  // the case stays pinned through the expansion
-  expect(screen.getByTestId('pinned-case-line').textContent).toBe(investigatingCase(INC));
-  // returning RESTORES the case evidence (Amendment 3 model B): zero
-  // requests, the pre-entry state redisplays, the block dies
-  const callsBefore = queryCalls().length;
-  await act(async () => { fireEvent.click(screen.getByTestId('return-chip')); });
-  expect(queryCalls().length).toBe(callsBefore);
-  expect(screen.queryByTestId('expanded-search-block')).toBeNull();
-  expect(screen.getByTestId('scope-chip').textContent).toContain(caseEvidenceLabel(INC));
+  // the pinned line is the ONE context marker, rendered exactly once
+  expect(screen.getAllByTestId('pinned-case-line')).toHaveLength(1);
 });
 
 test('the case never changes from the SIEM: no control exists that mutates it (OD-15 structural)', async () => {
   await act(async () => { renderShell(); });
   await runQuery();
-  // enter and leave Expanded search; the pinned case is byte-identical
-  await act(async () => { fireEvent.click(screen.getByTestId('search-all')); });
-  expect(screen.getByTestId('pinned-case-line').textContent).toBe(investigatingCase(INC));
-  await act(async () => { fireEvent.click(screen.getByTestId('return-chip')); });
   expect(screen.getByTestId('pinned-case-line').textContent).toBe(investigatingCase(INC));
   // no scope select, no toggle, no clear control on this surface
   expect(screen.queryByLabelText('Scope')).toBeNull();
   expect(screen.queryByRole('button', { name: 'Session-wide' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Use Session-wide' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Clear scope' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Search all evidence' })).toBeNull();
 });
 
 test('pre-seal banner shows for an unsealed case and only then', async () => {
@@ -161,52 +138,29 @@ test('a sealed case shows no pre-seal banner; submitted incidents stay anchorabl
   expect(screen.getByRole('button', { name: /Run Query/ })).not.toBeDisabled();
 });
 
-test('scope-error on the case read: label retained, Run disabled, Retry-only recovery; Expanded search stays available', async () => {
+test('scope-error on the case read: case retained, Run disabled, Retry-only recovery, no session escape', async () => {
   // The case-evidence read fails at the ANCHOR (ratified A-OD-3 behavior,
-  // unchanged): the label keeps the case with the error marker, Run is
-  // blocked, recovery is Retry or the deliberate Expanded search. The
-  // failed-RETURN path is governed by the C1 guard instead (cross-host
-  // suite): it stays in Expanded search, so an incident label can never
-  // sit over expanded session rows on this surface.
+  // unchanged): the pinned line keeps the case, Run is blocked, recovery
+  // is Retry alone -- with the expanded-search escape removed (III.0
+  // item 2) NO control can run outside the case while it stays pinned.
   scopeResponse = () => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) });
   await act(async () => { renderShell(); });
 
-  expect(screen.getByTestId('scope-chip').textContent).toContain(caseEvidenceLabel(INC));
+  expect(screen.getByTestId('pinned-case-line').textContent).toBe(investigatingCase(INC));
   expect(screen.getByRole('alert').textContent).toContain('Incident scope could not be loaded.');
   // with bar text present, Run stays disabled by the scope block alone
   fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
   expect(screen.getByRole('button', { name: /Run Query/ })).toBeDisabled();
   // no query was issued by the failed read
   expect(queryCalls()).toEqual([]);
-  // A-OD-3: Retry is the recovery; no Use Session-wide control exists
+  // A-OD-3: Retry is the recovery; no session escape of any kind
   expect(screen.queryByRole('button', { name: 'Use Session-wide' })).toBeNull();
-  // the deliberate Expanded search remains available (the designed path out)
-  expect(screen.getByTestId('search-all')).not.toBeDisabled();
+  expect(screen.queryByTestId('search-all')).toBeNull();
 
   // retry succeeds -> ready -> Run enabled
   scopeResponse = () => ok({ incident_id: INC, sealed: true, hosts: [], accounts: [], detection_ids: [] });
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Retry' })); });
   expect(screen.getByRole('button', { name: /Run Query/ })).not.toBeDisabled();
-});
-
-test('search-all from a failed case read enters Expanded search honestly (block visible, all-evidence run)', async () => {
-  scopeResponse = () => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) });
-  await act(async () => { renderShell(); });
-  expect(screen.getByRole('alert').textContent).toContain('Incident scope could not be loaded.');
-  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
-  await act(async () => { fireEvent.click(screen.getByTestId('search-all')); });
-  expect(queryCalls().pop()).toMatch(/scope=session$/);
-  expect(screen.getByTestId('expanded-search-block')).toBeInTheDocument();
-  expect(screen.getByTestId('pinned-case-line').textContent).toBe(investigatingCase(INC));
-});
-
-test('search-all is disabled on an empty bar (nothing to run)', async () => {
-  await act(async () => { renderShell(); });
-  expect(screen.getByLabelText('LCQL query').value).toBe('');
-  expect(screen.getByTestId('search-all')).toBeDisabled();
-  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
-  expect(screen.getByTestId('search-all')).not.toBeDisabled();
-  expect(screen.getByTestId('search-all').textContent).toBe(SEARCH_ALL_EVIDENCE);
 });
 
 test('11.3: an edited bar shows the edited note; a run that lands clears it', async () => {

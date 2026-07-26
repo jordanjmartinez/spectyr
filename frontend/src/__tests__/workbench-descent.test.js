@@ -109,7 +109,7 @@ test('single-host incident descent explicitly establishes the incident scope', a
   });
   expect(apiFetch).toHaveBeenCalledWith('/api/incidents/INC-9368/scope');
   expect(queryCalls().pop()).toBe('/api/events/query?q=all | ACME-WS10 | * | *&scope=INC-9368');
-  expect(screen.getByTestId('scope-chip').textContent).toContain('INC-9368 evidence');
+  expect(screen.getByTestId('pinned-case-line').textContent).toBe('Investigating INC-9368');
   const banner = screen.getByTestId('descent-banner');
   expect(banner).toHaveTextContent('Evidence timeline for ACME-WS10, from INC-9368');
   fireEvent.click(within(banner).getByRole('button', { name: 'Back to Incidents' }));
@@ -348,12 +348,12 @@ test('identity descent under a player-selected incident context RETAINS that sco
   });
   expect(queryCalls().pop())
     .toBe(`/api/events/query?q=${IDENTITY_OR_QUERY}&scope=INC-9368`);
-  expect(screen.getByTestId('scope-chip').textContent).toContain('INC-9368 evidence');
+  expect(screen.getByTestId('pinned-case-line').textContent).toBe('Investigating INC-9368');
   // zero rows is the honest case-scoped outcome when the account's events
-  // lack participant hostnames; the explicit Search all evidence action is
-  // the designed path out, never a silent one (Amendment 1 Delta A)
+  // lack participant hostnames; leaving the case on Incidents is the
+  // designed path out (III.0 item 2: no SIEM-level session escape exists)
   expect(screen.getByText('0 events match')).toBeInTheDocument();
-  expect(screen.getByTestId('search-all')).toBeInTheDocument();
+  expect(screen.queryByTestId('search-all')).toBeNull();
   // no silent scope broadening: nothing executed across all evidence
   expect(queryCalls().some((c) => c.endsWith('&scope=session'))).toBe(false);
 });
@@ -378,7 +378,7 @@ test('a refinement from the identity-descent OR timeline mints a fresh standalon
     .toHaveTextContent('Started a new query; the previous one mixed or-conditions.');
 });
 
-test('model B (A3.2): a search-all excursion from a descent view restores the descent timeline on return', async () => {
+test('a hand-broadened query from a descent view stays in the case evidence pool; the banner dies with its snapshot', async () => {
   queryResponses.push(ok(snapWith(ROWS_UNORDERED, 'all | ACME-WS10 | * | *', 'INC-9368')));
   await act(async () => {
     renderSiem({
@@ -388,19 +388,15 @@ test('model B (A3.2): a search-all excursion from a descent view restores the de
     });
   });
   expect(screen.getByTestId('descent-banner')).toBeInTheDocument();
-  // broaden by hand, then deliberately expand: the hold captures the
-  // pre-entry state INCLUDING the active descent timeline mode
+  // broaden the QUERY by hand and run: the evidence universe is unchanged
+  // (III.0 item 2), and the timeline banner dies with its own snapshot
   fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
-  queryResponses.push(ok(snapWith(ROWS_UNORDERED, 'all | * | * | *')));
-  await act(async () => { fireEvent.click(screen.getByTestId('search-all')); });
-  expect(screen.getByTestId('expanded-search-block')).toBeInTheDocument();
+  queryResponses.push(ok(snapWith(ROWS_UNORDERED, 'all | * | * | *', 'INC-9368')));
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Run Query/ })); });
+  expect(queryCalls().pop()).toBe('/api/events/query?q=all | * | * | *&scope=INC-9368');
   expect(screen.queryByTestId('descent-banner')).toBeNull();   // banner dies with its snapshot
-  await act(async () => { fireEvent.click(screen.getByTestId('return-chip')); });
-  // the held descent view is back: banner, timeline mode, case scope
-  const banner = screen.getByTestId('descent-banner');
-  expect(banner).toHaveTextContent('Evidence timeline for ACME-WS10, from INC-9368');
-  expect(screen.getByTestId('scope-chip').textContent).toContain('INC-9368 evidence');
   expect(screen.queryByTestId('expanded-search-block')).toBeNull();
+  expect(screen.getByTestId('pinned-case-line').textContent).toBe('Investigating INC-9368');
 });
 
 test('re-descending with a new seq re-executes the same timeline', async () => {

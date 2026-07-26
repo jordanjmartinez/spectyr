@@ -1,30 +1,20 @@
 import React from 'react';
-import {
-  ALL_ACTIVITY, EXPANDED_SEARCH_TITLE, followingClue,
-  expandedSearchExplanation, returnToCaseEvidence, RETURN_SUBCOPY,
-  NO_RESULTS_OUTS,
-} from './uiCopy';
+import { ALL_ACTIVITY } from './uiCopy';
 
-// Stage 5 Phase 1 commit 1.1 (consolidated scaffold; contract Amendment 1
-// Delta A, A1-A.4): the case-constant context presentation. ONE pinned case
-// line ("Investigating INC-####" / "All activity") plus the expanded-search
-// block rendered only while that state is live AND a case is pinned (with
-// no case the SIEM is plain All activity -- A1-A.2 point 4). Pure
+// Stage 5 Phase 1 commit 1.1 (contract Amendment 1 Delta A, A1-A.4),
+// simplified by the Final pass (III.0 item 2): the case-constant context is
+// ONE pinned case line ("Investigating INC-####" / "All activity"). The
+// expanded-search block, its clue line, and the return action left with the
+// expanded-search state itself -- with a case the SIEM always searches that
+// case's evidence, so there is no second state to announce. Pure
 // presentation over props: no state, no requests, nothing derived beyond
-// the strings (risk R5 by construction). NOT mounted until commit 1.2
-// wires the surfaces.
-//
-// Props:
-//   incidentId     string | null -- the pinned current case (null = no case)
-//   expandedSearch null | { clue: {field, value} | null, onReturn: fn }
-//                  -- live only while the SIEM expanded-search state is
-//                     active; clue is null on a search-all entry
+// the strings (risk R5 by construction).
 //
 // The pinned line's rendered text is asserted byte-equal to the canonical
 // uiCopy template (investigatingCase) by investigation-context.test.js --
 // the copy module stays the single source of truth while the incident id
 // carries the app's INC accent treatment.
-const InvestigationContext = ({ incidentId, expandedSearch }) => (
+const InvestigationContext = ({ incidentId }) => (
   <div data-testid="investigation-context" className="text-xs">
     <div data-testid="pinned-case-line" className="text-[#57606a]">
       {incidentId
@@ -33,37 +23,6 @@ const InvestigationContext = ({ incidentId, expandedSearch }) => (
         )
         : ALL_ACTIVITY}
     </div>
-    {expandedSearch && incidentId && (
-      <div
-        data-testid="expanded-search-block"
-        role="status"
-        className="mt-2 px-3 py-1.5 rounded-md border border-[#16436b]/30 bg-[#16436b]/5 text-[#1a2332] flex flex-wrap items-center gap-x-2 gap-y-1"
-      >
-        <span className="font-medium">{EXPANDED_SEARCH_TITLE}</span>
-        {expandedSearch.clue && (
-          <span className="log-mono">
-            {followingClue(expandedSearch.clue.field, expandedSearch.clue.value)}
-          </span>
-        )}
-        <span className="text-[#57606a]">{expandedSearchExplanation(incidentId)}</span>
-        <button
-          type="button"
-          data-testid="return-chip"
-          onClick={expandedSearch.onReturn}
-          className="ml-auto text-[#16436b] hover:underline"
-        >
-          {returnToCaseEvidence(incidentId)}
-        </button>
-        <span className="w-full text-[11px] text-[#8b949e]">
-          {RETURN_SUBCOPY}
-        </span>
-        {expandedSearch.noResults && (
-          <span className="w-full text-[11px] text-[#8b949e]">
-            {NO_RESULTS_OUTS}
-          </span>
-        )}
-      </div>
-    )}
   </div>
 );
 

@@ -211,38 +211,10 @@ describe('indicator (fake timers)', () => {
     expect(stale.textContent).toBe('4 new (last run)');
   });
 
-  // Case-constant translation (Amendment 1 Delta A): a scope-only divergence
-  // now arises when entering Expanded search whose run FAILS -- the executed
-  // scope flips to session while the displayed snapshot stays the case
-  // evidence run. The indicator stays bound to the executed snapshot and
-  // de-emphasizes, exactly the Section 8 "Scope changes" honesty.
-  test('a failed Expanded search entry keeps the prior snapshot de-emphasized (scope divergence honesty)', async () => {
-    queryResponses.push(ok(snap([R2, R1], { scope: 'INC-1', canonical: 'all | * | * | *' })));
-    await act(async () => {
-      render(<Siem initialQueryMode="advanced" resetTrigger={0} onHostPivot={() => {}}
-                   activeIncidentId="INC-1" />);
-    });
-    fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /Run Query/ }));
-    });
-    countResponse = () => ok({ new_count: 3, pool_growth: 3 });
-    await tickPoll();
-    const badge = screen.getByTestId('new-events-indicator');
-    expect(badge.className).not.toMatch(/opacity-50/);
-    expect(badge.textContent).toBe('3 new');
-
-    // enter Expanded search; the all-evidence run fails -> executed scope
-    // flipped, snapshot preserved, indicator honestly bound to the last run
-    queryResponses.push(Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) }));
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('search-all'));
-    });
-    expect(results().getByText(/alpha event one/)).toBeInTheDocument();
-    const stale = screen.getByTestId('new-events-indicator');
-    expect(stale.className).toMatch(/opacity-50/);
-    expect(stale.textContent).toBe('3 new (last run)');
-  });
+  // (The Expanded-search scope-divergence case retired with the state
+  // itself, Final pass III.0 item 2: a pivot or run can no longer flip the
+  // executed scope away from the displayed snapshot's. The text-divergence
+  // de-emphasis above remains the honest edited-bar behavior.)
 
   test('the indicator resets after a deliberate Refresh', async () => {
     renderShell();

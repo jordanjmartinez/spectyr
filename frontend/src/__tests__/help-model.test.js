@@ -92,9 +92,8 @@ test('the three ruled query tooltips are the canonical finals, byte-identical', 
   expect(TOOLTIPS.pivot).toBe(TOOLTIP_PIVOT);
 });
 
-test('every one of the seven controls has a non-empty tooltip line (feed_threats retired with the Final-pass triage-only Detections)', () => {
-  const keys = ['promote', 'dismiss', 'reopen', 'eq', 'neq',
-    'pivot', 'expanded_search'];
+test('every one of the six controls has a non-empty tooltip line (feed_threats retired with triage-only Detections; expanded_search with the one-evidence-universe SIEM)', () => {
+  const keys = ['promote', 'dismiss', 'reopen', 'eq', 'neq', 'pivot'];
   expect(Object.keys(TOOLTIPS).sort()).toEqual([...keys].sort());
   for (const k of keys) {
     expect(typeof TOOLTIPS[k]).toBe('string');

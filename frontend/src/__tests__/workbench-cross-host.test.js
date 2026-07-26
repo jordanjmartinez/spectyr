@@ -1,15 +1,17 @@
 /**
- * Stage 4 Phase 7.1: entity pivots and cross-host scope transitions
- * (contract Sections 12/13/14, Section 18 "Cross-host pivots").
+ * Stage 4 Phase 7.1: entity pivots and cross-host behavior (contract
+ * Sections 12/13/14, Section 18 "Cross-host pivots"), under the Final-pass
+ * one-evidence-universe model (III.0 item 2).
  *
  * Proves: every per-field inspector pivot emits its documented Section 13
  * query (pinned as LITERAL text, not re-derived through the generator) and
- * executes Session-wide; the scope control visibly flips as part of the
- * pivot; the return chip re-runs the current query under the incident's
- * participant scope; ordinary navigation (Run, refinement) never changes
- * scope; and -- structurally -- pivot sources are only serialized
- * observable fields and the generator module is pure (no imports, no
- * fetch), so no answer-key or hidden field can enter query generation.
+ * executes in the CURRENT evidence pool -- session with no case (the
+ * literal pins), the case scope with one (the case-constant tests); a
+ * pivot never changes the evidence universe; ordinary navigation (Run,
+ * refinement) never changes scope; and -- structurally -- pivot sources
+ * are only serialized observable fields and the generator module is pure
+ * (no imports, no fetch), so no answer-key or hidden field can enter
+ * query generation.
  */
 import React from 'react';
 import { render, screen, fireEvent, act, within } from '@testing-library/react';
@@ -134,122 +136,50 @@ test('a pivot inherits the EXECUTED snapshot TIMEFRAME token', async () => {
   expect(calls[calls.length - 1]).toBe('/api/events/query?q=1h | ACME-WS12 | * | *&scope=session');
 });
 
-// --- Section 18 "Cross-host pivots", case-constant (Amendment 1 Delta A):
-// an entity pivot from case evidence enters Expanded search visibly; the
-// single return action restores the case evidence -------------------------
+// --- Section 18 "Cross-host pivots" under III.0 item 2: a pivot from case
+// evidence follows the clue INSIDE the case's evidence pool ----------------
 
-test('an entity pivot from case evidence enters Expanded search visibly with the single return action', async () => {
+test('an entity pivot from case evidence executes under the case scope and announces the clue', async () => {
   await act(async () => { renderShell({ activeIncidentId: 'INC-A' }); });
   await run('all | * | * | *');
   expect(queryCalls().pop()).toBe('/api/events/query?q=all | * | * | *&scope=INC-A');
-  expect(screen.queryByTestId('return-chip')).toBeNull();   // case evidence: no return
-  expect(screen.queryByTestId('expanded-search-block')).toBeNull();
 
   selectEvent();
   await act(async () => {
     fireEvent.click(screen.getByLabelText('Pivot hostname'));
   });
-  // the pivot executed across all evidence; the block announces the state
-  expect(queryCalls().pop()).toBe('/api/events/query?q=all | ACME-WS12 | * | *&scope=session');
-  expect(screen.getByTestId('expanded-search-block')).toBeInTheDocument();
-  expect(screen.getByTestId('return-chip')).toHaveTextContent('Return to INC-A evidence');
-  // the case stays pinned through the expansion (OD-15 structural)
+  // the documented query text, executed in the SAME evidence universe
+  expect(queryCalls().pop()).toBe('/api/events/query?q=all | ACME-WS12 | * | *&scope=INC-A');
+  expect(screen.getByTestId('query-notice'))
+    .toHaveTextContent('Following clue: hostname = "ACME-WS12"');
+  // no expanded-search furniture; the case stays pinned (OD-15 structural)
+  expect(screen.queryByTestId('expanded-search-block')).toBeNull();
+  expect(screen.queryByTestId('return-chip')).toBeNull();
+  expect(screen.queryByTestId('search-all')).toBeNull();
   expect(screen.getByTestId('pinned-case-line').textContent).toBe('Investigating INC-A');
 });
 
-// --- Amendment 3 F2 (model B): the return RESTORES the pre-entry hold ------
-
-const scopeCalls = () =>
-  apiFetch.mock.calls.map((c) => c[0]).filter((p) => p.includes('/scope'));
-
-test('the return action restores the pre-expansion evidence with zero query or scope requests (model B)', async () => {
-  const EVENT_B = { ...PIVOT_EVENT, id: 'pv-2', message: 'expanded fixture event' };
-  queryResponses.push(ok(snapWith([PIVOT_EVENT], { canonical_query: '1h | * | * | *', scope: 'INC-A' })));
-  queryResponses.push(ok(snapWith([EVENT_B], { canonical_query: '1h | ACME-WS12 | * | *' })));
+test('ONE evidence universe with a case: run, pivot, refine, and chip removal all carry the case scope', async () => {
   await act(async () => { renderShell({ activeIncidentId: 'INC-A' }); });
-  await run('1h | * | * | *');
-  selectEvent();
-  await act(async () => {
-    fireEvent.click(screen.getByLabelText('Pivot hostname'));
-  });
-  expect(within(screen.getByTestId('workbench-results')).getByText('expanded fixture event')).toBeInTheDocument();
-  const queriesBefore = queryCalls().length;
-  const scopesBefore = scopeCalls().length;
-  await act(async () => {
-    fireEvent.click(screen.getByTestId('return-chip'));
-  });
-  // zero requests: no re-run, no scope re-read (the C1 guard's failure
-  // mode is unreachable; the new-count poll may resume by design)
-  expect(queryCalls().length).toBe(queriesBefore);
-  expect(scopeCalls().length).toBe(scopesBefore);
-  // the pre-expansion evidence is back exactly
-  expect(screen.getByLabelText('LCQL query')).toHaveValue('1h | * | * | *');
-  expect(within(screen.getByTestId('workbench-results')).getByText('pivot fixture event')).toBeInTheDocument();
-  expect(within(screen.getByTestId('workbench-results')).queryByText('expanded fixture event')).toBeNull();
-  expect(screen.queryByTestId('expanded-search-block')).toBeNull();
-  expect(screen.getByTestId('scope-chip').textContent).toContain('INC-A evidence');
-  // the hold is CONSUMED: no return remains
-  expect(screen.queryByTestId('return-chip')).toBeNull();
-});
-
-test('model B: the hold survives runs and refines while expanded and still restores the pre-entry state', async () => {
-  queryResponses.push(ok(snapWith([PIVOT_EVENT], { canonical_query: '1h | * | * | *', scope: 'INC-A' })));
-  await act(async () => { renderShell({ activeIncidentId: 'INC-A' }); });
-  await run('1h | * | * | *');
-  selectEvent();
-  await act(async () => {
-    fireEvent.click(screen.getByLabelText('Pivot hostname'));   // enter expanded
-  });
-  // a manual edit + run while expanded (this dropped the A2-style hold);
-  // the selection and open inspector survive the re-run (same event id)
   await run('all | * | * | *');
-  // and a refine while expanded
-  await act(async () => {
-    fireEvent.click(screen.getByLabelText('Filter hostname equals'));
-  });
-  // the return still restores the ORIGINAL pre-entry state
-  await act(async () => {
-    fireEvent.click(screen.getByTestId('return-chip'));
-  });
-  expect(screen.getByLabelText('LCQL query')).toHaveValue('1h | * | * | *');
-  expect(screen.getByTestId('scope-chip').textContent).toContain('INC-A evidence');
-  expect(screen.queryByTestId('expanded-search-block')).toBeNull();
-});
-
-test('model B: a failed expanded run leaves the hold restorable; the excursion error dies with the return', async () => {
-  queryResponses.push(ok(snapWith([PIVOT_EVENT], { canonical_query: '1h | * | * | *', scope: 'INC-A' })));
-  await act(async () => { renderShell({ activeIncidentId: 'INC-A' }); });
-  await run('1h | * | * | *');
   selectEvent();
   await act(async () => {
     fireEvent.click(screen.getByLabelText('Pivot hostname'));
   });
-  queryResponses.push(Promise.resolve({ ok: false, status: 400,
-    json: () => Promise.resolve({ error: { position: 0, reason: 'unknown token' } }) }));
-  await run('garbage');
-  expect(screen.getByText('This search was not run.')).toBeInTheDocument();
+  // a refine whose snapshot carries a removable conjunct, then remove it
+  queryResponses.push(ok(snapWith([PIVOT_EVENT],
+    { canonical_query: 'all | * | * | severity != "high"', scope: 'INC-A' })));
   await act(async () => {
-    fireEvent.click(screen.getByTestId('return-chip'));
+    fireEvent.click(screen.getByLabelText('Filter severity not equals'));
   });
-  expect(screen.getByLabelText('LCQL query')).toHaveValue('1h | * | * | *');
-  expect(screen.queryByText('This search was not run.')).toBeNull();
-  expect(screen.getByTestId('scope-chip').textContent).toContain('INC-A evidence');
-});
-
-test('model B: a search-all entry before any run holds a null snapshot; return restores the empty case-evidence state', async () => {
-  await act(async () => { renderShell({ activeIncidentId: 'INC-A' }); });
-  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
   await act(async () => {
-    fireEvent.click(screen.getByTestId('search-all'));
+    fireEvent.click(screen.getByLabelText('Remove filter: severity'));
   });
-  expect(screen.getByTestId('expanded-search-block')).toBeInTheDocument();
-  await act(async () => {
-    fireEvent.click(screen.getByTestId('return-chip'));
-  });
-  expect(screen.queryByTestId('expanded-search-block')).toBeNull();
-  expect(screen.getByTestId('scope-chip').textContent).toContain('INC-A evidence');
-  expect(screen.getByLabelText('LCQL query')).toHaveValue('all | * | * | *');
-  expect(screen.getByText('Run a query to begin.')).toBeInTheDocument();
+  const calls = queryCalls();
+  expect(calls).toHaveLength(4);
+  for (const call of calls) {
+    expect(call.endsWith('&scope=INC-A')).toBe(true);
+  }
 });
 
 test('ordinary navigation without a case stays plain All activity: no block, no return', async () => {

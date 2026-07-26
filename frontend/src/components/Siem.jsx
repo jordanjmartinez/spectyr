@@ -13,9 +13,8 @@ import {
   SOURCE_FAMILIES,
 } from './lcqlPivots';
 import InvestigationContext from './InvestigationContext';
-import { TOOLTIPS } from './helpContent';
 import {
-  caseEvidenceLabel, SEARCH_ALL_EVIDENCE, RESULTS_FROM_LABEL,
+  followingClue, RESULTS_FROM_LABEL,
   EDITED_NOTE, STALE_RESULTS_NOTE, filterAdded, excludedFilter,
   NO_QUERY_ENTERED, PRESERVED_RESULTS_LABEL, SEARCH_NOT_RUN,
   QUERY_SECTION_NAMES, sectionCouldNotBeRead, STRUCTURE_LINE,
@@ -95,30 +94,24 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
   const [newCount, setNewCount] = useState(0);
   const [poolGrowth, setPoolGrowth] = useState(0);
   const [countHalted, setCountHalted] = useState(false);
-  // Stage 5 Phase 1 (Amendment 1 Delta A): the case-constant state pair.
-  // Case evidence = scope kind 'incident' anchored to the current case;
-  // Expanded search = scope kind 'session' WHILE a case is pinned (entered
-  // only through an entity pivot or the explicit search-all action). The
-  // case itself is the activeIncidentId prop -- selected on Incidents,
-  // never changeable from here (ratified OD-15, structural).
+  // Stage 5 Phase 1 (Amendment 1 Delta A), simplified by the Final pass
+  // (III.0 item 2): ONE evidence universe per case state. Scope kind
+  // 'incident' anchors every search to the current case's complete
+  // observable evidence pool; 'session' is the no-case All activity
+  // fallback. The case itself is the activeIncidentId prop -- selected on
+  // Incidents, never changeable from here (ratified OD-15, structural).
   // P7.2: the evidence-timeline context ({kind:'descent', origin, backView,
   // host, query}). Pure UI provenance (contract Section 12: the breadcrumb
   // "implies nothing about any row"); the banner and the ascending display
   // render ONLY while the displayed snapshot's canonical query is the
   // timeline's own query, so they can never mislabel another snapshot.
   const [timeline, setTimeline] = useState(null);
-  // Phase 3 commit 3.1: the pivot transition provenance ({query, clue}).
-  // The clue line renders ONLY while the displayed snapshot IS the pivot's
-  // own query (the same identity guard the timeline banner uses), so it can
-  // never mislabel another snapshot; the expanded-search block itself is
-  // state-driven and persists across queries within the state.
-  const [transition, setTransition] = useState(null);
-  // Amendment 3 F2 (model B): the single-depth hold behind Expanded
-  // search -- the pre-entry evidence view {queryText, snapshot, scope,
-  // timeline}, written ONLY at entry (every entry site), surviving every
-  // run/pivot/refine while expanded, consumed by the return action,
-  // cleared by a case change, an incident-scoped descent, and reset.
-  const [expandedHold, setExpandedHold] = useState(null);
+  // Final pass III item 2: the Expanded-search state, its hold, the
+  // search-all action, the case-evidence chip, and the return action are
+  // REMOVED. With an active incident the SIEM always searches that
+  // incident's complete observable evidence pool; a Pivot changes the
+  // query, never the evidence universe (it announces its clue through
+  // the one notice line, like a refine).
   // Phase 4 commit 4.1 (OD-5 Option A): selection visibly connects to the
   // ONE shared inspector -- scroll-into-view (block nearest), a single
   // emphasis run, and focus moved to the container exactly once per
@@ -159,8 +152,6 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
     setSelectionNotice(null);
     setQueryNotice(null);
     setTimeline(null);
-    setTransition(null);
-    setExpandedHold(null);
   }, [resetTrigger]);
 
   const loadIncidentScope = (id) => {
@@ -169,10 +160,8 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
       .then((res) => { if (!res.ok) throw new Error('scope'); return res.json(); })
       .then((sc) => setScope({ kind: 'incident', id, status: 'ready',
                                sealed: !!sc.sealed }))
-      // Revised scope-error behavior (kept from M1/Stage 4): keep the state
-      // label, preserve the prior snapshot, disable Run; recovery is Retry
-      // only (ratified A-OD-3) -- or the deliberate Expanded search, which
-      // needs no case scope.
+      // Revised scope-error behavior (kept from M1/Stage 4): preserve the
+      // prior snapshot, disable Run; recovery is Retry only.
       .catch(() => setScope({ kind: 'incident', id, status: 'error' }));
   };
 
@@ -186,8 +175,6 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
     setError(null);
     setQueryText('');
     setTimeline(null);
-    setTransition(null);
-    setExpandedHold(null);
     setQueryNotice(null);
     setSelectedId(null);
     setSelectionNotice(null);
@@ -198,40 +185,6 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
 
   const scopeBlocked = scope.kind === 'incident' && scope.status !== 'ready';
   const scopeParam = scope.kind === 'incident' ? scope.id : 'session';
-  // Expanded search is live exactly while a case is pinned and the executed
-  // scope is the session (entered ONLY via entity pivot or search-all).
-  const expandedSearch = !!(activeIncidentId && scope.kind === 'session');
-
-  // Enter Expanded search deliberately (A1-A.2 point 4; ratified A-OD-4
-  // placement): run the current query across ALL evidence while the case
-  // stays pinned. Deliberately NOT gated on the case-evidence read -- the
-  // expanded state needs no case scope and is the designed exploration
-  // path out of a failed scope read.
-  // Amendment 3 F2: every entry into Expanded search captures the
-  // pre-entry hold. Reads inside the same handler still see the pre-entry
-  // values (state writes are queued), so capture placement is safe at any
-  // point before the re-render. Entering from a degraded case-evidence
-  // state (failed scope read) holds that state too -- the excursion never
-  // launders a pre-existing error (A3-2.5).
-  const captureExpandedHold = () => {
-    if (activeIncidentId && scope.kind === 'incident') {
-      setExpandedHold({ queryText, snapshot, scope, timeline });
-    }
-  };
-
-  const searchAll = () => {
-    if (running) return;
-    // A3.5: in simple mode an untouched bar still has a runnable compiled
-    // form (the controls always hold tokens); advanced keeps the
-    // empty-bar gate.
-    const q = queryText.trim() === ''
-      ? (queryMode === 'simple' ? composeFromControls() : '')
-      : queryText;
-    if (q === '') return;
-    captureExpandedHold();
-    setScope({ kind: 'session' });
-    execute(q, 'session');
-  };
 
   // --- Amendment 3 F7: the simple-search projection ----------------------
   // The canonical four-part text (queryText) stays the ONE pending truth;
@@ -390,12 +343,11 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
     execute(query, scopeParam, fresh ? `${clueLine} ${OR_FALLBACK_NOTICE}` : clueLine);
   };
 
-  // P7.1 entity pivots (contract Sections 13/14; Amendment 1 Delta A):
+  // P7.1 entity pivots (contract Sections 13/14; Final pass III.0 item 2):
   // every pivot mints its documented query from the EXECUTED snapshot's
-  // TIMEFRAME token through the one generator, then ALWAYS executes across
-  // all evidence. With a case pinned that IS the Expanded search state:
-  // the block announces it on screen (never a silent side effect) and the
-  // single return action restores the case evidence.
+  // TIMEFRAME token through the one generator and executes it in the
+  // CURRENT evidence pool (the case's observable evidence with a case
+  // pinned, all activity without).
   const PIVOT_FORMS = {
     host: pivotHost, account: pivotAccount, process: pivotProcessImage,
     file: pivotFile, ip: pivotIp, domain_proxy: pivotDomainProxy,
@@ -403,18 +355,16 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
     sensor: pivotSensorFamily,
   };
   const pivotAndRun = (kind, value, field) => {
-    if (!snapshot || running) return;
+    if (!snapshot || running || scopeBlocked) return;
     const tf = splitSegments(snapshot.identity.canonical_query)[0];
     const query = PIVOT_FORMS[kind](tf, value);
-    // 8.2 clue naming: the followed field + value ride the transition
-    // provenance; the block's clue line renders under the identity guard.
-    // A repeat pivot while ALREADY expanded updates the clue and snapshot
-    // only -- captureExpandedHold's kind guard leaves the hold untouched.
-    captureExpandedHold();
-    setTransition({ query, clue: field ? { field, value } : null });
-    setScope({ kind: 'session' });
+    // Final pass item 2: a Pivot changes the QUERY inside the current
+    // evidence pool (the incident's complete observable evidence with a
+    // case, all activity without) -- it never changes the evidence
+    // universe. It announces the followed clue through the one notice
+    // line (the same channel refines use).
     setQueryText(query);
-    execute(query, 'session');
+    execute(query, scopeParam, field ? followingClue(field, value) : null);
   };
 
   // Surrounding events removed (Amendment 3 F3): the control ran an
@@ -422,40 +372,6 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
   // overlapped the host pivot and ordinary search; the honest bounded
   // version is deferred engine work. Evidence descent and descentHost()
   // are untouched.
-
-  // The single return action (A1-A.2 point 4; Amendment 3 F2, model B):
-  // "Return to INC-#### evidence" RESTORES the pre-entry hold exactly --
-  // snapshot (may be null: the case-evidence empty state), bar text,
-  // scope (no re-read: the C1 guard's failure mode is unreachable), and
-  // timeline mode -- with ZERO requests, and consumes it. The excursion's
-  // provenance (clue, notices, expanded errors) dies with the return;
-  // selection survives when the restored rows still contain it; the
-  // new-count poll resumes on the restored token (an invalidated token
-  // halts neutrally through countHalted). A held pre-seal scope flag may
-  // lag the actual seal until the next scope read (recorded A3-2.2 edge).
-  const returnToIncident = () => {
-    if (running || !expandedHold) return;
-    setSnapshot(expandedHold.snapshot);
-    setQueryText(expandedHold.queryText);
-    setScope(expandedHold.scope);
-    setTimeline(expandedHold.timeline);
-    setError(null);
-    setTransition(null);
-    setQueryNotice(null);
-    setNewCount(0);
-    setPoolGrowth(0);
-    setCountHalted(false);
-    setSelectedId((sel) => {
-      const rows = expandedHold.snapshot ? expandedHold.snapshot.rows : [];
-      if (sel && !rows.some((r) => r.id === sel)) {
-        setSelectionNotice('The inspected event is not in the new snapshot.');
-        return null;
-      }
-      setSelectionNotice(null);
-      return sel;
-    });
-    setExpandedHold(null);
-  };
 
   // P7.2/P7.4 Open Evidence Timeline descent (contract Sections 13/16; R17
   // uniform control): descent explicitly establishes scope for this entry
@@ -468,8 +384,9 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
   // context when the entry carries one, Session-wide otherwise -- identity
   // descent is deliberately NOT special-cased, so an incident-scoped
   // account timeline may honestly show zero rows when the account's events
-  // lack participant hostnames; the visible scope control is the designed
-  // path out. The request carries ONLY observable data from the origin
+  // lack participant hostnames; leaving the case on Incidents is the
+  // designed path out (III.0 item 2: no SIEM-level scope control exists).
+  // The request carries ONLY observable data from the origin
   // surface; the query is generated HERE through the one generator.
   useEffect(() => {
     if (!descentRequest) return;
@@ -481,10 +398,6 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
     setTimeline({ kind: 'descent', origin, backView, host,
                   account: account || null, query });
     if (scopeIncidentId) {
-      // A3-2.3: an incident-scoped descent is an explicit navigation to a
-      // NEW case-evidence view; it exits Expanded search without a
-      // restore, so the hold is cleared, never replayed later.
-      setExpandedHold(null);
       setScope({ kind: 'incident', id: scopeIncidentId, status: 'loading' });
       apiFetch(`/api/incidents/${scopeIncidentId}/scope`)
         .then((res) => { if (!res.ok) throw new Error('scope'); return res.json(); })
@@ -494,7 +407,6 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
         })
         .catch(() => setScope({ kind: 'incident', id: scopeIncidentId, status: 'error' }));
     } else {
-      captureExpandedHold();
       setScope({ kind: 'session' });
       execute(query, 'session');
     }
@@ -595,48 +507,20 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
         </div>
       </div>
 
-      {/* Case-constant context + TIMEFRAME + query bar (Amendment 1 Delta A):
-          the pinned case line, the case-evidence state label, the explicit
-          search-all action, and the expanded-search block replace the old
-          scope select. No control here can change the case (OD-15). */}
+      {/* Case-constant context + TIMEFRAME + query bar (Final pass III.0
+          item 2): ONE pinned case line, one evidence universe. The old
+          scope select, the case-evidence chip, the search-all action, and
+          the expanded-search block are all gone; scope loading surfaces
+          beside the line and the error keeps its Retry block below. No
+          control here can change the case (OD-15). */}
       <div className="mb-3 flex flex-col gap-2">
-        <InvestigationContext
-          incidentId={activeIncidentId || null}
-          expandedSearch={expandedSearch
-            ? {
-                clue: (transition && snapshot
-                       && snapshot.identity.canonical_query === transition.query)
-                  ? transition.clue : null,
-                noResults: !!(snapshot && snapshot.count === 0),
-                onReturn: () => returnToIncident(),
-              }
-            : null}
-        />
+        <div className="flex items-center justify-between gap-2">
+          <InvestigationContext incidentId={activeIncidentId || null} />
+          {activeIncidentId && scope.kind === 'incident' && scope.status === 'loading' && (
+            <span className="text-xs text-[#6e7781]">Loading incident scope</span>
+          )}
+        </div>
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          {activeIncidentId && scope.kind === 'incident' && (
-            <span
-              data-testid="scope-chip"
-              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-[#eef1f4] text-[#1a2332]"
-            >
-              <span className="log-mono text-[#16436b] font-medium">{caseEvidenceLabel(scope.id)}</span>
-              {scope.status === 'loading' && <span className="text-[#6e7781]">loading scope</span>}
-              {scope.status === 'error' && <span className="text-[#b26666]">scope unavailable</span>}
-            </span>
-          )}
-          {activeIncidentId && scope.kind === 'incident' && (
-            <button
-              type="button"
-              data-testid="search-all"
-              onClick={searchAll}
-              disabled={running
-                || (queryMode === 'advanced' && queryText.trim() === '')}
-              title={TOOLTIPS.expanded_search}
-              data-help={TOOLTIPS.expanded_search}
-              className="help-tip inline-flex items-center gap-1 px-2 py-1 rounded-full border border-[#16436b]/40 text-[#16436b] text-xs hover:bg-[#16436b]/5 disabled:opacity-50"
-            >
-              {SEARCH_ALL_EVIDENCE}
-            </button>
-          )}
           {/* A3.5 (F7): the simple-mode Source / Event type selects own
               their tokens; value-driven (the current token always renders,
               a hostname sensor included), edits recompose through the

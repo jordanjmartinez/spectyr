@@ -162,8 +162,8 @@ const Docs = () => {
                 again or press Refresh, and a new-events badge counts telemetry that arrived since
                 the snapshot. Sidebar values and per-field inspector actions refine the executed
                 query; entity pivots (host, account, IP, domain, process, file, event type, sensor)
-                follow the clue across all available evidence. With a case open that is Expanded
-                search: your case stays pinned and one action returns to its evidence.
+                follow the clue across the evidence you are searching. With an incident selected
+                the SIEM searches that incident&apos;s evidence; with none it searches all activity.
                 Open Evidence Timeline on an incident or detection descends into its evidence,
                 sorted occurrence-ascending.
               </p>

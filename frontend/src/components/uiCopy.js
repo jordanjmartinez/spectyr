@@ -11,24 +11,11 @@
 export const investigatingCase = (incidentId) => `Investigating ${incidentId}`;
 export const ALL_ACTIVITY = 'All activity';
 
-// --- the SIEM state pair (A1-A.2 point 4; ratified A-OD-4 placement) -------
-export const caseEvidenceLabel = (incidentId) => `${incidentId} evidence`;
-export const SEARCH_ALL_EVIDENCE = 'Search all evidence';
-
-// --- the expanded-search block (A1-A.4 item 2) -----------------------------
-export const EXPANDED_SEARCH_TITLE = 'Expanded search';
-export const followingClue = (field, value) =>
-  `Following clue: ${field} = "${value}"`;
-export const expandedSearchExplanation = (incidentId) =>
-  `Searching all evidence. Your case ${incidentId} stays open.`;
-export const returnToCaseEvidence = (incidentId) =>
-  `Return to ${incidentId} evidence`;
-// Amendment 3 (ratified A3-R.1) return subcopy: the model B restore.
-// The model A subcopy and the C1 interim guard string retired with the
-// model A mechanics (F2: the return performs no scope re-run, so the
-// guarded failure mode is unreachable).
-export const RETURN_SUBCOPY =
-  'Return restores the incident evidence you were viewing before Expanded search. Changes made in Expanded search are not kept.';
+// (Final pass III.0 item 2: the SIEM state pair and the expanded-search
+// block copy -- caseEvidenceLabel, SEARCH_ALL_EVIDENCE,
+// EXPANDED_SEARCH_TITLE, expandedSearchExplanation, returnToCaseEvidence,
+// RETURN_SUBCOPY, NO_RESULTS_OUTS -- retired with the expanded-search
+// state itself. followingClue lives on below as the pivot announcement.)
 
 // --- the snapshot echo label (locked contract 11.2 "Results from") ---------
 export const RESULTS_FROM_LABEL = 'Results from:';
@@ -62,8 +49,10 @@ export const toReview = (n) => `${n} to review`;
 export const FEED_SUBCOPY = 'Feed: every detection, including reviewed';
 export const THREATS_SUBCOPY = 'Threats: detections you promoted';
 
-// --- Section 8.2 canonical transition forms (consumed by the transition
-// surface and any context line -- the 8.4 one-vocabulary rule) --------------
+// --- Section 8.2 canonical clue forms (the 8.4 one-vocabulary rule; the
+// ONE notice line announces refines and pivots alike, III.0 item 2) ---------
+export const followingClue = (field, value) =>
+  `Following clue: ${field} = "${value}"`;
 export const filterAdded = (field, value) =>
   `Filter added: ${field} == "${value}"`;
 export const excludedFilter = (field, value) =>
@@ -104,19 +93,17 @@ export const CONSIDER_PROMPT =
   'Consider whether containment or remediation is needed.';
 export const SUBMIT_PENDING = 'Submit pending';
 
-// === Phase 3 commit 3.1: the expanded-search transition surface ============
-// The 0-events state keeps the block visible with the two designed outs
-// (translated 8.2 no-results rule).
-export const NO_RESULTS_OUTS =
-  'No events matched. Broaden the Timeframe or return to the case evidence.';
-
 // === Merged Phase 3/4 commit 3.2: query clarity (Amendment 2, A2-R.1) ======
 // The ruled canonical finals: the four permanent tooltip sentences, the
 // three-line error form (line 3 is the locked 11.3 string, reused
 // verbatim), the empty-run guidance, and Restore.
 export const TOOLTIP_EQ = 'Show only events matching this value.';
 export const TOOLTIP_NEQ = 'Exclude events matching this value.';
-export const TOOLTIP_PIVOT = 'Follow this clue across all available evidence.';
+// Final pass III.0 item 2 (flagged consequential change to an A2 final): a
+// pivot no longer broadens to all evidence, so the ruled sentence's "across
+// all available evidence" became untrue; the verb sentence follows the
+// truth (the pivot searches the evidence pool you are already in).
+export const TOOLTIP_PIVOT = 'Follow this clue across the evidence you are searching.';
 export const NO_QUERY_ENTERED = 'No query entered.';
 export const PRESERVED_RESULTS_LABEL = 'Results below are from the last run.';
 export const SEARCH_NOT_RUN = 'This search was not run.';
@@ -127,8 +114,9 @@ export const STRUCTURE_LINE = 'The query needs four sections separated by |.';
 export const RESTORE_LAST_QUERY = 'Restore last working query';
 
 // (The reversible-surrounding-events block copy was removed with the
-// control by Amendment 3 F3; its hold-and-restore mechanic lives on as
-// the F2 model B expanded-search return.)
+// control by Amendment 3 F3; the F2 model B hold-and-restore mechanic that
+// briefly survived it retired with Expanded search, Final pass III.0
+// item 2.)
 
 // === Phase 5 commit 5.4: Case Closed + Learning Review (A1-B.4) ============
 // The payoff vocabulary: the Case Closed moment, the six ratified

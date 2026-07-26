@@ -11,14 +11,13 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import Incidents from '../components/Incidents';
 import {
-  investigatingCase, ALL_ACTIVITY, caseEvidenceLabel, EXPANDED_SEARCH_TITLE,
-  followingClue, expandedSearchExplanation, returnToCaseEvidence,
-  SEARCH_ALL_EVIDENCE, RESULTS_FROM_LABEL, EDITED_NOTE,
+  investigatingCase, ALL_ACTIVITY,
+  followingClue, RESULTS_FROM_LABEL, EDITED_NOTE,
   STALE_RESULTS_NOTE, TELEMETRY_LOADING, detectionsReviewed,
   detectionsRemaining, PROMOTED_LABEL, DISMISSED_LABEL, REOPENED_LABEL,
   responseActionsTaken, READY_TO_SUBMIT, SUBMITTED_GRADE_LOCKED,
   completedStrip, toReview, FEED_SUBCOPY, THREATS_SUBCOPY, filterAdded,
-  excludedFilter, RETURN_SUBCOPY, CLASSIFY_TO_SUBMIT,
+  excludedFilter, CLASSIFY_TO_SUBMIT,
   SIMPLE_PLACEHOLDER, SIMPLE_HELP, SIMPLE_TOGGLE, ADVANCED_TOGGLE,
   SOURCE_LABEL, EVENT_TYPE_LABEL, ALL_SOURCES, ALL_EVENT_TYPES,
 } from '../components/uiCopy';
@@ -45,20 +44,12 @@ test('the Section 10.1 canonical vocabulary is byte-exact', () => {
   expect(THREATS_SUBCOPY).toBe('Threats: detections you promoted');
 });
 
-test('the case-constant terms are the ratified A-OD-1 finals, byte-exact', () => {
+test('the case-constant terms are the ratified A-OD-1 finals, byte-exact (the expanded-search family retired, III.0 item 2)', () => {
   expect(investigatingCase('INC-8541')).toBe('Investigating INC-8541');
   expect(ALL_ACTIVITY).toBe('All activity');
-  expect(caseEvidenceLabel('INC-8541')).toBe('INC-8541 evidence');
-  expect(EXPANDED_SEARCH_TITLE).toBe('Expanded search');
-  expect(expandedSearchExplanation('INC-8541'))
-    .toBe('Searching all evidence. Your case INC-8541 stays open.');
-  expect(returnToCaseEvidence('INC-8541')).toBe('Return to INC-8541 evidence');
-  expect(SEARCH_ALL_EVIDENCE).toBe('Search all evidence');
 });
 
-test('the Amendment 3 ratified finals are byte-exact (A3-R.1 + standing drafted finals)', () => {
-  expect(RETURN_SUBCOPY).toBe(
-    'Return restores the incident evidence you were viewing before Expanded search. Changes made in Expanded search are not kept.');
+test('the Amendment 3 ratified finals are byte-exact (A3-R.1 + standing drafted finals; RETURN_SUBCOPY retired with the F2 mechanic, III.0 item 2)', () => {
   expect(CLASSIFY_TO_SUBMIT).toBe('Select a classification to submit.');
   expect(SIMPLE_PLACEHOLDER).toBe('Example: source_ip == "10.0.1.32"');
   expect(SIMPLE_HELP).toBe(
@@ -93,12 +84,7 @@ const FORBIDDEN =
 const PRE_SUBMISSION_STRINGS = [
   ['investigatingCase', investigatingCase('INC-0001')],
   ['ALL_ACTIVITY', ALL_ACTIVITY],
-  ['caseEvidenceLabel', caseEvidenceLabel('INC-0001')],
-  ['EXPANDED_SEARCH_TITLE', EXPANDED_SEARCH_TITLE],
   ['followingClue', followingClue('user_account', 'x')],
-  ['expandedSearchExplanation', expandedSearchExplanation('INC-0001')],
-  ['returnToCaseEvidence', returnToCaseEvidence('INC-0001')],
-  ['SEARCH_ALL_EVIDENCE', SEARCH_ALL_EVIDENCE],
   ['RESULTS_FROM_LABEL', RESULTS_FROM_LABEL],
   ['EDITED_NOTE', EDITED_NOTE],
   ['STALE_RESULTS_NOTE', STALE_RESULTS_NOTE],
@@ -117,9 +103,8 @@ const PRE_SUBMISSION_STRINGS = [
   ['THREATS_SUBCOPY', THREATS_SUBCOPY],
   ['filterAdded', filterAdded('a', 'b')],
   ['excludedFilter', excludedFilter('a', 'b')],
-  // Amendment 3 (A3.1): the pre-submission additions (the C1 guard string
-  // and the model A subcopy retired with the F2 model B mechanics)
-  ['RETURN_SUBCOPY', RETURN_SUBCOPY],
+  // Amendment 3 (A3.1) pre-submission additions; RETURN_SUBCOPY retired
+  // with the expanded-search state (Final pass III.0 item 2)
   ['CLASSIFY_TO_SUBMIT', CLASSIFY_TO_SUBMIT],
   ['SIMPLE_PLACEHOLDER', SIMPLE_PLACEHOLDER],
   ['SIMPLE_HELP', SIMPLE_HELP],

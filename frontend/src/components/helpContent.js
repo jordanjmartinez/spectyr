@@ -3,11 +3,13 @@
 //
 // Two layers, strictly separated:
 // - TOOLTIPS: permanent accessible one-line control explanations for the
-//   EIGHT controls (Promote, Dismiss, Reopen, Feed/Threats, ==, !=,
-//   Pivot, Expanded search; Surrounding events removed by Amendment 3
-//   F3). Mode-universal under the recorded invariant-7 reading: passive,
-//   player-invoked, mechanics-only, so Hardcore carries them; coaching
-//   stays out of Hardcore.
+//   SIX controls (Promote, Dismiss, Reopen, ==, !=, Pivot). Surrounding
+//   events left with Amendment 3 F3; Feed/Threats left with the
+//   Final-pass triage-only Detections (III.0.1); Expanded search left
+//   with the one-evidence-universe SIEM (III.0 item 2). Mode-universal
+//   under the recorded invariant-7 reading: passive, player-invoked,
+//   mechanics-only, so Hardcore carries them; coaching stays out of
+//   Hardcore.
 // - The Guided "Need a hint?" flow: Level 1 mechanics help + Level 2
 //   generic investigation nudges, allow-list gated (HINT_MODES, the
 //   GUIDED_MODES pattern - Hardcore and SOC Queue excluded by default).
@@ -28,7 +30,6 @@ export const TOOLTIPS = {
   eq: TOOLTIP_EQ,
   neq: TOOLTIP_NEQ,
   pivot: TOOLTIP_PIVOT,
-  expanded_search: 'Search all evidence: run this query beyond the case evidence. Your case stays open, and one control returns you to it.',
 };
 
 // The GUIDED_MODES pattern: allow-list, never deny-list. A future mode is
@@ -55,7 +56,7 @@ const L2_NUDGES = {
   ],
   siem: [
     'Check which account appears across the flagged events.',
-    'Pivot on a suspicious value to follow it across all available evidence.',
+    'Pivot on a suspicious value to follow it across the evidence you are searching.',
     'Narrow the Timeframe around the earliest suspicious event and read outward from there.',
   ],
   detections: [

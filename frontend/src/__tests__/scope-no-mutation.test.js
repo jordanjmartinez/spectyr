@@ -79,12 +79,12 @@ test('select A, switch to B, clear to Session-wide across scoped tabs issues rea
   expect(mutatingCalls()).toHaveLength(0);   // reads only; nothing was mutated
 });
 
-// Stage 4 P7 (contract Section 18 "No-mutation reads", extended): the whole
-// investigation surface -- descent entry, query run, entity pivot, scope
-// switching, and the return chip -- issues READS ONLY. Nothing about the
+// Stage 4 P7 (contract Section 18 "No-mutation reads", extended; Final pass
+// III.0 item 2): the whole investigation surface -- descent entry, query
+// run, entity pivot, and refinement -- issues READS ONLY. Nothing about the
 // world, response log, grading, readiness, or submissions can change from
 // investigating.
-test('P7 descent, pivot, scope switch, and return-to-incident issue reads only', async () => {
+test('P7 descent, pivot, and refinement issue reads only', async () => {
   await act(async () => {
     render(
       <Siem
@@ -96,21 +96,14 @@ test('P7 descent, pivot, scope switch, and return-to-incident issue reads only',
   });
   await waitFor(() => expect(screen.getByTestId('descent-banner')).toBeInTheDocument());
 
-  // entity pivot out of the case evidence (visible Expanded search entry)
+  // entity pivot from the case evidence (stays in the case's pool)
   fireEvent.click(within(screen.getByTestId('workbench-results')).getByText('no-mutation fixture event'));
   await act(async () => {
     fireEvent.click(screen.getByLabelText('Pivot hostname'));
   });
-  // return to the case evidence via the single return action
+  // and a refinement from the inspector
   await act(async () => {
-    fireEvent.click(screen.getByTestId('return-chip'));
-  });
-  // deliberate Expanded search entry and return, both directions
-  await act(async () => {
-    fireEvent.click(screen.getByTestId('search-all'));
-  });
-  await act(async () => {
-    fireEvent.click(screen.getByTestId('return-chip'));
+    fireEvent.click(screen.getByLabelText('Filter hostname equals'));
   });
 
   expect(mutatingCalls()).toHaveLength(0);   // the investigation surface is read-only

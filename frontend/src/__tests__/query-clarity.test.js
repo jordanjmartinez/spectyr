@@ -219,7 +219,12 @@ test('fresh-by-design forms (entity pivot) never show the OR notice', async () =
   await act(async () => {
     fireEvent.click(screen.getByLabelText('Pivot hostname'));
   });
-  expect(screen.queryByTestId('query-notice')).toBeNull();
+  // The pivot announces its clue on the one notice line (III.0 item 2);
+  // the OR fresh-query sentence must still never attach to a
+  // fresh-by-design form.
+  const notice = screen.getByTestId('query-notice').textContent;
+  expect(notice).toBe('Following clue: hostname = "ACME-WS12"');
+  expect(notice).not.toContain('mixed or-conditions');
 });
 
 // --- 19.24 the generated-forms corpus (frontend half) ---------------------

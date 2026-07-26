@@ -14,7 +14,7 @@ const IncidentScopeBar = ({ scope, incidentId }) => {
   return (
     <div className="mb-3 rounded-lg border border-[#d0d7de] bg-white px-3 py-2 text-xs">
       <div className="flex items-center justify-between gap-2">
-        <InvestigationContext incidentId={incidentId || null} expandedSearch={null} />
+        <InvestigationContext incidentId={incidentId || null} />
         {incidentId && status === 'loading' && !data && (
           <span className="text-[#6e7781]">Loading incident scope</span>
         )}
