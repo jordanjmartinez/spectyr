@@ -5,12 +5,13 @@ import { Menu, X, Play } from 'lucide-react';
 const VIDEO_URL = '/videos/spectyrvideo.mp4';
 
 // Final pass III.0 item 7: no Reports destination exists (nothing may
-// imply a report workflow).
+// imply a report workflow). Docs-correction pass: the links target the
+// rewritten current-product documentation sections.
 const NAV_LINKS = [
-  { label: 'Queue', to: '/docs#queue' },
-  { label: 'Game Modes', to: '/docs#game-modes' },
-  { label: 'Scenarios', to: '/docs#scenarios' },
-  { label: 'Analytics', to: '/docs#analytics' },
+  { label: 'How Spectr Works', to: '/docs#how-spectr-works' },
+  { label: 'Guided and Hardcore', to: '/docs#guided-and-hardcore' },
+  { label: 'SIEM', to: '/docs#siem' },
+  { label: 'Learning Review', to: '/docs#learning-review' },
 ];
 
 // Single full-viewport cinematic hero — no scrolling, no additional sections

@@ -9,7 +9,7 @@ import Landing from './pages/Landing';
 import Docs from './pages/Docs';
 
 const LOADING_MESSAGES = [
-  "Initializing Spectyr...",
+  "Initializing Spectr...",
   "Scanning threat feeds...",
   "Calibrating detection engines...",
   "Deploying honeypots...",
@@ -113,10 +113,8 @@ function AppContent() {
           <div className="flex items-center gap-2">
             <img src="/spectyr_logo.png" alt="" aria-hidden="true" className="h-8 w-8 object-contain" />
             <span className="brand-wordmark text-base text-white">SPECTR</span>
-            <span className="text-sm text-gray-500 hidden sm:inline">|</span>
-            <span className="text-sm text-white hidden sm:inline">SOC Simulation Training</span>
           </div>
-          <span className="text-sm text-white">&copy; 2026 Spectyr. All rights reserved.</span>
+          <span className="text-sm text-white">&copy; 2026 Spectr. All rights reserved.</span>
         </footer>
       )}
     </>

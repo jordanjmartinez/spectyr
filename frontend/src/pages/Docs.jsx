@@ -2,14 +2,22 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import BrandLockup from '../components/BrandLockup';
 
-// Final pass III.0 item 7: the Reports section is gone (nothing may imply
-// a report workflow exists).
+// Final visual-polish pass (Docs correction): the documentation describes
+// the CURRENT product only -- Guided/Hardcore, the single-incident
+// investigation loop across Detections / SIEM / Endpoints / Response, the
+// submission boundary, and the Learning Review. The retired model (queue
+// mechanics, Analytics destination, pre-submit reveals) is gone. The
+// standing copy guards apply: no em dashes, no "SOC Queue", no
+// report-workflow vocabulary, and the old product name never renders.
 const SECTIONS = [
-  { id: 'queue', label: 'Queue' },
-  { id: 'game-modes', label: 'Game Modes' },
-  { id: 'siem', label: 'SIEM Workbench' },
-  { id: 'scenarios', label: 'Scenarios' },
-  { id: 'analytics', label: 'Analytics' },
+  { id: 'getting-started', label: 'Getting Started' },
+  { id: 'how-spectr-works', label: 'How Spectr Works' },
+  { id: 'guided-and-hardcore', label: 'Guided and Hardcore' },
+  { id: 'detections', label: 'Detections' },
+  { id: 'siem', label: 'SIEM' },
+  { id: 'endpoints', label: 'Endpoints' },
+  { id: 'response', label: 'Response' },
+  { id: 'learning-review', label: 'Learning Review' },
 ];
 
 const Section = ({ id, title, children }) => (
@@ -20,7 +28,7 @@ const Section = ({ id, title, children }) => (
 );
 
 const Docs = () => {
-  const [active, setActive] = useState('queue');
+  const [active, setActive] = useState('getting-started');
 
   // Scroll-spy: highlight the section currently in view.
   useEffect(() => {
@@ -39,7 +47,7 @@ const Docs = () => {
     return () => observer.disconnect();
   }, []);
 
-  // Honor a hash arriving from the landing (/docs#queue etc.)
+  // Honor a hash arriving from the landing (/docs#siem etc.)
   useEffect(() => {
     const { hash } = window.location;
     if (hash) {
@@ -121,65 +129,117 @@ const Docs = () => {
         <main className="flex-1 min-w-0 px-6 sm:px-10 lg:px-20 py-14 lg:py-24">
           <div className="max-w-2xl">
             <h1 className="text-5xl sm:text-6xl font-light tracking-tight text-[#1a2332] mb-8">
-              How Spectyr Works
+              Spectr
             </h1>
             <div className="space-y-4 text-[#57606a] text-lg leading-relaxed">
               <p>
-                Spectyr puts you in the role of a Tier 1 SOC analyst. Events stream into a simulated
-                SIEM, mixing routine network activity with active threats.
-              </p>
-              <p>
-                Investigate incidents, follow related users, hosts, and IPs, classify each one,
-                and submit your verdict.
+                Spectr is a SOC investigation simulator. Choose Guided or Hardcore, investigate a
+                single incident across Detections, SIEM, Endpoints, and Response, select your
+                classification, submit your decision, and review your performance in Learning
+                Review.
               </p>
             </div>
 
-            <Section id="queue" title="Queue">
+            <Section id="getting-started" title="Getting Started">
               <p>
-                A Hardcore run contains 10 scenarios selected from a catalog of 20,
-                including one or two false positives. Guided mode runs a single scenario you choose.
+                Press Start and choose your experience. Guided lets you pick a scenario from the
+                catalog, or take a random one. Hardcore begins a timed run.
               </p>
               <p>
-                Scenarios arrive every 20 to 40 seconds, with up to three open at once. Complete all
-                10 to finish the run.
+                The incident appears in the Incidents workspace with a short briefing. Select it to
+                begin: triage, evidence searches, and response all run in the context of the
+                incident you are working.
               </p>
               <p>
-                Attack events are mixed into normal traffic. Use shared entities such as users,
-                hosts, and IP addresses to uncover the full chain.
+                The sidebar moves between workspaces: Dashboard, Incidents, SIEM, Detections,
+                Endpoints, Response, and Metrics. Keys <span className="log-mono">1</span> through{' '}
+                <span className="log-mono">7</span> switch between them.
               </p>
             </Section>
 
-            <Section id="game-modes" title="Game Modes">
+            <Section id="how-spectr-works" title="How Spectr Works">
+              <p>Every incident moves through the same loop:</p>
+              <ol className="list-decimal pl-5 space-y-2">
+                <li>Choose Guided or Hardcore.</li>
+                <li>Open the incident in the Incidents workspace and read its briefing.</li>
+                <li>Triage from Detections: promote what is actionable, dismiss what is not.</li>
+                <li>Investigate the evidence in the SIEM and follow entity clues.</li>
+                <li>Inspect affected systems and accounts in Endpoints.</li>
+                <li>Execute approved response actions in Response.</li>
+                <li>Select your classification on the incident, then submit your decision.</li>
+                <li>Review the result in the Learning Review under Metrics.</li>
+              </ol>
+              <p>
+                Grading is disclosed only after you submit. Until then, nothing reveals whether a
+                call is right, and the incident&apos;s ATT&amp;CK profile stays locked.
+              </p>
+            </Section>
+
+            <Section id="guided-and-hardcore" title="Guided and Hardcore">
               <div>
                 <p className="text-[#1a2332] font-medium mb-1">Guided</p>
-                <p>Pick one scenario from the catalog and work it with unlimited time. Hints are available while you investigate; your classification is graded when you submit the incident.</p>
+                <p>
+                  Pick one scenario from the catalog, or take a random one. There is no timer, and
+                  optional hints are available while you investigate. After you submit, review the
+                  incident and practice another scenario.
+                </p>
               </div>
               <div>
                 <p className="text-[#1a2332] font-medium mb-1">Hardcore</p>
-                <p>A queue of alerts is pushed to you under a single 15-minute timer; only the trigger evidence arrives first. Pivot through the event stream to reconstruct each chain. One wrong classification or an expired timer ends the run.</p>
+                <p>
+                  A timed run under a single 15-minute clock. Incidents are pushed to you during
+                  the run and you investigate without hints. One wrong classification or an expired
+                  timer ends the run.
+                </p>
               </div>
+              <p>
+                Triage, evidence, readiness, and grading work identically in both modes. The
+                difference is time pressure and guidance.
+              </p>
             </Section>
 
-            <Section id="siem" title="SIEM Workbench">
+            <Section id="detections" title="Detections">
               <p>
-                The SIEM tab is an investigation workbench over the session event pool. Queries are
-                written in LCQL, four segments joined by pipes:
+                Detections is where triage happens, and only triage. Review each detection and
+                decide: Promote what looks actionable, Dismiss what does not hold up. A reviewed
+                detection can be reopened if you change your mind.
               </p>
+              <p>
+                The Feed shows every detection, including reviewed ones. Threats shows the
+                detections you promoted.
+              </p>
+              <p>
+                Promoting never executes anything. It marks the detection as actionable and carries
+                its context into the Response workspace.
+              </p>
+              <p>
+                An incident can be submitted only after every one of its detections has been
+                reviewed.
+              </p>
+            </Section>
+
+            <Section id="siem" title="SIEM">
+              <p>
+                The SIEM is the investigation workbench over the incident&apos;s evidence. With an
+                incident selected, searches run over that incident&apos;s events, and Investigate
+                in SIEM on an incident or detection opens the workbench with that evidence already
+                searched.
+              </p>
+              <p>Queries are written in LCQL, four segments joined by pipes:</p>
               <p className="log-mono text-[#1a2332]">TIMEFRAME | SENSOR | EVENT TYPE | FILTERS</p>
               <p>
                 Run Query executes the bar as a frozen snapshot: results never move until you run
-                again, and when new matching telemetry arrives a count appears with a Load new
-                events action that brings the snapshot up to date. Sidebar values and per-field
-                inspector actions refine the executed
-                query; entity pivots (host, account, IP, domain, process, file, event type, sensor)
-                follow the clue across the evidence you are searching. With an incident selected
-                the SIEM searches that incident&apos;s evidence; with none it searches all activity.
-                Investigate in SIEM on an incident or detection opens the SIEM with that
-                evidence already searched.
+                again. When new matching telemetry arrives, a count appears with a Load new events
+                action that brings the snapshot up to date.
               </p>
               <p>
-                Simple search accepts a filter expression. Advanced LCQL accepts the complete
-                four-part query.
+                Sidebar values and per-field inspector actions refine the executed query. Entity
+                pivots (host, account, IP, domain, process, file, event type, sensor) follow the
+                clue across the evidence you are searching.
+              </p>
+              <p>
+                Simple search accepts a single filter expression. Advanced LCQL accepts the
+                complete four-part query.
               </p>
               <p>
                 Quoting rules for filter values: values containing spaces or any of{' '}
@@ -189,36 +249,57 @@ const Docs = () => {
               </p>
             </Section>
 
-            <Section id="scenarios" title="Scenarios">
-              <p>Spectyr includes 15 attack scenarios across eight categories:</p>
-              <p className="text-[#1a2332]">
-                Malware, Phishing, Defense Evasion, Lateral Movement, Command and Control, Brute
-                Force, Data Exfiltration, and Insider Threat.
+            <Section id="endpoints" title="Endpoints">
+              <p>
+                Endpoints is investigation only. Each managed host has a snapshot you can inspect:
+                Overview, Processes, Network, Services, Users, and Autoruns.
               </p>
               <p>
-                The scenarios use simulated telemetry from Sysmon, Windows Security, Proxy, DNS,
-                Firewall, and Azure AD.
+                Hostname values in event views pivot to the endpoint page, so you can move from a
+                log line to the machine it happened on.
               </p>
               <p>
-                Each run also includes benign activity that triggered a real detection rule.
-                Correctly dismissing a false positive improves your score. Escalating one counts as
-                an incorrect decision.
-              </p>
-              <p>
-                After each scenario, you receive a triage review with the related MITRE ATT&amp;CK
-                technique, a short explanation, and recommended response steps.
+                Nothing executes here. When a host or process needs action, the Respond controls
+                navigate to the Response workspace with the target selected.
               </p>
             </Section>
 
-            <Section id="analytics" title="Analytics">
-              <p>Every decision is recorded as:</p>
-              <div className="space-y-1 text-[#1a2332]">
-                <p>Correct</p>
-                <p>Missed threat</p>
-                <p>False positive caught</p>
-                <p>False positive escalated</p>
-              </div>
-              <p>Your analytics show accuracy, queue progress, recent decisions, and final grade.</p>
+            <Section id="response" title="Response">
+              <p>
+                Response is the command surface where actions execute. Incident entities are
+                grouped by target type: hosts, processes, files, accounts, and persistence.
+              </p>
+              <p>
+                The available actions are Isolate Host, Release Host, Kill Process, Delete File,
+                Disable Account, Revoke Sessions, Force Password Reset, and Remove Persistence.
+                Every action asks for confirmation and is recorded in the Response Log.
+              </p>
+              <p>
+                Actions change the current state of the environment, never the recorded evidence.
+                The SIEM and the detection history always show what happened.
+              </p>
+              <p>
+                When your response is complete, return to the incident to classify it: a threat
+                with its attack category, or a false positive. Submit unlocks once every detection
+                is reviewed and a classification is selected.
+              </p>
+            </Section>
+
+            <Section id="learning-review" title="Learning Review">
+              <p>
+                Metrics is the Learning Review. After you submit an incident, its grade unlocks:
+                the Incident Grade combines your classification call, your detection decisions,
+                and your response actions.
+              </p>
+              <p>
+                The review walks through your detection calls, required actions completed or
+                missed, and any unnecessary or harmful actions, alongside the incident&apos;s
+                ATT&amp;CK techniques and a response playbook.
+              </p>
+              <p>
+                Session performance aggregates across the incidents you have submitted. It is
+                labelled separately from the Incident Grade: one incident, one grade.
+              </p>
             </Section>
 
           </div>
