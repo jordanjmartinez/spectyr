@@ -70,7 +70,7 @@ beforeEach(() => {
 });
 
 test('renders the overview grid in reading order: A, B, then the main region', async () => {
-  const { container } = render(<IncidentDashboard gameMode="analyst" analystName="A" />);
+  const { container } = render(<IncidentDashboard gameMode="hardcore" analystName="A" />);
   await screen.findByText('INC-2000');
   // VL: the radar is SECONDARY -- it stacks beneath the operational
   // content and Recent results (the ruled hierarchy).
@@ -86,7 +86,7 @@ test('renders the overview grid in reading order: A, B, then the main region', a
 test('A: the Active Investigation card shows observable fields only and Resume navigates', async () => {
   const onSelectIncident = jest.fn();
   const onNavigate = jest.fn();
-  render(<IncidentDashboard gameMode="analyst" activeIncidentId="INC-2000"
+  render(<IncidentDashboard gameMode="hardcore" activeIncidentId="INC-2000"
     onSelectIncident={onSelectIncident} onNavigate={onNavigate} />);
   const card = await screen.findByTestId('active-investigation');
   expect(within(card).getByText('INC-2000')).toBeInTheDocument();
@@ -106,7 +106,7 @@ test('A: the Active Investigation card shows observable fields only and Resume n
 });
 
 test('VS: progress is folded INTO Active Investigation (accessible bar + exact text, no separate card)', async () => {
-  render(<IncidentDashboard gameMode="analyst" activeIncidentId="INC-2000" chosen={{ 'INC-2000': { verdict: 'false_positive', category: 'False Positive' } }} />);
+  render(<IncidentDashboard gameMode="hardcore" activeIncidentId="INC-2000" chosen={{ 'INC-2000': { verdict: 'false_positive', category: 'False Positive' } }} />);
   const card = await screen.findByTestId('active-investigation');
   const bar = within(card).getByRole('progressbar');
   expect(bar).toHaveAttribute('aria-valuenow', '3');
@@ -120,7 +120,7 @@ test('VS: progress is folded INTO Active Investigation (accessible bar + exact t
 });
 
 test('VS: severity bars show the active incident detections in order with exact counts', async () => {
-  render(<IncidentDashboard gameMode="analyst" activeIncidentId="INC-2000" />);
+  render(<IncidentDashboard gameMode="hardcore" activeIncidentId="INC-2000" />);
   const card = await screen.findByTestId('severity-distribution');
   await waitFor(() => expect(within(card).getByText('Critical')).toBeInTheDocument());
   // row order + exact right-aligned counts (dz stays out: not in the scope)
@@ -141,7 +141,7 @@ test('VS: all-zero severity shows the honest empty state, never empty bars', asy
       ? { incident_id: path.split('/')[3], sealed: false, hosts: [], accounts: [], detection_ids: [] }
       : routeJson(path)),
   }));
-  render(<IncidentDashboard gameMode="analyst" activeIncidentId="INC-1000" />);
+  render(<IncidentDashboard gameMode="hardcore" activeIncidentId="INC-1000" />);
   const card = await screen.findByTestId('severity-distribution');
   await waitFor(() => expect(within(card).getByText('No detections observed yet.')).toBeInTheDocument());
   expect(card.querySelectorAll('[style*="width"]')).toHaveLength(0);
@@ -149,7 +149,7 @@ test('VS: all-zero severity shows the honest empty state, never empty bars', asy
 
 test('VS: environment status shows managed count, indicators, real availability, and real platform breakdown', async () => {
   const onNavigate = jest.fn();
-  render(<IncidentDashboard gameMode="analyst" onNavigate={onNavigate} />);
+  render(<IncidentDashboard gameMode="hardcore" onNavigate={onNavigate} />);
   const card = await screen.findByTestId('environment-status');
   await waitFor(() => expect(within(card).getByText('3')).toBeInTheDocument());
   expect(card.textContent).toContain('managed hosts');
@@ -172,14 +172,14 @@ test('VS: zero managed hosts renders the honest environment empty state', async 
     ok: true,
     json: () => Promise.resolve(path === '/api/endpoints' ? { endpoints: [] } : routeJson(path)),
   }));
-  render(<IncidentDashboard gameMode="analyst" />);
+  render(<IncidentDashboard gameMode="hardcore" />);
   const card = await screen.findByTestId('environment-status');
   await waitFor(() => expect(within(card).getByText('No managed hosts available.')).toBeInTheDocument());
   expect(card.textContent).not.toMatch(/%/);
 });
 
 test('C: KPI tiles carry real session values only (no trends, deltas, or sparklines)', async () => {
-  render(<IncidentDashboard gameMode="analyst" />);
+  render(<IncidentDashboard gameMode="hardcore" />);
   const row = await screen.findByTestId('kpi-row');
   await waitFor(() => expect(within(row).getByText('5')).toBeInTheDocument());   // 2 promoted + 3 dismissed
   expect(within(row).getByText('Detections reviewed')).toBeInTheDocument();
@@ -192,13 +192,13 @@ test('C: KPI tiles carry real session values only (no trends, deltas, or sparkli
 });
 
 test('E: Recent results is honestly labeled, newest first, from the frozen records', async () => {
-  render(<IncidentDashboard gameMode="analyst" />);
+  render(<IncidentDashboard gameMode="hardcore" />);
   const card = await screen.findByTestId('recent-results');
   expect(within(card).getByText('Recent results')).toBeInTheDocument();
   expect(within(card).getByText(/This session/)).toBeInTheDocument();
   // grades + submitted category come from the served post-submission record
   await waitFor(() => expect(within(card).getByText('Malware')).toBeInTheDocument());
-  expect(within(card).getByText('SOC Queue')).toBeInTheDocument();
+  expect(within(card).getByText('Hardcore')).toBeInTheDocument();
   expect(within(card).getByText(/B · 84%/)).toBeInTheDocument();
   expect(within(card).getByText('C')).toBeInTheDocument();       // response grade
 });
@@ -210,14 +210,14 @@ test('empty states are honest before any activity', async () => {
       ? { queue_length: 0, resolved_count: 0, active: [], completed: [], stats: { severity_breakdown: {} } }
       : routeJson(path)),
   }));
-  render(<IncidentDashboard gameMode="analyst" />);
+  render(<IncidentDashboard gameMode="hardcore" />);
   expect(await screen.findByText('No active investigations.')).toBeInTheDocument();
   expect(screen.getByText('No detections observed yet.')).toBeInTheDocument();
   expect(screen.getByText(/No incidents submitted yet this session/)).toBeInTheDocument();
 });
 
 test('V6-R: the coverage radar carries no session/player overlay; grading is fetched ONLY for submitted ids', async () => {
-  render(<IncidentDashboard gameMode="analyst" />);
+  render(<IncidentDashboard gameMode="hardcore" />);
   const radar = await screen.findByTestId('attack-radar');
   // catalog-coverage only: no tabs, no player-performance vocabulary
   expect(within(radar).queryByText('This session')).toBeNull();
@@ -234,7 +234,7 @@ test('V6-R: the coverage radar carries no session/player overlay; grading is fet
 });
 
 test('VH: Session performance is a KPI tile, distinct from the per-incident grade', async () => {
-  render(<IncidentDashboard gameMode="analyst" />);
+  render(<IncidentDashboard gameMode="hardcore" />);
   await screen.findByText('INC-3000');
   const kpi = screen.getByTestId('kpi-row');
   expect(within(kpi).getByText('Session performance')).toBeInTheDocument();
@@ -263,11 +263,11 @@ test('severity reads the observable scope + feed; grouped-alerts is never called
   expect(apiFetch.mock.calls.some(([p]) => p === '/api/grouped-alerts')).toBe(false);
 });
 
-test('VH: the queue count is one compact line inside Active investigation (SOC Queue), with the mode badge', async () => {
-  render(<IncidentDashboard gameMode="analyst" activeIncidentId="INC-2000" />);
+test('VH: the queue count is one compact line inside Active investigation (Hardcore), with the mode badge', async () => {
+  render(<IncidentDashboard gameMode="hardcore" activeIncidentId="INC-2000" />);
   const card = await screen.findByTestId('active-investigation');
   await waitFor(() => expect(within(card).getByText('1 of 10 resolved')).toBeInTheDocument());
-  expect(within(card).getByText('SOC Queue')).toBeInTheDocument();   // compact badge beside identity
+  expect(within(card).getByText('Hardcore')).toBeInTheDocument();   // compact badge beside identity
 });
 
 test('VH: Guided carries no queue denominator anywhere', async () => {
