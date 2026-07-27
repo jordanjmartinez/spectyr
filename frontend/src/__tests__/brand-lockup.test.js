@@ -86,11 +86,12 @@ test('the display face is scoped to the SPECTR wordmark only', () => {
   }
 });
 
-test('ONE shared lockup at the ruled size: 80px ghost + 30px wordmark, shrink-proof, unclipped', () => {
+test('ONE shared lockup at the ruled size: 72px ghost + 30px wordmark, shrink-proof, unclipped', () => {
   const c = read('components/BrandLockup.jsx');
-  // px-FIXED dimensions (VC3 sections 3+5; VC4 doubles the ghost per the
-  // owner's "at least double" instruction): never rem/nav-label derived
-  expect(c).toMatch(/h-\[80px\] w-\[80px\][^"]*object-contain[^"]*shrink-0/);
+  // px-FIXED dimensions (VC3 sections 3+5; VC4 doubled the ghost per the
+  // owner's "at least double" instruction, VC6 trimmed it "a tad" to
+  // 72px on the follow-up): never rem/nav-label derived
+  expect(c).toMatch(/h-\[72px\] w-\[72px\][^"]*object-contain[^"]*shrink-0/);
   expect(c).toMatch(/brand-wordmark text-\[30px\][^"]*shrink-0/);
   // no transform-based scaling, no max-height shrinking, no clipping --
   // judged on the rendered class strings, not prose comments
