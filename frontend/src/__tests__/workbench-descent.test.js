@@ -91,7 +91,7 @@ test('a single-host entry with no incident context runs all | H | * | * Session-
   expect(queryCalls().pop()).toBe('/api/events/query?q=all | ACME-WS10 | * | *&scope=session');
   // no case: the All activity state; the prepared search is identified by
   // the readable expression in the bar plus the initial-evidence label
-  expect(screen.getByTestId('pinned-case-line').textContent).toBe('All activity');
+  expect(screen.queryByText('All activity')).toBeNull();   // VA1: retired case line; context is the shell pill
   expect(screen.getByLabelText('LCQL query')).toHaveValue('all | ACME-WS10 | * | *');
   expect(screen.getByTestId('results-label').textContent).toBe(INITIAL_EVIDENCE);
   // no separate Timeline concept: no banner, no breadcrumb, no back link
@@ -109,7 +109,7 @@ test('a single-host incident entry explicitly establishes the incident scope', a
   });
   expect(apiFetch).toHaveBeenCalledWith('/api/incidents/INC-9368/scope');
   expect(queryCalls().pop()).toBe('/api/events/query?q=all | ACME-WS10 | * | *&scope=INC-9368');
-  expect(screen.getByTestId('pinned-case-line').textContent).toBe('Investigating INC-9368');
+  expect(screen.queryByText(/Investigating INC-/)).toBeNull();   // VA1: retired case line; context is the shell pill
   expect(screen.getByTestId('results-label').textContent).toBe(INITIAL_INCIDENT_EVIDENCE);
   expect(screen.queryByTestId('descent-banner')).toBeNull();
 });
@@ -293,7 +293,7 @@ test('an identity entry runs the uniform two-field OR Session-wide without an in
   });
   expect(queryCalls().pop())
     .toBe(`/api/events/query?q=${IDENTITY_OR_QUERY}&scope=session`);
-  expect(screen.getByTestId('pinned-case-line').textContent).toBe('All activity');
+  expect(screen.queryByText('All activity')).toBeNull();   // VA1: retired case line; context is the shell pill
   // the prepared search is identified by its readable expression in the bar
   expect(screen.getByLabelText('LCQL query'))
     .toHaveValue(IDENTITY_OR_QUERY);
@@ -311,7 +311,7 @@ test('an identity entry under a player-selected incident context RETAINS that sc
   });
   expect(queryCalls().pop())
     .toBe(`/api/events/query?q=${IDENTITY_OR_QUERY}&scope=INC-9368`);
-  expect(screen.getByTestId('pinned-case-line').textContent).toBe('Investigating INC-9368');
+  expect(screen.queryByText(/Investigating INC-/)).toBeNull();   // VA1: retired case line; context is the shell pill
   // zero rows is the honest case-scoped outcome when the account's events
   // lack participant hostnames; leaving the case on Incidents is the
   // designed path out (III.0 item 2: no SIEM-level session escape exists)
@@ -356,7 +356,7 @@ test('a hand-broadened query from an entry view stays in the case evidence pool'
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Run Query/ })); });
   expect(queryCalls().pop()).toBe('/api/events/query?q=all | * | * | *&scope=INC-9368');
   expect(screen.getByTestId('results-label').textContent).not.toBe(INITIAL_INCIDENT_EVIDENCE);
-  expect(screen.getByTestId('pinned-case-line').textContent).toBe('Investigating INC-9368');
+  expect(screen.queryByText(/Investigating INC-/)).toBeNull();   // VA1: retired case line; context is the shell pill
 });
 
 test('re-entering with a new seq re-executes the same prepared search', async () => {

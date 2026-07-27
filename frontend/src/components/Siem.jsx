@@ -12,9 +12,7 @@ import {
   composeQuery, replaceTimeframe, rawFiltersOf, filtersOffsetOf,
   SOURCE_FAMILIES,
 } from './lcqlPivots';
-import InvestigationContext from './InvestigationContext';
-import { CARD_STYLE, PageHeader, SegmentedToggle } from './ui';
-import { NAV_ICONS, NAV_STROKE } from './icons';
+import { CARD_STYLE, PageIntro, SegmentedToggle } from './ui';
 import {
   followingClue, resultsFor, ALL_EVENTS_LABEL, INITIAL_INCIDENT_EVIDENCE,
   INITIAL_EVIDENCE, SELECTED_EVENT_HIDDEN, newEventsAvailable,
@@ -24,10 +22,8 @@ import {
   QUERY_SECTION_NAMES, sectionCouldNotBeRead, STRUCTURE_LINE,
   RESTORE_LAST_QUERY, SIMPLE_PLACEHOLDER, SIMPLE_HELP, SIMPLE_TOGGLE,
   ADVANCED_TOGGLE, SOURCE_LABEL, EVENT_TYPE_LABEL, ALL_SOURCES,
-  ALL_EVENT_TYPES,
+  ALL_EVENT_TYPES, PAGE_SUBTITLE,
 } from './uiCopy';
-
-const PageIcon = NAV_ICONS.siem;
 
 // SIEM Investigation Workbench shell (Stage 4 Phase 4). Analyst-driven:
 // the shell submits LCQL text to the server's single query read and renders
@@ -66,7 +62,7 @@ const firstSegmentToken = (text) => {
 };
 
 const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
-                descentRequest,
+                descentRequest, activeIncident = null,
                 initialQueryMode = 'simple' }) => {
   const [org, setOrg] = useState({});
   const [view, setView] = useState('cards');
@@ -490,23 +486,11 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
 
   return (
     <div>
-      {/* V8: the log-search page identity (the V2 nav mapping) over the
-          shared PageHeader. Workbench density, the query controls, the
-          truthful state copy, and the evidence surfaces are untouched. */}
-      <PageHeader
-        icon={<PageIcon size={20} strokeWidth={NAV_STROKE} aria-hidden="true" />}
-        title="SIEM"
-        count={snapshot ? snapshot.count : 0}
-        subtitle={`${org.name || 'ACME Corp'}: investigation workbench over the session event pool`}
-        right={(
-          <SegmentedToggle
-            ariaLabel="View"
-            value={view}
-            onChange={setView}
-            options={[['cards', 'Cards'], ['table', 'Table']]}
-          />
-        )}
-      />
+      {/* VA1: functional subtitle + the ONE incident pill; the large
+          identity card is gone and the Cards/Table control moves down to
+          the results area. Query controls, truthful state copy, and the
+          evidence surfaces are untouched. */}
+      <PageIntro subtitle={PAGE_SUBTITLE.siem} incident={activeIncident} />
 
       {/* Case-constant context + TIMEFRAME + query bar (Final pass III.0
           item 2): ONE pinned case line, one evidence universe. The old
@@ -515,12 +499,9 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
           beside the line and the error keeps its Retry block below. No
           control here can change the case (OD-15). */}
       <div className="mb-3 flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-2">
-          <InvestigationContext incidentId={activeIncidentId || null} />
-          {activeIncidentId && scope.kind === 'incident' && scope.status === 'loading' && (
-            <span className="text-xs text-[#6e7781]">Loading incident scope</span>
-          )}
-        </div>
+        {activeIncidentId && scope.kind === 'incident' && scope.status === 'loading' && (
+          <span className="text-xs text-[#6e7781]">Loading incident scope</span>
+        )}
         <div className="flex flex-wrap items-center gap-2 text-xs">
           {/* A3.5 (F7): the simple-mode Source / Event type selects own
               their tokens; value-driven (the current token always renders,
@@ -873,6 +854,17 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
         <div className="flex flex-col lg:flex-row gap-4">
           <FieldSidebar snapshot={snapshot} running={running} onValueClick={refineAndRun} />
           <div data-testid="workbench-results" className="flex-1 min-w-0">
+            {/* VA1: the Cards/Table control belongs with the RESULTS, not
+                the page identity area. */}
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="t-meta text-[#6e7781]">{snapshot.count} events</span>
+              <SegmentedToggle
+                ariaLabel="View"
+                value={view}
+                onChange={setView}
+                options={[['cards', 'Cards'], ['table', 'Table']]}
+              />
+            </div>
             {view === 'cards' ? (
               <SiemCards alerts={snapshot.rows} resetTrigger={resetTrigger}
                          selectedId={selectedId} onSelect={selectRow} />

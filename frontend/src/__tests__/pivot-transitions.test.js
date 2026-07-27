@@ -101,7 +101,7 @@ test('no expanded-search furniture exists with a case: no block, no search-all, 
   expect(screen.queryByTestId('return-chip')).toBeNull();
   expect(screen.queryByTestId('scope-chip')).toBeNull();
   // the pinned case line is the one context marker, untouched by the pivot
-  expect(screen.getByTestId('pinned-case-line').textContent).toBe('Investigating INC-A');
+  expect(screen.queryByText(/Investigating INC-/)).toBeNull();   // VA1: retired case line; context is the shell pill
 });
 
 test('refines announce the canonical clue forms; the OR sentence folds into ONE notice', async () => {
@@ -154,5 +154,5 @@ test('with no case a pivot runs in the session pool and still announces its clue
     .toBe(followingClue('hostname', 'ACME-WS12'));
   expect(screen.queryByTestId('expanded-search-block')).toBeNull();
   expect(screen.queryByTestId('return-chip')).toBeNull();
-  expect(screen.getByTestId('pinned-case-line').textContent).toBe('All activity');
+  expect(screen.queryByText('All activity')).toBeNull();   // VA1: retired case line; context is the shell pill
 });

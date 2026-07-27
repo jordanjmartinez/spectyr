@@ -81,7 +81,14 @@ const mockApi = (scopeImpl) => {
   });
 };
 
-const pinnedLine = () => screen.getByTestId('pinned-case-line').textContent;
+// VA1: the pinned-case body line and the All-activity container are
+// RETIRED. Context now renders once as the shell incident pill; these
+// pages must show neither the old line nor an All-activity label.
+const expectNoCaseLine = () => {
+  expect(screen.queryByTestId('pinned-case-line')).toBeNull();
+  expect(screen.queryByText(ALL_ACTIVITY)).toBeNull();
+  expect(screen.queryByText(/Investigating INC-/)).toBeNull();
+};
 const noToggle = () => {
   expect(screen.queryByRole('button', { name: 'This incident' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Session-wide' })).toBeNull();
@@ -103,7 +110,7 @@ test('Detections: pinned header and rows agree across loading, ready, and post-r
       onHostPivot={() => {}} activeIncidentId="INC-0001" />
   );
   // loading: pinned case header, loading copy, ZERO rows, NO toggle
-  expect(pinnedLine()).toBe(investigatingCase('INC-0001'));
+  expectNoCaseLine();
   expect((await screen.findAllByText('Loading incident scope')).length).toBeGreaterThanOrEqual(1);
   noToggle();
   expect(screen.queryByText('LSASS Process Memory Access')).toBeNull();
@@ -113,7 +120,7 @@ test('Detections: pinned header and rows agree across loading, ready, and post-r
   await act(async () => { d1.resolve(SCOPE); });
   expect(await screen.findByText('LSASS Process Memory Access')).toBeInTheDocument();
   expect(screen.queryByText('Impossible Travel Sign-in')).toBeNull();
-  expect(pinnedLine()).toBe(investigatingCase('INC-0001'));
+  expectNoCaseLine();
   // post-reset: refetch resolves and every signal still agrees
   rerender(
     <Detections isVisible resetTrigger={1}
@@ -121,7 +128,7 @@ test('Detections: pinned header and rows agree across loading, ready, and post-r
   );
   expect(await screen.findByText('LSASS Process Memory Access')).toBeInTheDocument();
   expect(screen.queryByText('Impossible Travel Sign-in')).toBeNull();
-  expect(pinnedLine()).toBe(investigatingCase('INC-0001'));
+  expectNoCaseLine();
   noEmDash(container);
 });
 
@@ -133,7 +140,7 @@ test('Detections: no case selected is the All activity state with the full feed'
   );
   expect(await screen.findByText('LSASS Process Memory Access')).toBeInTheDocument();
   expect(screen.getByText('Impossible Travel Sign-in')).toBeInTheDocument();
-  expect(pinnedLine()).toBe(ALL_ACTIVITY);
+  expectNoCaseLine();
   noToggle();
   // no case, no scope read
   const scopeCalls = apiFetch.mock.calls.map(c => c[0]).filter(p => p.includes('/scope'));
@@ -149,7 +156,7 @@ test('Endpoints: pinned header and rows agree across loading, ready, and All act
     <Endpoints isVisible resetTrigger={0}
       pivotHost={null} activeIncidentId="INC-0001" />
   );
-  expect(pinnedLine()).toBe(investigatingCase('INC-0001'));
+  expectNoCaseLine();
   expect((await screen.findAllByText('Loading incident scope')).length).toBeGreaterThanOrEqual(1);
   noToggle();
   expect(screen.queryByText('ACME-WS12')).toBeNull();
@@ -164,7 +171,7 @@ test('Endpoints: pinned header and rows agree across loading, ready, and All act
       pivotHost={null} activeIncidentId={null} />
   );
   expect(await screen.findByText('ACME-SVR02')).toBeInTheDocument();
-  expect(pinnedLine()).toBe(ALL_ACTIVITY);
+  expectNoCaseLine();
 });
 
 test('a slow scope read never renders a selected case over unfiltered rows', async () => {
@@ -175,7 +182,7 @@ test('a slow scope read never renders a selected case over unfiltered rows', asy
       onHostPivot={() => {}} activeIncidentId="INC-0001" />
   );
   expect((await screen.findAllByText('Loading incident scope')).length).toBeGreaterThanOrEqual(1);
-  expect(pinnedLine()).toBe(investigatingCase('INC-0001'));
+  expectNoCaseLine();
   expect(screen.queryByText('LSASS Process Memory Access')).toBeNull();
   expect(screen.queryByText('Impossible Travel Sign-in')).toBeNull();
 });
@@ -188,7 +195,7 @@ test('a failed scope load with no prior rows renders the empty error state with 
       pivotHost={null} activeIncidentId="INC-0001" />
   );
   expect((await screen.findAllByText('Incident scope could not be loaded.')).length).toBeGreaterThanOrEqual(1);
-  expect(pinnedLine()).toBe(investigatingCase('INC-0001'));
+  expectNoCaseLine();
   expect(screen.queryByText('ACME-WS12')).toBeNull();
   expect(screen.queryByText('ACME-SVR02')).toBeNull();
   expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
@@ -213,7 +220,7 @@ test('a persistent scope failure keeps zero rows: no broadening path exists on t
   expect(screen.queryByText('ACME-SVR02')).toBeNull();
   noToggle();
   expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
-  expect(pinnedLine()).toBe(investigatingCase('INC-0001'));
+  expectNoCaseLine();
 });
 
 test('a failed scope refresh with prior scoped rows preserves them and states the last-successful-read notice', async () => {
@@ -240,7 +247,7 @@ test('a failed scope refresh with prior scoped rows preserves them and states th
   // prior scoped rows preserved; the case stays pinned; no broadening
   expect(screen.getByText('ACME-WS12')).toBeInTheDocument();
   expect(screen.queryByText('ACME-SVR02')).toBeNull();
-  expect(pinnedLine()).toBe(investigatingCase('INC-0001'));
+  expectNoCaseLine();
   noEmDash(container);
 });
 
@@ -272,7 +279,7 @@ test('a scope refresh with scoped rows already displayed replaces them atomicall
   });
   expect(await screen.findByText('ACME-SVR02')).toBeInTheDocument();
   expect(screen.queryByText('ACME-WS12')).toBeNull();
-  expect(pinnedLine()).toBe(investigatingCase('INC-0001'));
+  expectNoCaseLine();
 });
 
 test('Detections: the scope read joins the 2.5s feed poll while a case is selected, and stops without one', async () => {

@@ -24,6 +24,10 @@ const Dashboard = () => {
   // a server mutation; scopes the incident-aware tabs when set, session-wide when
   // null. Selecting/switching never mutates world/scoring/readiness/submission.
   const [activeIncidentId, setActiveIncidentId] = useState(null);
+  // VA1: the selected incident's observable summary, reported up by the
+  // Incidents workspace (which already polls the list) so every page can
+  // render the ONE context pill without a new request.
+  const [activeIncident, setActiveIncident] = useState(null);
   // A3.4 (ratified A3-OD-3): the SHELL-OWNED classification selection per
   // incident ({verdict, category, categoryId}). Every player-facing Ready
   // surface (Incidents workspace + list, this dashboard's rows) derives
@@ -385,29 +389,30 @@ const Dashboard = () => {
             onPracticeAnother={handlePracticeAnother}
             onEvidenceDescent={handleEvidenceDescent}
             onOpenLearningReview={handleOpenLearningReview}
+            onActiveIncidentSummary={setActiveIncident}
             chosen={chosen}
             setChosen={setChosen}
           />
         </div>
 
         <div className={view === "siem" ? "block" : "hidden"}>
-          <Siem resetTrigger={resetTrigger} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} descentRequest={descentRequest} />
+          <Siem resetTrigger={resetTrigger} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} descentRequest={descentRequest} activeIncident={activeIncident} />
         </div>
 
         <div className={view === "detections" ? "block" : "hidden"}>
-          <Detections isVisible={view === "detections"} resetTrigger={resetTrigger} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} onEvidenceDescent={handleEvidenceDescent} onOpenResponse={handleOpenResponse} />
+          <Detections isVisible={view === "detections"} resetTrigger={resetTrigger} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} onEvidenceDescent={handleEvidenceDescent} onOpenResponse={handleOpenResponse} activeIncident={activeIncident} />
         </div>
 
         <div className={view === "endpoints" ? "block" : "hidden"}>
-          <Endpoints isVisible={view === "endpoints"} resetTrigger={resetTrigger} pivotHost={pivotHost} activeIncidentId={activeIncidentId} onOpenResponse={handleOpenResponse} />
+          <Endpoints isVisible={view === "endpoints"} resetTrigger={resetTrigger} pivotHost={pivotHost} activeIncidentId={activeIncidentId} onOpenResponse={handleOpenResponse} activeIncident={activeIncident} />
         </div>
 
         <div className={view === "response" ? "block" : "hidden"}>
-          <Response isVisible={view === "response"} resetTrigger={resetTrigger} activeIncidentId={activeIncidentId} responseFocus={responseFocus} onHostPivot={handleHostPivot} />
+          <Response isVisible={view === "response"} resetTrigger={resetTrigger} activeIncidentId={activeIncidentId} responseFocus={responseFocus} onHostPivot={handleHostPivot} activeIncident={activeIncident} />
         </div>
 
         <div className={view === "analytics" ? "block" : "hidden"}>
-          <Analytics onReset={() => setShowResetModal(true)} analystName={analystName} setAnalyticsCount={setAnalyticsCount} isVisible={view === "analytics"} reviewRequest={reviewRequest} />
+          <Analytics onReset={() => setShowResetModal(true)} analystName={analystName} setAnalyticsCount={setAnalyticsCount} isVisible={view === "analytics"} reviewRequest={reviewRequest} activeIncident={activeIncident} />
         </div>
       </main>
 

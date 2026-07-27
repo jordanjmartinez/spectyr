@@ -1,17 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch } from '../api';
 import ConfirmDialog from './ConfirmDialog';
-import IncidentScopeBar from './IncidentScopeBar';
 import useIncidentScope from './useIncidentScope';
 import { postResponseAction, confirmSpecs, PERSIST_LABEL } from './responseActions';
 import {
   ACTION_LABELS, RESPONSE_SELECT_INCIDENT, RESPONSE_NO_PROMOTED,
   RESPONSE_NO_PROMOTED_SUB, RESPONSE_NO_TARGETS, RESPONSE_NO_ACTIONS,
+  PAGE_SUBTITLE,
 } from './uiCopy';
-import { CARD_STYLE, StateChip, PageHeader, SegmentedToggle } from './ui';
-import { DeviceGlyph, PlatformBadge, platformFor, NAV_ICONS, NAV_STROKE } from './icons';
-
-const PageIcon = NAV_ICONS.response;
+import { CARD_STYLE, StateChip, PageIntro, SegmentedToggle } from './ui';
+import { DeviceGlyph, PlatformBadge, platformFor } from './icons';
 
 // Final pass Part III.0.1: the ONE canonical action-execution workspace
 // (Investigate -> Triage -> Respond -> Submit -> Learn). Actionable
@@ -81,7 +79,7 @@ const GroupCard = ({ title, count, children }) => (
 );
 
 const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
-                    responseFocus = null, onHostPivot }) => {
+                    responseFocus = null, onHostPivot, activeIncident = null }) => {
   const [view, setView] = useState('actions');   // 'actions' | 'log'
   const [feed, setFeed] = useState([]);
   const [snaps, setSnaps] = useState({});        // hostname -> snapshot | null (null = not managed)
@@ -214,22 +212,20 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
 
   return (
     <div>
-      <IncidentScopeBar scope={scope} incidentId={activeIncidentId} />
-
-      {/* V9: the shield-check command-center identity over the shared
-          PageHeader; Actions + Response Log stay the two views. */}
-      <PageHeader
-        icon={<PageIcon size={20} strokeWidth={NAV_STROKE} aria-hidden="true" />}
-        title="Response"
+      {/* VA1: functional subtitle + the ONE incident pill; the retired
+          All-activity bar and the identity card are gone. With no
+          incident the Actions view renders its own truthful state. */}
+      <PageIntro
         subtitle={view === 'log'
           ? 'Every response action this session, in order.'
-          : 'Containment and remediation for the incident targets below.'}
+          : PAGE_SUBTITLE.response}
+        incident={activeIncident}
         right={(
           <SegmentedToggle
             ariaLabel="Response view"
             value={view}
             onChange={setView}
-            options={[['actions', 'Actions'], ['log', 'Response Log']]}
+            options={[['actions', 'Actions'], ['log', 'Response log']]}
           />
         )}
       />

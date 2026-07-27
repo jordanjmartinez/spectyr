@@ -156,7 +156,7 @@ test('an entity pivot from case evidence executes under the case scope and annou
   expect(screen.queryByTestId('expanded-search-block')).toBeNull();
   expect(screen.queryByTestId('return-chip')).toBeNull();
   expect(screen.queryByTestId('search-all')).toBeNull();
-  expect(screen.getByTestId('pinned-case-line').textContent).toBe('Investigating INC-A');
+  expect(screen.queryByText(/Investigating INC-/)).toBeNull();   // VA1: retired case line; context is the shell pill
 });
 
 test('ONE evidence universe with a case: run, pivot, refine, and chip removal all carry the case scope', async () => {
@@ -192,7 +192,7 @@ test('ordinary navigation without a case stays plain All activity: no block, no 
   for (const call of queryCalls()) {
     expect(call.endsWith('&scope=session')).toBe(true);
   }
-  expect(screen.getByTestId('pinned-case-line').textContent).toBe('All activity');
+  expect(screen.queryByText('All activity')).toBeNull();   // VA1: retired case line; context is the shell pill
   expect(screen.queryByTestId('expanded-search-block')).toBeNull();
   expect(screen.queryByTestId('return-chip')).toBeNull();
 });

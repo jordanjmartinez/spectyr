@@ -108,6 +108,37 @@ export const PageHeader = ({ icon, title, count = null, subtitle, right = null }
   </Card>
 );
 
+// VA1 (amendment): the ONE page intro -- a concise functional subtitle,
+// the active-incident context rendered EXACTLY ONCE as a compact pill,
+// and the page controls. This replaces both the large secondary identity
+// cards and the retired full-width "All activity" scope bars; there is no
+// replacement status bar, and no page repeats the incident context.
+export const IncidentPill = ({ incidentId, title, severity, mode }) => (
+  <span className="inline-flex items-center gap-2 min-w-0" data-testid="incident-pill">
+    <span className="log-mono text-xs px-2 py-0.5 rounded-md bg-[#eef1f4] text-[#16436b] border border-[#d0d7de] shrink-0">
+      {incidentId}
+    </span>
+    {title && <span className="text-sm text-[#1a2332] truncate">{title}</span>}
+    {severity && (
+      <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded bg-[#eef1f4] text-[#57606a] shrink-0">
+        <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full" style={{ background: severityDot(severity) }} />
+        {severity}
+      </span>
+    )}
+    {mode && (
+      <span className="text-[11px] px-1.5 py-0.5 rounded bg-[#eef1f4] text-[#57606a] shrink-0">{mode}</span>
+    )}
+  </span>
+);
+
+export const PageIntro = ({ subtitle, incident = null, right = null }) => (
+  <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+    {subtitle && <p className="t-body text-[#57606a]">{subtitle}</p>}
+    {incident?.incidentId && <IncidentPill {...incident} />}
+    {right && <div className="ml-auto flex flex-wrap items-center gap-2">{right}</div>}
+  </div>
+);
+
 // ---- small identity pieces --------------------------------------------------
 
 export const CountPill = ({ children }) => (

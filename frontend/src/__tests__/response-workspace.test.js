@@ -167,7 +167,7 @@ test('identity actions execute on the roster account and disabled flags read the
 test('the Response Log is the single chronological history with outcomes and detail', async () => {
   mockApi();
   await renderResponse();
-  fireEvent.click(await screen.findByRole('button', { name: 'Response Log' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Response log' }));
   expect(await screen.findByText('ACME-SVR02')).toBeInTheDocument();
   expect(screen.getAllByText('Isolate Host').length).toBeGreaterThanOrEqual(2);
   expect(screen.getByText('Success')).toBeInTheDocument();
@@ -202,7 +202,7 @@ test('no actionable targets and no actions taken states render the ruled lines',
   });
   await renderResponse();
   expect(await screen.findByText(RESPONSE_NO_TARGETS)).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Response Log' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Response log' }));
   expect(await screen.findByText(RESPONSE_NO_ACTIONS)).toBeInTheDocument();
 });
 

@@ -8,8 +8,26 @@
 // the moment it lands.
 
 // --- the pinned case line (contract A1-A.4 item 1) -------------------------
+// VA1 (amendment): the "Investigating INC-####" body line and the
+// "All activity" scope container are RETIRED. Active-incident context
+// renders exactly once per page as the compact IncidentPill beside the
+// functional subtitle; with no active incident each page uses its own
+// truthful empty state. (The constants remain exported only because the
+// retired-copy scan asserts they no longer render.)
 export const investigatingCase = (incidentId) => `Investigating ${incidentId}`;
 export const ALL_ACTIVITY = 'All activity';
+
+// The functional page subtitles (amendment section 2): what the page is
+// FOR. Decorative organization branding never appears here -- org names
+// belong to evidence, entities, and scenario content.
+export const PAGE_SUBTITLE = {
+  incidents: 'Select and manage an investigation.',
+  siem: 'Search and inspect event data.',
+  detections: 'Review detections and decide what is actionable.',
+  endpoints: 'Inspect hosts, users, processes, and system activity.',
+  response: 'Contain and remediate incident targets.',
+  analytics: 'Review performance and learn from the investigation.',
+};
 
 // (Final pass III.0 item 2: the SIEM state pair and the expanded-search
 // block copy -- caseEvidenceLabel, SEARCH_ALL_EVIDENCE,

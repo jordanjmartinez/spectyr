@@ -6,13 +6,11 @@ import CampaignProgress from './CampaignProgress';
 import ActionHistory from './ActionHistory';
 import ScoreSections from './ScoreSections';
 import LearningReview from './LearningReview';
-import { SESSION_PERFORMANCE_LABEL } from './uiCopy';
-import { CARD_STYLE, PageHeader } from './ui';
-import { NAV_ICONS, NAV_STROKE } from './icons';
+import { SESSION_PERFORMANCE_LABEL, PAGE_SUBTITLE } from './uiCopy';
+import { CARD_STYLE, PageIntro } from './ui';
 
-const PageIcon = NAV_ICONS.analytics;
-
-const Analytics = ({ onReset, analystName, setAnalyticsCount, isVisible = true, reviewRequest = null }) => {
+const Analytics = ({ onReset, analystName, setAnalyticsCount, isVisible = true,
+                     reviewRequest = null, activeIncident = null }) => {
   const [report, setReport] = useState(null);
   const [levelData, setLevelData] = useState(null);
   const [actionHistory, setActionHistory] = useState([]);
@@ -75,13 +73,11 @@ const Analytics = ({ onReset, analystName, setAnalyticsCount, isVisible = true, 
 
   return (
     <div className="space-y-6">
-      {/* V10/V4: the Metrics page identity (Learning Review dashboard);
-          Reset lives in the header right slot (CampaignProgress no longer
-          carries its own page heading). */}
-      <PageHeader
-        icon={<PageIcon size={20} strokeWidth={NAV_STROKE} aria-hidden="true" />}
-        title="Metrics"
-        subtitle="Learning Review and Session performance for this run."
+      {/* VA1: functional subtitle + the ONE incident pill (relevant when
+          an investigation is active); Reset stays in the controls slot. */}
+      <PageIntro
+        subtitle={PAGE_SUBTITLE.analytics}
+        incident={activeIncident}
         right={(
           <button
             onClick={onReset}

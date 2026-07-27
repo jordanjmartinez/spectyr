@@ -127,7 +127,7 @@ test('Final pass III.0.1: Detections is triage-only -- no Threats or Response Lo
   await screen.findByText('LSASS Process Memory Access');
   // the retired views and execution controls are structurally gone
   expect(screen.queryByRole('button', { name: /Threats/ })).toBeNull();
-  expect(screen.queryByRole('button', { name: 'Response Log' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Response log' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Disable' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Revoke' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Reset PW' })).toBeNull();

@@ -1,17 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch } from '../api';
 import DetectionDetail from './DetectionDetail';
-import IncidentScopeBar from './IncidentScopeBar';
 import useIncidentScope from './useIncidentScope';
 import {
   detectionsReviewed, detectionsRemaining, FEED_SUBCOPY, OPEN_IN_RESPONSE,
+  PAGE_SUBTITLE,
 } from './uiCopy';
 import { TOOLTIPS } from './helpContent';
 import { toastDisposition } from './uiToasts';
-import { SEVERITY_PILL, severityDot, PageHeader } from './ui';
-import { NAV_ICONS, NAV_STROKE } from './icons';
-
-const PageIcon = NAV_ICONS.detections;
+import { SEVERITY_PILL, severityDot, PageIntro, ErrorState } from './ui';
 
 // Detections tab (Stage 2; Final pass Part III.0.1): TRIAGE ONLY --
 // promote / dismiss / reopen. All dispositions are scored server-side;
@@ -59,7 +56,7 @@ const shortTime = (iso) =>
 
 const Detections = ({ isVisible, resetTrigger, onHostPivot,
                       activeIncidentId = null, onEvidenceDescent,
-                      onOpenResponse }) => {
+                      onOpenResponse, activeIncident = null }) => {
   const [feed, setFeed] = useState([]);
   const [counts, setCounts] = useState({ open: 0, promoted: 0, dismissed: 0 });
   const [selected, setSelected] = useState(null);
@@ -159,20 +156,21 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
 
   return (
     <div>
-      {/* The case-constant header bar (pinned case line / All activity),
-          rendered from the same state as the row filter so the signals
-          cannot disagree. */}
-      <IncidentScopeBar scope={scope} incidentId={activeIncidentId} />
-
-      {/* V8: the crosshair page identity (the V2 nav mapping) over the
-          shared PageHeader; the queue itself is untouched -- triage-only,
-          no analytics above it. */}
-      <PageHeader
-        icon={<PageIcon size={20} strokeWidth={NAV_STROKE} aria-hidden="true" />}
-        title="Detections"
-        count={headerCount}
-        subtitle="Triage the feed: promote real threats, dismiss false positives."
-      />
+      {/* VA1: the functional subtitle + the ONE incident pill; the
+          retired All-activity bar and the identity card are gone. The
+          scope-failure notice stays as an inline alert (never a
+          full-width status bar) so scope truth is preserved. */}
+      <PageIntro subtitle={PAGE_SUBTITLE.detections} incident={activeIncident} />
+      {activeIncidentId && scope.status === 'error' && (
+        <div className="mb-3 rounded-lg border border-[#e2e6ea] bg-[#faf6f0]">
+          <ErrorState onRetry={scope.refetch}>
+            Incident scope could not be loaded.
+            {scope.data && (
+              <span className="text-[#57606a]"> Displayed rows are from the last successful scope read.</span>
+            )}
+          </ErrorState>
+        </div>
+      )}
 
       {/* OD-9 explanatory subcopy, one line each; counters use the 10.1
           vocabulary. With a case selected the counts are the CASE-SCOPED

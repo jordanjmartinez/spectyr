@@ -69,8 +69,8 @@ test('every primary workspace consumes the shared tokens (no page styles its own
   // directly or through the shared primitives (PageHeader/SectionLabel/
   // WidgetLabel). A page with NEITHER has invented its own hierarchy.
   const comp = (f) => fs.readFileSync(path.join(__dirname, '..', 'components', f), 'utf8');
-  const uses = (src) => /t-(page|section|card|kpi|overline|meta|nav)/.test(src)
-    || /PageHeader|SectionLabel/.test(src);
+  const uses = (src) => /t-(page|section|card|kpi|overline|meta|nav|subsection)/.test(src)
+    || /PageHeader|PageIntro|SectionLabel/.test(src);
   expect(uses(comp('IncidentDashboard.jsx'))).toBe(true);   // Dashboard
   expect(uses(comp('Incidents.jsx'))).toBe(true);           // Incidents
   expect(uses(comp('Siem.jsx'))).toBe(true);                // SIEM

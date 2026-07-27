@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch } from '../api';
 import EndpointDetail from './EndpointDetail';
-import IncidentScopeBar from './IncidentScopeBar';
 import useIncidentScope from './useIncidentScope';
-import { PageHeader } from './ui';
+import { PageIntro, ErrorState } from './ui';
+import { PAGE_SUBTITLE } from './uiCopy';
 import {
-  NAV_ICONS, NAV_STROKE, DeviceGlyph, PlatformBadge, platformFor,
-  DEVICE_LABELS,
+  DeviceGlyph, PlatformBadge, platformFor, DEVICE_LABELS,
 } from './icons';
 
 // Endpoints tab (Stage 1). The data is a fixed session snapshot: it is
@@ -56,10 +55,9 @@ const COLUMNS = [
   { key: 'isolation', label: 'Isolation' },
 ];
 
-const PageIcon = NAV_ICONS.endpoints;
-
 const Endpoints = ({ isVisible, resetTrigger, pivotHost,
-                     activeIncidentId = null, onOpenResponse }) => {
+                     activeIncidentId = null, onOpenResponse,
+                     activeIncident = null }) => {
   const [org, setOrg] = useState({});
   const [rows, setRows] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -146,18 +144,11 @@ const Endpoints = ({ isVisible, resetTrigger, pivotHost,
 
   return (
     <div>
-      {/* The case-constant header bar (pinned case line / All activity),
-          rendered from the same state as the row filter so the signals
-          cannot disagree. */}
-      <IncidentScopeBar scope={scope} incidentId={activeIncidentId} />
-
-      {/* The standard page-identity header (VG PageHeader + the V2 nav
-          identity) -- Endpoints is the asset explorer. */}
-      <PageHeader
-        icon={<PageIcon size={20} strokeWidth={NAV_STROKE} aria-hidden="true" />}
-        title="Endpoints"
-        count={filtered.length}
-        subtitle={`${org.name || 'ACME Corp'}: hosts in this scenario environment`}
+      {/* VA1: functional subtitle + the ONE incident pill; the retired
+          All-activity bar and the identity card are gone. */}
+      <PageIntro
+        subtitle={PAGE_SUBTITLE.endpoints}
+        incident={activeIncident}
         right={(
           <input
             type="text"
@@ -168,6 +159,16 @@ const Endpoints = ({ isVisible, resetTrigger, pivotHost,
           />
         )}
       />
+      {activeIncidentId && scope.status === 'error' && (
+        <div className="mb-3 rounded-lg border border-[#e2e6ea] bg-[#faf6f0]">
+          <ErrorState onRetry={scope.refetch}>
+            Incident scope could not be loaded.
+            {scope.data && (
+              <span className="text-[#57606a]"> Displayed rows are from the last successful scope read.</span>
+            )}
+          </ErrorState>
+        </div>
+      )}
 
       <p className="text-sm text-[#57606a] mb-2">{online} online &middot; {filtered.length - online} offline</p>
 

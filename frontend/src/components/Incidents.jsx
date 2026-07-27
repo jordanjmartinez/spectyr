@@ -7,15 +7,12 @@ import {
   responseActionsTaken, READY_TO_SUBMIT, toReview, completedStrip,
   SUBMITTED_GRADE_LOCKED, CLASSIFICATION_NOT_SELECTED,
   classificationSelected, CONSIDER_PROMPT, SUBMIT_PENDING,
-  caseClosed, REVIEW_WHAT_YOU_LEARNED, CLASSIFY_TO_SUBMIT,
+  caseClosed, REVIEW_WHAT_YOU_LEARNED, CLASSIFY_TO_SUBMIT, PAGE_SUBTITLE,
 } from './uiCopy';
 import { submissionReady, validClassification } from './submissionReady';
 import { toastReady } from './uiToasts';
 import { deriveAchievements } from './achievements';
-import { severityDot, gradeColor, CARD_STYLE, PageHeader, SegmentedToggle } from './ui';
-import { NAV_ICONS, NAV_STROKE } from './icons';
-
-const PageIcon = NAV_ICONS.incidents;
+import { severityDot, gradeColor, CARD_STYLE, PageIntro, SegmentedToggle } from './ui';
 
 // Stage 3.9B: the Incidents operational workspace ("what do I need to work?").
 // Search + Active / Ready / Completed views, stable incident rows, and a
@@ -72,6 +69,11 @@ const Incidents = ({
   isVisible, resetTrigger, onHardcoreFailure, onReset, gameMode = 'training',
   activeIncidentId, onSelectIncident, onNavigate, setGroupedAlertCount, onPracticeAnother,
   onEvidenceDescent, onOpenLearningReview,
+  // VA1: this workspace already polls the incident list, so it reports
+  // the selected incident's observable summary up to the shell, which
+  // hands it to the other pages for their ONE context pill. No new
+  // request and no new endpoint field.
+  onActiveIncidentSummary,
   // A3.4 (ratified A3-OD-3): the classification selection state is
   // SHELL-OWNED (Dashboard) so every Ready surface derives from the one
   // state; this component receives it and its setter.
@@ -177,6 +179,15 @@ const Incidents = ({
   const rows = all.filter(c => byView(c) && (!q || (c.title || '').toLowerCase().includes(q) || (c.incident_id || '').toLowerCase().includes(q)));
   const selected = all.find(c => c.incident_id === selectedId) || null;
 
+  useEffect(() => {
+    if (!onActiveIncidentSummary) return;
+    const card = [...data.active, ...data.completed]
+      .find(c => c.incident_id === activeIncidentId);
+    onActiveIncidentSummary(card
+      ? { incidentId: card.incident_id, title: card.title, severity: card.severity }
+      : null);
+  }, [activeIncidentId, data, onActiveIncidentSummary]);
+
   const counts = {
     active: data.active.length,
     ready: data.active.filter(c => c.state === 'in_progress' && submissionReady(c, chosen)).length,
@@ -240,13 +251,11 @@ const Incidents = ({
 
   return (
     <div>
-      {/* V8/V4: the siren page identity over the shared PageHeader; the
-          master-detail case workspace beneath is untouched. */}
-      <PageHeader
-        icon={<PageIcon size={20} strokeWidth={NAV_STROKE} aria-hidden="true" />}
-        title="Incidents"
-        count={rows.length}
-        subtitle="Work the case queue: investigate, triage, respond, submit."
+      {/* VA1: functional subtitle + page controls. The incident context
+          is NOT repeated here -- this page's own detail pane already
+          names the selected incident (one context per page). */}
+      <PageIntro
+        subtitle={PAGE_SUBTITLE.incidents}
         right={(
           <>
             <SegmentedToggle

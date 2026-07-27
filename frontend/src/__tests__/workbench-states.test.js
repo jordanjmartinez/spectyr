@@ -77,25 +77,25 @@ test('a selected case anchors the SIEM to case evidence; the anchor is announced
   const props = { resetTrigger: 0, onHostPivot: () => {} };
   const { rerender } = render(<Siem initialQueryMode="advanced" {...props} activeIncidentId={null} />);
   // no case: All activity, no scope read
-  expect(screen.getByTestId('pinned-case-line').textContent).toBe(ALL_ACTIVITY);
+  expect(screen.queryByTestId('pinned-case-line')).toBeNull();   // VA1: the case line is retired; context is the shell pill
   expect(apiFetch.mock.calls.map(c => c[0]).filter(p => p.includes('/scope'))).toEqual([]);
   // a case is selected on Incidents -> the SIEM re-anchors, visibly
   await act(async () => { rerender(<Siem initialQueryMode="advanced" {...props} activeIncidentId={INC} />); });
-  expect(screen.getByTestId('pinned-case-line').textContent).toBe(investigatingCase(INC));
+  expect(screen.queryByText(/Investigating/)).toBeNull();   // VA1: the case line is retired; context is the shell pill
   expect(apiFetch.mock.calls.map(c => c[0]).filter(p => p.includes('/scope')).length)
     .toBeGreaterThanOrEqual(1);
 });
 
 test('no case: All activity; queries carry scope=session', async () => {
   renderShell({ activeIncidentId: null });
-  expect(screen.getByTestId('pinned-case-line').textContent).toBe(ALL_ACTIVITY);
+  expect(screen.queryByTestId('pinned-case-line')).toBeNull();   // VA1: the case line is retired; context is the shell pill
   await runQuery();
   expect(queryCalls().pop()).toMatch(/scope=session$/);
 });
 
 test('case evidence is the only state with a case: queries carry the case scope', async () => {
   await act(async () => { renderShell(); });
-  expect(screen.getByTestId('pinned-case-line').textContent).toBe(investigatingCase(INC));
+  expect(screen.queryByText(/Investigating/)).toBeNull();   // VA1: the case line is retired; context is the shell pill
   await runQuery();
   expect(queryCalls().pop()).toMatch(new RegExp(`scope=${INC}$`));
 });
@@ -108,13 +108,13 @@ test('no scope furniture exists with a case: no chip, no search-all, no return, 
   expect(screen.queryByTestId('return-chip')).toBeNull();
   expect(screen.queryByTestId('expanded-search-block')).toBeNull();
   // the pinned line is the ONE context marker, rendered exactly once
-  expect(screen.getAllByTestId('pinned-case-line')).toHaveLength(1);
+  expect(screen.queryAllByTestId('pinned-case-line')).toHaveLength(0);   // VA1: the case line is retired; context is the shell pill
 });
 
 test('the case never changes from the SIEM: no control exists that mutates it (OD-15 structural)', async () => {
   await act(async () => { renderShell(); });
   await runQuery();
-  expect(screen.getByTestId('pinned-case-line').textContent).toBe(investigatingCase(INC));
+  expect(screen.queryByText(/Investigating/)).toBeNull();   // VA1: the case line is retired; context is the shell pill
   // no scope select, no toggle, no clear control on this surface
   expect(screen.queryByLabelText('Scope')).toBeNull();
   expect(screen.queryByRole('button', { name: 'Session-wide' })).toBeNull();
@@ -146,7 +146,7 @@ test('scope-error on the case read: case retained, Run disabled, Retry-only reco
   scopeResponse = () => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) });
   await act(async () => { renderShell(); });
 
-  expect(screen.getByTestId('pinned-case-line').textContent).toBe(investigatingCase(INC));
+  expect(screen.queryByText(/Investigating/)).toBeNull();   // VA1: the case line is retired; context is the shell pill
   expect(screen.getByRole('alert').textContent).toContain('Incident scope could not be loaded.');
   // with bar text present, Run stays disabled by the scope block alone
   fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
