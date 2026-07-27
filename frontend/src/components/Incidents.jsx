@@ -12,7 +12,9 @@ import {
 import { submissionReady, validClassification } from './submissionReady';
 import { toastReady } from './uiToasts';
 import { deriveAchievements } from './achievements';
-import { severityDot, gradeColor, CARD_STYLE, PageIntro, SegmentedToggle } from './ui';
+import {
+  gradeColor, CARD_STYLE, PageIntro, SegmentedToggle, IncidentIdPill, SeverityBadge,
+} from './ui';
 
 // Stage 3.9B: the Incidents operational workspace ("what do I need to work?").
 // Search + Active / Ready / Completed views, stable incident rows, and a
@@ -278,7 +280,7 @@ const Incidents = ({
             <button key={c.incident_id} onClick={() => onSelectIncident?.(c.incident_id)}
               className={`w-full text-left p-3 flex items-center justify-between gap-2 ${c.incident_id === selectedId ? 'bg-[#16436b]/5' : 'hover:bg-[#f6f8fa]'}`}>
               <span className="min-w-0 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: severityDot(c.severity) }} />
+                <SeverityBadge severity={c.severity} />
                 <span className="log-mono text-[#16436b] text-xs shrink-0">{c.incident_id}</span>
                 <span className="text-sm text-[#1a2332] truncate">{c.title}</span>
               </span>
@@ -302,9 +304,8 @@ const Incidents = ({
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="log-mono text-[#16436b] text-xs">{selected.incident_id}</span>
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: severityDot(selected.severity) }} />
-                    <span className="text-[11px] text-[#8b949e]">{selected.severity}</span>
+                    <IncidentIdPill id={selected.incident_id} />
+                    <SeverityBadge severity={selected.severity} />
                     <span className="text-base font-semibold text-[#1a2332]">{selected.title}</span>
                     {selected.state === 'submitted' && selected.assisted && (
                       <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#eef1f4] text-[#57606a] border border-[#d0d7de]">Assisted</span>

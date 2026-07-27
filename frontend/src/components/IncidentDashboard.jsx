@@ -6,7 +6,9 @@ import {
   classificationSelected, READY_TO_SUBMIT, SESSION_PERFORMANCE_LABEL,
 } from './uiCopy';
 import { submissionReady, validClassification } from './submissionReady';
-import { severityDot, gradeColor, CARD_STYLE } from './ui';
+import {
+  severityDot, gradeColor, CARD_STYLE, IncidentIdPill, SeverityBadge, ModeBadge,
+} from './ui';
 import { platformFor, PLATFORM_LABELS, DEVICE_LABELS } from './icons';
 import AttackRadar from './AttackRadar';
 import EvidenceActivity from './EvidenceActivity';
@@ -274,12 +276,14 @@ const IncidentDashboard = ({
               <p className="text-sm text-[#8b949e]">No active investigations.</p>
             ) : (
               <div className="space-y-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: severityDot(focus.severity) }} />
-                  <span className="log-mono text-[#16436b] text-xs">{focus.incident_id}</span>
-                  <span className="text-[11px] text-[#8b949e]">{focus.severity}</span>
-                  {/* VH: the session mode as a compact badge beside identity */}
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#eef1f4] text-[#57606a]">{MODE_LABEL[gameMode] || gameMode}</span>
+                {/* VD2 (visual correction section 2): the wrapping metadata
+                    row of shared badges -- [INC id] [Severity] [Mode] --
+                    wraps cleanly, the card grows naturally, nothing clips
+                    or compresses to force one line. */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <IncidentIdPill id={focus.incident_id} />
+                  <SeverityBadge severity={focus.severity} />
+                  <ModeBadge mode={gameMode} />
                 </div>
                 <p className="text-sm font-medium text-[#1a2332]">{focus.title}</p>
                 {/* VS: Investigation Progress folded in here -- the bar and
@@ -326,7 +330,7 @@ const IncidentDashboard = ({
                       <button key={c.incident_id} onClick={() => openInIncidents(c.incident_id)}
                         className="w-full text-left flex items-center justify-between gap-2 text-xs hover:bg-[#f6f8fa] rounded px-1 py-1">
                         <span className="min-w-0 flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: severityDot(c.severity) }} />
+                          <SeverityBadge severity={c.severity} />
                           <span className="log-mono text-[#16436b]">{c.incident_id}</span>
                           <span className="text-[#57606a] truncate">{c.title}</span>
                         </span>

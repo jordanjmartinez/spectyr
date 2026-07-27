@@ -1,4 +1,5 @@
 import React from 'react';
+import { MODE_LABEL } from './uiCopy';
 
 // ============================================================================
 // Visual pass VG: the ONE shared visual-language module.
@@ -57,12 +58,56 @@ export const SEVERITY_DOT = {
 export const severityDot = (sev) =>
   SEVERITY_DOT[String(sev || '').toLowerCase()] || '#8b949e';
 
-// Severity pill tints (Detections feed rows).
+// Severity pill tints (the one badge tint map; low deliberately keeps
+// the neutral border + green dot the approved Detections feed shipped).
 export const SEVERITY_PILL = {
   critical: 'bg-red-50 text-red-700 border-red-200',
   high: 'bg-orange-50 text-orange-700 border-orange-200',
   medium: 'bg-amber-50 text-amber-700 border-amber-200',
 };
+
+// ---- the shared identity badges (VD2, visual correction section 2) ----------
+// ONE treatment per concept, defined once and consumed everywhere:
+//   IncidentIdPill -- the incident identity. JetBrains Mono, compact,
+//     neutral seam background + ctrl border; the INC accent ink is the
+//     app's one accent, NEVER a severity color.
+//   SeverityBadge -- the approved Detections treatment as the source of
+//     truth: direct label, restrained semantic tint, border + subtle
+//     background, status dot; never color alone. Case-insensitive input
+//     ('Critical' and 'critical' render identically).
+//   ModeBadge -- the compact session-mode chip (Guided / Hardcore).
+
+export const IncidentIdPill = ({ id }) => (
+  <span
+    data-testid="incident-id-pill"
+    className="log-mono text-xs px-2 py-0.5 rounded-md bg-[#eef1f4] text-[#16436b] border border-[#d0d7de] shrink-0 whitespace-nowrap"
+  >
+    {id}
+  </span>
+);
+
+export const SeverityBadge = ({ severity }) => {
+  const k = String(severity || '').toLowerCase();
+  return (
+    <span
+      data-testid="severity-badge"
+      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border whitespace-nowrap ${
+        SEVERITY_PILL[k] || 'border-[#d0d7de] text-[#57606a]'}`}
+    >
+      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: severityDot(k) }} />
+      {k ? k.charAt(0).toUpperCase() + k.slice(1) : ''}
+    </span>
+  );
+};
+
+export const ModeBadge = ({ mode }) => (
+  <span
+    data-testid="mode-badge"
+    className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-[#eef1f4] text-[#57606a] shrink-0 whitespace-nowrap"
+  >
+    {MODE_LABEL[mode] || mode}
+  </span>
+);
 
 // Letter-grade color (display only; grades themselves are always
 // server-computed).
@@ -113,21 +158,14 @@ export const PageHeader = ({ icon, title, count = null, subtitle, right = null }
 // and the page controls. This replaces both the large secondary identity
 // cards and the retired full-width "All activity" scope bars; there is no
 // replacement status bar, and no page repeats the incident context.
+// VD2: recomposed from the shared identity badges above, so the pill's
+// pieces are byte-identical with every other surface's.
 export const IncidentPill = ({ incidentId, title, severity, mode }) => (
-  <span className="inline-flex items-center gap-2 min-w-0" data-testid="incident-pill">
-    <span className="log-mono text-xs px-2 py-0.5 rounded-md bg-[#eef1f4] text-[#16436b] border border-[#d0d7de] shrink-0">
-      {incidentId}
-    </span>
+  <span className="inline-flex items-center gap-2 min-w-0 flex-wrap" data-testid="incident-pill">
+    <IncidentIdPill id={incidentId} />
     {title && <span className="text-sm text-[#1a2332] truncate">{title}</span>}
-    {severity && (
-      <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded bg-[#eef1f4] text-[#57606a] shrink-0">
-        <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full" style={{ background: severityDot(severity) }} />
-        {severity}
-      </span>
-    )}
-    {mode && (
-      <span className="text-[11px] px-1.5 py-0.5 rounded bg-[#eef1f4] text-[#57606a] shrink-0">{mode}</span>
-    )}
+    {severity && <SeverityBadge severity={severity} />}
+    {mode && <ModeBadge mode={mode} />}
   </span>
 );
 

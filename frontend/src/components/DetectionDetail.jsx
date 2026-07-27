@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../api';
-import { SeverityBadge, RuleTypeChip } from './Detections';
+import { SeverityBadge } from './ui';
+import { RuleTypeChip } from './Detections';
 
 // Detection detail (Stage 2), the Section 8 card anatomy: lineage as
 // first-class UI. Triggering Event card plus a stacked Parent Process card.

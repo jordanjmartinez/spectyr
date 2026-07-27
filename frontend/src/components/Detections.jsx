@@ -7,7 +7,7 @@ import {
 } from './uiCopy';
 import { TOOLTIPS } from './helpContent';
 import { toastDisposition } from './uiToasts';
-import { SEVERITY_PILL, severityDot, PageIntro, ErrorState } from './ui';
+import { SeverityBadge, PageIntro, ErrorState } from './ui';
 
 // Detections tab (Stage 2; Final pass Part III.0.1): TRIAGE ONLY --
 // promote / dismiss / reopen. All dispositions are scored server-side;
@@ -16,18 +16,10 @@ import { SEVERITY_PILL, severityDot, PageIntro, ErrorState } from './ui';
 // only the neutral Open in Response navigation, which selects the
 // relevant target there and executes nothing.
 
-// Visual pass VG: severity pills and dots read the shared maps (ui.jsx),
-// unifying the dot palette with the Incidents/Dashboard severity dots
-// (previously a slightly different set of hexes solved the same problem).
-export const SeverityBadge = ({ severity }) => {
-  const s = String(severity || '');
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border ${SEVERITY_PILL[severity] || 'border-[#d0d7de] text-[#57606a]'}`}>
-      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: severityDot(severity) }} />
-      {s ? s.charAt(0).toUpperCase() + s.slice(1) : ''}
-    </span>
-  );
-};
+// VD2 (visual correction section 2): the severity badge this feed
+// established is now the ONE shared SeverityBadge in ui.jsx (identical
+// treatment on every player-facing severity display); this file simply
+// consumes it.
 
 export const RuleTypeChip = ({ type }) => (
   <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs border border-[#d0d7de] text-[#57606a] whitespace-nowrap">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../api';
-import { severityDot } from './ui';
+import { SeverityBadge } from './ui';
 import { ChromeIcons, NAV_ICONS, NAV_STROKE } from './icons';
 
 // VA2 (amendment section 4): the mode chooser. Two experiences only --
@@ -157,10 +157,9 @@ const DifficultySelector = ({ onSelect, onCancel, initialName = '', initialStep 
                     onClick={() => pickScenario(e.catalog_id)}
                     className="w-full text-left p-3 rounded-lg border border-[#d0d7de] hover:bg-[#f6f8fa] transition-colors"
                   >
-                    <span className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: severityDot(e.severity) }} />
+                    <span className="flex items-center gap-2 flex-wrap">
                       <span className="t-subsection">{e.title}</span>
-                      <span className="text-[11px] text-[#8b949e]">{e.severity}</span>
+                      <SeverityBadge severity={e.severity} />
                     </span>
                     <span className="text-xs text-[#57606a] block mt-1">{e.description}</span>
                   </button>
