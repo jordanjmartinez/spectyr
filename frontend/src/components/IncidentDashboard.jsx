@@ -77,9 +77,10 @@ const IncidentDashboard = ({
   // token-bound new-count and only enters on an explicit Load.
   const [evidence, setEvidence] = useState({ forId: null, snapshot: null, loading: false });
   const [evidenceNew, setEvidenceNew] = useState(0);
-  // Post-submission records: incident_id -> {grading, techId}. Fetched
-  // ONCE per submitted id (score view + disclosed triage review); never
-  // requested for active incidents (the temporal rule).
+  // Post-submission records: incident_id -> {grading, techId, rosterIds}.
+  // Fetched ONCE per submitted id (score view + disclosed triage review +
+  // the frozen sealed roster ids for the ATT&CK profile); never requested
+  // for active incidents (the temporal rule).
   const [records, setRecords] = useState({});
   const fetchedRef = useRef(new Set());
 
@@ -124,11 +125,18 @@ const IncidentDashboard = ({
       Promise.all([
         apiFetch(`/api/incidents/${id}/score`).then(r => (r.ok ? r.json() : null)).catch(() => null),
         apiFetch(`/api/incidents/${id}/triage-review`).then(r => (r.ok ? r.json() : null)).catch(() => null),
-      ]).then(([score, triage]) => {
+        apiFetch(`/api/incidents/${id}/scope`).then(r => (r.ok ? r.json() : null)).catch(() => null),
+      ]).then(([score, triage, scope]) => {
         if (score?.state === 'submitted') {
           setRecords(prev => ({
             ...prev,
-            [id]: { grading: score.grading, techId: triage?.mitre?.id || null },
+            [id]: {
+              grading: score.grading,
+              techId: triage?.mitre?.id || null,
+              // the sealed roster is immutable post-submission (roster
+              // finality), so one read IS the frozen mapping source
+              rosterIds: new Set(scope?.detection_ids || []),
+            },
           }));
         } else {
           fetchedRef.current.delete(id);   // not served yet; retry on a later poll
@@ -219,13 +227,6 @@ const IncidentDashboard = ({
   }));
   const sevMax = Math.max(...sevRows.map(r => r.count));
 
-  // VA3: the incident ATT&CK profile inputs -- the mitre mappings of the
-  // focus incident's roster detections. Already-visible data (every
-  // detection detail renders its tag in every mode); never the answer key.
-  const profileMappings = scopedIds
-    ? feed.filter(d => scopedIds.has(d.id) && d.mitre && d.mitre.id)
-        .map(d => ({ id: d.mitre.id, tactic: d.mitre.tactic, name: d.mitre.name }))
-    : [];
 
   // Environment status (VS owner correction): current observable state
   // only -- no uptime claims, no history. Platform breakdown from the
@@ -248,6 +249,23 @@ const IncidentDashboard = ({
   const completedSorted = [...(data.completed || [])]
     .sort((a, b) => String(b.submitted_at || '').localeCompare(String(a.submitted_at || '')));
   const latest = completedSorted[0] || null;
+
+  // VD3 (visual correction section 4): the ATT&CK profile is disclosed
+  // only across the submission boundary. An ACTIVE focus incident locks
+  // the card (no mappings are derived for it at all); with no active
+  // focus, the latest SUBMITTED incident's profile renders from its
+  // frozen record (the sealed roster ids fetched once per submitted id,
+  // joined to the sanitized feed's mitre tags -- both immutable for the
+  // session, never the answer key).
+  const profileIncidentId = focus ? focusId : (latest?.incident_id || null);
+  const profileSubmitted = !focus && !!latest;
+  const profileRecord = profileSubmitted ? records[latest.incident_id] : null;
+  const profileMappings = profileSubmitted
+    ? (profileRecord
+      ? feed.filter(d => profileRecord.rosterIds.has(d.id) && d.mitre && d.mitre.id)
+          .map(d => ({ id: d.mitre.id, tactic: d.mitre.tactic, name: d.mitre.name }))
+      : null)   // frozen record still arriving -> the card's loading line
+    : null;
 
   const triage = focus?.triage || { total: 0, triaged: 0 };
   const focusChosen = focus ? chosen[focus.incident_id] : null;
@@ -450,13 +468,16 @@ const IncidentDashboard = ({
             )}
           </div>
 
-          {/* D. The incident ATT&CK profile (VA3): the smaller near-square
-              SECONDARY card on the right, top-aligned with Evidence
-              activity. Never the dashboard centrepiece. */}
+          {/* D. The incident ATT&CK profile (VA3 + VD3): the smaller
+              near-square SECONDARY card on the right, top-aligned with
+              Evidence activity. Locked while the profiled incident is
+              pre-submission; the polygon renders only from a frozen
+              submitted record. */}
           <div className="xl:col-start-3 xl:row-start-2 min-w-0">
             <AttackRadar
               isVisible={isVisible}
-              incidentId={focusId}
+              incidentId={profileIncidentId}
+              submitted={profileSubmitted}
               mappings={profileMappings}
             />
           </div>

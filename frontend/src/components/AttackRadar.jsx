@@ -2,28 +2,34 @@ import React, { useRef, useState, useEffect } from 'react';
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Tooltip,
 } from 'recharts';
-import { ATTACK_TACTICS, incidentProfile } from './attackCatalog';
-import { CARD_STYLE, SectionLabel } from './ui';
+import { incidentProfile } from './attackCatalog';
+import { CARD_STYLE, SectionLabel, LoadingState } from './ui';
 
 // ============================================================================
-// VA3 (amendment section 5): the INCIDENT ATT&CK PROFILE.
+// VA3 (amendment section 5) + VD3 (visual correction section 4): the
+// INCIDENT ATT&CK PROFILE, disclosed only ACROSS THE SUBMISSION BOUNDARY.
 //
-// This chart is the ATT&CK shape of the CURRENT ACTIVE INCIDENT. It is
-// NOT catalog coverage, NOT Enterprise-framework coverage, NOT session
-// performance, and never a two-series comparison.
+// This chart is the ATT&CK shape of ONE incident. It is NOT catalog
+// coverage, NOT Enterprise-framework coverage, NOT session performance,
+// and never a two-series comparison.
 //
-// Data: the incident's roster detections' mitre mappings. Those tags are
-// already rendered on every detection's detail view in EVERY mode, so
-// aggregating them is not a new disclosure and never reads the answer
-// key -- which is also why no mode needs a locked state here. (Were the
-// source ever changed to answer-key techniques, Hardcore before
-// submission would have to show the locked state instead; that
-// constraint is recorded with the leak-safety tests.)
+// Disclosure (VD3, ruled): although each roster detection's mitre tag is
+// individually visible in every mode, AGGREGATING them into a tactic
+// shape biases the incident classification the player has not yet
+// committed. So before submission the card renders ONLY the neutral
+// locked state -- no tactic axes, no technique identities, no polygon,
+// no normalized values, not even in the accessible table. The rule is
+// mode-independent by construction (this component has no mode input;
+// `submitted` is the only key), so Guided and Hardcore share the same
+// dashboard boundary. After submission the profile renders from the
+// incident's FROZEN roster (sealed at drip, immutable per the standing
+// roster-finality invariant), so later content changes cannot mutate it.
 //
-// Normalization (ruled): each tactic's mapped-technique count divided by
-// the HIGHEST tactic count in this same incident, so the strongest
-// tactic renders at 100% and the polygon reads as a full game-stat
-// profile. Absent tactics stay exactly 0% -- no artificial minimum.
+// Normalization (ruled, unchanged): each tactic's mapped-technique count
+// divided by the HIGHEST tactic count in this same incident, so the
+// strongest tactic renders at 100% and the polygon reads as a full
+// game-stat profile. Absent tactics stay exactly 0% -- no artificial
+// minimum.
 // ============================================================================
 
 export const SHORT_TACTIC = {
@@ -46,6 +52,8 @@ export const SHORT_TACTIC = {
 
 export const NO_INCIDENT = 'Start an investigation to see its ATT&CK profile.';
 export const NO_MAPPINGS = 'No ATT&CK techniques are mapped to this incident.';
+export const LOCKED = 'Available after submission.';
+export const LOCKED_SUB = 'Complete the investigation to reveal the mapped tactics.';
 
 const AngleTick = ({ payload, x, y, textAnchor }) => (
   <text x={x} y={y} textAnchor={textAnchor} fill="#57606a" fontSize={10}>
@@ -71,7 +79,9 @@ const ProfileTooltip = ({ active, payload }) => {
   );
 };
 
-const AttackRadar = ({ isVisible = true, incidentId = null, mappings = null }) => {
+const AttackRadar = ({
+  isVisible = true, incidentId = null, submitted = false, mappings = null,
+}) => {
   const wrapRef = useRef(null);
   const [width, setWidth] = useState(440);
 
@@ -85,7 +95,6 @@ const AttackRadar = ({ isVisible = true, incidentId = null, mappings = null }) =
     return () => window.removeEventListener('resize', measure);
   }, []);
 
-  const profile = incidentProfile(mappings);
   const height = Math.round(width * 0.94);
 
   const Frame = ({ children }) => (
@@ -98,10 +107,28 @@ const AttackRadar = ({ isVisible = true, incidentId = null, mappings = null }) =
     </div>
   );
 
-  // truthful states: never a meaningless zero polygon
   if (!incidentId) {
     return <Frame><p className="px-4 py-8 text-sm text-[#57606a]">{NO_INCIDENT}</p></Frame>;
   }
+  // VD3: the temporal boundary. Before submission NOTHING derived from
+  // the incident renders here -- mappings are ignored even if supplied.
+  if (!submitted) {
+    return (
+      <Frame>
+        <div className="px-4 py-8" data-testid="attack-radar-locked">
+          <p className="text-sm font-medium text-[#1a2332]">{LOCKED}</p>
+          <p className="text-sm text-[#57606a] mt-1">{LOCKED_SUB}</p>
+        </div>
+      </Frame>
+    );
+  }
+  // the frozen record is still arriving (one fetch per submitted id)
+  if (mappings === null) {
+    return <Frame><LoadingState /></Frame>;
+  }
+
+  const profile = incidentProfile(mappings);
+  // truthful states: never a meaningless zero polygon
   if (profile.max === 0) {
     return <Frame><p className="px-4 py-8 text-sm text-[#57606a]">{NO_MAPPINGS}</p></Frame>;
   }
