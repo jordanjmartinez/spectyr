@@ -85,7 +85,7 @@ test('the app header is the light inline cell of the unified shell row (VC1: the
   const bar = hdr.match(/<header\s+className="([^"]+)"/)[1];
   expect(bar).not.toMatch(/bg-\[#101218\]/);        // no rounded black container
   expect(bar).not.toMatch(/rounded/);               // a row cell, not a capsule
-  expect(bar).toMatch(/h-\[72px\]/);                // shares the brand-cell height
+  expect(bar).toMatch(/h-\[96px\]/);                // shares the brand-cell height
   expect(bar).toMatch(/bg-white/);                  // VC3: the pure white card surface
   expect(bar).toMatch(/border-b border-\[#e2e6ea\]/); // divider only, no border box
   expect(bar).not.toMatch(/border border-/);        // no leftover dark border box

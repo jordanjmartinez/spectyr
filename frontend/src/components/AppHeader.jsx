@@ -51,7 +51,7 @@ const AppHeader = ({ title, gameMode, analystName, simActive, onReset }) => {
     // padding matches the content wrapper below so the title left-aligns
     // with the page content.
     <header
-      className="h-[72px] px-4 sm:px-6 flex items-center justify-between gap-4 bg-white border-b border-[#e2e6ea]"
+      className="h-[96px] px-4 sm:px-6 flex items-center justify-between gap-4 bg-white border-b border-[#e2e6ea]"
       data-testid="app-header"
     >
       <h1 className="t-page">{title}</h1>

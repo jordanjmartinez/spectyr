@@ -277,7 +277,9 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen flex bg-[#f6f8fa] text-[#1a2332]">
       {/* Navy nav rail */}
-      <aside className="sticky top-0 self-start h-screen w-16 lg:w-56 shrink-0 bg-[#101218] text-gray-300 flex flex-col z-30">
+      {/* VC4: the rail widens (w-24 collapsed / w-72 expanded) to carry the
+          doubled 80px ghost without clipping the lockup */}
+      <aside className="sticky top-0 self-start h-screen w-24 lg:w-72 shrink-0 bg-[#101218] text-gray-300 flex flex-col z-30">
         {/* VC3 (final lockup correction, cumulative over VC1-VC2): the
             brand cell of the unified 72px shell row renders the ONE
             shared BrandLockup (40px ghost + 30px wordmark; sizing and
@@ -292,7 +294,7 @@ const Dashboard = () => {
         <Link
           to="/"
           title="Back to home"
-          className="flex items-center justify-center lg:justify-start h-[72px] px-2.5 border-b border-white/10 hover:bg-white/5 transition-colors"
+          className="flex items-center justify-center lg:justify-start h-[96px] px-2 lg:px-3 border-b border-white/10 hover:bg-white/5 transition-colors"
         >
           <BrandLockup wordmarkClass="hidden lg:inline" />
           <span className="sr-only">SPECTR home</span>

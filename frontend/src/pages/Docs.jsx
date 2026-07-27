@@ -62,9 +62,12 @@ const Docs = () => {
       {/* Mobile top bar */}
       {/* VC3: the shared full-size BrandLockup (same component and size
           as the app shell -- no smaller Docs variant) */}
-      <div className="lg:hidden sticky top-0 z-20 flex items-center justify-between px-4 py-3 bg-[#101218] border-b border-white/10 text-white">
+      <div className="lg:hidden sticky top-0 z-20 flex items-center justify-between px-4 py-2 bg-[#101218] border-b border-white/10 text-white">
         <Link to="/" className="flex items-center">
-          <BrandLockup />
+          {/* VC4: below 480px the bar cannot hold the 80px ghost, the
+              wordmark, and the action; the wordmark yields (the ghost
+              is retained), same reduction rule as the sim icon rail */}
+          <BrandLockup wordmarkClass="hidden min-[480px]:inline" />
         </Link>
         <Link
           to="/sim"
@@ -81,7 +84,7 @@ const Docs = () => {
             lockup row can run tighter (padding reduced first, logo
             dimensions preserved); nav and the action keep the original
             px-8 inset */}
-        <aside className="hidden lg:flex flex-col shrink-0 w-64 sticky top-0 h-screen bg-[#101218] text-white py-12">
+        <aside className="hidden lg:flex flex-col shrink-0 w-72 sticky top-0 h-screen bg-[#101218] text-white py-12">
           <Link to="/" className="flex items-center mb-12 px-4">
             <BrandLockup />
           </Link>

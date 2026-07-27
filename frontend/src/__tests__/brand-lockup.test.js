@@ -86,10 +86,11 @@ test('the display face is scoped to the SPECTR wordmark only', () => {
   }
 });
 
-test('ONE shared lockup at the ruled size: 40px ghost + 30px wordmark, shrink-proof, unclipped', () => {
+test('ONE shared lockup at the ruled size: 80px ghost + 30px wordmark, shrink-proof, unclipped', () => {
   const c = read('components/BrandLockup.jsx');
-  // px-FIXED dimensions (VC3 sections 3+5): never rem/nav-label derived
-  expect(c).toMatch(/h-\[40px\] w-\[40px\][^"]*object-contain[^"]*shrink-0/);
+  // px-FIXED dimensions (VC3 sections 3+5; VC4 doubles the ghost per the
+  // owner's "at least double" instruction): never rem/nav-label derived
+  expect(c).toMatch(/h-\[80px\] w-\[80px\][^"]*object-contain[^"]*shrink-0/);
   expect(c).toMatch(/brand-wordmark text-\[30px\][^"]*shrink-0/);
   // no transform-based scaling, no max-height shrinking, no clipping --
   // judged on the rendered class strings, not prose comments
@@ -107,9 +108,9 @@ test('the sidebar lockup is a real destination with an accessible name, never a 
   expect(rail).toMatch(/SPECTR home/);
   // it keeps the app's existing home navigation (not a new behavior)
   expect(rail).toMatch(/<Link\s+to="\/"/);
-  // the branded top area is the sidebar cell of the unified 72px shell
-  // row (VC1), with the divider retained
-  expect(rail).toMatch(/h-\[72px\][^"]*border-b border-white\/10/);
+  // the branded top area is the sidebar cell of the unified shell row
+  // (VC1; 96px since VC4 to carry the 80px ghost), divider retained
+  expect(rail).toMatch(/h-\[96px\][^"]*border-b border-white\/10/);
 });
 
 test('internal identifiers are NOT renamed by this visible-brand change', () => {
