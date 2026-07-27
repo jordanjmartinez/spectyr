@@ -72,9 +72,13 @@ beforeEach(() => {
 test('renders the overview grid in reading order: A, B, then the main region', async () => {
   const { container } = render(<IncidentDashboard gameMode="hardcore" analystName="A" />);
   await screen.findByText('INC-2000');
-  // VL: the radar is SECONDARY -- it stacks beneath the operational
-  // content and Recent results (the ruled hierarchy).
-  const order = ['active-investigation', 'severity-distribution', 'environment-status', 'kpi-row', 'recent-results', 'attack-radar'];
+  // VB1 (amendment section 1): the ruled narrow stack order --
+  // Active investigation, KPI summary, Evidence activity, Severity,
+  // Environment, ATT&CK profile, Recent results. Evidence activity is
+  // the primary visualization; the ATT&CK profile stays secondary.
+  const order = ['active-investigation', 'kpi-row', 'evidence-activity',
+                 'severity-distribution', 'environment-status',
+                 'attack-radar', 'recent-results'];
   const nodes = order.map(id => container.querySelector(`[data-testid="${id}"]`));
   nodes.forEach(n => expect(n).not.toBeNull());
   for (let i = 0; i < nodes.length - 1; i += 1) {

@@ -9,6 +9,8 @@ import { submissionReady, validClassification } from './submissionReady';
 import { severityDot, gradeColor, CARD_STYLE } from './ui';
 import { platformFor, PLATFORM_LABELS, DEVICE_LABELS } from './icons';
 import AttackRadar from './AttackRadar';
+import EvidenceActivity from './EvidenceActivity';
+import { descentSessionAll } from './lcqlPivots';
 
 // ============================================================================
 // Stage 3.9B Dashboard, redesigned by Visual pass V5: the analytic
@@ -67,6 +69,12 @@ const IncidentDashboard = ({
   const [focusScope, setFocusScope] = useState({ forId: null, ids: null });
   const focusIdRef = useRef(null);
   const [actionSuccesses, setActionSuccesses] = useState(0);
+  // VB1: the Evidence activity FROZEN snapshot for the focus incident,
+  // read through the existing single query path under the incident's
+  // scope. Fetched once per incident; later evidence is announced by the
+  // token-bound new-count and only enters on an explicit Load.
+  const [evidence, setEvidence] = useState({ forId: null, snapshot: null, loading: false });
+  const [evidenceNew, setEvidenceNew] = useState(0);
   // Post-submission records: incident_id -> {grading, techId}. Fetched
   // ONCE per submitted id (score view + disclosed triage review); never
   // requested for active incidents (the temporal rule).
@@ -156,6 +164,42 @@ const IncidentDashboard = ({
     return () => { cancelled = true; };
   }, [focusId]);
 
+  // VB1: one frozen evidence read per focus incident (never a poll, so
+  // the snapshot cannot move on its own).
+  const loadEvidence = useCallback((id) => {
+    if (!id) return;
+    setEvidence({ forId: id, snapshot: null, loading: true });
+    setEvidenceNew(0);
+    apiFetch(`/api/events/query?q=${encodeURIComponent(descentSessionAll())}&scope=${encodeURIComponent(id)}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(body => setEvidence(body
+        ? { forId: id, snapshot: body, loading: false }
+        : { forId: id, snapshot: null, loading: false }))
+      .catch(() => setEvidence({ forId: id, snapshot: null, loading: false }));
+  }, []);
+
+  useEffect(() => {
+    if (!focusId) { setEvidence({ forId: null, snapshot: null, loading: false }); setEvidenceNew(0); return; }
+    if (evidence.forId !== focusId) loadEvidence(focusId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusId]);
+
+  // token-bound waiting count: counts only, never rows, never a mutation
+  const evidenceToken = evidence.snapshot?.token || null;
+  useEffect(() => {
+    if (!evidenceToken) return undefined;
+    let cancelled = false;
+    const tick = () => {
+      apiFetch(`/api/events/query/new-count?token=${encodeURIComponent(evidenceToken)}`)
+        .then(r => (r.ok ? r.json() : null))
+        .then(d => { if (!cancelled && d) setEvidenceNew(d.new_count || 0); })
+        .catch(() => {});
+    };
+    tick();
+    const iv = setInterval(tick, 3000);
+    return () => { cancelled = true; clearInterval(iv); };
+  }, [evidenceToken]);
+
   // Severity bars (VS owner correction): the ACTIVE incident's observable
   // detections by severity, exact counts, scaled against the largest
   // displayed count (no percentage implied).
@@ -208,11 +252,17 @@ const IncidentDashboard = ({
           rides the Active investigation card as a compact badge; the
           queue count is a compact line there too; Reset lives in the
           AppHeader avatar menu. */}
-      <div className="grid grid-cols-1 lg:grid-cols-[19rem_minmax(0,1fr)] gap-4 items-start">
-        {/* ---- supporting column ---- */}
-        <div className="space-y-4 min-w-0">
+      {/* VB1 (amendment section 1): ONE grid whose DOM order IS the ruled
+          narrow stack (Active investigation, KPI, Evidence activity,
+          Severity, Environment, ATT&CK profile, Recent results) and whose
+          desktop placement is explicit -- supporting column on the left,
+          Evidence activity as the large centre visualization, the ATT&CK
+          profile as the smaller near-square card on its right (tops
+          aligned), Recent results across the wider centre region. Screen
+          reader order and visual order agree at every width. */}
+      <div className="grid grid-cols-1 xl:grid-cols-[19rem_minmax(0,1fr)_minmax(280px,30%)] gap-4 items-start">
           {/* A. Active Investigation (observable fields only; Resume navigates) */}
-          <div className="rounded-xl p-4" style={CARD_STYLE} data-testid="active-investigation">
+          <div className="rounded-xl p-4 xl:col-start-1 xl:row-start-2" style={CARD_STYLE} data-testid="active-investigation">
             <WidgetLabel>Active investigation</WidgetLabel>
             {!focus ? (
               <p className="text-sm text-[#8b949e]">No active investigations.</p>
@@ -283,12 +333,45 @@ const IncidentDashboard = ({
             )}
           </div>
 
+          {/* C. KPI stat tiles (moved into the one grid): real session
+              observables only -- no trends, deltas, or sparklines. */}
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 xl:col-start-1 xl:col-span-3 xl:row-start-1" data-testid="kpi-row">
+            <Metric label="Detections reviewed" value={(detCounts.promoted ?? 0) + (detCounts.dismissed ?? 0)} />
+            <Metric label="Response actions executed" value={actionSuccesses} />
+            <Metric label="Incidents completed" value={data.completed.length} />
+            <Metric
+              label="Latest incident grade"
+              value={latest?.incident_grade?.grade || '-'}
+              accent={latest ? gradeColor(latest.incident_grade?.grade) : undefined}
+              sub={latest ? gradeAccuracy(latest.incident_grade) : 'No submissions yet'}
+            />
+            {/* VH: Session performance is a dashboard metric, distinct
+                from the per-incident grade. */}
+            <Metric
+              label={SESSION_PERFORMANCE_LABEL}
+              value={sessionGrade?.grade || '-'}
+              accent={sessionGrade ? gradeColor(sessionGrade.grade) : undefined}
+              sub={sessionGrade?.accuracy != null ? `${sessionGrade.accuracy}%` : 'Across submitted incidents'}
+            />
+          </div>
+
+          {/* B. Evidence activity -- the PRIMARY visualization, centre. */}
+          <div className="xl:col-start-2 xl:row-start-2 min-w-0">
+            <EvidenceActivity
+              incidentId={focusId}
+              snapshot={evidence.forId === focusId ? evidence.snapshot : null}
+              loading={evidence.forId === focusId && evidence.loading}
+              newCount={evidenceNew}
+              onLoadNewEvents={() => loadEvidence(focusId)}
+            />
+          </div>
+
           {/* Severity distribution (VS owner correction): compact
               horizontal bars over the ACTIVE incident's observable
               detections -- exact counts, bars scaled to the largest
               displayed count (no percentage implied), label + count text
               beside every bar (never color alone). */}
-          <div className="rounded-xl p-4" style={CARD_STYLE} data-testid="severity-distribution">
+          <div className="rounded-xl p-4 xl:col-start-1 xl:row-start-3" style={CARD_STYLE} data-testid="severity-distribution">
             <WidgetLabel>Severity distribution</WidgetLabel>
             <p className="text-xs text-[#8b949e] mb-2">Active incident</p>
             {sevMax === 0 ? (
@@ -313,7 +396,7 @@ const IncidentDashboard = ({
 
           {/* Environment status (VS owner correction): current observable
               state only -- no gauges, no history, no uptime claims. */}
-          <div className="rounded-xl p-4" style={CARD_STYLE} data-testid="environment-status">
+          <div className="rounded-xl p-4 xl:col-start-1 xl:row-start-4" style={CARD_STYLE} data-testid="environment-status">
             <WidgetLabel>Environment status</WidgetLabel>
             {managed === 0 ? (
               <p className="text-sm text-[#57606a]">No managed hosts available.</p>
@@ -354,42 +437,22 @@ const IncidentDashboard = ({
               </div>
             )}
           </div>
-        </div>
 
-        {/* ---- main region ---- */}
-        <div className="space-y-4 min-w-0">
-          {/* C. KPI stat tiles: real session observables only -- no trends,
-              deltas, or sparklines (no historical series exists). */}
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3" data-testid="kpi-row">
-            <Metric label="Detections reviewed" value={(detCounts.promoted ?? 0) + (detCounts.dismissed ?? 0)} />
-            <Metric label="Response actions executed" value={actionSuccesses} />
-            <Metric label="Incidents completed" value={data.completed.length} />
-            <Metric
-              label="Latest incident grade"
-              value={latest?.incident_grade?.grade || '-'}
-              accent={latest ? gradeColor(latest.incident_grade?.grade) : undefined}
-              sub={latest ? gradeAccuracy(latest.incident_grade) : 'No submissions yet'}
-            />
-            {/* VH: Session performance is a dashboard metric (the retired
-                banner's number), distinct from the per-incident grade. */}
-            <Metric
-              label={SESSION_PERFORMANCE_LABEL}
-              value={sessionGrade?.grade || '-'}
-              accent={sessionGrade ? gradeColor(sessionGrade.grade) : undefined}
-              sub={sessionGrade?.accuracy != null ? `${sessionGrade.accuracy}%` : 'Across submitted incidents'}
+          {/* D. The incident ATT&CK profile (VA3): the smaller near-square
+              SECONDARY card on the right, top-aligned with Evidence
+              activity. Never the dashboard centrepiece. */}
+          <div className="xl:col-start-3 xl:row-start-2 min-w-0">
+            <AttackRadar
+              isVisible={isVisible}
+              incidentId={focusId}
+              mappings={profileMappings}
             />
           </div>
 
-          {/* VL (owner correction): the radar is SECONDARY catalog context
-              in a right-side column (~1/3 of the main region); Recent
-              results occupies the wider region. Narrow screens stack the
-              radar BENEATH the operational content (DOM order = the ruled
-              hierarchy). */}
-          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(300px,34%)] gap-4 items-start">
           {/* E. Recent results -- submitted incidents this session, newest
               first; grades/categories are the frozen post-submission
               record. Rows navigate to the incident. */}
-          <div className="rounded-xl min-w-0" style={CARD_STYLE} data-testid="recent-results">
+          <div className="rounded-xl min-w-0 xl:col-start-2 xl:col-span-2 xl:row-start-3 xl:row-span-2" style={CARD_STYLE} data-testid="recent-results">
             <div className="px-4 pt-4 pb-2 flex items-baseline gap-2">
               <p className="t-subsection">Recent results</p>
               <span className="text-xs text-[#6e7781]">&middot; This session</span>
@@ -436,17 +499,6 @@ const IncidentDashboard = ({
               </div>
             )}
           </div>
-
-          {/* D. The incident ATT&CK profile (VA3): the shape of the
-              CURRENT investigation, normalized against its own strongest
-              tactic. Secondary supporting card, never full width. */}
-          <AttackRadar
-            isVisible={isVisible}
-            incidentId={focusId}
-            mappings={profileMappings}
-          />
-          </div>
-        </div>
       </div>
     </div>
   );
