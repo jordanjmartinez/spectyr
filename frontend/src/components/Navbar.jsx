@@ -11,14 +11,16 @@ const Navbar = () => {
       <div className="flex items-center gap-2.5 min-w-0">
         <img
           src="/spectyr_logo.png"
-          alt="Spectyr"
+          alt=""
+          aria-hidden="true"
           className="h-8 w-8 sm:h-9 sm:w-9 object-contain"
         />
+        {/* VB2: the SPECTR wordmark (visible branding only) */}
         <span
-          className="text-xl sm:text-2xl font-semibold tracking-tight text-white hidden min-[460px]:inline"
-          style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}
+          className="text-xl sm:text-2xl font-semibold text-white hidden min-[460px]:inline"
+          style={{ fontFamily: "'Space Grotesk', 'Inter', sans-serif", letterSpacing: '0.06em' }}
         >
-          Spectyr
+          SPECTR
         </span>
       </div>
       <div className="flex items-center gap-3 shrink-0">

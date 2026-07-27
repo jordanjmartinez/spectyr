@@ -277,13 +277,28 @@ const Dashboard = () => {
     <div className="min-h-screen flex bg-[#f6f8fa] text-[#1a2332]">
       {/* Navy nav rail */}
       <aside className="sticky top-0 self-start h-screen w-16 lg:w-56 shrink-0 bg-[#101218] text-gray-300 flex flex-col z-30">
+        {/* VB2 (amendment sections 4-5): the SPECTR brand lockup. VISIBLE
+            branding only -- the ghost mark stays the symbol, the wordmark
+            is uppercase in Space Grotesk (already loaded; no new font
+            dependency, no shared font files), optically balanced with the
+            mark and separated from navigation by a subtle divider. The
+            lockup keeps the app's existing home navigation, so it is not
+            a dead control. No account, status, notification, or profile
+            information is added. Internal identifiers (asset filenames,
+            storage keys, API paths, package names) are untouched. */}
         <Link
           to="/"
           title="Back to home"
-          className="flex items-center gap-2.5 h-16 px-3 lg:px-5 border-b border-white/10 hover:bg-white/5 transition-colors"
+          className="flex items-center gap-2.5 h-[68px] px-3 lg:px-5 border-b border-white/10 hover:bg-white/5 transition-colors"
         >
-          <img src="/spectyr_logo.png" alt="Spectyr" className="h-10 w-10 object-contain shrink-0" />
-          <span className="hidden lg:inline text-xl font-semibold tracking-tight text-white" style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>Spectyr</span>
+          <img src="/spectyr_logo.png" alt="" aria-hidden="true" className="h-7 w-7 object-contain shrink-0" />
+          <span
+            className="hidden lg:inline text-[21px] leading-none font-semibold text-white"
+            style={{ fontFamily: "'Space Grotesk', 'Inter', sans-serif", letterSpacing: '0.06em' }}
+          >
+            SPECTR
+          </span>
+          <span className="sr-only">SPECTR home</span>
         </Link>
 
         <nav className="flex-1 py-3 px-2 lg:px-3 flex flex-col gap-1">
