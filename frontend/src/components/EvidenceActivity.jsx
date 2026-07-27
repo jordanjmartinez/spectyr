@@ -2,7 +2,7 @@ import React from 'react';
 import { CARD_STYLE } from './ui';
 import { LOAD_NEW_EVENTS, newEventsAvailable, TELEMETRY_LOADING } from './uiCopy';
 import {
-  bucketEvidence, evidenceSummary, evidencePeak,
+  bucketEvidence, evidenceSummary, evidencePeak, steppedPath,
 } from './evidenceBuckets';
 
 // ============================================================================
@@ -14,6 +14,15 @@ import {
 // answer-key attack timing. The chart renders the FROZEN snapshot the
 // card holds; later evidence is announced as a waiting count and only
 // enters on the player's explicit Load new events (never automatically).
+//
+// VD1 (visual-consistency correction, section 1): stepped presentation.
+// Every deterministic bucket from the first observable event through the
+// snapshot's evidence boundary renders -- zeros included -- as a thin
+// vertical bar under ONE stepped outline (exact horizontal/vertical
+// steps from steppedPath, never a smoothed curve) over a subtle neutral
+// fill. The busiest bucket alone carries the restrained accent, a peak
+// marker, and its label; start/end labels stay compact. Exact per-bucket
+// tooltips and the complete sr-only table remain the accessible detail.
 // ============================================================================
 
 export const NO_INCIDENT = 'Start an investigation to see evidence activity.';
@@ -50,6 +59,7 @@ const EvidenceActivity = ({
   }
 
   const max = Math.max(...model.buckets.map((b) => b.count));
+  const geom = steppedPath(model.buckets);
   // compact time labels: first, peak, and last, so dense runs stay readable
   const labelAt = new Set([0, model.buckets.length - 1,
                            model.buckets.findIndex((b) => b.isPeak)]);
@@ -80,25 +90,67 @@ const EvidenceActivity = ({
         )}
       </div>
 
-      {/* thin vertical bars over a soft baseline fill; no curve, no
-          animation, reduced-motion safe by construction (static) */}
+      {/* the stepped chart: exact bucket geometry, static, no animation,
+          reduced-motion safe by construction */}
       <div className="px-4 pb-2 flex-1 flex flex-col min-h-0" aria-hidden="true">
-        <div className="relative flex-1 min-h-[10rem] rounded-md bg-[#f6f8fa] border border-[#eef1f4] flex items-end gap-[2px] px-2 pt-2 pb-0 overflow-hidden">
-          {model.buckets.map((b) => (
+        <div className="relative flex-1 min-h-[10rem] mt-2">
+          {/* subtle neutral fill beneath ONE stepped outline; horizontal/
+              vertical steps only (steppedPath emits no curve commands) */}
+          <svg
+            className="absolute inset-0 w-full h-full"
+            viewBox={`0 0 ${model.buckets.length} 100`}
+            preserveAspectRatio="none"
+          >
+            <path d={geom.area} fill="#eef1f4" />
+            <path
+              d={geom.outline}
+              fill="none"
+              stroke="#8b949e"
+              strokeWidth="1.25"
+              vectorEffect="non-scaling-stroke"
+              strokeLinejoin="miter"
+            />
+          </svg>
+          {/* thin per-bucket bars; a zero bucket stays a real zero (no bar,
+              the outline runs along the baseline). Each column is the exact
+              tooltip hit area for its bucket. */}
+          <div className="absolute inset-0 flex items-stretch">
+            {model.buckets.map((b) => (
+              <span
+                key={b.start}
+                title={`${b.label} · ${b.count} event${b.count === 1 ? '' : 's'}`}
+                className="flex-1 min-w-0 relative"
+              >
+                {b.count > 0 && (
+                  <span
+                    className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[2px] rounded-t-sm"
+                    style={{
+                      height: `${(b.count / max) * 100}%`,
+                      minHeight: '2px',
+                      background: b.isPeak ? '#16436b' : '#c3ccd6',
+                    }}
+                  />
+                )}
+                {b.isPeak && (
+                  <span
+                    data-testid="evidence-peak-marker"
+                    className="absolute left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[#16436b]"
+                    style={{ bottom: `calc(${(b.count / max) * 100}% + 3px)` }}
+                  />
+                )}
+              </span>
+            ))}
+          </div>
+          {/* baseline */}
+          <div className="absolute inset-x-0 bottom-0 border-t border-[#e2e6ea]" />
+        </div>
+        <div className="flex mt-1">
+          {model.buckets.map((b, i) => (
             <span
               key={b.start}
-              title={`${b.label} · ${b.count} event${b.count === 1 ? '' : 's'}`}
-              className="flex-1 min-w-[2px] rounded-t-sm"
-              style={{
-                height: `${max ? Math.max(b.count === 0 ? 0 : 4, (b.count / max) * 100) : 0}%`,
-                background: b.isPeak ? '#16436b' : '#c3ccd6',
-              }}
-            />
-          ))}
-        </div>
-        <div className="flex justify-between mt-1">
-          {model.buckets.map((b, i) => (
-            <span key={b.start} className="text-[10px] text-[#8b949e] flex-1 text-center truncate">
+              className={`flex-1 min-w-0 text-[10px] text-center truncate ${
+                b.isPeak ? 'text-[#16436b] font-medium' : 'text-[#8b949e]'}`}
+            >
               {labelAt.has(i) ? b.label : ''}
             </span>
           ))}
