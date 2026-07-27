@@ -2025,3 +2025,237 @@ this pass. NOT merged, NOT pushed, no new feature stage begun.
 Complete gate battery ALL GREEN at the tip (29 backend suites +
 frontend 39/367). Stopped at the consolidated visual-polish
 checkpoint.
+
+# Part IX. Final visual-polish pass: Spectr naming, current-product Docs, one Start control, Evidence line refinement (VE1-VE6)
+
+Owner instruction 2026-07-27 (four connected corrections plus two
+mid-run instructions), executed on `stage-5-live-run-feedback` on top
+of `fab9c6f`. Scope held to the named surfaces: no global redesign, no
+engine change, no owner-asset change (`spectyrvideo.mp4` /
+`spectyr_svg.svg` remain untouched working-tree items).
+
+## IX.1 Commit ledger
+
+| Commit | Concern |
+|---|---|
+| `622dbcb` VE1 | User-visible naming Spectyr -> Spectr; Docs content rewritten around the current product |
+| `79c5466` VE2 | Docs visual shell: dark two-column documentation surface |
+| `36140dd` VE3 | ONE shared Start control; landing hero subtitle deleted |
+| `1997b02` VE4 | Evidence activity line refinement (presentation only) |
+| `fd88c79` VE4b | Verified defect: sr-only evidence table inflated the horizontal scroll area |
+| `dd11880` VE5 | Owner mid-run: rail Reset wears the Start pill treatment; hint control clears the rail |
+| VE6 (this commit) | product-naming guard battery + this record |
+
+## IX.2 Naming (VE1)
+
+Every user-visible "Spectyr" now reads "Spectr": the browser title is
+exactly `Spectr` (the old descriptive subtitle is gone), the PWA
+manifest name/short_name follow, the boot loading line and the legacy
+footer say Spectr, and the footer's "SOC Simulation Training"
+descriptor is removed entirely. The SPECTR display wordmark treatment
+(BrandLockup + brand-wordmark token) is unchanged wherever the actual
+wordmark renders. Internal identifiers are deliberately NOT renamed,
+per the standing VB2 guard: asset filenames (`spectyr_logo.png`,
+`spectyr_fav.png`, `spectyrvideo.mp4`), the `spectyr_session_id`
+storage key, backend schema titles/comments, and the authored
+in-fiction YARA vendor prefix (`Spectyr_USB_Loader_Generic`,
+`Spectyr_Ransom_Note_Generic`), which brand-lockup.test.js pins as
+scenario content. The new `product-naming.test.js` battery enforces the
+visible rule: no capital-S brand form in product source (comments
+stripped), title/manifest exact.
+
+## IX.3 Docs content corrections (VE1)
+
+The Docs now describe the shipped game only. New navigation (eight
+sections): Getting Started / How Spectr Works / Guided and Hardcore /
+Detections / SIEM / Endpoints / Response / Learning Review. The opening
+line is the owner-supplied description verbatim. Statements removed as
+retired-model: the 10-scenario run description, 20-40s arrival cadence,
+three-open-scenarios cap, Analytics as a destination, Queue as the
+player workflow, and the old Scenarios catalog enumeration. The
+rewritten copy states the established decisions: Detections is triage
+only; Endpoints is investigation only; Response is the command surface
+where actions execute; the SIEM searches the selected incident's
+evidence; classification is selected before Submit; grading and the
+ATT&CK profile disclose only after submission; Metrics is the Learning
+Review; Guided and Hardcore are the only modes. Landing nav links
+target the new anchors (guard: every landing `/docs#` anchor must be a
+real section id). The standing copy guards all hold (no report-workflow
+vocabulary, no em dashes, no "SOC Queue", no check-answer vocabulary).
+
+## IX.4 Docs visual shell (VE2)
+
+The white marketing canvas is retired. The whole Docs viewport sits on
+the shared `#101218` chrome tone as a flat two-column documentation
+layout after the supplied Pathos structural reference: left navigation
+column (the app rail's active treatment: white ink + left marker),
+`border-r border-white/10` as the subtle divider, one `max-w-2xl`
+reading column with white headings and `#9ca3af` body, Inter prose,
+`log-mono` strictly for technical values. The LCQL segment line renders
+as a bordered code block that scrolls inside its own container. The
+68px shell rows, both shared BrandLockup sites, and the scroll-spy are
+unchanged (brand-lockup pins hold: exactly two `h-[68px]`, two
+lockups). Below `lg` the sidebar yields to the 68px top bar plus a new
+horizontal section strip (sticky under the bar, `scrollbar-hide`), so
+the eight sections stay navigable at phone widths; section
+`scroll-mt-36 lg:scroll-mt-24` keeps headings clear of the sticky
+stack. No decorative cards around ordinary sections, no gradients, no
+black top strip, no brand redesign. Accent note: on the dark shell the
+existing active treatment IS white ink + the white marker (the app
+rail's own); `#16436b` stays reserved for light surfaces per the
+accent-restraint ruling, so no new link tint was invented.
+
+## IX.5 One shared Start control (VE3, VE5)
+
+`components/StartButton.jsx` is the single product-entry CTA: the
+landing's liquid-glass pill at one fixed geometry (44px height, 26px
+horizontal padding, full radius, 15px medium Inter, filled play glyph
+from the shared icon system, hover on background/shadow only, visible
+focus-visible ring, disabled dims). The visible label is exactly
+"Start". Locations (all five verified in Chrome): landing hero, Docs
+desktop sidebar, Docs mobile top bar, the sim rail's inactive-session
+slot (label collapses below lg via `labelClass`, the BrandLockup
+wordmarkClass pattern; the icon-only pill fits the w-24 rail), and the
+legacy `/analytics` navbar (the light "Launch Sim" pill retired).
+Retired labels: Start Sim, Start Simulation, Launch Sim (guarded by
+product-naming.test.js). Submit / Resume investigation / response verbs
+/ secondary actions are untouched. VE5 (owner mid-run instruction): the
+rail Reset control now wears the same pill treatment through ONE
+exported class list (`CTA_PILL`) consumed by both rail-slot controls,
+so the geometry cannot drift; Reset remains its own control (icon,
+label, confirm flow), never a StartButton.
+
+## IX.6 Landing hero (VE3)
+
+The subheading ("A simulated SIEM with realistic log chains across
+different attack scenarios.") is deleted, not replaced. The hero is the
+heading plus the shared Start control; the heading margin is rebalanced
+(mb-6/mb-10) and the freed space stays open. Entrance delays close up
+(300ms heading, 400ms CTA).
+
+## IX.7 Evidence activity refinement (VE4, VE4b)
+
+The VD7 rolling-density model is untouched: exact rolling-window counts
+over real observable timestamps at 20 evenly spaced samples, stepped
+outline with no curve commands, thin density lines, one highlighted
+peak (restrained accent column + point marker + compact "Peak" label,
+clamped), exact event ticks, a three-label axis in normal flow, the
+honest sparse state below three distinct times, and the frozen-snapshot
+boundary with the explicit Load-new-events action. Two presentation
+corrections against the line-chart reference:
+
+- The stepped outline deepens from `#8b949e`/1.25px to `#57606a`/1.5px
+  so the outline reads as the chart's data line (the reference's clean
+  thin line) rather than a faint box edge; the fill, density lines, and
+  peak accent are unchanged.
+- The CENTER axis label now prints the true midpoint of the visible
+  range (`first + span/2`). The justify-between axis row places that
+  label at the visual center, and the previous value (sample
+  floor((n-1)/2), 47.4% of the span at n=20) mislabeled the position by
+  ~2.6% of the span. Start/end labels remain the exact first/last
+  sample times. The pinned expectation in evidence-activity.test.js was
+  updated with this rationale (a deliberate change to a frozen-suite
+  expectation, flagged here).
+
+VE4b, found by this pass's responsive verification: the card's sr-only
+textual-equivalent table inflated the document's horizontal scroll
+area by ~1300px on /sim. CSS table width is a minimum, so sr-only's 1px
+width cannot constrain a table box, and the table's containing block is
+the ICB, so the workspace overflow-x-hidden never clipped it. Fix: the
+table sits inside a visually-hidden wrapper div (strictly 1px, clips),
+with identical accessible semantics. Verified live: scrollWidth equals
+clientWidth with the chart rendered. Nothing about snapshot, new-count,
+or atomic-load behavior changed anywhere in VE4/VE4b.
+
+## IX.8 Changed files (`fab9c6f..` this pass)
+
+frontend/public/index.html, frontend/public/manifest.json,
+frontend/src/App.jsx, frontend/src/index.css,
+frontend/src/pages/Landing.jsx, frontend/src/pages/Docs.jsx,
+frontend/src/pages/Dashboard.jsx, frontend/src/components/Navbar.jsx,
+frontend/src/components/StartButton.jsx (new),
+frontend/src/components/EvidenceActivity.jsx,
+frontend/src/components/HintPanel.jsx,
+frontend/src/__tests__/evidence-activity.test.js,
+frontend/src/__tests__/product-naming.test.js (new), and this record.
+
+## IX.9 Deliberate deviations and honest notes
+
+- **Workflow wording vs the shipped product (grounded correction):**
+  the tasking note's step list places classification and Submit in
+  Response. In the shipped product, Response executes actions;
+  classification and Submit live on the incident in the Incidents
+  workspace (`workspace-classification` + the gated Submit). Repository
+  truth outranks the prompt, so the Docs describe the shipped flow:
+  respond in Response, then return to the incident to classify and
+  submit.
+- **Hardcore queue mechanics:** the tasking lists "a Hardcore run
+  always containing ten queued scenarios" as obsolete, but the engine
+  still builds the sampled 10-queue for Hardcore
+  (`build_alert_queue(n=10)`) and the dashboard still shows "N of 10
+  resolved". The rewritten Docs assert no numeric mechanics in either
+  direction: Hardcore is "a timed run under a single 15-minute clock"
+  where "incidents are pushed to you during the run". Nothing stated is
+  false against the running engine.
+- **In-fiction YARA vendor prefix stays Spectyr_*:** user-visible in
+  the detection detail, but it is authored scenario content pinned by
+  the standing brand guard ("scenario content keeps its authored
+  identifiers"); renaming it would touch the frozen v1/v2 corpus
+  parity. Flagged rather than silently decided; the owner can order a
+  corpus-content rename as its own reviewed change.
+- **/analytics legacy route:** only its entry control was aligned (the
+  shared Start). The page's own legacy copy and its rough 390px layout
+  are pre-existing and out of this pass's scope; the route is
+  unreachable from the player-facing UI.
+- **Axis-midpoint expectation change** in the frozen evidence suite:
+  recorded in IX.7.
+- **Environment note:** the long-running dev backend on :5000 (started
+  2026-07-26) had a dead drip thread; sessions started but injected
+  nothing. Restarted `python app.py` from the branch (the known
+  port-5000 split-brain gotcha); no code change involved.
+
+## IX.10 Chrome and responsive evidence (2026-07-27, dev servers)
+
+- Desktop landing: cleaned hero (heading + Start only), ghost video,
+  new docs nav links, wordmark; tab title "Spectr".
+- Desktop Docs: dark two-column shell, scroll-spy + active rail marker
+  tracking through all eight sections, LCQL code block, sidebar Start.
+- Guided run (fresh backend): INC-6839 Multiple Account Logon
+  Failures; Evidence activity rendered the refined density chart
+  (8 events, Peak 10:18 with 6 events, 60s window), peak label inside
+  bounds, axis start/mid/end readable.
+- Sparse fallback: exercised the REAL component through its real code
+  path by patching fetch in the page (view-only) so the next
+  Load-new-events read returned 2 rows: the honest sparse state
+  rendered (2 events observed, short activity line, exact ticks, the
+  sparse message, no fabricated shape, no Peak).
+- Shell geometry: the app header and sim brand cell measured 68 CSS px
+  (67.99 at the profile's 90% zoom quantization); Docs bars pinned by
+  the brand battery.
+- Horizontal overflow: /sim measured scrollWidth == clientWidth after
+  VE4b (was +1316px); landing and Docs at 390px both measured zero
+  overflow (same-origin iframe method, since resize_window cannot
+  shrink a maximized window).
+- 390px landing: hamburger menu with the four new links, Start pill,
+  no clipping. 390px Docs: 68px bar (ghost-only lockup below 480px) +
+  Start pill + horizontal section strip; strip navigation verified
+  (tap How Spectr Works -> the heading lands clear of the sticky
+  stack, active state follows); the LCQL block scrolls inside its own
+  container.
+- Collapsed rail (~900px iframe): icon-only Start pill centered and
+  unclipped in the w-24 rail; expanded rail: the Start/Reset pill
+  pair.
+- VE5 live measurements: hint control left edge 342 vs rail right
+  edge 324 (18px clear, no clipping); the Reset pill matches the Start
+  geometry.
+- Console: zero steady-state errors on /sim, /docs, and / (onlyErrors
+  sweeps after settling).
+
+## IX.11 Final state
+
+Branch `stage-5-live-run-feedback`; this pass is VE1-VE6 on top of
+`fab9c6f`. The working tree carries ONLY the two owner asset items
+(`spectyrvideo.mp4` modified, `spectyr_svg.svg` untracked), untouched.
+NOT merged, NOT pushed, no new stage begun. The complete gate battery
+(backend + frontend) was run at the tip and recorded green in the VE6
+commit. Stopped at the final visual-polish checkpoint.
