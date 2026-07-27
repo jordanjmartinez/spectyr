@@ -1,10 +1,13 @@
 /**
- * VB1 (amendment section 2): Evidence activity. Deterministic bucketing
- * over the ACTIVE incident's observable event timestamps, exact totals
- * and peak, frozen-snapshot honesty (later evidence is announced, never
- * merged automatically), truthful loading and empty states, and a
- * complete textual equivalent. Volume only -- never suspiciousness,
- * correctness, or answer-key data.
+ * VB1 (amendment section 2) + VD7 (owner mid-run instruction): Evidence
+ * activity as the compact ROLLING EVENT-DENSITY chart. Deterministic,
+ * exact rolling-window counts over the ACTIVE incident's observable
+ * event timestamps at evenly spaced sample points; exact event-time
+ * ticks; the honest sparse state below three distinct event times;
+ * frozen-snapshot honesty (later evidence is announced, never merged
+ * automatically); truthful loading and empty states; and a complete
+ * textual equivalent. Volume only -- never suspiciousness, correctness,
+ * or answer-key data.
  */
 import React from 'react';
 import fs from 'fs';
@@ -12,8 +15,9 @@ import path from 'path';
 import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import EvidenceActivity, { NO_INCIDENT, NO_EVENTS } from '../components/EvidenceActivity';
 import {
-  bucketEvidence, chooseBucketSeconds, BUCKET_LADDER, MAX_BUCKETS, steppedPath,
-} from '../components/evidenceBuckets';
+  rollingDensity, chooseWindowSeconds, steppedPath, tickColumnPct, clampPct,
+  SAMPLE_POINTS, SPARSE_MESSAGE,
+} from '../components/evidenceDensity';
 import IncidentDashboard from '../components/IncidentDashboard';
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
@@ -22,117 +26,128 @@ const { apiFetch } = require('../api');
 const at = (isoMinute, seconds = 0) => `2026-07-26T${isoMinute}:${String(seconds).padStart(2, '0')}Z`;
 const rows = (...stamps) => stamps.map((t, i) => ({ id: `e${i}`, timestamp: t }));
 
-// ---- bucketing --------------------------------------------------------------
+// the worked example: 6 events across 175s (05, 40, 61, 62, 63, 180
+// seconds after 19:45:00), so the 30s short-investigation window applies
+const SIX = rows(at('19:45', 5), at('19:45', 40), at('19:46', 1), at('19:46', 2),
+                 at('19:46', 3), at('19:48', 0));
 
-test('the bucket ladder is deterministic and keeps the chart within MAX_BUCKETS', () => {
-  // VD1: sub-minute steps join the ladder so a short run fills the chart
-  // with many exact thin buckets instead of a few isolated bars
-  expect(BUCKET_LADDER).toEqual([5, 10, 15, 30, 60, 120, 300, 600, 1800, 3600]);
-  // very short runs land on the small steps; ordinary runs are unchanged
-  expect(chooseBucketSeconds(0)).toBe(5);
-  expect(chooseBucketSeconds(60)).toBe(5);                // 1 min chain -> 13 buckets
-  expect(chooseBucketSeconds(3 * 60)).toBe(5);            // 3 min -> 37 buckets
-  expect(chooseBucketSeconds(200)).toBe(10);              // 41 at 5s, steps up
-  expect(chooseBucketSeconds(500)).toBe(15);
-  expect(chooseBucketSeconds(10 * 60)).toBe(30);          // 10 min -> 21 buckets (unchanged)
-  expect(chooseBucketSeconds(19 * 60)).toBe(30);          // 19.5 min -> 39 buckets, still 30s
-  expect(chooseBucketSeconds(20 * 60)).toBe(60);          // 20 min -> 41 at 30s, so it steps up
-  expect(chooseBucketSeconds(30 * 60)).toBe(60);          // 30 min -> 31 buckets
-  expect(chooseBucketSeconds(60 * 60)).toBe(120);         // 1 h
-  expect(chooseBucketSeconds(6 * 60 * 60)).toBe(600);     // 6 h
-  // beyond the ladder (no authored run reaches this) the cap is still
-  // honored by stepping to whole hours rather than silently overflowing
-  expect(chooseBucketSeconds(24 * 60 * 60)).toBe(3600);
-  expect(chooseBucketSeconds(7 * 24 * 60 * 60)).toBe(5 * 3600);   // 34 buckets
-  // the chosen size always fits the cap
-  for (const span of [0, 60, 600, 3600, 86400, 604800]) {
-    const size = chooseBucketSeconds(span);
-    expect(Math.floor(span / size) + 1).toBeLessThanOrEqual(MAX_BUCKETS);
-  }
+// ---- the rolling window ----------------------------------------------------
+
+test('the rolling window is deterministic: 30s short, 60s ordinary, ladder beyond', () => {
+  expect(chooseWindowSeconds(0)).toBe(30);
+  expect(chooseWindowSeconds(175)).toBe(30);         // a typical chain span
+  expect(chooseWindowSeconds(300)).toBe(30);
+  expect(chooseWindowSeconds(301)).toBe(60);
+  expect(chooseWindowSeconds(1800)).toBe(60);
+  // longer investigations step a fixed ladder keyed to sample spacing
+  expect(chooseWindowSeconds(1801)).toBe(120);
+  expect(chooseWindowSeconds(3600)).toBe(300);
+  expect(chooseWindowSeconds(7200)).toBe(600);
+  expect(chooseWindowSeconds(10 * 3600)).toBe(3600);
+  expect(chooseWindowSeconds(24 * 3600)).toBe(2 * 3600);  // still deterministic past the ladder
   // pure function: identical input, identical output
-  expect(chooseBucketSeconds(1234)).toBe(chooseBucketSeconds(1234));
+  expect(chooseWindowSeconds(1234)).toBe(chooseWindowSeconds(1234));
 });
 
-// ---- the stepped outline (VD1) ---------------------------------------------
-
-test('stepped points correspond exactly to bucket counts, zeros included', () => {
-  const m = bucketEvidence(rows(
-    at('19:45', 5), at('19:45', 6),          // 2 in the first bucket
-    at('19:45', 21), at('19:45', 22), at('19:45', 23),   // 3 (peak)
-    at('19:45', 40),                          // 1, after a zero bucket
-  ));
-  const { tops, outline, area } = steppedPath(m.buckets);
-  // one step per bucket, contiguous unit-wide x spans
-  expect(tops).toHaveLength(m.buckets.length);
-  tops.forEach((t, i) => { expect([t.x0, t.x1]).toEqual([i, i + 1]); });
-  // each step's height is the exact count/max ratio; zero buckets sit on
-  // the baseline (y = 100) -- represented, never skipped or interpolated
-  const max = Math.max(...m.buckets.map((b) => b.count));
-  m.buckets.forEach((b, i) => {
-    expect(tops[i].y).toBe(100 - (b.count / max) * 100);
-  });
-  expect(m.buckets.some((b) => b.count === 0)).toBe(true);
-  m.buckets.forEach((b, i) => { if (b.count === 0) expect(tops[i].y).toBe(100); });
-  // horizontal/vertical steps only: no curve or arc commands, no smoothing
-  expect(outline).toMatch(/^M [\d. ]+(?: [HV] [\d.]+)+$/);
-  expect(outline).not.toMatch(/[CQSTAcqsta]/);
-  // the fill is the same outline closed to the baseline
-  expect(area).toBe(`${outline} V 100 H 0 Z`);
-});
-
-test('the outline never changes event totals; boundaries are stable multiples of the interval', () => {
-  const input = rows(at('09:00', 3), at('09:00', 9), at('09:01', 30), at('09:02', 0));
-  const m = bucketEvidence(input);
-  // total preserved exactly through bucketing (no interpolation, no
-  // fabricated nonzero values)
-  expect(m.buckets.reduce((a, b) => a + b.count, 0)).toBe(m.total);
-  expect(m.total).toBe(4);
-  // every bucket start is an exact multiple of the chosen interval
-  for (const b of m.buckets) {
-    expect(b.start % (m.bucketSeconds * 1000)).toBe(0);
-  }
-  // deterministic: identical rows give identical buckets and geometry
-  const again = bucketEvidence(rows(at('09:00', 3), at('09:00', 9), at('09:01', 30), at('09:02', 0)));
-  expect(again).toEqual(m);
-  expect(steppedPath(again.buckets)).toEqual(steppedPath(m.buckets));
-});
-
-test('steppedPath degrades honestly: no buckets or all-zero input draws nothing', () => {
-  expect(steppedPath([])).toEqual({ outline: '', area: '', tops: [] });
-  expect(steppedPath(null)).toEqual({ outline: '', area: '', tops: [] });
-  expect(steppedPath([{ count: 0 }, { count: 0 }])).toEqual({ outline: '', area: '', tops: [] });
-});
-
-test('exact totals, contiguous buckets, and an exact single peak', () => {
-  const m = bucketEvidence(rows(
-    at('19:45', 5), at('19:45', 40),                    // bucket 19:45 -> 2
-    at('19:46', 1), at('19:46', 2), at('19:46', 3),     // bucket 19:46 -> 3 (peak)
-    at('19:48', 0),                                     // bucket 19:48 -> 1
-  ));
+test('rolling-window counts are EXACT over real events; nothing fabricated or redistributed', () => {
+  const m = rollingDensity(SIX);
+  expect(m.sparse).toBe(false);
   expect(m.total).toBe(6);
-  expect(m.bucketSeconds).toBe(5);   // VD1: a 175s run takes the 5s ladder step
-  // contiguity: a quiet interval renders as a real zero, never skipped
-  const counts = m.buckets.map((b) => b.count);
-  expect(counts.reduce((a, b) => a + b, 0)).toBe(6);
-  expect(counts).toContain(0);
-  expect(m.peak.count).toBe(3);
-  expect(m.buckets.filter((b) => b.isPeak)).toHaveLength(1);
-  // ties resolve to the EARLIEST interval (deterministic)
-  const tie = bucketEvidence(rows(at('10:00'), at('10:05')));
-  expect(tie.buckets.filter((b) => b.isPeak)).toHaveLength(1);
-  expect(tie.buckets.find((b) => b.isPeak).label).toBe(tie.buckets[0].label);
+  expect(m.windowSeconds).toBe(30);
+  expect(m.samples).toHaveLength(SAMPLE_POINTS);
+  // every sample count equals the definition: events in (t - W, t]
+  const stamps = SIX.map((r) => Date.parse(r.timestamp));
+  for (const s of m.samples) {
+    const brute = stamps.filter((x) => x > s.t - 30000 && x <= s.t).length;
+    expect(s.count).toBe(brute);
+  }
+  // hand-checked values (independent of the implementation)
+  expect(m.samples[0].count).toBe(1);     // (…, first]: the first event alone
+  expect(m.samples[7].count).toBe(4);     // covers 40 + the 61/62/63 burst
+  expect(m.samples[19].count).toBe(1);    // (150s, 180s]: the last event alone
+  // the peak is exact and single
+  expect(m.peak.count).toBe(4);
+  expect(m.samples.filter((s) => s.isPeak)).toHaveLength(1);
+  expect(m.samples[m.peak.index].count).toBe(4);
+});
+
+test('sampling points are deterministic and evenly spaced across the visible range', () => {
+  const m = rollingDensity(SIX);
+  const first = Date.parse(SIX[0].timestamp);
+  const last = Date.parse(SIX[5].timestamp);
+  const span = last - first;
+  m.samples.forEach((s, i) => {
+    expect(s.t).toBe(first + (i * span) / (SAMPLE_POINTS - 1));
+  });
+  expect(m.samples[0].t).toBe(first);
+  expect(m.samples[SAMPLE_POINTS - 1].t).toBe(last);
+  // identical rows give byte-identical models (frozen-snapshot stability)
+  expect(rollingDensity(SIX)).toEqual(m);
+});
+
+test('peak ties resolve to the EARLIEST sample (deterministic)', () => {
+  // two symmetric bursts of equal density
+  const m = rollingDensity(rows(
+    at('10:00', 0), at('10:00', 1), at('10:00', 2),
+    at('10:04', 0), at('10:04', 1), at('10:04', 2),
+  ));
+  expect(m.samples.filter((s) => s.isPeak)).toHaveLength(1);
+  const firstMax = m.samples.findIndex((s) => s.count === m.peak.count);
+  expect(m.peak.index).toBe(firstMax);
+});
+
+test('event ticks match the source timestamps exactly (nothing invented, moved, or dropped)', () => {
+  const m = rollingDensity(SIX);
+  const stamps = SIX.map((r) => Date.parse(r.timestamp)).sort((a, b) => a - b);
+  expect(m.ticks.map((tk) => tk.t)).toEqual(stamps);
+  const first = stamps[0];
+  const span = stamps[stamps.length - 1] - first;
+  m.ticks.forEach((tk) => expect(tk.x).toBe((tk.t - first) / span));
 });
 
 test('malformed or missing timestamps are ignored, never invented', () => {
-  const m = bucketEvidence([
+  const m = rollingDensity([
     { id: 'a', timestamp: at('08:00') },
     { id: 'b' },
     { id: 'c', timestamp: 'not-a-time' },
     { id: 'd', timestamp: null },
   ]);
   expect(m.total).toBe(1);
-  expect(bucketEvidence([]).total).toBe(0);
-  expect(bucketEvidence(null).buckets).toEqual([]);
+  expect(m.sparse).toBe(true);            // one distinct time cannot shape density
+  expect(rollingDensity([]).total).toBe(0);
+  expect(rollingDensity(null).samples).toEqual([]);
+});
+
+test('the sparse fallback engages below three DISTINCT event times', () => {
+  // two events -> sparse
+  expect(rollingDensity(rows(at('09:00'), at('09:05'))).sparse).toBe(true);
+  // three events at only two distinct times -> still sparse
+  const twoDistinct = rollingDensity(rows(at('09:00'), at('09:00'), at('09:05')));
+  expect(twoDistinct.sparse).toBe(true);
+  expect(twoDistinct.total).toBe(3);
+  expect(twoDistinct.ticks).toHaveLength(3);
+  // three distinct times -> a real density shape
+  expect(rollingDensity(rows(at('09:00'), at('09:02'), at('09:05'))).sparse).toBe(false);
+});
+
+// ---- the stepped outline ----------------------------------------------------
+
+test('the stepped outline is exact per sample: no curves, no interpolation, zeros on the baseline', () => {
+  const m = rollingDensity(SIX);
+  const { tops, outline, area } = steppedPath(m.samples);
+  expect(tops).toHaveLength(m.samples.length);
+  const max = Math.max(...m.samples.map((s) => s.count));
+  m.samples.forEach((s, i) => {
+    expect([tops[i].x0, tops[i].x1]).toEqual([i, i + 1]);
+    expect(tops[i].y).toBe(100 - (s.count / max) * 100);
+    if (s.count === 0) expect(tops[i].y).toBe(100);
+  });
+  expect(outline).toMatch(/^M [\d. ]+(?: [HV] [\d.]+)+$/);
+  expect(outline).not.toMatch(/[CQSTAcqsta]/);
+  expect(area).toBe(`${outline} V 100 H 0 Z`);
+  // degenerate inputs draw nothing rather than inventing a shape
+  expect(steppedPath([])).toEqual({ outline: '', area: '', tops: [] });
+  expect(steppedPath([{ count: 0 }])).toEqual({ outline: '', area: '', tops: [] });
 });
 
 // ---- the card ---------------------------------------------------------------
@@ -140,59 +155,99 @@ test('malformed or missing timestamps are ignored, never invented', () => {
 const SNAP = {
   count: 6,
   identity: { cutoff_seq: 42, canonical_query: 'all | * | * | *', scope: 'INC-8340' },
-  rows: rows(at('19:45', 5), at('19:45', 40), at('19:46', 1), at('19:46', 2), at('19:46', 3), at('19:48', 0)),
+  rows: SIX,
 };
 
-test('renders the factual summary, the peak, and the accessible equivalent', () => {
+test('renders the factual summary, the peak, and the accessible rolling-window equivalent', () => {
   render(<EvidenceActivity incidentId="INC-8340" snapshot={SNAP} />);
   expect(screen.getByText('Evidence activity')).toBeInTheDocument();
   expect(screen.getByText('Event volume during this investigation')).toBeInTheDocument();
   expect(screen.getByText('6 events observed')).toBeInTheDocument();
-  // sub-minute buckets label with second precision (VD1)
-  expect(screen.getByText(/Peak: \d\d:\d\d:\d\d · 3 events/)).toBeInTheDocument();
-  // the textual equivalent carries every bucket, the peak, the total, and
-  // the snapshot boundary -- available without hover or color
+  // the ruled summary form; the peak count is the rolling-window count
+  expect(screen.getByText(/Peak: \d\d:\d\d:\d\d · 4 events/)).toBeInTheDocument();
+  // the textual equivalent names the rolling window explicitly, carries
+  // every sample, the peak, the axis, and the snapshot boundary
   const table = screen.getByRole('table');
-  expect(within(table).getAllByRole('row').length).toBeGreaterThan(1);
-  const caption = table.closest('table').querySelector('caption').textContent;
+  expect(within(table).getAllByRole('row').length).toBe(SAMPLE_POINTS + 1);
+  const caption = table.querySelector('caption').textContent;
   expect(caption).toMatch(/6 events observed/);
-  expect(caption).toMatch(/Peak interval/);
+  expect(caption).toMatch(/30-second rolling window/);
+  expect(caption).toMatch(/Peak \d\d:\d\d:\d\d with 4 events/);
   expect(caption).toMatch(/sequence 42/);
 });
 
-test('the chart is visually continuous: every bucket renders, zeros stay zero, the outline is stepped (VD1)', () => {
+test('the chart is the ruled density composition: steps, lines, one accent peak, exact ticks', () => {
   const { container } = render(<EvidenceActivity incidentId="INC-8340" snapshot={SNAP} />);
-  const model = bucketEvidence(SNAP.rows);
-  // the complete deterministic range renders: one tooltip column per
-  // bucket (zeros included), matching the model exactly
-  const columns = container.querySelectorAll('[title*=" event"]');
-  expect(columns).toHaveLength(model.buckets.length);
-  expect(model.buckets.length).toBeGreaterThan(10);           // continuous, not isolated bars
-  expect(model.buckets.some((b) => b.count === 0)).toBe(true);
-  // exact tooltip per bucket
-  model.buckets.forEach((b, i) => {
+  const m = rollingDensity(SNAP.rows);
+  // one tooltip column per sample, naming the exact window
+  const columns = container.querySelectorAll('[title*="in the preceding 30s"]');
+  expect(columns).toHaveLength(SAMPLE_POINTS);
+  m.samples.forEach((s, i) => {
     expect(columns[i].getAttribute('title'))
-      .toBe(`${b.label} · ${b.count} event${b.count === 1 ? '' : 's'}`);
+      .toBe(`${s.label} · ${s.count} event${s.count === 1 ? '' : 's'} in the preceding 30s`);
   });
-  // ONE stepped outline over a subtle fill; no curve commands anywhere
+  // ONE stepped outline over the subtle fill; no curve commands
   const paths = container.querySelectorAll('svg path');
   expect(paths).toHaveLength(2);
-  const { outline, area } = steppedPath(model.buckets);
+  const { outline, area } = steppedPath(m.samples);
   expect(paths[0].getAttribute('d')).toBe(area);
   expect(paths[1].getAttribute('d')).toBe(outline);
-  expect(outline).not.toMatch(/[CQSTAcqsta]/);
-  // the peak alone carries the restrained accent and its marker
+  // the single accent: peak column band + point marker + Peak label
+  expect(screen.getByTestId('evidence-peak-column')).toBeInTheDocument();
   expect(screen.getByTestId('evidence-peak-marker')).toBeInTheDocument();
-  const accentBars = [...container.querySelectorAll('span')]
+  expect(screen.getByTestId('evidence-peak-label').textContent).toBe('Peak');
+  const accentLines = [...container.querySelectorAll('span')]
     .filter((s) => /#16436b|rgb\(22,\s*67,\s*107\)/.test(s.getAttribute('style') || '')
       && /height/.test(s.getAttribute('style') || ''));
-  expect(accentBars).toHaveLength(1);
-  // compact start / peak / end labels
-  const axis = [...container.querySelectorAll('.text-\\[10px\\]')].map((s) => s.textContent).filter(Boolean);
-  expect(axis).toHaveLength(3);
-  expect(axis).toContain(model.buckets[0].label);
-  expect(axis).toContain(model.buckets[model.buckets.length - 1].label);
-  expect(axis).toContain(model.peak.label);
+  expect(accentLines).toHaveLength(1);
+  // exact event ticks: one per source event, at the column-space position
+  const ticks = screen.getAllByTestId('evidence-tick');
+  expect(ticks).toHaveLength(6);
+  ticks.forEach((tk, i) => {
+    expect(tk.getAttribute('style')).toContain(`left: ${tickColumnPct(m.ticks[i].x)}%`);
+  });
+  // the compact ruled height band
+  const plane = screen.getByTestId('evidence-peak-column').parentElement;
+  expect(plane.className).toMatch(/min-h-\[180px\]/);
+  expect(plane.className).toMatch(/max-h-\[220px\]/);
+});
+
+test('the axis carries exactly start / midpoint / end in normal flow -- nothing can clip or overlap', () => {
+  const { container } = render(<EvidenceActivity incidentId="INC-8340" snapshot={SNAP} />);
+  const m = rollingDensity(SNAP.rows);
+  const axisRow = [...container.querySelectorAll('div')]
+    .find((el) => el.className.includes('justify-between') && el.className.includes('text-[10px]'));
+  const axis = [...axisRow.children].map((el) => el.textContent);
+  expect(axis).toEqual([
+    m.samples[0].label,
+    m.samples[Math.floor((SAMPLE_POINTS - 1) / 2)].label,
+    m.samples[SAMPLE_POINTS - 1].label,
+  ]);
+  // flex children in normal flow: no truncation/ellipsis classes exist
+  expect(container.innerHTML).not.toMatch(/truncate|text-ellipsis/);
+  // the Peak label is clamped inside the chart bounds even at the edges
+  expect(clampPct(97.5)).toBe(94);
+  expect(clampPct(1)).toBe(6);
+  const endBurst = rows(at('12:00', 0), at('12:00', 10),
+    at('12:02', 50), at('12:02', 51), at('12:02', 52), at('12:02', 53), at('12:02', 55));
+  const b = render(<EvidenceActivity incidentId="INC-2" snapshot={{ count: 7, rows: endBurst, identity: { cutoff_seq: 9 } }} />);
+  const lbl = within(b.container).getByTestId('evidence-peak-label');
+  const left = parseFloat(lbl.getAttribute('style').match(/left:\s*([\d.]+)%/)[1]);
+  expect(left).toBeGreaterThanOrEqual(6);
+  expect(left).toBeLessThanOrEqual(94);
+});
+
+test('the sparse state renders exact ticks, the activity line, the total, and the honest message', () => {
+  const sparseSnap = { count: 2, rows: rows(at('11:00'), at('11:03')), identity: { cutoff_seq: 7 } };
+  const { container } = render(<EvidenceActivity incidentId="INC-1" snapshot={sparseSnap} />);
+  expect(screen.getByText('2 events observed')).toBeInTheDocument();
+  expect(screen.getByText(SPARSE_MESSAGE)).toBeInTheDocument();
+  expect(screen.getByTestId('evidence-sparse')).toBeInTheDocument();
+  expect(screen.getAllByTestId('evidence-tick')).toHaveLength(2);
+  // no density shape is forced: no samples, no peak, no stepped svg
+  expect(container.querySelector('svg path')).toBeNull();
+  expect(screen.queryByText(/Peak/)).toBeNull();
+  expect(screen.queryByTestId('evidence-peak-marker')).toBeNull();
 });
 
 test('volume is never described as suspicious, anomalous, or attack timing', () => {
