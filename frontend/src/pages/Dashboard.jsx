@@ -16,6 +16,7 @@ import HintPanel from '../components/HintPanel';
 import { NAV_ICONS, NAV_STROKE, ChromeIcons } from '../components/icons';
 import AppHeader from '../components/AppHeader';
 import BrandLockup from '../components/BrandLockup';
+import StartButton from '../components/StartButton';
 import { PAGE_SUBTITLE } from '../components/uiCopy';
 
 const Dashboard = () => {
@@ -348,14 +349,15 @@ const Dashboard = () => {
               <span className="hidden lg:inline">Reset</span>
             </button>
           ) : (
-            <button
+            /* Final polish (section 4): the rail's inactive-session slot
+               is the shared product-entry StartButton (label collapses
+               below lg exactly like the lockup wordmark). */
+            <StartButton
               onClick={handleSimulateEvents}
-              title="Start Simulation"
-              className="liquid-btn flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold text-white"
-            >
-              <ChromeIcons.Play size={16} strokeWidth={NAV_STROKE} aria-hidden="true" className="shrink-0" />
-              <span className="hidden lg:inline">Start</span>
-            </button>
+              title="Start"
+              className="w-full"
+              labelClass="hidden lg:inline"
+            />
           )}
         </div>
       </aside>

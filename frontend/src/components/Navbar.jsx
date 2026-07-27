@@ -1,5 +1,6 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import StartButton from './StartButton';
 
 const Navbar = () => {
   const location = useLocation();
@@ -23,14 +24,9 @@ const Navbar = () => {
       </div>
       <div className="flex items-center gap-3 shrink-0">
         <div id="navbar-timer-slot" className="flex items-center" />
-        {!isActive('/sim') && (
-          <Link
-            to="/sim"
-            className="bg-[#f0f6fc] hover:bg-white text-[#0d1117] text-sm sm:text-base font-medium rounded-full px-4 sm:px-6 py-2 transition-colors shadow-[inset_0_2px_8px_0_rgba(255,255,255,0.35)] whitespace-nowrap"
-          >
-            Launch Sim
-          </Link>
-        )}
+        {/* Final polish (section 4): the legacy chrome's entry control is
+            the shared StartButton (the light "Launch Sim" pill retired). */}
+        {!isActive('/sim') && <StartButton to="/sim" />}
       </div>
     </nav>
   );

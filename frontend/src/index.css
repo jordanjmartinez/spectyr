@@ -229,9 +229,10 @@ code {
   pointer-events: none;
 }
 
-/* Liquid-glass CTA (Start Sim) — a frosted translucent pill with a bright
-   gradient-border stroke, for use on dark surfaces (hero video, sim rail, docs
-   sidebar). More fill than .liquid-glass so it reads as a primary button. */
+/* Liquid-glass CTA (the shared Start control, components/StartButton.jsx) — a
+   frosted translucent pill with a bright gradient-border stroke, for use on
+   dark surfaces (hero video, sim rail, docs shells, legacy navbar). More fill
+   than .liquid-glass so it reads as a primary button. */
 .liquid-btn {
   position: relative;
   overflow: hidden;

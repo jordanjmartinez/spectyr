@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, Play } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
+import StartButton from '../components/StartButton';
 
 const VIDEO_URL = '/videos/spectyrvideo.mp4';
 
@@ -136,31 +137,24 @@ const Landing = () => {
       <div className="relative z-10 flex-1 flex flex-col justify-end px-4 sm:px-6 md:px-12 pb-8 md:pb-16">
         <div className="flex flex-col md:flex-row md:items-end gap-8">
           <div className="flex-1">
+            {/* Final polish (section 5): the hero is the heading and the
+                shared Start control alone -- the descriptive subheading is
+                deleted, not replaced, and the freed space stays open. */}
             <h1
-              className="animate-blur-fade-up text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold leading-[1.1] mb-4 md:mb-6"
+              className="animate-blur-fade-up text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold leading-[1.1] mb-6 md:mb-10"
               style={{ animationDelay: '300ms', fontFamily: "'IBM Plex Sans', sans-serif", letterSpacing: '-0.02em' }}
             >
               <span className="block">Triage Real Alerts.</span>
               <span className="block">Build Real Instincts.</span>
             </h1>
 
-            <p
-              className="animate-blur-fade-up text-base sm:text-lg md:text-xl text-gray-400 mb-6 md:mb-12 max-w-2xl"
-              style={{ animationDelay: '400ms' }}
-            >
-              A simulated SIEM with realistic log chains across different attack scenarios.
-            </p>
-
             {/* CTA */}
             <div className="flex flex-wrap gap-3 sm:gap-4">
-              <Link
+              <StartButton
                 to="/sim"
-                className="liquid-btn animate-blur-fade-up flex items-center gap-2 text-white rounded-full font-medium px-6 sm:px-8 py-2.5 sm:py-3"
-                style={{ animationDelay: '500ms' }}
-              >
-                <Play size={18} className="fill-white" />
-                Start Sim
-              </Link>
+                className="animate-blur-fade-up"
+                style={{ animationDelay: '400ms' }}
+              />
             </div>
           </div>
         </div>

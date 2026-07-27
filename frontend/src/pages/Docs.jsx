@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import BrandLockup from '../components/BrandLockup';
+import StartButton from '../components/StartButton';
 
 // Final visual-polish pass (Docs correction): the documentation describes
 // the CURRENT product only -- Guided/Hardcore, the single-incident
@@ -88,13 +89,7 @@ const Docs = () => {
               is retained), same reduction rule as the sim icon rail */}
           <BrandLockup wordmarkClass="hidden min-[480px]:inline" />
         </Link>
-        <Link
-          to="/sim"
-          className="liquid-btn inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium text-white"
-        >
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
-          Start Sim
-        </Link>
+        <StartButton to="/sim" />
       </div>
 
       {/* Mobile section navigation: a horizontal strip under the shell
@@ -150,13 +145,7 @@ const Docs = () => {
             ))}
           </nav>
 
-          <Link
-            to="/sim"
-            className="liquid-btn mt-auto inline-flex items-center justify-center gap-2 rounded-full mx-8 px-5 py-2 text-sm font-medium text-white"
-          >
-            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
-            Start Sim
-          </Link>
+          <StartButton to="/sim" className="mt-auto mx-8" />
         </aside>
 
         {/* Content */}
