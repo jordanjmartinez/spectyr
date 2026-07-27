@@ -1318,3 +1318,183 @@ Branch `stage-5-live-run-feedback`, tip recorded in the closing
 message. Working tree carries ONLY the two owner asset items, both
 byte-identical to their pre-pass hashes. NOT merged, NOT pushed.
 Stopped at the consolidated visual-polish checkpoint.
+
+---
+
+# Part VI. Evidence activity and the SPECTR lockup
+
+Cumulative with Parts IV and V. Two concern-separated commits,
+`5b53ba3` and `82ac025`, plus this record. Product behavior, scoring,
+response architecture, and SIEM semantics were not reopened.
+
+## VI.1 Final dashboard layout
+
+ONE grid whose DOM order IS the ruled narrow stack, with explicit
+desktop placement, so screen-reader order and visual order agree at
+every width:
+
+```
+[            KPI row  (spans all three columns)            ]
+[ Active inv. ][   Evidence activity   ][ ATT&CK profile   ]
+[ Severity    ][   Recent results (spans centre + right)   ]
+[ Environment ][                                           ]
+```
+
+Narrow: Active investigation, KPI, Evidence activity, Severity,
+Environment, ATT&CK profile, Recent results — the ruled order, pinned
+by `incident-dashboard.test.js`.
+
+## VI.2 Evidence activity data source and bucketing
+
+**Source, no new backend field**: the existing single query path
+`GET /api/events/query?q=all | * | * | *&scope=<INC id>`, minted through
+the approved `descentSessionAll()` generator — the same
+whitelist-serialized observable rows the SIEM serves under that
+incident's scope. No expected-but-unarrived scenario events, no
+answer-key data, no fabricated timestamps, no historical series.
+
+**Read discipline**: one read per incident, taken only after the
+incident's roster seals (its chain has finished writing), so a
+half-written chain can never be charted and no false zero-event chart
+appears before the first read. Never polled — the snapshot cannot move
+on its own.
+
+**Bucketing** (`evidenceBuckets.js`, pure):
+
+```
+ladder   = [30, 60, 120, 300, 600, 1800, 3600] seconds
+chosen   = first size where floor(span / size) + 1 <= 40
+beyond   = ceil(span / 39 / 3600) whole hours   (spans no run reaches)
+buckets  = contiguous from the first to the last observed event
+peak     = highest count, earliest interval on a tie
+```
+
+So a very short run lands on 30s and an ordinary run on 60s. A quiet
+interval renders as a real zero rather than being skipped.
+
+## VI.3 Snapshot-boundary behavior
+
+The card charts its frozen snapshot. The token-bound new-count poll
+(counts only, never rows) announces later evidence as
+"N new events available"; it enters only when the player clicks
+**Load new events**, which replaces the model atomically. Frozen
+results never move before that action. The sr-only caption names the
+snapshot boundary sequence and the waiting count.
+
+## VI.4 No-leak evidence
+
+The card cannot fetch and never sees grading, dispositions, expected
+actions, or scenario labels (asserted structurally against its source
+with comments stripped). The dashboard supplies only the scoped query
+result. Volume is never framed as suspicion: a copy guard asserts the
+card renders no anomaly / suspicious / malicious / attack / threat /
+correct vocabulary, and the highlighted interval is described purely as
+the peak.
+
+## VI.5 Incident ATT&CK placement
+
+Placement only — the VA3 data model, normalization, copy, and leak
+safeguards are unchanged. It is now the right-hand secondary card at
+~30% of the primary row, near-square, top-aligned with Evidence
+activity, and never expands to full dashboard width.
+
+## VI.6 SPECTR visible-brand ruling
+
+The visible wordmark is **SPECTR**. The sidebar carries a deliberate
+lockup: a 68px branded top area, the ghost mark at 28px (decorative,
+`aria-hidden`), the uppercase wordmark beside it, the existing subtle
+divider, alignment with the nav labels, and an sr-only accessible name.
+It keeps the app's existing home navigation, so it is not a dead
+control. No account, subscription, online state, notification count,
+profile, or logout was added. The same wordmark treatment follows on
+the loading screen, the landing navbar, the marketing footer, and both
+Docs lockups.
+
+**Internal names deliberately preserved**: `spectyr_logo.png`,
+the `spectyr_session` storage key, API paths, the package name, docs
+history, and scenario content (e.g. the authored YARA rule name
+`Spectyr_USB_Loader_Generic`). Page titles keep their forms —
+Dashboard, Incidents, SIEM, Detections, Endpoints, Response, Metrics.
+
+## VI.7 Font inventory and wordmark treatment
+
+The approved font link already loads: Aldrich, Fira Code, Fredoka One,
+IBM Plex Mono, IBM Plex Sans, Orbitron, Open Sans, **Inter**,
+Montserrat, Share Tech Mono, **Space Grotesk**, Teko, VT323. Space
+Grotesk 600 matches the brief (geometric, compact, clean rather than
+cyberpunk) and is already available, so the wordmark uses it at 0.06em
+tracking — **no new dependency, no font files added or shared**. Inter
+remains the product UI font; body typography is untouched. No Atera
+asset, logo shape, or lettering was copied or referenced.
+
+## VI.8 Changed files
+
+`components/EvidenceActivity.jsx` (new), `components/evidenceBuckets.js`
+(new), `components/IncidentDashboard.jsx` (grid + evidence state),
+`pages/Dashboard.jsx` (lockup), `App.jsx`, `components/Navbar.jsx`,
+`pages/Docs.jsx`. Tests: `__tests__/evidence-activity.test.js` (new, 9),
+`__tests__/brand-lockup.test.js` (new, 5),
+`__tests__/incident-dashboard.test.js` (reading order retargeted).
+
+## VI.9 Tests
+
+Frontend **38 suites / 339 tests**; backend 29 suites (loader 65).
+New test names: ladder determinism and cap; exact totals, contiguity
+and single peak with earliest-tie; malformed timestamps ignored;
+factual summary and accessible equivalent; no suspicion vocabulary;
+announced-but-not-merged with atomic replacement; honest loading and
+empty states; structural leak safety; one scoped non-polled read.
+Brand: lockups render SPECTR; face already loaded with no binaries
+added; labeled real destination; internal identifiers unrenamed; page
+titles unchanged.
+
+## VI.10 Chrome and responsive evidence
+
+Verified live at desktop width: the SPECTR lockup on every primary page;
+the new composition (KPI row, Active investigation | Evidence activity |
+ATT&CK profile, Severity | Recent results, Environment); Evidence
+activity and ATT&CK profile truthful no-incident states; the ATT&CK
+polygon populated from real incident mappings; Environment status with
+its real platform breakdown (Windows Server 1 · Windows Workstation 1);
+the "Choose your experience" modal. **Zero console errors.**
+
+## VI.11 Deviations and honest gaps
+
+1. **Evidence activity was NOT verified live with populated bars.** In
+   both attempted runs the session's event pool was empty, which the
+   SIEM independently confirmed ("0 events match", "as of seq #0", token
+   `cutoff_seq: 0`). The card correctly rendered its truthful empty
+   state, so the component is not implicated; the failure is
+   environmental (session/log-writer state in this dev instance, the
+   same class of dev-environment fragility recorded in Part III).
+   Bucketing, totals, peak, snapshot boundary, and atomic reload are
+   covered by nine permanent tests, but the populated chart, the
+   waiting-count state, and the Load-new-events path have **not** been
+   seen in the browser. Stated rather than claimed.
+2. **A case-collision defect was found and fixed inside this change**:
+   `EvidenceActivity.jsx` and the original `evidenceActivity.js`
+   differed only by case, which a case-insensitive filesystem resolved
+   to a single module (every dashboard test failed with an undefined
+   component). The logic module is now `evidenceBuckets.js`.
+3. **A contract gap was found by my own test**: spans beyond the ladder
+   exceeded the 40-bucket cap. The function now steps to whole hours
+   rather than silently overflowing.
+4. **Two prose mentions still read "Spectyr"** — the Docs page title
+   "How Spectyr Works" with its opening paragraph, and the footer
+   copyright line. The amendment forbids uppercasing prose or page
+   titles, and rewriting brand prose is a naming decision beyond a
+   wordmark change, so both are left for an explicit owner ruling.
+5. **Narrow and tablet Chrome verification still not completed** —
+   `resize_window` reports success but the rendered viewport stays at
+   desktop width in this session. Responsive behavior remains evidenced
+   by the grid structure and the pinned DOM reading order. Carried
+   forward from Parts IV and V.
+6. The Part IV Classification F anomaly remains open and untouched (no
+   scoring path was modified).
+
+## VI.12 Final state
+
+Branch `stage-5-live-run-feedback`; tip recorded in the closing message.
+Working tree carries ONLY the two owner asset items, both byte-identical
+to their pre-pass hashes. NOT merged, NOT pushed. Stopped at the
+consolidated visual-polish checkpoint.
