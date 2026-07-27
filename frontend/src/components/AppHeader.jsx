@@ -24,7 +24,7 @@ import { ChromeIcons, NAV_STROKE } from './icons';
 // Documentation, and Back to home. No invented account, email,
 // subscription, profile settings, logout, or cloud identity.
 
-const AppHeader = ({ title, gameMode, analystName, simActive, onReset }) => {
+const AppHeader = ({ title, subtitle, gameMode, analystName, simActive, onReset }) => {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
 
@@ -54,7 +54,13 @@ const AppHeader = ({ title, gameMode, analystName, simActive, onReset }) => {
       className="h-[96px] px-4 sm:px-6 flex items-center justify-between gap-4 bg-white border-b border-[#e2e6ea]"
       data-testid="app-header"
     >
-      <h1 className="t-page">{title}</h1>
+      {/* VC5 (owner instruction): the page's functional summary reads on
+          the next line directly under the section header -- one stack,
+          globally, fed by the shared PAGE_SUBTITLE copy. */}
+      <div className="min-w-0">
+        <h1 className="t-page">{title}</h1>
+        {subtitle && <p className="t-body text-[#57606a] mt-0.5 truncate">{subtitle}</p>}
+      </div>
 
       <div ref={rootRef} className="relative shrink-0">
         <button

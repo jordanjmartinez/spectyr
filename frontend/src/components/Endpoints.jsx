@@ -3,7 +3,6 @@ import { apiFetch } from '../api';
 import EndpointDetail from './EndpointDetail';
 import useIncidentScope from './useIncidentScope';
 import { PageIntro, ErrorState } from './ui';
-import { PAGE_SUBTITLE } from './uiCopy';
 import {
   DeviceGlyph, PlatformBadge, platformFor, DEVICE_LABELS,
 } from './icons';
@@ -147,7 +146,6 @@ const Endpoints = ({ isVisible, resetTrigger, pivotHost,
       {/* VA1: functional subtitle + the ONE incident pill; the retired
           All-activity bar and the identity card are gone. */}
       <PageIntro
-        subtitle={PAGE_SUBTITLE.endpoints}
         incident={activeIncident}
         right={(
           <input

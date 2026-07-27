@@ -6,7 +6,7 @@ import CampaignProgress from './CampaignProgress';
 import ActionHistory from './ActionHistory';
 import ScoreSections from './ScoreSections';
 import LearningReview from './LearningReview';
-import { SESSION_PERFORMANCE_LABEL, PAGE_SUBTITLE } from './uiCopy';
+import { SESSION_PERFORMANCE_LABEL } from './uiCopy';
 import { CARD_STYLE, PageIntro } from './ui';
 
 const Analytics = ({ onReset, analystName, setAnalyticsCount, isVisible = true,
@@ -76,7 +76,6 @@ const Analytics = ({ onReset, analystName, setAnalyticsCount, isVisible = true,
       {/* VA1: functional subtitle + the ONE incident pill (relevant when
           an investigation is active); Reset stays in the controls slot. */}
       <PageIntro
-        subtitle={PAGE_SUBTITLE.analytics}
         incident={activeIncident}
         right={(
           <button

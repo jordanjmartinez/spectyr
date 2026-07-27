@@ -7,7 +7,7 @@ import {
   responseActionsTaken, READY_TO_SUBMIT, toReview, completedStrip,
   SUBMITTED_GRADE_LOCKED, CLASSIFICATION_NOT_SELECTED,
   classificationSelected, CONSIDER_PROMPT, SUBMIT_PENDING,
-  caseClosed, REVIEW_WHAT_YOU_LEARNED, CLASSIFY_TO_SUBMIT, PAGE_SUBTITLE,
+  caseClosed, REVIEW_WHAT_YOU_LEARNED, CLASSIFY_TO_SUBMIT,
 } from './uiCopy';
 import { submissionReady, validClassification } from './submissionReady';
 import { toastReady } from './uiToasts';
@@ -255,7 +255,6 @@ const Incidents = ({
           is NOT repeated here -- this page's own detail pane already
           names the selected incident (one context per page). */}
       <PageIntro
-        subtitle={PAGE_SUBTITLE.incidents}
         right={(
           <>
             <SegmentedToggle

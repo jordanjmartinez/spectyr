@@ -6,7 +6,6 @@ import { postResponseAction, confirmSpecs, PERSIST_LABEL } from './responseActio
 import {
   ACTION_LABELS, RESPONSE_SELECT_INCIDENT, RESPONSE_NO_PROMOTED,
   RESPONSE_NO_PROMOTED_SUB, RESPONSE_NO_TARGETS, RESPONSE_NO_ACTIONS,
-  PAGE_SUBTITLE,
 } from './uiCopy';
 import { CARD_STYLE, StateChip, PageIntro, SegmentedToggle } from './ui';
 import { DeviceGlyph, PlatformBadge, platformFor } from './icons';
@@ -212,13 +211,10 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
 
   return (
     <div>
-      {/* VA1: functional subtitle + the ONE incident pill; the retired
-          All-activity bar and the identity card are gone. With no
-          incident the Actions view renders its own truthful state. */}
+      {/* VA1/VC5: the ONE incident pill + view toggle (the functional
+          subtitle lives in the AppHeader now). With no incident the
+          Actions view renders its own truthful state. */}
       <PageIntro
-        subtitle={view === 'log'
-          ? 'Every response action this session, in order.'
-          : PAGE_SUBTITLE.response}
         incident={activeIncident}
         right={(
           <SegmentedToggle
@@ -231,6 +227,10 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
       />
 
       {view === 'log' ? (
+        <div>
+        {/* VC5: the log view's descriptive line stays with the list it
+            describes (the page summary itself lives in the AppHeader) */}
+        <p className="t-body text-[#57606a] mb-2">Every response action this session, in order.</p>
         <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="data-thead">
@@ -257,6 +257,7 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
               ))}
             </tbody>
           </table>
+        </div>
         </div>
       ) : !activeIncidentId ? (
         <div className="rounded-xl p-8 text-center text-sm text-[#57606a]" style={CARD_STYLE}>

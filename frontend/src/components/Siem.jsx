@@ -22,7 +22,7 @@ import {
   QUERY_SECTION_NAMES, sectionCouldNotBeRead, STRUCTURE_LINE,
   RESTORE_LAST_QUERY, SIMPLE_PLACEHOLDER, SIMPLE_HELP, SIMPLE_TOGGLE,
   ADVANCED_TOGGLE, SOURCE_LABEL, EVENT_TYPE_LABEL, ALL_SOURCES,
-  ALL_EVENT_TYPES, PAGE_SUBTITLE,
+  ALL_EVENT_TYPES,
 } from './uiCopy';
 
 // SIEM Investigation Workbench shell (Stage 4 Phase 4). Analyst-driven:
@@ -490,7 +490,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
           identity card is gone and the Cards/Table control moves down to
           the results area. Query controls, truthful state copy, and the
           evidence surfaces are untouched. */}
-      <PageIntro subtitle={PAGE_SUBTITLE.siem} incident={activeIncident} />
+      <PageIntro incident={activeIncident} />
 
       {/* Case-constant context + TIMEFRAME + query bar (Final pass III.0
           item 2): ONE pinned case line, one evidence universe. The old

@@ -56,12 +56,19 @@ test('the header reads [current workspace title] + [avatar]; never mode or analy
   expect(buttons[0]).toHaveAccessibleName('Analyst menu');
 });
 
-test('the title follows the active workspace', async () => {
+test('the title follows the active workspace, with the functional summary on the next line (VC5)', async () => {
   await renderDashboard('Jordan');
   fireEvent.click(screen.getByTitle('Detections'));
-  expect((await screen.findByTestId('app-header')).querySelector('h1').textContent).toBe('Detections');
+  const header = await screen.findByTestId('app-header');
+  expect(header.querySelector('h1').textContent).toBe('Detections');
+  // the page summary reads directly underneath the section header --
+  // the h1's next sibling inside the same stack, never beside controls
+  const sub = header.querySelector('h1 + p');
+  expect(sub.textContent).toBe('Review detections and decide what is actionable.');
   fireEvent.click(screen.getByTitle('Metrics'));
   expect(screen.getByTestId('app-header').querySelector('h1').textContent).toBe('Metrics');
+  expect(screen.getByTestId('app-header').querySelector('h1 + p').textContent)
+    .toBe('Review performance and learn from the investigation.');
 });
 
 test('the avatar opens a menu of existing real controls; Reset routes to the existing confirm modal', async () => {

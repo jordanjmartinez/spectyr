@@ -1,10 +1,12 @@
 /**
- * VA1 (amendment sections 1-3): the redundant "All activity" scope
- * furniture is gone from SIEM, Detections, Endpoints, and Response; each
- * page carries ONE concise functional subtitle and, when an incident is
- * active, the incident context EXACTLY ONCE as a compact pill. No
- * decorative organization branding remains in workspace subtitles, and
- * no page repeats "Investigating INC-####".
+ * VA1 (amendment sections 1-3) + VC5 (owner instruction): the redundant
+ * "All activity" scope furniture is gone from SIEM, Detections,
+ * Endpoints, and Response. VC5 moved the ONE concise functional
+ * subtitle out of the pages and into the unified AppHeader, on its own
+ * line directly under the section header (see app-header.test.js); the
+ * pages' top row keeps ONLY the incident pill (EXACTLY ONCE, when an
+ * incident is active) and the page controls. No decorative organization
+ * branding remains, and no page repeats "Investigating INC-####".
  */
 import React from 'react';
 import fs from 'fs';
@@ -64,7 +66,7 @@ test('the retired scope furniture is structurally gone from every page', () => {
 });
 
 test('the pill renders the incident context ONCE, with id, title, and severity', () => {
-  const { container } = render(<PageIntro subtitle={PAGE_SUBTITLE.siem} incident={INCIDENT} />);
+  const { container } = render(<PageIntro incident={INCIDENT} />);
   const pills = screen.getAllByTestId('incident-pill');
   expect(pills).toHaveLength(1);
   expect(pills[0].textContent).toContain('INC-8340');
@@ -80,16 +82,18 @@ test.each([
   ['Detections', (p) => <Detections isVisible resetTrigger={0} onHostPivot={() => {}} {...p} />, PAGE_SUBTITLE.detections],
   ['Endpoints', (p) => <Endpoints isVisible resetTrigger={0} pivotHost={null} {...p} />, PAGE_SUBTITLE.endpoints],
   ['Response', (p) => <Response isVisible resetTrigger={0} {...p} />, PAGE_SUBTITLE.response],
-])('%s: subtitle plus exactly one pill with a case; no pill and no All-activity label without one', async (name, mk, subtitle) => {
+])('%s: exactly one pill with a case; the page itself no longer renders the subtitle (VC5: it lives in the header)', async (name, mk, subtitle) => {
   const withCase = render(mk({ activeIncidentId: 'INC-8340', activeIncident: INCIDENT }));
-  expect(await screen.findByText(subtitle)).toBeInTheDocument();
-  expect(screen.getAllByTestId('incident-pill')).toHaveLength(1);
+  expect(await screen.findAllByTestId('incident-pill')).toHaveLength(1);
+  expect(screen.queryByText(subtitle)).toBeNull();
   expect(withCase.container.textContent).not.toMatch(/Investigating INC-/);
   withCase.unmount();
 
   const noCase = render(mk({ activeIncidentId: null, activeIncident: null }));
-  expect(await screen.findByText(subtitle)).toBeInTheDocument();
+  // settle async fetches, then: no pill, no subtitle, no All-activity
+  await new Promise((r) => setTimeout(r, 0));
   expect(screen.queryAllByTestId('incident-pill')).toHaveLength(0);
+  expect(screen.queryByText(subtitle)).toBeNull();
   expect(noCase.container.textContent).not.toMatch(/All activity/);
 });
 

@@ -131,12 +131,17 @@ export const IncidentPill = ({ incidentId, title, severity, mode }) => (
   </span>
 );
 
-export const PageIntro = ({ subtitle, incident = null, right = null }) => (
-  <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-    {subtitle && <p className="t-body text-[#57606a]">{subtitle}</p>}
-    {incident?.incidentId && <IncidentPill {...incident} />}
-    {right && <div className="ml-auto flex flex-wrap items-center gap-2">{right}</div>}
-  </div>
+// VC5 (owner instruction): the functional page summary moved into the
+// unified AppHeader, on its own line under the section header. This row
+// keeps ONLY the incident-context pill and the page controls; it renders
+// nothing when it has neither.
+export const PageIntro = ({ incident = null, right = null }) => (
+  (incident?.incidentId || right) ? (
+    <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+      {incident?.incidentId && <IncidentPill {...incident} />}
+      {right && <div className="ml-auto flex flex-wrap items-center gap-2">{right}</div>}
+    </div>
+  ) : null
 );
 
 // ---- small identity pieces --------------------------------------------------

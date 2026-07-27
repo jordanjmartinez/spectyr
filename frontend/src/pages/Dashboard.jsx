@@ -16,6 +16,7 @@ import HintPanel from '../components/HintPanel';
 import { NAV_ICONS, NAV_STROKE, ChromeIcons } from '../components/icons';
 import AppHeader from '../components/AppHeader';
 import BrandLockup from '../components/BrandLockup';
+import { PAGE_SUBTITLE } from '../components/uiCopy';
 
 const Dashboard = () => {
   const [groupedAlertCount, setGroupedAlertCount] = useState(0);
@@ -370,6 +371,7 @@ const Dashboard = () => {
             here (the pinned case line lives on the working surfaces). */}
         <AppHeader
           title={(tabs.find(t => t.key === view) || {}).label || 'Dashboard'}
+          subtitle={PAGE_SUBTITLE[view]}
           gameMode={gameMode}
           analystName={analystName}
           simActive={simActive}

@@ -4,7 +4,6 @@ import DetectionDetail from './DetectionDetail';
 import useIncidentScope from './useIncidentScope';
 import {
   detectionsReviewed, detectionsRemaining, FEED_SUBCOPY, OPEN_IN_RESPONSE,
-  PAGE_SUBTITLE,
 } from './uiCopy';
 import { TOOLTIPS } from './helpContent';
 import { toastDisposition } from './uiToasts';
@@ -160,7 +159,7 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
           retired All-activity bar and the identity card are gone. The
           scope-failure notice stays as an inline alert (never a
           full-width status bar) so scope truth is preserved. */}
-      <PageIntro subtitle={PAGE_SUBTITLE.detections} incident={activeIncident} />
+      <PageIntro incident={activeIncident} />
       {activeIncidentId && scope.status === 'error' && (
         <div className="mb-3 rounded-lg border border-[#e2e6ea] bg-[#faf6f0]">
           <ErrorState onRetry={scope.refetch}>
