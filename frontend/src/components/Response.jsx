@@ -7,7 +7,7 @@ import {
   ACTION_LABELS, RESPONSE_SELECT_INCIDENT, RESPONSE_NO_PROMOTED,
   RESPONSE_NO_PROMOTED_SUB, RESPONSE_NO_TARGETS, RESPONSE_NO_ACTIONS,
 } from './uiCopy';
-import { CARD_STYLE, StateChip, PageIntro, SegmentedToggle } from './ui';
+import { CARD_STYLE, StateChip, PageIntro, SegmentedToggle, CountPill } from './ui';
 import { DeviceGlyph, PlatformBadge, platformFor } from './icons';
 
 // Final pass Part III.0.1: the ONE canonical action-execution workspace
@@ -90,7 +90,9 @@ const TargetSection = ({ title, count, children }) => (
   >
     <div className="mb-2 flex items-center gap-2">
       <h3 className="t-subsection">{title}</h3>
-      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-[#57606a]">{count}</span>
+      {/* VF (section 6): the ONE shared CountPill (ui.jsx), replacing the
+          hand-rolled copy of the same classes */}
+      <CountPill>{count}</CountPill>
     </div>
     {children}
   </section>
@@ -262,7 +264,7 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
             the descriptive line stays with the list it describes. */}
         <div className="mb-2 flex items-center gap-2">
           <h3 className="t-subsection">Response log</h3>
-          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-[#57606a]">{logNewestFirst.length}</span>
+          <CountPill>{logNewestFirst.length}</CountPill>
         </div>
         <p className="t-body text-[#57606a] mb-2">Every response action this session, in order.</p>
         <TableSurface>
