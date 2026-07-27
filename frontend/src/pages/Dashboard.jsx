@@ -16,7 +16,7 @@ import HintPanel from '../components/HintPanel';
 import { NAV_ICONS, NAV_STROKE, ChromeIcons } from '../components/icons';
 import AppHeader from '../components/AppHeader';
 import BrandLockup from '../components/BrandLockup';
-import StartButton from '../components/StartButton';
+import StartButton, { CTA_PILL } from '../components/StartButton';
 import { PAGE_SUBTITLE } from '../components/uiCopy';
 
 const Dashboard = () => {
@@ -340,12 +340,17 @@ const Dashboard = () => {
         <div className="mt-auto p-2 lg:p-3 border-t border-white/10 flex flex-col gap-2">
           <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />
           {simActive ? (
+            /* VE5 (owner mid-run instruction): the rail Reset wears the
+               same pill treatment as the shared Start control (one
+               exported class list, so the geometry cannot drift). It is
+               NOT a StartButton -- Reset is not a product-entry action. */
             <button
               onClick={() => setShowResetModal(true)}
               title="Reset Simulation"
-              className="liquid-btn flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-white"
+              aria-label="Reset Simulation"
+              className={`${CTA_PILL} w-full`}
             >
-              <ChromeIcons.RotateCcw size={16} strokeWidth={NAV_STROKE} aria-hidden="true" className="shrink-0" />
+              <ChromeIcons.RotateCcw size={18} strokeWidth={NAV_STROKE} aria-hidden="true" className="shrink-0" />
               <span className="hidden lg:inline">Reset</span>
             </button>
           ) : (

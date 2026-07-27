@@ -21,8 +21,14 @@ import { ChromeIcons } from './icons';
 // ordinary secondary actions keep their own styles.
 // ============================================================================
 
+// The pill geometry alone, exported so sibling rail controls the owner
+// rules onto this treatment (VE5: the rail Reset) share the exact
+// class list instead of drifting copies. StartButton remains the ONLY
+// product-entry Start control.
+export const CTA_PILL = 'liquid-btn inline-flex items-center justify-center gap-2 h-[44px] px-[26px] rounded-full text-[15px] font-medium text-white whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-50 disabled:pointer-events-none';
+
 const StartButton = ({ to, onClick, className = '', labelClass = '', style, title }) => {
-  const cls = `liquid-btn inline-flex items-center justify-center gap-2 h-[44px] px-[26px] rounded-full text-[15px] font-medium text-white whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-50 disabled:pointer-events-none ${className}`.trim();
+  const cls = `${CTA_PILL} ${className}`.trim();
   const content = (
     <>
       <ChromeIcons.Play size={18} className="fill-white shrink-0" aria-hidden="true" />

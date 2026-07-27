@@ -16,7 +16,9 @@ const HintPanel = ({ gameMode, surface }) => {
   if (!hintsAllowed(gameMode)) return null;
 
   return (
-    <div className="fixed bottom-5 left-20 lg:left-60 z-40" data-testid="hint-panel">
+    // VE5 (owner mid-run instruction): the floating control clears the
+    // nav rail (w-24 below lg, w-72 at lg) instead of clipping into it.
+    <div className="fixed bottom-5 left-28 lg:left-[19rem] z-40" data-testid="hint-panel">
       {open && (
         <div className="mb-2 w-80 max-w-[85vw] bg-white border border-[#e2e6ea] rounded-xl shadow-xl overflow-hidden">
           <div className="p-4">
