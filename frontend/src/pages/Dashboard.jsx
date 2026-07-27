@@ -440,7 +440,7 @@ const Dashboard = () => {
         </div>
 
         <div className={view === "analytics" ? "block" : "hidden"}>
-          <Analytics onReset={() => setShowResetModal(true)} analystName={analystName} setAnalyticsCount={setAnalyticsCount} isVisible={view === "analytics"} reviewRequest={reviewRequest} activeIncident={activeIncident} />
+          <Analytics analystName={analystName} setAnalyticsCount={setAnalyticsCount} isVisible={view === "analytics"} reviewRequest={reviewRequest} activeIncident={activeIncident} />
         </div>
         </div>
       </main>

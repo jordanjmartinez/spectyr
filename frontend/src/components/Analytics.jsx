@@ -9,7 +9,7 @@ import LearningReview from './LearningReview';
 import { SESSION_PERFORMANCE_LABEL } from './uiCopy';
 import { CARD_STYLE, PageIntro } from './ui';
 
-const Analytics = ({ onReset, analystName, setAnalyticsCount, isVisible = true,
+const Analytics = ({ analystName, setAnalyticsCount, isVisible = true,
                      reviewRequest = null, activeIncident = null }) => {
   const [report, setReport] = useState(null);
   const [levelData, setLevelData] = useState(null);
@@ -74,18 +74,10 @@ const Analytics = ({ onReset, analystName, setAnalyticsCount, isVisible = true,
   return (
     <div className="space-y-6">
       {/* VA1: functional subtitle + the ONE incident pill (relevant when
-          an investigation is active); Reset stays in the controls slot. */}
-      <PageIntro
-        incident={activeIncident}
-        right={(
-          <button
-            onClick={onReset}
-            className="px-3 py-1.5 text-xs font-medium rounded-md border transition bg-white hover:bg-[#eef1f4] text-[#1a2332] border-[#d0d7de]"
-          >
-            Reset Simulation
-          </button>
-        )}
-      />
+          an investigation is active). VF6 (owner mid-run instruction):
+          the page-level Reset Simulation control is removed from Metrics;
+          Reset lives in the rail slot and the avatar menu. */}
+      <PageIntro incident={activeIncident} />
 
       {/* Campaign Progress - Full Width */}
       <CampaignProgress levelData={levelData} report={cardReport} analystName={analystName} />
