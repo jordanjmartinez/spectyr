@@ -15,6 +15,7 @@ import FailureModal from '../components/FailureModal';
 import HintPanel from '../components/HintPanel';
 import { NAV_ICONS, NAV_STROKE, ChromeIcons } from '../components/icons';
 import AppHeader from '../components/AppHeader';
+import BrandLockup from '../components/BrandLockup';
 
 const Dashboard = () => {
   const [groupedAlertCount, setGroupedAlertCount] = useState(0);
@@ -277,27 +278,23 @@ const Dashboard = () => {
     <div className="min-h-screen flex bg-[#f6f8fa] text-[#1a2332]">
       {/* Navy nav rail */}
       <aside className="sticky top-0 self-start h-screen w-16 lg:w-56 shrink-0 bg-[#101218] text-gray-300 flex flex-col z-30">
-        {/* VC2 (header correction sections 3-4, superseding VB2's face):
-            the SPECTR brand lockup at logo scale -- the 32px ghost mark
-            and the 28px wordmark in the shared .brand-wordmark display
-            face (Bank-Gothic-like, already loaded; selection + licensing
-            note live on the index.css rule; logo only, never product
-            type), one horizontal lockup filling the brand cell of the
-            unified 72px shell row. VISIBLE branding only:
-            no glow, bevel, gradient, animation, or copied shapes; the
-            lockup keeps the app's existing home navigation, so it is not
-            a dead control. No account, status, notification, or profile
+        {/* VC3 (final lockup correction, cumulative over VC1-VC2): the
+            brand cell of the unified 72px shell row renders the ONE
+            shared BrandLockup (40px ghost + 30px wordmark; sizing and
+            face live on the component and its shared brand token).
+            Cell padding is reduced so the full-size lockup fits the
+            rail without clipping. VISIBLE branding only: no glow,
+            bevel, gradient, animation, or copied shapes; the lockup
+            keeps the app's existing home navigation, so it is not a
+            dead control. No account, status, notification, or profile
             information is added. Internal identifiers (asset filenames,
             storage keys, API paths, package names) are untouched. */}
         <Link
           to="/"
           title="Back to home"
-          className="flex items-center justify-center lg:justify-start gap-2.5 h-[72px] px-3 lg:px-4 border-b border-white/10 hover:bg-white/5 transition-colors"
+          className="flex items-center justify-center lg:justify-start h-[72px] px-2.5 border-b border-white/10 hover:bg-white/5 transition-colors"
         >
-          <img src="/spectyr_logo.png" alt="" aria-hidden="true" className="h-8 w-8 object-contain shrink-0" />
-          <span className="hidden lg:inline brand-wordmark text-[28px] leading-none text-white whitespace-nowrap">
-            SPECTR
-          </span>
+          <BrandLockup wordmarkClass="hidden lg:inline" />
           <span className="sr-only">SPECTR home</span>
         </Link>
 

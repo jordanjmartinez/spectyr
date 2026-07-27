@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import BrandLockup from '../components/BrandLockup';
 
 // Final pass III.0 item 7: the Reports section is gone (nothing may imply
 // a report workflow exists).
@@ -59,10 +60,11 @@ const Docs = () => {
   return (
     <div className="min-h-screen bg-white text-[#1a2332]" style={{ fontFamily: "'Inter', sans-serif" }}>
       {/* Mobile top bar */}
-      <div className="lg:hidden sticky top-0 z-20 flex items-center justify-between px-5 py-3.5 bg-[#101218] border-b border-white/10 text-white">
-        <Link to="/" className="flex items-center gap-2.5">
-          <img src="/spectyr_logo.png" alt="" className="h-9 w-9 object-contain" />
-          <span className="brand-wordmark text-lg">SPECTR</span>
+      {/* VC3: the shared full-size BrandLockup (same component and size
+          as the app shell -- no smaller Docs variant) */}
+      <div className="lg:hidden sticky top-0 z-20 flex items-center justify-between px-4 py-3 bg-[#101218] border-b border-white/10 text-white">
+        <Link to="/" className="flex items-center">
+          <BrandLockup />
         </Link>
         <Link
           to="/sim"
@@ -75,13 +77,16 @@ const Docs = () => {
 
       <div className="flex">
         {/* Sidebar */}
-        <aside className="hidden lg:flex flex-col shrink-0 w-64 sticky top-0 h-screen bg-[#101218] text-white px-8 py-12">
-          <Link to="/" className="flex items-center gap-3 mb-12">
-            <img src="/spectyr_logo.png" alt="" className="h-14 w-14 object-contain" />
-            <span className="brand-wordmark text-xl">SPECTR</span>
+        {/* VC3: the aside's horizontal padding moves off the shell so the
+            lockup row can run tighter (padding reduced first, logo
+            dimensions preserved); nav and the action keep the original
+            px-8 inset */}
+        <aside className="hidden lg:flex flex-col shrink-0 w-64 sticky top-0 h-screen bg-[#101218] text-white py-12">
+          <Link to="/" className="flex items-center mb-12 px-4">
+            <BrandLockup />
           </Link>
 
-          <nav className="flex flex-col gap-2">
+          <nav className="flex flex-col gap-2 px-8">
             {SECTIONS.map((s) => (
               <a
                 key={s.id}
@@ -98,7 +103,7 @@ const Docs = () => {
 
           <Link
             to="/sim"
-            className="liquid-btn mt-auto inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium text-white"
+            className="liquid-btn mt-auto inline-flex items-center justify-center gap-2 rounded-full mx-8 px-5 py-2 text-sm font-medium text-white"
           >
             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
             Start Sim

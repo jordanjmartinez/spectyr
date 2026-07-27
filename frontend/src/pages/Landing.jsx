@@ -59,11 +59,12 @@ const Landing = () => {
           className="animate-blur-fade-up flex items-center h-8 md:h-10"
           style={{ animationDelay: '0ms' }}
         >
-          <span
-            className="text-2xl md:text-3xl font-semibold tracking-tight"
-            style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}
-          >
-            Spectyr
+          {/* VC3: the landing hero's visible wordmark joins the shared
+              brand treatment (the VB2 swap landed in the shared Navbar,
+              which this route never renders). Text-only here: the hero
+              3D ghost is the page's mark. */}
+          <span className="brand-wordmark text-2xl md:text-3xl">
+            SPECTR
           </span>
         </Link>
 
