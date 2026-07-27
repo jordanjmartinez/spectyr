@@ -13,7 +13,7 @@ import { submissionReady, validClassification } from './submissionReady';
 import { toastReady } from './uiToasts';
 import { deriveAchievements } from './achievements';
 import {
-  gradeColor, CARD_STYLE, PageIntro, SegmentedToggle, IncidentIdPill, SeverityBadge,
+  gradeColor, CARD_STYLE, PageIntro, SegmentedToggle, IncidentIdBadge, SeverityBadge,
 } from './ui';
 
 // Stage 3.9B: the Incidents operational workspace ("what do I need to work?").
@@ -279,9 +279,9 @@ const Incidents = ({
           ) : rows.map(c => (
             <button key={c.incident_id} onClick={() => onSelectIncident?.(c.incident_id)}
               className={`w-full text-left p-3 flex items-center justify-between gap-2 ${c.incident_id === selectedId ? 'bg-[#16436b]/5' : 'hover:bg-[#f6f8fa]'}`}>
-              <span className="min-w-0 flex items-center gap-2">
+              <span className="min-w-0 flex items-center gap-1.5">
+                <IncidentIdBadge id={c.incident_id} />
                 <SeverityBadge severity={c.severity} />
-                <span className="log-mono text-[#16436b] text-xs shrink-0">{c.incident_id}</span>
                 <span className="text-sm text-[#1a2332] truncate">{c.title}</span>
               </span>
               <span className="text-[11px] shrink-0 whitespace-nowrap" style={{ color: c.state === 'submitted' ? gradeColor(c.incident_grade?.grade) : '#8b949e' }}>
@@ -303,8 +303,8 @@ const Incidents = ({
             <div className="space-y-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <IncidentIdPill id={selected.incident_id} />
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <IncidentIdBadge id={selected.incident_id} />
                     <SeverityBadge severity={selected.severity} />
                     <span className="text-base font-semibold text-[#1a2332]">{selected.title}</span>
                     {selected.state === 'submitted' && selected.assisted && (

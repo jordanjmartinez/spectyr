@@ -129,7 +129,9 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                   className={`px-2.5 py-1 rounded-md text-xs border transition ${c.incident_id === selectedId
                     ? 'bg-[#101218] text-white border-transparent'
                     : 'bg-white text-[#57606a] border-[#d0d7de] hover:bg-[#eef1f4]'}`}>
-                  <span className="log-mono">{c.incident_id}</span>
+                  {/* VD8: incident ids read in Inter inside identity
+                      controls, matching the badge system */}
+                  <span>{c.incident_id}</span>
                   <span className="ml-1.5">{c.incident_grade?.grade || '-'}</span>
                 </button>
               ))}

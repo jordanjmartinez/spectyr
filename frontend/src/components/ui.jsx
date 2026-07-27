@@ -66,21 +66,32 @@ export const SEVERITY_PILL = {
   medium: 'bg-amber-50 text-amber-700 border-amber-200',
 };
 
-// ---- the shared identity badges (VD2, visual correction section 2) ----------
-// ONE treatment per concept, defined once and consumed everywhere:
-//   IncidentIdPill -- the incident identity. JetBrains Mono, compact,
-//     neutral seam background + ctrl border; the INC accent ink is the
-//     app's one accent, NEVER a severity color.
+// ---- the shared incident identity system (VD2, reruled by VD8) --------------
+// ONE treatment per concept, defined once and consumed everywhere. The
+// three badges share ONE dimension contract (BADGE_BASE): Inter, 12px,
+// medium weight, identical line-height / vertical padding / min-height /
+// radius, ~22px tall, content vertically centered -- so the group
+// [INC-1598] [Medium] [Guided] reads balanced on every surface.
+//   IncidentIdBadge -- the incident identity. Neutral seam background +
+//     ctrl border, dark readable ink; INTER by ruling (the pill
+//     treatment identifies it; no mono, no severity color, no accent).
 //   SeverityBadge -- the approved Detections treatment as the source of
 //     truth: direct label, restrained semantic tint, border + subtle
 //     background, status dot; never color alone. Case-insensitive input
 //     ('Critical' and 'critical' render identically).
-//   ModeBadge -- the compact session-mode chip (Guided / Hardcore).
+//   ModeBadge -- Guided / Hardcore, neutral and restrained, never a
+//     smaller tag (a transparent border keeps its metrics identical).
+//   IncidentIdentityRow -- the ONE canonical composition and order:
+//     [INC id] [Severity] ([Mode]) then the title, wrapping naturally
+//     (title drops to its own line when constrained; nothing shrinks or
+//     clips to force one line).
 
-export const IncidentIdPill = ({ id }) => (
+export const BADGE_BASE = 'inline-flex items-center rounded-full text-xs font-medium leading-4 py-0.5 min-h-[22px] whitespace-nowrap shrink-0';
+
+export const IncidentIdBadge = ({ id }) => (
   <span
-    data-testid="incident-id-pill"
-    className="log-mono text-xs px-2 py-0.5 rounded-md bg-[#eef1f4] text-[#16436b] border border-[#d0d7de] shrink-0 whitespace-nowrap"
+    data-testid="incident-id-badge"
+    className={`${BADGE_BASE} px-2.5 bg-[#eef1f4] text-[#1a2332] border border-[#d0d7de]`}
   >
     {id}
   </span>
@@ -91,7 +102,7 @@ export const SeverityBadge = ({ severity }) => {
   return (
     <span
       data-testid="severity-badge"
-      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border whitespace-nowrap ${
+      className={`${BADGE_BASE} px-2.5 gap-1.5 border ${
         SEVERITY_PILL[k] || 'border-[#d0d7de] text-[#57606a]'}`}
     >
       <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: severityDot(k) }} />
@@ -103,9 +114,20 @@ export const SeverityBadge = ({ severity }) => {
 export const ModeBadge = ({ mode }) => (
   <span
     data-testid="mode-badge"
-    className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-[#eef1f4] text-[#57606a] shrink-0 whitespace-nowrap"
+    className={`${BADGE_BASE} px-2.5 bg-[#eef1f4] text-[#57606a] border border-transparent`}
   >
     {MODE_LABEL[mode] || mode}
+  </span>
+);
+
+export const IncidentIdentityRow = ({
+  incidentId, severity, mode, title, titleClass = 'text-sm text-[#1a2332]',
+}) => (
+  <span className="inline-flex items-center gap-1.5 min-w-0 flex-wrap" data-testid="incident-pill">
+    <IncidentIdBadge id={incidentId} />
+    {severity && <SeverityBadge severity={severity} />}
+    {mode && <ModeBadge mode={mode} />}
+    {title && <span className={`${titleClass} min-w-0`}>{title}</span>}
   </span>
 );
 
@@ -158,25 +180,14 @@ export const PageHeader = ({ icon, title, count = null, subtitle, right = null }
 // and the page controls. This replaces both the large secondary identity
 // cards and the retired full-width "All activity" scope bars; there is no
 // replacement status bar, and no page repeats the incident context.
-// VD2: recomposed from the shared identity badges above, so the pill's
-// pieces are byte-identical with every other surface's.
-export const IncidentPill = ({ incidentId, title, severity, mode }) => (
-  <span className="inline-flex items-center gap-2 min-w-0 flex-wrap" data-testid="incident-pill">
-    <IncidentIdPill id={incidentId} />
-    {title && <span className="text-sm text-[#1a2332] truncate">{title}</span>}
-    {severity && <SeverityBadge severity={severity} />}
-    {mode && <ModeBadge mode={mode} />}
-  </span>
-);
-
 // VC5 (owner instruction): the functional page summary moved into the
 // unified AppHeader, on its own line under the section header. This row
-// keeps ONLY the incident-context pill and the page controls; it renders
-// nothing when it has neither.
+// keeps ONLY the incident-context identity row and the page controls;
+// it renders nothing when it has neither.
 export const PageIntro = ({ incident = null, right = null }) => (
   (incident?.incidentId || right) ? (
     <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-      {incident?.incidentId && <IncidentPill {...incident} />}
+      {incident?.incidentId && <IncidentIdentityRow {...incident} />}
       {right && <div className="ml-auto flex flex-wrap items-center gap-2">{right}</div>}
     </div>
   ) : null

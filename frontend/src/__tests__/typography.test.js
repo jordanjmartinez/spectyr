@@ -117,9 +117,12 @@ test('VD5: no page chooses its own technical font -- font-mono and inline JetBra
 test('VD5: technical identifiers wear the token on every workspace; chrome and prose stay Inter', () => {
   const comp = (f) => fs.readFileSync(path.join(__dirname, '..', 'components', f), 'utf8');
   // spot contract: each workspace's technical renders reach log-mono
+  // (the Dashboard's technical values are incident ids, which the VD8
+  // identity ruling moves into the Inter badge system, so it is
+  // deliberately absent here)
   for (const f of ['Detections.jsx', 'DetectionDetail.jsx', 'Endpoints.jsx',
                    'EndpointDetail.jsx', 'Response.jsx', 'Incidents.jsx',
-                   'IncidentDashboard.jsx', 'SiemTable.jsx', 'SiemCards.jsx',
+                   'SiemTable.jsx', 'SiemCards.jsx',
                    'EventInspector.jsx', 'Siem.jsx', 'GameTimer.jsx']) {
     expect([f, /log-mono/.test(comp(f))]).toEqual([f, true]);
   }
@@ -149,7 +152,9 @@ test('ruled section labels are sentence case; technical identifiers stay technic
   expect(radar).toContain('Incident ATT&amp;CK profile');   // VA3 card title
   const scores = fs.readFileSync(path.join(__dirname, '..', 'components', 'ScoreSections.jsx'), 'utf8');
   expect(scores).toContain('Score summary');
-  // technical identifiers are never humanized: the INC accent + technique
-  // ids render verbatim in mono
-  expect(dash).toMatch(/log-mono[^>]*>\{c\.incident_id\}|\{focus\.incident_id\}/);
+  // technical identifiers are never humanized; incident ids render
+  // verbatim through the shared Inter badge (VD8 identity ruling), and
+  // technique ids stay mono elsewhere (see the VD5 spot contract)
+  expect(dash).toMatch(/IncidentIdBadge id=\{focus\.incident_id\}/);
+  expect(dash).toMatch(/IncidentIdBadge id=\{c\.incident_id\}/);
 });

@@ -7,7 +7,7 @@ import {
 } from './uiCopy';
 import { submissionReady, validClassification } from './submissionReady';
 import {
-  severityDot, gradeColor, CARD_STYLE, IncidentIdPill, SeverityBadge, ModeBadge,
+  severityDot, gradeColor, CARD_STYLE, IncidentIdBadge, SeverityBadge, ModeBadge,
 } from './ui';
 import { platformFor, PLATFORM_LABELS, DEVICE_LABELS } from './icons';
 import AttackRadar from './AttackRadar';
@@ -294,12 +294,13 @@ const IncidentDashboard = ({
               <p className="text-sm text-[#8b949e]">No active investigations.</p>
             ) : (
               <div className="space-y-2">
-                {/* VD2 (visual correction section 2): the wrapping metadata
-                    row of shared badges -- [INC id] [Severity] [Mode] --
-                    wraps cleanly, the card grows naturally, nothing clips
-                    or compresses to force one line. */}
+                {/* VD2 + VD8 (identity correction): the canonical wrapping
+                    metadata row of shared badges -- [INC id] [Severity]
+                    [Mode] -- then the title on its own line. Wraps
+                    cleanly, the card grows naturally, nothing clips or
+                    compresses to force one line. */}
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <IncidentIdPill id={focus.incident_id} />
+                  <IncidentIdBadge id={focus.incident_id} />
                   <SeverityBadge severity={focus.severity} />
                   <ModeBadge mode={gameMode} />
                 </div>
@@ -348,8 +349,8 @@ const IncidentDashboard = ({
                       <button key={c.incident_id} onClick={() => openInIncidents(c.incident_id)}
                         className="w-full text-left flex items-center justify-between gap-2 text-xs hover:bg-[#f6f8fa] rounded px-1 py-1">
                         <span className="min-w-0 flex items-center gap-1.5">
+                          <IncidentIdBadge id={c.incident_id} />
                           <SeverityBadge severity={c.severity} />
-                          <span className="log-mono text-[#16436b]">{c.incident_id}</span>
                           <span className="text-[#57606a] truncate">{c.title}</span>
                         </span>
                         <span className="text-[#8b949e] shrink-0">{readinessChip(c)}</span>
@@ -513,8 +514,10 @@ const IncidentDashboard = ({
                         <tr key={c.incident_id} className="border-b border-[#eef1f4] last:border-b-0 hover:bg-[#f6f8fa]">
                           <td className="px-3 py-2 whitespace-nowrap">
                             <button type="button" onClick={() => openInIncidents(c.incident_id)}
-                              className="log-mono text-[#16436b] hover:underline text-xs">{c.incident_id}</button>
-                            <span className="block text-xs text-[#57606a] truncate max-w-[14rem]" title={c.title}>{c.title}</span>
+                              className="hover:opacity-75" title={`Open ${c.incident_id}`}>
+                              <IncidentIdBadge id={c.incident_id} />
+                            </button>
+                            <span className="block text-xs text-[#57606a] truncate max-w-[14rem] mt-0.5" title={c.title}>{c.title}</span>
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap text-[#57606a]">{g?.classification?.category ?? '-'}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-[#57606a]">{MODE_LABEL[gameMode] || gameMode}</td>
