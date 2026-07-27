@@ -111,12 +111,15 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
   const correctCallCount = detectionCalls.filter(d => d.correct).length;
 
   return (
-    <div>
+    // VF (section 5): Dashboard card anatomy -- the section title and its
+    // Incident Grade label live INSIDE the bordered container, above the
+    // locked-state message / picker / review content. One flat card.
+    <div className="rounded-xl p-4 sm:p-6" style={CARD_STYLE}>
       <div className="flex items-baseline gap-2 mb-4">
         <h2 className="t-section">{LEARNING_REVIEW_TITLE}</h2>
         <span className="t-overline">{INCIDENT_GRADE_LABEL}</span>
       </div>
-      <div className="rounded-xl p-4 sm:p-6" style={CARD_STYLE}>
+      <div>
         {completed.length === 0 ? (
           <p className="text-sm text-[#57606a]">{NO_SUBMITTED_INCIDENTS}</p>
         ) : (
