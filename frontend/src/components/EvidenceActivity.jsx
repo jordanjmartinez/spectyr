@@ -3,7 +3,7 @@ import { CARD_STYLE } from './ui';
 import { LOAD_NEW_EVENTS, newEventsAvailable, TELEMETRY_LOADING } from './uiCopy';
 import {
   rollingDensity, steppedPath, evidenceSummary, evidencePeak,
-  tickColumnPct, clampPct, SPARSE_MESSAGE,
+  tickColumnPct, clampPct, timeLabel, SPARSE_MESSAGE,
 } from './evidenceDensity';
 
 // ============================================================================
@@ -26,6 +26,17 @@ import {
 // baseline, and a three-label axis (start / midpoint / end) that can
 // never clip or overlap. Fewer than three distinct event times renders
 // the honest sparse state instead of a malformed density shape.
+//
+// VE4 (final polish, section 6, presentation only -- the VD7 model is
+// untouched): the stepped outline deepens to the readable technical ink
+// (#57606a, 1.5px) so the line -- including its true zero runs along
+// the baseline -- reads as the chart's data line per the line-chart
+// reference; and the CENTER axis label now prints the true midpoint of
+// the visible time range (first + span/2). The label sits at the visual
+// center of the justify-between axis row, so printing sample
+// floor((n-1)/2)'s time there (47.4% of the span at n=20) mislabeled
+// the position by ~2.6%. Start/end labels remain the exact first/last
+// sample times.
 // ============================================================================
 
 export const NO_INCIDENT = 'Start an investigation to see evidence activity.';
@@ -132,7 +143,9 @@ const EvidenceActivity = ({
   const colPct = 100 / n;
   const peakCenter = (peakIndex + 0.5) * colPct;
   const axisStart = model.samples[0].label;
-  const axisMid = model.samples[Math.floor((n - 1) / 2)].label;
+  // the CENTER label is the true midpoint of the visible range, because
+  // that is where the justify-between axis row places it (VE4)
+  const axisMid = timeLabel(model.first + model.span / 2, model.windowSeconds);
   const axisEnd = model.samples[n - 1].label;
 
   return (
@@ -161,8 +174,8 @@ const EvidenceActivity = ({
             <path
               d={geom.outline}
               fill="none"
-              stroke="#8b949e"
-              strokeWidth="1.25"
+              stroke="#57606a"
+              strokeWidth="1.5"
               vectorEffect="non-scaling-stroke"
               strokeLinejoin="miter"
             />

@@ -16,7 +16,7 @@ import { render, screen, fireEvent, waitFor, within, act } from '@testing-librar
 import EvidenceActivity, { NO_INCIDENT, NO_EVENTS } from '../components/EvidenceActivity';
 import {
   rollingDensity, chooseWindowSeconds, steppedPath, tickColumnPct, clampPct,
-  SAMPLE_POINTS, SPARSE_MESSAGE,
+  timeLabel, SAMPLE_POINTS, SPARSE_MESSAGE,
 } from '../components/evidenceDensity';
 import IncidentDashboard from '../components/IncidentDashboard';
 
@@ -218,9 +218,12 @@ test('the axis carries exactly start / midpoint / end in normal flow -- nothing 
   const axisRow = [...container.querySelectorAll('div')]
     .find((el) => el.className.includes('justify-between') && el.className.includes('text-[10px]'));
   const axis = [...axisRow.children].map((el) => el.textContent);
+  // VE4: the center label prints the TRUE midpoint of the visible range
+  // (that is where the justify-between row places it); start/end stay
+  // the exact first/last sample times
   expect(axis).toEqual([
     m.samples[0].label,
-    m.samples[Math.floor((SAMPLE_POINTS - 1) / 2)].label,
+    timeLabel(m.first + m.span / 2, m.windowSeconds),
     m.samples[SAMPLE_POINTS - 1].label,
   ]);
   // flex children in normal flow: no truncation/ellipsis classes exist
