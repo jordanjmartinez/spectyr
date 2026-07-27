@@ -317,7 +317,10 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                   <TableSurface>
                   <table className="w-full text-left text-sm">
                     <thead className="data-thead"><tr>
-                      <th className="px-3 py-2.5 font-medium">Host</th>
+                      {/* VF (section 4): the canonical field label for a
+                          machine hostname is "Hostname" (the Endpoints
+                          vocabulary); section names like "Hosts" stay. */}
+                      <th className="px-3 py-2.5 font-medium">Hostname</th>
                       <th className="px-3 py-2.5 font-medium whitespace-nowrap">State</th>
                       <th className="px-3 py-2.5 font-medium whitespace-nowrap">Actions</th>
                     </tr></thead>
@@ -408,7 +411,7 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                   <TableSurface scroll>
                     <table className="w-full text-left text-sm">
                       <thead className="data-thead sticky top-0 z-10"><tr>
-                        <th className="px-3 py-2.5 font-medium whitespace-nowrap">Host</th>
+                        <th className="px-3 py-2.5 font-medium whitespace-nowrap">Hostname</th>
                         <th className="px-3 py-2.5 font-medium whitespace-nowrap">PID</th>
                         <th className="px-3 py-2.5 font-medium">Process</th>
                         <th className="px-3 py-2.5 font-medium whitespace-nowrap">User</th>
@@ -440,7 +443,7 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                   <TableSurface>
                   <table className="w-full text-left text-sm">
                     <thead className="data-thead"><tr>
-                      <th className="px-3 py-2.5 font-medium whitespace-nowrap">Host</th>
+                      <th className="px-3 py-2.5 font-medium whitespace-nowrap">Hostname</th>
                       <th className="px-3 py-2.5 font-medium">Payload</th>
                       <th className="px-3 py-2.5 font-medium whitespace-nowrap">State</th>
                       <th className="px-3 py-2.5 font-medium whitespace-nowrap">Actions</th>
@@ -474,7 +477,7 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                   <TableSurface>
                   <table className="w-full text-left text-sm">
                     <thead className="data-thead"><tr>
-                      <th className="px-3 py-2.5 font-medium whitespace-nowrap">Host</th>
+                      <th className="px-3 py-2.5 font-medium whitespace-nowrap">Hostname</th>
                       <th className="px-3 py-2.5 font-medium whitespace-nowrap">Type</th>
                       <th className="px-3 py-2.5 font-medium">Artifact</th>
                       <th className="px-3 py-2.5 font-medium whitespace-nowrap">State</th>

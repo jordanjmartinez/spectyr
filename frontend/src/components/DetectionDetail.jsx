@@ -213,7 +213,7 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
             <div className="mt-2">
               <KvRow label="Event type" mono>{dash(ev.event_type)}</KvRow>
               <KvRow label="Source" mono>{dash(ev.source_type)}</KvRow>
-              <KvRow label="Host" mono>{dash(ev.hostname)}</KvRow>
+              <KvRow label="Hostname" mono>{dash(ev.hostname)}</KvRow>
               <KvRow label="Source IP" mono>{dash(ev.source_ip)}</KvRow>
               <KvRow label="Message">{dash(ev.message)}</KvRow>
             </div>
