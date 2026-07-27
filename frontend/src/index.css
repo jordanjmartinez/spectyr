@@ -36,13 +36,69 @@ html, body {
   background-color: #0d1117;
 }
 
+/* Visual pass VT: Inter is the primary product typeface (loaded as a
+   variable range in index.html, so weights like 650 are real). The brand
+   wordmark lockups keep their IBM Plex face (logo, not product type). */
 body {
   margin: 0;
   min-width: 352px;
-  font-family: 'IBM Plex Sans', 'Inter', -apple-system, BlinkMacSystemFont,
+  font-family: 'Inter', 'IBM Plex Sans', -apple-system, BlinkMacSystemFont,
     'Segoe UI', 'Roboto', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== Visual pass VT: the shared typography tokens =====
+   The ONE type scale every workspace consumes (no page styles its own
+   hierarchy). VD5 (visual correction section 3): .log-mono below is the
+   ONE technical-text token -- JetBrains Mono is reserved for genuinely
+   technical identifiers (queries, raw events, IPs, hostnames, INC ids,
+   ATT&CK technique ids, timestamps, PIDs, hashes, account strings) and
+   every surface reaches it through this class (or .log-detail for raw
+   key=value blocks). The Tailwind font-mono utility and inline
+   fontFamily choices are retired from product code; Inter remains the
+   product face for titles, navigation, buttons, headings, and prose. */
+.t-page     { font-size: 26px; font-weight: 650; line-height: 1.2;  color: #1a2332; }
+.t-section  { font-size: 18px; font-weight: 600; line-height: 1.3;  color: #1a2332; }
+.t-card     { font-size: 14px; font-weight: 600; color: #1a2332; }
+.t-body     { font-size: 14px; font-weight: 400; line-height: 1.5; }
+.t-nav      { font-size: 14px; font-weight: 500; }
+.t-kpi      { font-size: 28px; font-weight: 650; line-height: 1.15;
+              font-variant-numeric: tabular-nums; font-feature-settings: 'tnum';
+              color: #1a2332; }
+.t-meta     { font-size: 12px; font-weight: 400; }
+/* VP16: micro-headings are legible, not tiny -- 12px minimum, 600,
+   line-height 1.3, tracking <= 0.03em, and a contrast-carrying ink
+   (#57606a on white = 5.6:1, comfortably past AA). */
+.t-overline { font-size: 12px; font-weight: 600; line-height: 1.3;
+              letter-spacing: 0.03em; color: #57606a; text-transform: none; }
+/* VA3 section 6: the ONE primary container heading. Every card /
+   container title (Incident ATT&CK profile, Recent results, Active
+   investigation, Severity distribution, Environment status, Hosts,
+   Accounts, Processes, Files, Persistence, Response log, Learning
+   Review sections) wears this: visibly stronger than metadata and
+   supporting copy, still below the page title. Sentence case, no wide
+   tracking. It also overrides .t-overline when both are applied, so a
+   container heading never renders at label size. */
+.t-subsection { font-size: 15px; font-weight: 600; line-height: 1.3;
+                letter-spacing: normal; text-transform: none; color: #1a2332; }
+
+/* VC2 (header correction section 3): the SPECTR wordmark's display face.
+   LOGO ONLY -- this class exists solely for the visible SPECTR lockups
+   and must never spread to page titles, navigation, headings, buttons,
+   cards, tables, charts, modals, body copy, or technical values (those
+   stay Inter / JetBrains Mono). Bank Gothic itself is a commercial face
+   with no license in this project, so it is NOT bundled or distributed;
+   the wordmark uses Orbitron (SIL OFL 1.1), the closest Bank-Gothic-like
+   wide square-geometric display face already served by the approved
+   Google Fonts link -- no new dependency, no font files added. Medium
+   (500) weight with restrained tracking; the face is wide by design. */
+.brand-wordmark {
+  font-family: 'Orbitron', 'Inter', sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 code {
@@ -76,10 +132,12 @@ code {
   }
 }
 
-/* Machine-data table cells (times, IPs, event codes) render in JetBrains Mono
-   with tabular numerals, so digit columns line up and glyphs disambiguate
-   (0/O, 1/l/I). Applied per-cell so prose columns (source, message) stay sans.
-   Set directly on the <td>, so it wins over the Inter inherited from .log-text. */
+/* THE technical-text token (VD5). Machine data -- INC ids, hostnames,
+   IPs, accounts, PIDs, event ids, ATT&CK ids, timestamps, LCQL, raw
+   values, hashes -- renders in JetBrains Mono with tabular numerals, so
+   digit columns line up and glyphs disambiguate (0/O, 1/l/I). Applied
+   per-cell/per-span so prose columns (source, message) stay sans. Set
+   directly on the element, so it wins over any inherited face. */
 .log-mono {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
@@ -171,9 +229,10 @@ code {
   pointer-events: none;
 }
 
-/* Liquid-glass CTA (Start Sim) — a frosted translucent pill with a bright
-   gradient-border stroke, for use on dark surfaces (hero video, sim rail, docs
-   sidebar). More fill than .liquid-glass so it reads as a primary button. */
+/* Liquid-glass CTA (the shared Start control, components/StartButton.jsx) — a
+   frosted translucent pill with a bright gradient-border stroke, for use on
+   dark surfaces (hero video, sim rail, docs shells, legacy navbar). More fill
+   than .liquid-glass so it reads as a primary button. */
 .liquid-btn {
   position: relative;
   overflow: hidden;
@@ -226,23 +285,43 @@ code {
 }
 
 
-/* Dark table header: the app-wide standard for every data table (SIEM,
-   endpoint tabs, alerts, reports, and future detections/threats lists).
-   Navbar palette family, light body rows. Codified in
-   docs/ui-design-notes.md; apply by adding .dark-thead to the <thead>. */
+/* ===== VP16: the ONE shared light table system =====
+   Dark surfaces are reserved for primary navigation, selected segmented
+   controls, primary buttons, and deliberate high-emphasis states. Data
+   surfaces -- every table in Dashboard, Incidents, SIEM, Detections,
+   Endpoints, Response, and Metrics -- use this light header instead of
+   the retired black banner (.dark-thead is kept as an alias so no table
+   can accidentally keep the old treatment). */
+.data-thead th,
 .dark-thead th {
-  background: #101218;
-  color: #d1d5db;
-  border-bottom: none;
+  background: #f6f8fa;
+  color: #1a2332;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e2e6ea;
+  border-top: none;
 }
+/* dense technical tables may carry a slightly stronger gray */
+.data-thead--dense th,
+.dark-thead.data-thead--dense th {
+  background: #eef1f4;
+}
+.data-thead th:first-child,
 .dark-thead th:first-child {
   border-top-left-radius: 0.5rem;
 }
+.data-thead th:last-child,
 .dark-thead th:last-child {
   border-top-right-radius: 0.5rem;
 }
+.data-thead button:hover,
 .dark-thead button:hover {
-  color: #ffffff;
+  color: #16436b;
 }
 
 /* Phase 4 commit 4.1 (OD-5 Option A): one short emphasis run on the shared

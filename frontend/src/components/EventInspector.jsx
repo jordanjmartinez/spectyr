@@ -84,7 +84,7 @@ function buildStructuredView(event) {
 }
 
 const SectionLabel = ({ children }) => (
-  <div className="text-[10px] uppercase tracking-wide text-[#8b949e] mt-2 mb-1 first:mt-0">
+  <div className="t-overline mt-2 mb-1 first:mt-0">
     {children}
   </div>
 );
@@ -162,7 +162,7 @@ const EventInspector = ({ event, onFilter, onHostPivot, onPivot }) => {
         <p role="alert" className="text-xs text-[#b26666] mb-2">
           This event could not be fully rendered.
         </p>
-        <pre className="p-3 rounded-lg bg-[#f6f8fa] border border-[#eef1f4] text-[11px] leading-relaxed font-mono text-[#1a2332] overflow-x-auto">
+        <pre className="p-3 rounded-lg bg-[#f6f8fa] border border-[#eef1f4] text-[11px] leading-relaxed log-mono text-[#1a2332] overflow-x-auto">
 {JSON.stringify(sanitizeEvent(event || {}), null, 2)}
         </pre>
       </div>
@@ -202,7 +202,7 @@ const EventInspector = ({ event, onFilter, onHostPivot, onPivot }) => {
             <button
               type="button"
               onClick={() => onHostPivot(value)}
-              className="text-[#16436b] hover:underline font-mono"
+              className="text-[#16436b] hover:underline log-mono"
               title={`Open ${value} in Endpoints`}
             >
               {value}
@@ -224,7 +224,7 @@ const EventInspector = ({ event, onFilter, onHostPivot, onPivot }) => {
       <Row field="message" value={view.message} />
 
       <SectionLabel>Raw</SectionLabel>
-      <pre className="p-3 rounded-lg bg-[#f6f8fa] border border-[#eef1f4] text-[11px] leading-relaxed font-mono text-[#1a2332] overflow-x-auto">
+      <pre className="p-3 rounded-lg bg-[#f6f8fa] border border-[#eef1f4] text-[11px] leading-relaxed log-mono text-[#1a2332] overflow-x-auto">
 {JSON.stringify(sanitizeEvent(event), null, 2)}
       </pre>
 

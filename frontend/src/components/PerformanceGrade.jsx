@@ -122,7 +122,7 @@ export const GradeCard = ({ report }) => {
             </div>
           </div>
         </div>
-        <p className="text-[11px] uppercase tracking-wider text-[#6e7781] text-center">Composite grade · 40 / 30 / 30</p>
+        <p className="t-overline text-center">Composite grade · 40 / 30 / 30</p>
         <p className="text-sm text-[#57606a] text-center min-h-[1.25rem]">{GRADE_MESSAGES[grade] || ' '}</p>
       </div>
     </div>
@@ -156,9 +156,12 @@ export const MttrCard = ({ report }) => {
   const avgMttr = report?.avg_time_to_resolve_seconds ?? 0;
 
   return (
+    /* VF (section 5): Dashboard card anatomy -- the title sits inside the
+       container (shared t-section token) and the card joins the page's
+       rounded-xl radius (the one rounded-2xl drift is retired). */
     <div className="flex flex-col">
-      <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">Mean Time to Resolve</h2>
-      <div className="rounded-2xl p-4 sm:p-6 flex-1" style={CARD_STYLE}>
+      <div className="rounded-xl p-4 sm:p-6 flex-1" style={CARD_STYLE}>
+        <h2 className="t-section mb-4">Mean Time to Resolve</h2>
         <div className="w-full h-52 sm:h-64">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={mttrData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>

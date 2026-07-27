@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { CARD_STYLE } from './ui';
 
 const WIN_ART = `██╗   ██╗ ██████╗ ██╗   ██╗    ██╗    ██╗██╗███╗   ██╗██╗
 ╚██╗ ██╔╝██╔═══██╗██║   ██║    ██║    ██║██║████╗  ██║██║
@@ -23,8 +24,6 @@ const LOSE_ART = `██╗   ██╗ ██████╗ ██╗   ██
 
 const gradeOf = (report) => report?.grade || '-';
 
-const CARD_STYLE = { background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' };
-
 // Segmented outcome bar: one cell per queue scenario, colored by result.
 // Green = correct, red = missed, neutral = still pending.
 const OutcomeBar = ({ total, results }) => {
@@ -35,10 +34,16 @@ const OutcomeBar = ({ total, results }) => {
     <div>
       <div className="flex items-center justify-between mb-3">
         <span className="text-sm font-medium text-[#1a2332]">{resolved} of {total} resolved</span>
-        <span className="text-sm whitespace-nowrap">
-          <span className="text-[#6fa868] font-medium">{correctCount} correct</span>
-          <span className="mx-2 text-[#d0d7de]">·</span>
-          <span className="text-[#b26666] font-medium">{missedCount} missed</span>
+        {/* VF6 (owner mid-run instruction): the counts wear the SAME
+            treatment as the Environment status online/offline line
+            (IncidentDashboard): colored dot + medium-ink count + neutral
+            label, verbatim classes and dot colors. */}
+        <span className="text-sm text-[#57606a] flex items-center gap-1.5 whitespace-nowrap">
+          <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full" style={{ background: '#6fa868' }} />
+          <span><span className="font-medium text-[#1a2332]">{correctCount}</span> correct</span>
+          <span className="text-[#d0d7de]">·</span>
+          <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full" style={{ background: '#b45858' }} />
+          <span><span className="font-medium text-[#1a2332]">{missedCount}</span> missed</span>
         </span>
       </div>
       <div className="flex items-center gap-1.5">
@@ -62,7 +67,10 @@ const OutcomeBar = ({ total, results }) => {
   );
 };
 
-const CampaignProgress = ({ levelData, onReset, analystName, report }) => {
+// Visual pass V10: this component no longer renders the page heading or
+// its own Reset control -- the Metrics PageHeader (Analytics.jsx) owns
+// both. Content (the outcome bar + the completed banner) is unchanged.
+const CampaignProgress = ({ levelData, analystName, report }) => {
   const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
@@ -87,20 +95,11 @@ const CampaignProgress = ({ levelData, onReset, analystName, report }) => {
         : `Not bad${analystName ? `, ${analystName}` : ''}. A few slipped by, but you held the line.`;
     return (
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332]">Metrics</h2>
-          <button
-            onClick={onReset}
-            className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md border transition focus:outline-none focus:ring-2 focus:ring-gray-500 bg-white hover:bg-[#eef1f4] text-[#1a2332] border-[#d0d7de]"
-          >
-            <span className="sm:hidden">Reset Sim</span><span className="hidden sm:inline">Reset Simulation</span>
-          </button>
-        </div>
         <div className="px-6 pt-8 pb-6 rounded-xl" style={CARD_STYLE}>
           <div className={`flex flex-col items-center text-center transition-all duration-700 ease-out ${revealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
             <pre
               aria-label={bannerLabel}
-              className={`font-mono text-[7px] sm:text-[10px] leading-tight ${useFailed ? 'text-[#b45858]' : useWin ? 'text-[#58b458]' : 'text-[#8b949e]'} mb-3 select-none`}
+              className={`log-mono text-[7px] sm:text-[10px] leading-tight ${useFailed ? 'text-[#b45858]' : useWin ? 'text-[#58b458]' : 'text-[#8b949e]'} mb-3 select-none`}
             >
               {banner.split('').map((ch, i) =>
                 ch === '█'
@@ -108,7 +107,9 @@ const CampaignProgress = ({ levelData, onReset, analystName, report }) => {
                   : ch
               )}
             </pre>
-            <p className="font-mono text-xs sm:text-sm text-[#57606a] mb-6">&gt;<span className="animate-blink">|</span> {message}</p>
+            {/* VT: the message is product copy (Inter); only the ASCII art
+                banner above genuinely needs mono. */}
+            <p className="text-sm text-[#57606a] mb-6"><span className="log-mono">&gt;<span className="animate-blink">|</span></span> {message}</p>
           </div>
           <div className={`pt-2 transition-all duration-700 delay-300 ease-out ${revealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
             <OutcomeBar total={total_levels} results={results} />
@@ -120,7 +121,6 @@ const CampaignProgress = ({ levelData, onReset, analystName, report }) => {
 
   return (
     <div>
-      <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">Metrics</h2>
       <div className="rounded-xl p-5 sm:p-6" style={CARD_STYLE}>
         <OutcomeBar total={total_levels} results={results} />
       </div>

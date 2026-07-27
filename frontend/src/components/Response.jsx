@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch } from '../api';
 import ConfirmDialog from './ConfirmDialog';
-import IncidentScopeBar from './IncidentScopeBar';
 import useIncidentScope from './useIncidentScope';
 import { postResponseAction, confirmSpecs, PERSIST_LABEL } from './responseActions';
 import {
   ACTION_LABELS, RESPONSE_SELECT_INCIDENT, RESPONSE_NO_PROMOTED,
   RESPONSE_NO_PROMOTED_SUB, RESPONSE_NO_TARGETS, RESPONSE_NO_ACTIONS,
 } from './uiCopy';
+import { CARD_STYLE, StateChip, PageIntro, SegmentedToggle, CountPill } from './ui';
+import { DeviceGlyph, PlatformBadge, platformFor } from './icons';
 
 // Final pass Part III.0.1: the ONE canonical action-execution workspace
 // (Investigate -> Triage -> Respond -> Submit -> Learn). Actionable
@@ -19,8 +20,31 @@ import {
 // Response Log is the single chronological history. Everything executes
 // through the one action system (responseActions.js); the endpoint and
 // detection surfaces only navigate here.
+//
+// Visual pass V9 -- FLAGGED DEVIATION (Services group omitted): the V9
+// spec lists a sixth target group, Services, but NO service verb exists
+// in the eight-action vocabulary (services stop only through the kill
+// cascade), so an actionless Services table in the EXECUTION workspace
+// would duplicate the Endpoints Services investigation tab and imply a
+// verb the product does not have (the expressibility rule forbids
+// stretching one). The five actionable groups below match the pinned
+// Guided hint copy. A service verb is response-vocabulary-v2 backlog
+// material; the group joins this workspace when its verb exists.
+// VD4 (visual correction section 5) re-flags the same deviation: the
+// correction's sketch lists Services again, and the group stays out for
+// the same still-standing reason.
 
-const CARD = { background: '#fff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' };
+// VD4 (visual correction section 5): ONE FLAT COMMAND WORKSPACE. The
+// large rounded card around each target category is retired. Each
+// category renders directly on the workspace surface as a section --
+// heading + count pill, then the table in the same minimal light table
+// boundary the Endpoints list uses (the shared light data-thead needs
+// one clean container edge for its rounded corners; that boundary is
+// the table's own, never a card around the section). Sections separate
+// by vertical spacing and a subtle divider. No card sits inside another
+// card; semantically different target types never merge into one table.
+
+// Visual pass VG: StateChip from the shared module.
 
 const shortTime = (iso) =>
   iso ? new Date(iso).toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
@@ -35,10 +59,6 @@ const OutcomeChip = ({ outcome }) => (
   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${OUTCOME_CHIP[outcome] || 'border-[#d0d7de] text-[#57606a]'}`}>
     {OUTCOME_LABEL[outcome] || outcome}
   </span>
-);
-
-const StateChip = ({ children }) => (
-  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#eef1f4] text-[#57606a]">{children}</span>
 );
 
 const VerbButton = ({ onClick, disabled, dark, children }) => (
@@ -60,18 +80,35 @@ const PromotedChips = ({ rules }) => (rules && rules.length ? (
   </span>
 ) : null);
 
-const GroupCard = ({ title, count, children }) => (
-  <div className="rounded-xl overflow-hidden" style={CARD}>
-    <div className="px-4 py-2.5 border-b border-[#eef1f4] flex items-center gap-2">
-      <h3 className="text-sm font-semibold text-[#1a2332]">{title}</h3>
-      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-[#57606a]">{count}</span>
+// The flat target section (VD4): heading + count on the workspace
+// surface, content below; a subtle divider separates it from the
+// section above (suppressed when it opens the list).
+const TargetSection = ({ title, count, children }) => (
+  <section
+    data-testid="target-section"
+    className="pt-4 border-t border-[#e2e6ea] first:pt-0 first:border-t-0"
+  >
+    <div className="mb-2 flex items-center gap-2">
+      <h3 className="t-subsection">{title}</h3>
+      {/* VF (section 6): the ONE shared CountPill (ui.jsx), replacing the
+          hand-rolled copy of the same classes */}
+      <CountPill>{count}</CountPill>
     </div>
+    {children}
+  </section>
+);
+
+// The minimal light table boundary (the Endpoints-list treatment): the
+// table's own edge, not a section card.
+const TableSurface = ({ scroll = false, children }) => (
+  <div className={`bg-white border border-[#e2e6ea] rounded-xl overflow-x-auto ${
+    scroll ? 'max-h-96 overflow-y-auto' : ''}`}>
     {children}
   </div>
 );
 
 const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
-                    responseFocus = null, onHostPivot }) => {
+                    responseFocus = null, onHostPivot, activeIncident = null }) => {
   const [view, setView] = useState('actions');   // 'actions' | 'log'
   const [feed, setFeed] = useState([]);
   const [snaps, setSnaps] = useState({});        // hostname -> snapshot | null (null = not managed)
@@ -160,6 +197,9 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
       hostRows.push({
         hostname: h, entityId: snap.entity_id, status: snap.status,
         isolation: snap.isolation,
+        // V7: the same device/platform identity mapping as the endpoint
+        // list and detail header, from the same serialized fields.
+        ident: platformFor({ platform: snap.system?.platform, os: snap.os, role: snap.role }),
         promotedRules: promotedFor(x => x.entity?.host === h),
       });
       for (const p of snap.processes || []) {
@@ -201,43 +241,36 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
 
   return (
     <div>
-      <IncidentScopeBar scope={scope} incidentId={activeIncidentId} />
-
-      {/* Header */}
-      <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-hidden mb-4">
-        <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
-        <div className="p-4 sm:p-5 flex flex-wrap items-center gap-4">
-          <div className="w-10 h-10 rounded-lg bg-[#101218] flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" role="img" aria-label="Response">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332]">Response</h2>
-            </div>
-            <p className="text-sm text-[#57606a]">
-              {view === 'log'
-                ? 'Every response action this session, in order.'
-                : 'Containment and remediation for the incident targets below.'}
-            </p>
-          </div>
-          <div className="ml-auto flex items-center rounded-md border border-[#d0d7de] overflow-hidden" role="group" aria-label="Response view">
-            {[['actions', 'Actions'], ['log', 'Response Log']].map(([key, label]) => (
-              <button key={key} type="button" onClick={() => setView(key)}
-                className={`px-3 py-1.5 text-xs font-medium transition ${view === key ? 'bg-[#101218] text-white' : 'bg-white text-[#57606a] hover:bg-[#eef1f4]'}`}>
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* VA1/VC5: the ONE incident pill + view toggle (the functional
+          subtitle lives in the AppHeader now). With no incident the
+          Actions view renders its own truthful state. */}
+      <PageIntro
+        incident={activeIncident}
+        right={(
+          <SegmentedToggle
+            ariaLabel="Response view"
+            value={view}
+            onChange={setView}
+            options={[['actions', 'Actions'], ['log', 'Response log']]}
+          />
+        )}
+      />
 
       {view === 'log' ? (
-        <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-x-auto">
+        <div>
+        {/* VD4: the log is one flat section -- heading + count on the
+            workspace surface, then the single chronological table in the
+            minimal table boundary (no decorative card around it). VC5:
+            the descriptive line stays with the list it describes. */}
+        <div className="mb-2 flex items-center gap-2">
+          <h3 className="t-subsection">Response log</h3>
+          <CountPill>{logNewestFirst.length}</CountPill>
+        </div>
+        <p className="t-body text-[#57606a] mb-2">Every response action this session, in order.</p>
+        <TableSurface>
           <table className="w-full text-left text-sm">
-            <thead className="dark-thead">
-              <tr className="text-xs uppercase tracking-wider">
+            <thead className="data-thead">
+              <tr>
                 <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">Time</th>
                 <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">Action</th>
                 <th className="px-3 sm:px-4 py-3 font-medium">Target</th>
@@ -251,40 +284,45 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
               )}
               {logNewestFirst.map(e => (
                 <tr key={e.seq} className="border-b border-[#eef1f4] last:border-b-0">
-                  <td className="px-3 sm:px-4 py-3 font-mono whitespace-nowrap text-[#57606a]">{shortTime(e.timestamp)}</td>
+                  <td className="px-3 sm:px-4 py-3 log-mono whitespace-nowrap text-[#57606a]">{shortTime(e.timestamp)}</td>
                   <td className="px-3 sm:px-4 py-3 whitespace-nowrap">{ACTION_LABELS[e.action] || e.action}</td>
-                  <td className="px-3 sm:px-4 py-3 font-mono break-all">{e.target?.label || '-'}</td>
+                  <td className="px-3 sm:px-4 py-3 log-mono break-all">{e.target?.label || '-'}</td>
                   <td className="px-3 sm:px-4 py-3"><OutcomeChip outcome={e.outcome} /></td>
                   <td className="px-3 sm:px-4 py-3 text-[#57606a]">{e.reason || '-'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </TableSurface>
         </div>
       ) : !activeIncidentId ? (
-        <div className="rounded-xl p-8 text-center text-sm text-[#57606a]" style={CARD}>
+        <div className="rounded-xl p-8 text-center text-sm text-[#57606a]" style={CARD_STYLE}>
           {RESPONSE_SELECT_INCIDENT}
         </div>
       ) : (
         <div className="space-y-4">
           {promoted.length === 0 && (
-            <div className="rounded-xl px-4 py-3 text-sm" style={CARD}>
+            <div className="rounded-xl px-4 py-3 text-sm" style={CARD_STYLE}>
               <span className="text-[#1a2332]">{RESPONSE_NO_PROMOTED}</span>{' '}
               <span className="text-[#57606a]">{RESPONSE_NO_PROMOTED_SUB}</span>
             </div>
           )}
 
           {!anyTargets ? (
-            <div className="rounded-xl p-8 text-center text-sm text-[#57606a]" style={CARD}>
+            <div className="rounded-xl p-8 text-center text-sm text-[#57606a]" style={CARD_STYLE}>
               {RESPONSE_NO_TARGETS}
             </div>
           ) : (
             <>
               {hostRows.length > 0 && (
-                <GroupCard title="Hosts" count={hostRows.length}>
+                <TargetSection title="Hosts" count={hostRows.length}>
+                  <TableSurface>
                   <table className="w-full text-left text-sm">
-                    <thead className="dark-thead"><tr className="text-xs uppercase tracking-wider">
-                      <th className="px-3 py-2.5 font-medium">Host</th>
+                    <thead className="data-thead"><tr>
+                      {/* VF (section 4): the canonical field label for a
+                          machine hostname is "Hostname" (the Endpoints
+                          vocabulary); section names like "Hosts" stay. */}
+                      <th className="px-3 py-2.5 font-medium">Hostname</th>
                       <th className="px-3 py-2.5 font-medium whitespace-nowrap">State</th>
                       <th className="px-3 py-2.5 font-medium whitespace-nowrap">Actions</th>
                     </tr></thead>
@@ -292,10 +330,14 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                       {hostRows.map(h => (
                         <tr key={h.hostname} {...focusProps('host', h)}>
                           <td className="px-3 py-2.5">
-                            <button type="button" onClick={() => onHostPivot?.(h.hostname)}
-                              className="font-mono text-[#16436b] hover:underline" title={`Open ${h.hostname} in Endpoints`}>
-                              {h.hostname}
-                            </button>
+                            <span className="inline-flex items-center gap-1.5">
+                              <DeviceGlyph deviceKind={h.ident?.deviceKind} size={15} className="text-[#57606a]" />
+                              <button type="button" onClick={() => onHostPivot?.(h.hostname)}
+                                className="log-mono text-[#16436b] hover:underline" title={`Open ${h.hostname} in Endpoints`}>
+                                {h.hostname}
+                              </button>
+                              <PlatformBadge platformKey={h.ident?.platformKey} size={12} className="text-[#57606a]" />
+                            </span>
                             <PromotedChips rules={h.promotedRules} />
                           </td>
                           <td className="px-3 py-2.5">
@@ -315,13 +357,15 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                       ))}
                     </tbody>
                   </table>
-                </GroupCard>
+                  </TableSurface>
+                </TargetSection>
               )}
 
               {accounts.length > 0 && (
-                <GroupCard title="Accounts" count={accounts.length}>
+                <TargetSection title="Accounts" count={accounts.length}>
+                  <TableSurface>
                   <table className="w-full text-left text-sm">
-                    <thead className="dark-thead"><tr className="text-xs uppercase tracking-wider">
+                    <thead className="data-thead"><tr>
                       <th className="px-3 py-2.5 font-medium">Account</th>
                       <th className="px-3 py-2.5 font-medium whitespace-nowrap">State</th>
                       <th className="px-3 py-2.5 font-medium whitespace-nowrap">Actions</th>
@@ -330,8 +374,8 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                       {accounts.map(a => (
                         <tr key={a.entityId} {...focusProps('account', a)}>
                           <td className="px-3 py-2.5">
-                            <span className="font-mono text-[#1a2332]">{a.account}</span>
-                            {a.host && <span className="block text-xs text-[#8b949e] font-mono">{a.host}</span>}
+                            <span className="log-mono text-[#1a2332]">{a.account}</span>
+                            {a.host && <span className="block text-xs text-[#8b949e] log-mono">{a.host}</span>}
                             <PromotedChips rules={a.promotedRules} />
                           </td>
                           <td className="px-3 py-2.5">
@@ -355,20 +399,21 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                       ))}
                     </tbody>
                   </table>
-                </GroupCard>
+                  </TableSurface>
+                </TargetSection>
               )}
 
               {procRows.length > 0 && (
-                <GroupCard title="Processes" count={procRows.length}>
-                  <div className="px-3 py-2 border-b border-[#eef1f4]">
+                <TargetSection title="Processes" count={procRows.length}>
+                  <div className="mb-2">
                     <input value={procSearch} onChange={e => setProcSearch(e.target.value)}
                       placeholder="Search processes..." aria-label="Search processes"
-                      className="w-full sm:w-72 px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#1a2332] placeholder-[#8b949e] focus:outline-none focus:ring-2 focus:ring-[#101218]/20" />
+                      className="w-full sm:w-72 px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] bg-white text-[#1a2332] placeholder-[#8b949e] focus:outline-none focus:ring-2 focus:ring-[#101218]/20" />
                   </div>
-                  <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                  <TableSurface scroll>
                     <table className="w-full text-left text-sm">
-                      <thead className="dark-thead"><tr className="text-xs uppercase tracking-wider">
-                        <th className="px-3 py-2.5 font-medium whitespace-nowrap">Host</th>
+                      <thead className="data-thead sticky top-0 z-10"><tr>
+                        <th className="px-3 py-2.5 font-medium whitespace-nowrap">Hostname</th>
                         <th className="px-3 py-2.5 font-medium whitespace-nowrap">PID</th>
                         <th className="px-3 py-2.5 font-medium">Process</th>
                         <th className="px-3 py-2.5 font-medium whitespace-nowrap">User</th>
@@ -377,13 +422,13 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                       <tbody>
                         {procFiltered.map(p => (
                           <tr key={`${p.hostname}-${p.pid}`} {...focusProps('process', p)}>
-                            <td className="px-3 py-2 font-mono whitespace-nowrap text-[#57606a]">{p.hostname}</td>
-                            <td className="px-3 py-2 font-mono whitespace-nowrap">{p.pid}</td>
-                            <td className="px-3 py-2 font-mono break-all min-w-[12rem]">
+                            <td className="px-3 py-2 log-mono whitespace-nowrap text-[#57606a]">{p.hostname}</td>
+                            <td className="px-3 py-2 log-mono whitespace-nowrap">{p.pid}</td>
+                            <td className="px-3 py-2 log-mono break-all min-w-[12rem]">
                               {p.name}
                               <PromotedChips rules={promotedFor(x => x.entity?.host === p.hostname && x.sha256 && x.sha256 === p.sha256)} />
                             </td>
-                            <td className="px-3 py-2 font-mono whitespace-nowrap">{p.user || '-'}</td>
+                            <td className="px-3 py-2 log-mono whitespace-nowrap">{p.user || '-'}</td>
                             <td className="px-3 py-2 whitespace-nowrap">
                               <VerbButton onClick={() => setConfirm(confirmSpecs.kill_process(p))}>Kill</VerbButton>
                             </td>
@@ -391,15 +436,16 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                         ))}
                       </tbody>
                     </table>
-                  </div>
-                </GroupCard>
+                  </TableSurface>
+                </TargetSection>
               )}
 
               {fileRows.length > 0 && (
-                <GroupCard title="Files" count={fileRows.length}>
+                <TargetSection title="Files" count={fileRows.length}>
+                  <TableSurface>
                   <table className="w-full text-left text-sm">
-                    <thead className="dark-thead"><tr className="text-xs uppercase tracking-wider">
-                      <th className="px-3 py-2.5 font-medium whitespace-nowrap">Host</th>
+                    <thead className="data-thead"><tr>
+                      <th className="px-3 py-2.5 font-medium whitespace-nowrap">Hostname</th>
                       <th className="px-3 py-2.5 font-medium">Payload</th>
                       <th className="px-3 py-2.5 font-medium whitespace-nowrap">State</th>
                       <th className="px-3 py-2.5 font-medium whitespace-nowrap">Actions</th>
@@ -407,8 +453,8 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                     <tbody>
                       {fileRows.map(a => (
                         <tr key={`f-${a.hostname}-${a.file_entity_id}`} {...focusProps('autorun', { ...a, persistence_entity_id: null })}>
-                          <td className="px-3 py-2.5 font-mono whitespace-nowrap text-[#57606a]">{a.hostname}</td>
-                          <td className="px-3 py-2.5 font-mono break-all min-w-[14rem]">
+                          <td className="px-3 py-2.5 log-mono whitespace-nowrap text-[#57606a]">{a.hostname}</td>
+                          <td className="px-3 py-2.5 log-mono break-all min-w-[14rem]">
                             {a.name}
                             <span className="block text-xs text-[#8b949e]">{a.command}</span>
                           </td>
@@ -424,14 +470,16 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                       ))}
                     </tbody>
                   </table>
-                </GroupCard>
+                  </TableSurface>
+                </TargetSection>
               )}
 
               {persistRows.length > 0 && (
-                <GroupCard title="Persistence" count={persistRows.length}>
+                <TargetSection title="Persistence" count={persistRows.length}>
+                  <TableSurface>
                   <table className="w-full text-left text-sm">
-                    <thead className="dark-thead"><tr className="text-xs uppercase tracking-wider">
-                      <th className="px-3 py-2.5 font-medium whitespace-nowrap">Host</th>
+                    <thead className="data-thead"><tr>
+                      <th className="px-3 py-2.5 font-medium whitespace-nowrap">Hostname</th>
                       <th className="px-3 py-2.5 font-medium whitespace-nowrap">Type</th>
                       <th className="px-3 py-2.5 font-medium">Artifact</th>
                       <th className="px-3 py-2.5 font-medium whitespace-nowrap">State</th>
@@ -440,9 +488,9 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                     <tbody>
                       {persistRows.map(a => (
                         <tr key={`p-${a.hostname}-${a.persistence_entity_id}`} {...focusProps('autorun', { ...a, file_entity_id: null })}>
-                          <td className="px-3 py-2.5 font-mono whitespace-nowrap text-[#57606a]">{a.hostname}</td>
+                          <td className="px-3 py-2.5 log-mono whitespace-nowrap text-[#57606a]">{a.hostname}</td>
                           <td className="px-3 py-2.5 whitespace-nowrap">{PERSIST_LABEL[a.persist_type] || 'Autorun'}</td>
-                          <td className="px-3 py-2.5 font-mono break-all min-w-[14rem]">
+                          <td className="px-3 py-2.5 log-mono break-all min-w-[14rem]">
                             {a.name}
                             <span className="block text-xs text-[#8b949e]">{a.location}</span>
                           </td>
@@ -458,7 +506,8 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                       ))}
                     </tbody>
                   </table>
-                </GroupCard>
+                  </TableSurface>
+                </TargetSection>
               )}
             </>
           )}

@@ -81,10 +81,10 @@ const SiemCards = ({ alerts, resetTrigger, selectedId, onSelect }) => {
                 className="text-left p-4 flex-1 hover:bg-[#f6f8fa] transition-colors"
               >
                 <div className="flex items-center gap-2">
-                  <span className="font-mono font-semibold text-sm text-[#1a2332] truncate" title={alert.event_type}>
+                  <span className="log-mono font-semibold text-sm text-[#1a2332] truncate" title={alert.event_type}>
                     {alert.event_type || '-'}
                   </span>
-                  <span className="ml-auto font-mono text-xs text-[#57606a] whitespace-nowrap">{timeOf(alert.timestamp)}</span>
+                  <span className="ml-auto log-mono text-xs text-[#57606a] whitespace-nowrap">{timeOf(alert.timestamp)}</span>
                 </div>
                 <div className="mt-1.5 flex items-center gap-1.5 text-xs text-[#57606a]">
                   <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: sourceColor(source) }} aria-hidden="true" />
@@ -96,7 +96,7 @@ const SiemCards = ({ alerts, resetTrigger, selectedId, onSelect }) => {
                     .map(([k, v]) => (
                       <div key={k} className="flex gap-2">
                         <dt className="w-8 shrink-0 text-[#8b949e]">{k}</dt>
-                        <dd className="font-mono text-[#1a2332] break-all">{v}</dd>
+                        <dd className="log-mono text-[#1a2332] break-all">{v}</dd>
                       </div>
                     ))}
                 </dl>

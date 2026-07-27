@@ -11,6 +11,7 @@ import {
   BREAKDOWN_LOAD_ERROR, CALL_CORRECT, CALL_WRONG, ACTION_LABELS,
 } from './uiCopy';
 import { deriveAchievements } from './achievements';
+import { CARD_STYLE, gradeColor } from './ui';
 
 // Stage 5 Phase 5 commit 5.4 (ratified B-OD-1 Option 1): the Metrics tab is
 // the ONE durable per-incident Learning Review home. Everything rendered
@@ -20,8 +21,7 @@ import { deriveAchievements } from './achievements';
 // never renders teaching content (one venue, 19.19). Labeling keeps the
 // 3.9B distinction: this block is Incident Grade, never Session Performance.
 
-const CARD = { background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' };
-const gradeColor = (g) => (!g || g === '-') ? '#8b949e' : g === 'F' ? '#b45858' : g === 'D' ? '#c08a3e' : '#6fa868';
+// Visual pass VG: card surface + grade colors from the shared module.
 
 // One teaching entry row: verb + target + the frozen why.
 const EntryRow = ({ e }) => (
@@ -29,7 +29,7 @@ const EntryRow = ({ e }) => (
     {e.action ? (
       <p className="text-[#1a2332]">
         <span className="font-medium">{ACTION_LABELS[e.action] || e.action}</span>
-        {e.target_label ? <span className="font-mono text-[#57606a]"> {e.target_label}</span> : null}
+        {e.target_label ? <span className="log-mono text-[#57606a]"> {e.target_label}</span> : null}
       </p>
     ) : null}
     <p className="text-[#57606a]">{e.why}</p>
@@ -38,7 +38,7 @@ const EntryRow = ({ e }) => (
 
 const Section = ({ title, entries, emptyLine }) => (
   <div className="pt-3 border-t border-[#eef1f4]">
-    <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium mb-1.5">{title}</p>
+    <p className="t-subsection mb-1.5">{title}</p>
     {entries.length === 0 ? (
       <p className="text-sm text-[#8b949e]">{emptyLine}</p>
     ) : (
@@ -111,12 +111,15 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
   const correctCallCount = detectionCalls.filter(d => d.correct).length;
 
   return (
-    <div>
+    // VF (section 5): Dashboard card anatomy -- the section title and its
+    // Incident Grade label live INSIDE the bordered container, above the
+    // locked-state message / picker / review content. One flat card.
+    <div className="rounded-xl p-4 sm:p-6" style={CARD_STYLE}>
       <div className="flex items-baseline gap-2 mb-4">
-        <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332]">{LEARNING_REVIEW_TITLE}</h2>
-        <span className="text-xs text-[#6e7781] uppercase tracking-wider">{INCIDENT_GRADE_LABEL}</span>
+        <h2 className="t-section">{LEARNING_REVIEW_TITLE}</h2>
+        <span className="t-overline">{INCIDENT_GRADE_LABEL}</span>
       </div>
-      <div className="rounded-2xl p-4 sm:p-6" style={CARD}>
+      <div>
         {completed.length === 0 ? (
           <p className="text-sm text-[#57606a]">{NO_SUBMITTED_INCIDENTS}</p>
         ) : (
@@ -129,7 +132,9 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                   className={`px-2.5 py-1 rounded-md text-xs border transition ${c.incident_id === selectedId
                     ? 'bg-[#101218] text-white border-transparent'
                     : 'bg-white text-[#57606a] border-[#d0d7de] hover:bg-[#eef1f4]'}`}>
-                  <span className="log-mono">{c.incident_id}</span>
+                  {/* VD8: incident ids read in Inter inside identity
+                      controls, matching the badge system */}
+                  <span>{c.incident_id}</span>
                   <span className="ml-1.5">{c.incident_grade?.grade || '-'}</span>
                 </button>
               ))}
@@ -158,14 +163,14 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                 {/* Header: incident + Assisted + achievements */}
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div>
-                    <p className="text-[11px] uppercase tracking-wider text-[#6e7781]">{INCIDENT_GRADE_LABEL}</p>
+                    <p className="t-overline">{INCIDENT_GRADE_LABEL}</p>
                     <h3 className="text-lg font-semibold text-[#1a2332]">
                       <span className="log-mono text-[#16436b] text-sm mr-2">{selectedId}</span>
                       {selectedCard?.title || ''}
                     </h3>
                   </div>
                   {scoreView.assisted && (
-                    <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#eef1f4] text-[#57606a] border border-[#d0d7de]">Assisted</span>
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#eef1f4] text-[#57606a] border border-[#d0d7de]">Assisted</span>
                   )}
                 </div>
                 <AchievementChips items={achievements} />
@@ -191,7 +196,7 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                     completed required actions, and every empty state names
                     its own category (never a bare global negative). */}
                 <div className="pt-3 border-t border-[#eef1f4]">
-                  <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium mb-1.5">{REVIEW_SECTION_CORRECT}</p>
+                  <p className="t-overline mb-1.5">{REVIEW_SECTION_CORRECT}</p>
                   <div className="space-y-2">
                     {correctCallCount > 0 ? (
                       <p className="text-sm text-[#1a2332]">{correctDetectionCalls(correctCallCount, detectionCalls.length)}</p>
@@ -215,12 +220,12 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                     teaching bucket (7.1). */}
                 {(review.attempt_history || []).length > 0 && (
                   <div className="pt-3 border-t border-[#eef1f4]">
-                    <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium mb-1.5">{REVIEW_SECTION_ATTEMPTS}</p>
+                    <p className="t-overline mb-1.5">{REVIEW_SECTION_ATTEMPTS}</p>
                     <ul className="space-y-1">
                       {review.attempt_history.map(h => (
                         <li key={h.seq} className="text-sm text-[#57606a]">
                           <span className="text-[#1a2332]">{ACTION_LABELS[h.action] || h.action}</span>
-                          {h.target_label ? <span className="font-mono"> {h.target_label}</span> : null}
+                          {h.target_label ? <span className="log-mono"> {h.target_label}</span> : null}
                           {' '}<span className="text-[#8b949e]">({h.outcome === 'no_op' ? 'no effect, already in state' : 'did not execute'})</span>
                         </li>
                       ))}
@@ -230,7 +235,7 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
 
                 {/* Per-detection verdicts from the frozen record */}
                 <div className="pt-3 border-t border-[#eef1f4]">
-                  <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium mb-1.5">{REVIEW_SECTION_DETECTIONS}</p>
+                  <p className="t-overline mb-1.5">{REVIEW_SECTION_DETECTIONS}</p>
                   {(review.detections || []).length === 0 ? (
                     <p className="text-sm text-[#8b949e]">{REVIEW_EMPTY_DETECTIONS}</p>
                   ) : (
@@ -253,14 +258,14 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                 {/* Educational content (moved from the modal: one venue) */}
                 {triage?.what_is_it && (
                   <div className="pt-3 border-t border-[#eef1f4]">
-                    {triage.mitre && <p className="text-xs text-[#16436b] font-medium mb-1">{triage.mitre.id} · {triage.mitre.name}</p>}
+                    {triage.mitre && <p className="text-xs text-[#16436b] font-medium mb-1"><span className="log-mono">{triage.mitre.id}</span> · {triage.mitre.name}</p>}
                     <p className="text-sm font-medium text-[#1a2332]">{triage.what_is_it.title}</p>
                     <p className="text-sm text-[#57606a] mt-1 break-words">{triage.what_is_it.description}</p>
                   </div>
                 )}
                 {(triage?.response_actions || []).length > 0 && (
                   <div className="pt-3 border-t border-[#eef1f4]">
-                    <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium mb-1.5">{REVIEW_SECTION_PLAYBOOK}</p>
+                    <p className="t-overline mb-1.5">{REVIEW_SECTION_PLAYBOOK}</p>
                     <ol className="list-decimal ml-5 space-y-1">
                       {triage.response_actions.map((step, i) => (
                         <li key={i} className="text-sm text-[#57606a]">{step}</li>
@@ -273,7 +278,7 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                     Ruling H: null -> section omitted (Tier 1 whys teach). */}
                 {review.scenario_rationale && (
                   <div className="pt-3 border-t border-[#eef1f4]">
-                    <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium mb-1.5">{REVIEW_SECTION_TAKEAWAY}</p>
+                    <p className="t-overline mb-1.5">{REVIEW_SECTION_TAKEAWAY}</p>
                     <p className="text-sm text-[#57606a]">{review.scenario_rationale}</p>
                   </div>
                 )}

@@ -223,6 +223,32 @@ test('III.0.1: Respond controls navigate with the target selected and never exec
   expect(toast).not.toHaveBeenCalled();
 });
 
+test('V7: the endpoint list renders the shared device-class + platform identity from real fields', async () => {
+  mockApi();
+  render(<Endpoints isVisible resetTrigger={0} pivotHost={null} />);
+  await screen.findByText('ACME-WS12');
+  // both rows are Windows (the real platform field), each with the
+  // labeled brand badge
+  expect(screen.getAllByRole('img', { name: 'Windows' })).toHaveLength(2);
+  // server vs workstation distinction, derived from os/role (exact cell
+  // words; the descriptions use different casing)
+  expect(screen.getByText('Workstation')).toBeInTheDocument();
+  expect(screen.getByText('Server')).toBeInTheDocument();
+  // the device glyph rides inside the hostname control (decorative)
+  const hostBtn = screen.getByText('ACME-WS12').closest('button');
+  expect(hostBtn.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+});
+
+test('V7: the endpoint detail header carries the same identity and a derived Platform row', async () => {
+  mockApi();
+  render(<EndpointDetail hostname="ACME-WS12" org={{ name: 'ACME Corp' }} onBack={() => {}} />);
+  await screen.findByText('spectyr-agent 1.0.0');
+  // sidebar + overview each carry the labeled platform badge
+  expect(screen.getAllByRole('img', { name: 'Windows' }).length).toBeGreaterThanOrEqual(2);
+  // the System information Platform row is DERIVED, not hardcoded
+  expect(screen.getByText('Windows Workstation')).toBeInTheDocument();
+});
+
 test('unknown host shows the not-managed notice', async () => {
   apiFetch.mockImplementation((path) => {
     if (path === '/api/endpoints') {

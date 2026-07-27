@@ -152,7 +152,7 @@ const SiemTable = ({ alerts, resetTrigger, selectedId, onSelect }) => {
         ) : (
           <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper" style={{ minHeight: `${(alertsPerPage * 49) + 48}px` }}>
             <table className="w-full min-w-[900px] sm:min-w-[1000px] log-text text-left text-[#1a2332] border-separate border-spacing-0">
-              <thead className="dark-thead">
+              <thead className="data-thead">
                 <tr className="text-xs sm:text-sm tracking-wider">
                   <th className="px-2 sm:px-4 py-3 font-medium w-10"></th>
                   {SORTABLE.map(col => (

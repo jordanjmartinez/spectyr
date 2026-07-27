@@ -135,9 +135,9 @@ test('first sight of an already-ready card never toasts (no transition observed)
 // --- trigger-list exactness: read-only surfaces are toast-free -------------
 
 test('read-only investigation surfaces never import the toast machinery (structural)', () => {
+  // (VA1 retired InvestigationContext.jsx with the pinned-case line.)
   for (const f of ['Siem.jsx', 'FieldSidebar.jsx', 'EventInspector.jsx',
-                   'SiemTable.jsx', 'SiemCards.jsx', 'lcqlPivots.js',
-                   'InvestigationContext.jsx']) {
+                   'SiemTable.jsx', 'SiemCards.jsx', 'lcqlPivots.js']) {
     const src = fs.readFileSync(
       path.join(__dirname, '..', 'components', f), 'utf8');
     expect({ f, toasts: /react-toastify|uiToasts/.test(src) })

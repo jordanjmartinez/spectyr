@@ -1,7 +1,7 @@
 /**
- * Final pass Part III.0.1: the Response workspace -- the ONE canonical
- * action-execution surface (Investigate -> Triage -> Respond -> Submit ->
- * Learn).
+ * Final pass Part III.0.1 (+ Visual pass V9): the Response workspace --
+ * the ONE canonical action-execution surface (Investigate -> Triage ->
+ * Respond -> Submit -> Learn).
  *  - actionable incident entities group by target type with factual
  *    context only (identity, state, promoted-detection chips, verbs,
  *    executed state); never correctness/required/remaining copy
@@ -167,7 +167,7 @@ test('identity actions execute on the roster account and disabled flags read the
 test('the Response Log is the single chronological history with outcomes and detail', async () => {
   mockApi();
   await renderResponse();
-  fireEvent.click(await screen.findByRole('button', { name: 'Response Log' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Response log' }));
   expect(await screen.findByText('ACME-SVR02')).toBeInTheDocument();
   expect(screen.getAllByText('Isolate Host').length).toBeGreaterThanOrEqual(2);
   expect(screen.getByText('Success')).toBeInTheDocument();
@@ -202,7 +202,7 @@ test('no actionable targets and no actions taken states render the ruled lines',
   });
   await renderResponse();
   expect(await screen.findByText(RESPONSE_NO_TARGETS)).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Response Log' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Response log' }));
   expect(await screen.findByText(RESPONSE_NO_ACTIONS)).toBeInTheDocument();
 });
 
@@ -224,5 +224,90 @@ test('no pre-submission correctness or answer-key phrasing renders', async () =>
   for (const bad of [/required/i, /recommended/i, /\bcorrect\b/i, /\bincorrect\b/i,
     /sufficient/i, /remaining/i, /expected/i, /—/]) {
     expect(text).not.toMatch(bad);
+  }
+});
+
+// --- Visual pass V9: command-center structure guards ------------------------
+
+test('V9: exactly the five actionable target groups render; no Services group exists', async () => {
+  // FLAGGED V9 DEVIATION (documented in Response.jsx): no service verb
+  // exists in the eight-action vocabulary, so an actionless Services
+  // table would duplicate the Endpoints investigation surface and imply
+  // a verb the product does not have.
+  mockApi();
+  await renderResponse();
+  await screen.findByText('Hosts');
+  for (const g of ['Hosts', 'Accounts', 'Processes', 'Files', 'Persistence']) {
+    expect(screen.getByText(g)).toBeInTheDocument();
+  }
+  expect(screen.queryByText('Services')).toBeNull();
+  expect(screen.queryByRole('button', { name: /stop service/i })).toBeNull();
+});
+
+test('V9: no correctness, recommendation, or expected-count vocabulary anywhere in the workspace', async () => {
+  mockApi();
+  const { container } = render(<Response isVisible resetTrigger={0} activeIncidentId="INC-A" />);
+  await screen.findByText('Hosts');
+  const text = container.textContent;
+  expect(text).not.toMatch(/recommend/i);
+  expect(text).not.toMatch(/expected action/i);
+  expect(text).not.toMatch(/required action/i);
+  expect(text).not.toMatch(/\bremaining\b/i);
+  expect(text).not.toMatch(/correct(ly)?\b/i);
+});
+
+// --- VD4 (visual correction section 5): the flat command workspace ----------
+
+test('VD4: target categories are flat sections -- no rounded card wraps a category, no card inside a card', async () => {
+  mockApi();
+  await renderResponse();
+  await screen.findByText('Hosts');
+  const sections = screen.getAllByTestId('target-section');
+  // the five actionable groups, in the ruled order, as flat sections
+  expect(sections.map(s => s.querySelector('h3').textContent))
+    .toEqual(['Hosts', 'Accounts', 'Processes', 'Files', 'Persistence']);
+  for (const s of sections) {
+    // the section itself sits on the workspace surface: never a card
+    expect(s.tagName).toBe('SECTION');
+    expect(s.className).not.toMatch(/rounded|shadow|bg-white/);
+    expect(s.getAttribute('style')).toBeNull();
+    // heading + count pill directly on the surface
+    expect(s.querySelector('h3.t-subsection')).not.toBeNull();
+    expect(s.querySelector('h3 + span').textContent).toMatch(/^\d+$/);
+    // inside: exactly ONE bordered container -- the minimal light table
+    // boundary holding the table -- and nothing rounded nests within it
+    const rounded = [...s.querySelectorAll('[class*="rounded-xl"]')];
+    expect(rounded).toHaveLength(1);
+    expect(rounded[0].querySelector(':scope > table')).not.toBeNull();
+    expect(rounded[0].querySelector('[class*="rounded-xl"]')).toBeNull();
+    // responsive: the boundary scrolls horizontally, the page never does
+    expect(rounded[0].className).toMatch(/overflow-x-auto/);
+    // the shared light table header survives the flattening
+    expect(rounded[0].querySelector('thead.data-thead, thead[class*="data-thead"]')).not.toBeNull();
+  }
+  // the Processes search field stays, on the surface above its table
+  const procs = sections[2];
+  expect(within(procs).getByLabelText('Search processes')).toBeInTheDocument();
+  expect(within(procs).getByLabelText('Search processes').closest('[class*="rounded-xl"]')).toBeNull();
+});
+
+test('VD4: the Response log is one flat chronological table, never a decorative card stack', async () => {
+  mockApi();
+  await renderResponse();
+  fireEvent.click(await screen.findByRole('button', { name: 'Response log' }));
+  expect(await screen.findByText('ACME-SVR02')).toBeInTheDocument();
+  // heading + count on the surface, then the single table
+  const heading = screen.getByRole('heading', { name: 'Response log' });
+  expect(heading.className).toMatch(/t-subsection/);
+  const tables = screen.getAllByRole('table');
+  expect(tables).toHaveLength(1);
+  // the table sits in the minimal boundary; NO rounded container above it
+  const boundary = tables[0].parentElement;
+  expect(boundary.className).toMatch(/border-\[#e2e6ea\]/);
+  expect(boundary.className).toMatch(/overflow-x-auto/);
+  let up = boundary.parentElement;
+  while (up) {
+    expect(/rounded-xl/.test(up.className || '')).toBe(false);
+    up = up.parentElement;
   }
 });

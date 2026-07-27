@@ -80,12 +80,11 @@ const TriageFeedback = ({ result, onClose }) => {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 bg-[#101218] text-white text-xs sm:text-sm px-3 py-1.5 rounded-md border border-transparent hover:bg-[#1e2330] transition-colors"
-                      style={{ fontFamily: "'Inter', sans-serif" }}
                     >
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" fill="none" />
                       </svg>
-                      <span className="font-semibold">{review.mitre.id}</span>
+                      <span className="log-mono font-semibold">{review.mitre.id}</span>
                       <span className="text-white/40">|</span>
                       <span>{review.mitre.name}</span>
                     </a>

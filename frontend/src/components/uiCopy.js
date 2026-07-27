@@ -8,8 +8,26 @@
 // the moment it lands.
 
 // --- the pinned case line (contract A1-A.4 item 1) -------------------------
+// VA1 (amendment): the "Investigating INC-####" body line and the
+// "All activity" scope container are RETIRED. Active-incident context
+// renders exactly once per page as the compact IncidentPill beside the
+// functional subtitle; with no active incident each page uses its own
+// truthful empty state. (The constants remain exported only because the
+// retired-copy scan asserts they no longer render.)
 export const investigatingCase = (incidentId) => `Investigating ${incidentId}`;
 export const ALL_ACTIVITY = 'All activity';
+
+// The functional page subtitles (amendment section 2): what the page is
+// FOR. Decorative organization branding never appears here -- org names
+// belong to evidence, entities, and scenario content.
+export const PAGE_SUBTITLE = {
+  incidents: 'Select and manage an investigation.',
+  siem: 'Search and inspect event data.',
+  detections: 'Review detections and decide what is actionable.',
+  endpoints: 'Inspect hosts, users, processes, and system activity.',
+  response: 'Contain and remediate incident targets.',
+  analytics: 'Review performance and learn from the investigation.',
+};
 
 // (Final pass III.0 item 2: the SIEM state pair and the expanded-search
 // block copy -- caseEvidenceLabel, SEARCH_ALL_EVIDENCE,
@@ -49,6 +67,11 @@ export const LOAD_NEW_EVENTS = 'Load new events';
 // (locked contract 10.1/10.2; consolidated scaffold). Observable-only; the
 // forbidden class (correctness phrasing, answer-key totals) never appears
 // pre-submission -- progress-vocabulary.test.js scans every string below.
+
+// Visual pass V3: the ONE mode display-label map (previously local to
+// IncidentDashboard; the shell utility region is a second consumer).
+// "training" is the legacy Guided alias; "analyst" backs SOC Queue.
+export const MODE_LABEL = { training: 'Guided', guided: 'Guided', analyst: 'SOC Queue', hardcore: 'Hardcore' };
 
 export const TELEMETRY_LOADING = 'Incident telemetry is still loading.';
 export const detectionsReviewed = (triaged, total) =>
@@ -148,7 +171,9 @@ export const caseClosed = (incidentId) => `Case Closed: ${incidentId}`;
 export const REVIEW_WHAT_YOU_LEARNED = 'Review what you learned';
 export const LEARNING_REVIEW_TITLE = 'Learning Review';
 export const INCIDENT_GRADE_LABEL = 'Incident Grade';
-export const SESSION_PERFORMANCE_LABEL = 'Session Performance';
+// VT (owner correction): sentence case for visible section labels; the
+// Incident Grade vs Session performance DISTINCTION is unchanged.
+export const SESSION_PERFORMANCE_LABEL = 'Session performance';
 export const ACHIEVEMENT_LABELS = {
   case_closed: 'Case Closed',
   clean_triage: 'Clean Triage',
@@ -192,8 +217,8 @@ export const CALL_WRONG = 'Wrong';
 // === Amendment 3 cycle commit A3.1: the ratified A3-R.1 finals and the ===
 // === standing drafted finals, landed ahead of their consumers (R7). ======
 
-// F4b (A3-4.2): the observable line beside a disabled Submit (and the
-// disabled Check Answer hint) when classification is the only step left.
+// F4b (A3-4.2): the observable line beside a disabled Submit when
+// classification is the only step left.
 export const CLASSIFY_TO_SUBMIT = 'Select a classification to submit.';
 
 // F7 (A3-5, ruled + standing finals): simple search as a projection over

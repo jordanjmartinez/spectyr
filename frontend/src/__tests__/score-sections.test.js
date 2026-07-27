@@ -117,3 +117,16 @@ test('ungraded response renders dash without the attempts block', () => {
   expect(screen.getAllByText('Not graded yet').length).toBeGreaterThanOrEqual(1);
   expect(screen.queryByText(/Attempted, not executed/)).toBeNull();
 });
+
+// --- Visual pass V10: presentation changed, values did not -------------------
+
+test('V10: the three-cards treatment keeps every served value and adds no trend', () => {
+  const { container } = render(<ScoreSections isVisible report={REPORT} />);
+  // the same served numbers render (nothing recomputed client-side)
+  expect(screen.getByText('79% accuracy')).toBeInTheDocument();    // composite
+  expect(screen.getByText('100% accuracy')).toBeInTheDocument();   // classification
+  expect(screen.getByText('85.7% accuracy')).toBeInTheDocument();  // detections
+  expect(screen.getByText('50% accuracy')).toBeInTheDocument();    // response
+  // no invented trend, delta, or history vocabulary
+  expect(container.textContent).not.toMatch(/vs last|trend|change from|previous session|[+-]\d+(\.\d+)?%/i);
+});

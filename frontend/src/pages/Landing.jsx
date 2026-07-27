@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, Play } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
+import StartButton from '../components/StartButton';
 
 const VIDEO_URL = '/videos/spectyrvideo.mp4';
 
 // Final pass III.0 item 7: no Reports destination exists (nothing may
-// imply a report workflow).
+// imply a report workflow). Docs-correction pass: the links target the
+// rewritten current-product documentation sections.
 const NAV_LINKS = [
-  { label: 'Queue', to: '/docs#queue' },
-  { label: 'Game Modes', to: '/docs#game-modes' },
-  { label: 'Scenarios', to: '/docs#scenarios' },
-  { label: 'Analytics', to: '/docs#analytics' },
+  { label: 'How Spectr Works', to: '/docs#how-spectr-works' },
+  { label: 'Guided and Hardcore', to: '/docs#guided-and-hardcore' },
+  { label: 'SIEM', to: '/docs#siem' },
+  { label: 'Learning Review', to: '/docs#learning-review' },
 ];
 
 // Single full-viewport cinematic hero — no scrolling, no additional sections
@@ -59,11 +61,12 @@ const Landing = () => {
           className="animate-blur-fade-up flex items-center h-8 md:h-10"
           style={{ animationDelay: '0ms' }}
         >
-          <span
-            className="text-2xl md:text-3xl font-semibold tracking-tight"
-            style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}
-          >
-            Spectyr
+          {/* VC3: the landing hero's visible wordmark joins the shared
+              brand treatment (the VB2 swap landed in the shared Navbar,
+              which this route never renders). Text-only here: the hero
+              3D ghost is the page's mark. */}
+          <span className="brand-wordmark text-2xl md:text-3xl">
+            SPECTR
           </span>
         </Link>
 
@@ -107,9 +110,14 @@ const Landing = () => {
         </div>
       </nav>
 
-      {/* Mobile menu */}
+      {/* Mobile menu. VF (consistency bug): the expanded surface is the
+          SHARED shell tone #101218 (the same surface as the sim rail and
+          Docs shells), not the blue-cast Tailwind gray-900; dividers and
+          hover join the shell's white/10 + white/5 treatment. The panel
+          top tracks the nav's real height (72px mobile, 88px at md where
+          py-6 applies) so open/closed surfaces stay flush. */}
       <div
-        className={`lg:hidden absolute top-[72px] left-0 right-0 z-40 bg-gray-900/95 backdrop-blur-lg border-t border-b border-gray-800 shadow-2xl transition-all duration-500 ease-out ${
+        className={`lg:hidden absolute top-[72px] md:top-[88px] left-0 right-0 z-40 bg-[#101218]/95 backdrop-blur-lg border-t border-b border-white/10 shadow-2xl transition-all duration-500 ease-out ${
           menuOpen ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0 pointer-events-none'
         }`}
       >
@@ -119,7 +127,7 @@ const Landing = () => {
               key={label}
               to={to}
               onClick={() => setMenuOpen(false)}
-              className={`text-left py-3 px-3 rounded-lg hover:bg-gray-800/50 transition-all duration-300 ${
+              className={`text-left py-3 px-3 rounded-lg hover:bg-white/5 transition-all duration-300 ${
                 menuOpen ? 'translate-x-0 opacity-100' : '-translate-x-4 opacity-0'
               }`}
               style={{ transitionDelay: `${i * 50}ms` }}
@@ -134,31 +142,35 @@ const Landing = () => {
       <div className="relative z-10 flex-1 flex flex-col justify-end px-4 sm:px-6 md:px-12 pb-8 md:pb-16">
         <div className="flex flex-col md:flex-row md:items-end gap-8">
           <div className="flex-1">
+            {/* VF7 (owner mid-run instructions, superseding the section-3
+                and section-5 hero rulings): the headline reads "Learn SOC
+                Analysis Through Realistic Incidents." with the supplied
+                subheading beneath it. Both are single text nodes (no
+                per-line block spans, so narrow widths can never strand a
+                duplicate or clipped line); the headline wraps balanced.
+                The subheading deliberately carries NO blur entrance
+                animation: the owner reported it stuck blurry on mobile
+                (the blurFadeUp filter animation frozen mid-state), so it
+                renders statically and is always legible. */}
             <h1
-              className="animate-blur-fade-up text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold leading-[1.1] mb-4 md:mb-6"
-              style={{ animationDelay: '300ms', fontFamily: "'IBM Plex Sans', sans-serif", letterSpacing: '-0.02em' }}
+              className="animate-blur-fade-up text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold leading-[1.1] mb-4 md:mb-6 max-w-5xl"
+              style={{ animationDelay: '300ms', fontFamily: "'IBM Plex Sans', sans-serif", letterSpacing: '-0.02em', textWrap: 'balance' }}
             >
-              <span className="block">Triage Real Alerts.</span>
-              <span className="block">Build Real Instincts.</span>
+              Learn SOC Analysis Through Realistic Incidents.
             </h1>
 
-            <p
-              className="animate-blur-fade-up text-base sm:text-lg md:text-xl text-gray-400 mb-6 md:mb-12 max-w-2xl"
-              style={{ animationDelay: '400ms' }}
-            >
-              A simulated SIEM with realistic log chains across different attack scenarios.
+            <p className="text-base sm:text-lg md:text-xl text-gray-400 mb-6 md:mb-10 max-w-2xl">
+              Investigate alerts, follow the evidence, take response actions, and learn from
+              every decision.
             </p>
 
             {/* CTA */}
             <div className="flex flex-wrap gap-3 sm:gap-4">
-              <Link
+              <StartButton
                 to="/sim"
-                className="liquid-btn animate-blur-fade-up flex items-center gap-2 text-white rounded-full font-medium px-6 sm:px-8 py-2.5 sm:py-3"
-                style={{ animationDelay: '500ms' }}
-              >
-                <Play size={18} className="fill-white" />
-                Start Sim
-              </Link>
+                className="animate-blur-fade-up"
+                style={{ animationDelay: '400ms' }}
+              />
             </div>
           </div>
         </div>

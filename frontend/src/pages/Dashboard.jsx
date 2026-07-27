@@ -13,6 +13,11 @@ import DifficultySelector from '../components/DifficultySelector';
 import GameTimer from '../components/GameTimer';
 import FailureModal from '../components/FailureModal';
 import HintPanel from '../components/HintPanel';
+import { NAV_ICONS, NAV_STROKE, ChromeIcons } from '../components/icons';
+import AppHeader from '../components/AppHeader';
+import BrandLockup from '../components/BrandLockup';
+import StartButton, { CTA_PILL } from '../components/StartButton';
+import { PAGE_SUBTITLE } from '../components/uiCopy';
 
 const Dashboard = () => {
   const [groupedAlertCount, setGroupedAlertCount] = useState(0);
@@ -22,6 +27,10 @@ const Dashboard = () => {
   // a server mutation; scopes the incident-aware tabs when set, session-wide when
   // null. Selecting/switching never mutates world/scoring/readiness/submission.
   const [activeIncidentId, setActiveIncidentId] = useState(null);
+  // VA1: the selected incident's observable summary, reported up by the
+  // Incidents workspace (which already polls the list) so every page can
+  // render the ONE context pill without a new request.
+  const [activeIncident, setActiveIncident] = useState(null);
   // A3.4 (ratified A3-OD-3): the SHELL-OWNED classification selection per
   // incident ({verdict, category, categoryId}). Every player-facing Ready
   // surface (Incidents workspace + list, this dashboard's rows) derives
@@ -110,6 +119,10 @@ const Dashboard = () => {
         .then(res => res.json())
         .then(data => {
           setSimActive(!!data.analyst_name);
+          // V3: the utility region shows the REAL session identity, so the
+          // analyst name follows the server (it previously survived only in
+          // memory from the start dialog and vanished on reload).
+          setAnalystName(data.analyst_name || null);
           if (data.game_mode) setGameMode(data.game_mode);
           const injected = data.injected_count ?? 0;
           if (injected > lastInjectedRef.current) {
@@ -122,6 +135,9 @@ const Dashboard = () => {
         })
         .catch(() => {});
     };
+    // V3: run once immediately so the utility region shows the real session
+    // identity on load instead of waiting out the first poll interval.
+    checkForIncidents();
     const interval = setInterval(checkForIncidents, 2000);
     return () => clearInterval(interval);
   }, [view]);
@@ -231,29 +247,28 @@ const Dashboard = () => {
     setShowDifficultyModal(true);
   };
 
+  // Visual pass V2: every primary destination carries a DISTINCT identity
+  // from the one icon system (components/icons.jsx NAV_ICONS) -- the old
+  // rail drew inline paths and shared one triangle between Incidents and
+  // Detections. Labels + title attributes stay the accessible names; the
+  // icons are decorative (aria-hidden), so the active state never relies
+  // on the icon alone.
   const tabs = [
-    { key: 'dashboard', label: 'Dashboard', count: 0,
-      icon: 'M4 5a1 1 0 011-1h5a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM14 13a1 1 0 011-1h4a1 1 0 011 1v6a1 1 0 01-1 1h-4a1 1 0 01-1-1v-6zM4 15a1 1 0 011-1h5a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4z' },
-    { key: 'incidents', label: 'Incidents', count: groupedAlertCount,
-      icon: 'M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z' },
+    { key: 'dashboard', label: 'Dashboard', count: 0 },
+    { key: 'incidents', label: 'Incidents', count: groupedAlertCount },
     // C1 checkpoint fix (post-Stage-5 review, F1): the evidence-surface nav
     // entries (SIEM, Detections, Endpoints) carry NO numeric badge. The old
     // badges read unfiltered session payloads while the page headers rendered
     // case-scoped counts, so badge and header could not agree with a case
     // pinned; the Incidents badge stays (cases are a global concept).
-    { key: 'siem', label: 'SIEM',
-      icon: 'M4 6h16M4 10h16M4 14h16M4 18h16' },
-    { key: 'detections', label: 'Detections',
-      icon: 'M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z' },
-    { key: 'endpoints', label: 'Endpoints',
-      icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
+    { key: 'siem', label: 'SIEM' },
+    { key: 'detections', label: 'Detections' },
+    { key: 'endpoints', label: 'Endpoints' },
     // Final pass III.0.1: Response is the one action-execution workspace
     // (Investigate -> Triage -> Respond -> Submit -> Learn). Badge-free
     // per the C1 nav ruling.
-    { key: 'response', label: 'Response',
-      icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' },
-    { key: 'analytics', label: 'Metrics', count: analyticsCount,
-      icon: 'M9 19v-6m4 6V5m4 14v-9M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z' },
+    { key: 'response', label: 'Response' },
+    { key: 'analytics', label: 'Metrics', count: analyticsCount },
     // C1 checkpoint fix (F6 slice): the Reports entry is HIDDEN until a
     // working report workflow exists (the ruled default). The tab was a
     // read-only shell over a store nothing writes (no create path since
@@ -264,19 +279,34 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen flex bg-[#f6f8fa] text-[#1a2332]">
       {/* Navy nav rail */}
-      <aside className="sticky top-0 self-start h-screen w-16 lg:w-56 shrink-0 bg-[#101218] text-gray-300 flex flex-col z-30">
+      {/* VC4: the rail widens (w-24 collapsed / w-72 expanded) so the
+          full-size ghost never clips the lockup (68px since VD6) */}
+      <aside className="sticky top-0 self-start h-screen w-24 lg:w-72 shrink-0 bg-[#101218] text-gray-300 flex flex-col z-30">
+        {/* VC3 (final lockup correction, cumulative over VC1-VC2) + VD6:
+            the brand cell of the unified 68px shell row renders the ONE
+            shared BrandLockup (68px ghost + 30px wordmark; sizing and
+            face live on the component and its shared brand token).
+            Vertical cell padding is zero so the full-size lockup fits
+            the fixed row without clipping. VISIBLE branding only: no
+            glow, bevel, gradient, animation, or copied shapes; the
+            lockup keeps the app's existing home navigation, so it is
+            not a dead control. No account, status, notification, or
+            profile information is added. Internal identifiers (asset
+            filenames, storage keys, API paths, package names) are
+            untouched. */}
         <Link
           to="/"
           title="Back to home"
-          className="flex items-center gap-2.5 h-16 px-3 lg:px-5 border-b border-white/10 hover:bg-white/5 transition-colors"
+          className="flex items-center justify-center lg:justify-start h-[68px] px-2 lg:px-3 border-b border-white/10 hover:bg-white/5 transition-colors"
         >
-          <img src="/spectyr_logo.png" alt="Spectyr" className="h-10 w-10 object-contain shrink-0" />
-          <span className="hidden lg:inline text-xl font-semibold tracking-tight text-white" style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>Spectyr</span>
+          <BrandLockup wordmarkClass="hidden lg:inline" />
+          <span className="sr-only">SPECTR home</span>
         </Link>
 
         <nav className="flex-1 py-3 px-2 lg:px-3 flex flex-col gap-1">
           {tabs.map(t => {
             const active = view === t.key;
+            const Icon = NAV_ICONS[t.key];
             return (
               <button
                 key={t.key}
@@ -287,9 +317,7 @@ const Dashboard = () => {
                 }`}
               >
                 {active && <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-white" />}
-                <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d={t.icon} />
-                </svg>
+                <Icon size={19} strokeWidth={NAV_STROKE} aria-hidden="true" className="shrink-0" />
                 <span className="hidden lg:inline flex-1 text-left">{t.label}</span>
                 {t.count > 0 && <span className="hidden lg:inline text-xs text-gray-400">{t.count}</span>}
                 {t.count > 0 && <span className="lg:hidden absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-white/70" />}
@@ -304,9 +332,7 @@ const Dashboard = () => {
             title="Documentation"
             className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-gray-400 hover:bg-white/5 hover:text-white transition-colors"
           >
-            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.247m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.247" />
-            </svg>
+            <ChromeIcons.BookOpen size={19} strokeWidth={NAV_STROKE} aria-hidden="true" className="shrink-0" />
             <span className="hidden lg:inline">Docs</span>
           </Link>
         </div>
@@ -314,33 +340,52 @@ const Dashboard = () => {
         <div className="mt-auto p-2 lg:p-3 border-t border-white/10 flex flex-col gap-2">
           <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />
           {simActive ? (
+            /* VE5 (owner mid-run instruction): the rail Reset wears the
+               same pill treatment as the shared Start control (one
+               exported class list, so the geometry cannot drift). It is
+               NOT a StartButton -- Reset is not a product-entry action. */
             <button
               onClick={() => setShowResetModal(true)}
               title="Reset Simulation"
-              className="liquid-btn flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-white"
+              aria-label="Reset Simulation"
+              className={`${CTA_PILL} w-full`}
             >
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+              <ChromeIcons.RotateCcw size={18} strokeWidth={NAV_STROKE} aria-hidden="true" className="shrink-0" />
               <span className="hidden lg:inline">Reset</span>
             </button>
           ) : (
-            <button
+            /* Final polish (section 4): the rail's inactive-session slot
+               is the shared product-entry StartButton (label collapses
+               below lg exactly like the lockup wordmark). */
+            <StartButton
               onClick={handleSimulateEvents}
-              title="Start Simulation"
-              className="liquid-btn flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold text-white"
-            >
-              <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-              <span className="hidden lg:inline">Start</span>
-            </button>
+              title="Start"
+              className="w-full"
+              labelClass="hidden lg:inline"
+            />
           )}
         </div>
       </aside>
 
       {/* Light content */}
-      <main className="flex-1 min-w-0 p-4 sm:p-6 overflow-x-hidden">
+      <main className="flex-1 min-w-0 overflow-x-hidden">
+        {/* VC1 (owner correction): ONE inline application header row. The
+            header is the light main cell -- full column width, 72px like
+            the sidebar brand cell beside it, closed by a divider -- so
+            brand cell + page title read as one shell row separated only
+            by the sidebar boundary. It keeps the VH content: the current
+            workspace title + the ghost avatar with its real-controls
+            menu. No mode or analyst name in the shell; no case context
+            here (the pinned case line lives on the working surfaces). */}
+        <AppHeader
+          title={(tabs.find(t => t.key === view) || {}).label || 'Dashboard'}
+          subtitle={PAGE_SUBTITLE[view]}
+          gameMode={gameMode}
+          analystName={analystName}
+          simActive={simActive}
+          onReset={() => setShowResetModal(true)}
+        />
+        <div className="p-4 sm:p-6">
         {/* Stage 5 Phase 1 (Amendment 1 Delta A): the global focus banner is
             REPLACED by the per-surface pinned case header ("Investigating
             INC-####" / "All activity") on Detections, Endpoints, and the
@@ -350,11 +395,9 @@ const Dashboard = () => {
         <div className={view === "dashboard" ? "block" : "hidden"}>
           <IncidentDashboard
             gameMode={gameMode}
-            analystName={analystName}
             activeIncidentId={activeIncidentId}
             onSelectIncident={setActiveIncidentId}
             onNavigate={setView}
-            onReset={() => setShowResetModal(true)}
             isVisible={view === "dashboard"}
             chosen={chosen}
           />
@@ -374,29 +417,31 @@ const Dashboard = () => {
             onPracticeAnother={handlePracticeAnother}
             onEvidenceDescent={handleEvidenceDescent}
             onOpenLearningReview={handleOpenLearningReview}
+            onActiveIncidentSummary={setActiveIncident}
             chosen={chosen}
             setChosen={setChosen}
           />
         </div>
 
         <div className={view === "siem" ? "block" : "hidden"}>
-          <Siem resetTrigger={resetTrigger} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} descentRequest={descentRequest} />
+          <Siem resetTrigger={resetTrigger} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} descentRequest={descentRequest} activeIncident={activeIncident} />
         </div>
 
         <div className={view === "detections" ? "block" : "hidden"}>
-          <Detections isVisible={view === "detections"} resetTrigger={resetTrigger} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} onEvidenceDescent={handleEvidenceDescent} onOpenResponse={handleOpenResponse} />
+          <Detections isVisible={view === "detections"} resetTrigger={resetTrigger} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} onEvidenceDescent={handleEvidenceDescent} onOpenResponse={handleOpenResponse} activeIncident={activeIncident} />
         </div>
 
         <div className={view === "endpoints" ? "block" : "hidden"}>
-          <Endpoints isVisible={view === "endpoints"} resetTrigger={resetTrigger} pivotHost={pivotHost} activeIncidentId={activeIncidentId} onOpenResponse={handleOpenResponse} />
+          <Endpoints isVisible={view === "endpoints"} resetTrigger={resetTrigger} pivotHost={pivotHost} activeIncidentId={activeIncidentId} onOpenResponse={handleOpenResponse} activeIncident={activeIncident} />
         </div>
 
         <div className={view === "response" ? "block" : "hidden"}>
-          <Response isVisible={view === "response"} resetTrigger={resetTrigger} activeIncidentId={activeIncidentId} responseFocus={responseFocus} onHostPivot={handleHostPivot} />
+          <Response isVisible={view === "response"} resetTrigger={resetTrigger} activeIncidentId={activeIncidentId} responseFocus={responseFocus} onHostPivot={handleHostPivot} activeIncident={activeIncident} />
         </div>
 
         <div className={view === "analytics" ? "block" : "hidden"}>
-          <Analytics onReset={() => setShowResetModal(true)} analystName={analystName} setAnalyticsCount={setAnalyticsCount} isVisible={view === "analytics"} reviewRequest={reviewRequest} />
+          <Analytics analystName={analystName} setAnalyticsCount={setAnalyticsCount} isVisible={view === "analytics"} reviewRequest={reviewRequest} activeIncident={activeIncident} />
+        </div>
         </div>
       </main>
 

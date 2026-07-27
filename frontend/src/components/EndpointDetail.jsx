@@ -3,6 +3,9 @@ import { apiFetch } from '../api';
 import { StatusBadge, OsChip, IsolationBadge } from './Endpoints';
 import { RESPOND_TO_HOST, RESPOND_ROW } from './uiCopy';
 import { PERSIST_LABEL } from './responseActions';
+import {
+  DeviceGlyph, PlatformBadge, platformFor, PLATFORM_LABELS, DEVICE_LABELS,
+} from './icons';
 
 // Endpoint detail (Stage 1): two-pane EDR-style view over the cached session
 // snapshot. Fetched once per host; search and sort operate on the cached
@@ -17,15 +20,16 @@ const shortDate = (iso) => (iso ? iso.slice(0, 10) : '-');
 const shortDateTime = (iso) => (iso ? iso.slice(0, 16).replace('T', ' ') : '-');
 const dash = (v) => (v === null || v === undefined || v === '' ? '-' : v);
 
+// VP16: ordinary content cards carry the subtle border on all sides; the
+// decorative dark top stripe is retired.
 const Card = ({ children, className = '' }) => (
   <div className={`bg-white border border-[#e2e6ea] rounded-xl overflow-hidden ${className}`}>
-    <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
     {children}
   </div>
 );
 
 const SectionLabel = ({ children }) => (
-  <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium">{children}</p>
+  <p className="t-overline">{children}</p>
 );
 
 const SignerBadge = ({ signer, signed }) => (
@@ -72,17 +76,17 @@ const StateBadges = ({ row }) => {
 
 const TABS = [
   { key: 'overview', label: 'Overview', group: null },
-  { key: 'processes', label: 'Processes', group: 'ENUMERATE' },
-  { key: 'network', label: 'Network', group: 'ENUMERATE' },
-  { key: 'services', label: 'Services', group: 'ENUMERATE' },
-  { key: 'users', label: 'Users', group: 'ENUMERATE' },
-  { key: 'autoruns', label: 'Autoruns', group: 'ENUMERATE' },
+  { key: 'processes', label: 'Processes', group: 'Enumerate' },
+  { key: 'network', label: 'Network', group: 'Enumerate' },
+  { key: 'services', label: 'Services', group: 'Enumerate' },
+  { key: 'users', label: 'Users', group: 'Enumerate' },
+  { key: 'autoruns', label: 'Autoruns', group: 'Enumerate' },
 ];
 
 const Th = ({ children, onClick, active, dir }) => (
-  <th className="px-3 py-2.5 font-medium whitespace-nowrap text-xs uppercase tracking-wider">
+  <th className="px-3 py-2.5 whitespace-nowrap">
     {onClick ? (
-      <button type="button" onClick={onClick} className="inline-flex items-center gap-1 uppercase tracking-wider">
+      <button type="button" onClick={onClick} className="inline-flex items-center gap-1">
         {children}{active && <span aria-hidden="true">{dir === 'asc' ? '▴' : '▾'}</span>}
       </button>
     ) : children}
@@ -136,7 +140,7 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
       <div>
         <button type="button" onClick={onBack} className="text-sm text-[#16436b] hover:underline mb-4">&larr; All Endpoints</button>
         <Card><div className="p-6 text-[#57606a]">
-          <span className="font-mono text-[#1a2332]">{hostname}</span> is not a managed endpoint. Network devices appear in events but carry no agent snapshot.
+          <span className="log-mono text-[#1a2332]">{hostname}</span> is not a managed endpoint. Network devices appear in events but carry no agent snapshot.
         </div></Card>
       </div>
     );
@@ -152,6 +156,10 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
   }
 
   const sys = snap.system;
+  // V7: the device-class + platform identity, derived from the REAL
+  // serialized fields (system.platform / os / role) -- the same mapping
+  // the endpoint list and Response target rows use.
+  const ident = platformFor({ platform: sys.platform, os: snap.os, role: snap.role });
   const procSortBtn = (key) => () =>
     setProcSort(s => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
 
@@ -164,7 +172,11 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
         <Card>
           <div className="p-4">
             <button type="button" onClick={onBack} className="text-sm text-[#16436b] hover:underline">&larr; All Endpoints</button>
-            <h3 className="mt-3 font-mono text-lg font-semibold text-[#1a2332] truncate" title={snap.hostname}>{snap.hostname}</h3>
+            <div className="mt-3 flex items-center gap-2 min-w-0">
+              <DeviceGlyph deviceKind={ident.deviceKind} size={18} className="text-[#57606a] shrink-0" />
+              <h3 className="log-mono text-lg font-semibold text-[#1a2332] truncate" title={snap.hostname}>{snap.hostname}</h3>
+              <PlatformBadge platformKey={ident.platformKey} className="text-[#57606a] shrink-0" />
+            </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               <StatusBadge status={snap.status} />
               {snap.isolation === 'isolated' && <IsolationBadge isolation="isolated" />}
@@ -177,7 +189,7 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
                 ['Org', org?.name || 'ACME Corp', false]].map(([k, v, mono]) => (
                 <div key={k} className="flex justify-between gap-2 border-b border-[#eef1f4] pb-1.5 last:border-b-0">
                   <dt className="text-[#6e7781]">{k}</dt>
-                  <dd className={`text-[#1a2332] text-right truncate ${mono ? 'font-mono' : ''}`} title={String(v)}>{v}</dd>
+                  <dd className={`text-[#1a2332] text-right truncate ${mono ? 'log-mono' : ''}`} title={String(v)}>{v}</dd>
                 </div>
               ))}
             </dl>
@@ -186,7 +198,7 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
             {TABS.map((t, i) => (
               <React.Fragment key={t.key}>
                 {t.group && TABS[i - 1]?.group !== t.group && (
-                  <p className="px-3 pt-3 pb-1 text-[10px] uppercase tracking-wider text-[#8b949e]">{t.group}</p>
+                  <p className="px-3 pt-3 pb-1 t-overline">{t.group}</p>
                 )}
                 <button
                   type="button"
@@ -205,9 +217,9 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
 
       {/* Main pane */}
       <div className="flex-1 min-w-0 w-full">
-        <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332]">{tabTitle}</h2>
+        <h2 className="t-section">{tabTitle}</h2>
         <p className="text-sm text-[#57606a] mb-4">
-          <span className="font-mono">{snap.hostname}</span>{snap.desc ? `: ${snap.desc}` : ''}
+          <span className="log-mono">{snap.hostname}</span>{snap.desc ? `: ${snap.desc}` : ''}
         </p>
 
         {tab === 'overview' && (
@@ -215,7 +227,9 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
             <Card>
               <div className="p-5">
                 <div className="flex flex-wrap items-center gap-3">
-                  <h3 className="font-mono text-2xl font-semibold text-[#1a2332]">{snap.hostname}</h3>
+                  <DeviceGlyph deviceKind={ident.deviceKind} size={22} className="text-[#57606a]" />
+                  <h3 className="log-mono text-2xl font-semibold text-[#1a2332]">{snap.hostname}</h3>
+                  <PlatformBadge platformKey={ident.platformKey} size={16} className="text-[#57606a]" />
                   <StatusBadge status={snap.status} />
                   {snap.isolation === 'isolated' ? (
                     <IsolationBadge isolation="isolated" />
@@ -230,7 +244,7 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
                     ['Last heartbeat', snap.status === 'online' ? 'just now' : shortDateTime(sys.last_heartbeat), false]].map(([k, v, mono]) => (
                     <div key={k} className="rounded-lg border border-[#eef1f4] p-3">
                       <SectionLabel>{k}</SectionLabel>
-                      <p className={`mt-1 text-sm text-[#1a2332] ${mono ? 'font-mono' : ''}`}>{v}</p>
+                      <p className={`mt-1 text-sm text-[#1a2332] ${mono ? 'log-mono' : ''}`}>{v}</p>
                     </div>
                   ))}
                 </div>
@@ -272,7 +286,7 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
               <div className="p-5">
                 <SectionLabel>System information</SectionLabel>
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-8">
-                  {[['Platform', 'Windows', false],
+                  {[['Platform', `${PLATFORM_LABELS[ident.platformKey]} ${DEVICE_LABELS[ident.deviceKind]}`, false],
                     ['Architecture', sys.architecture, true],
                     ['Internal IP', sys.internal_ip, true],
                     ['External IP', sys.external_ip, true],
@@ -282,7 +296,7 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
                     ['First Seen', shortDateTime(sys.first_seen), false]].map(([k, v, mono]) => (
                     <div key={k} className="flex justify-between gap-3 py-2 border-b border-[#eef1f4] text-sm">
                       <span className="text-[#6e7781]">{k}</span>
-                      <span className={`text-[#1a2332] text-right break-all ${mono ? 'font-mono' : ''}`}>{dash(v)}</span>
+                      <span className={`text-[#1a2332] text-right break-all ${mono ? 'log-mono' : ''}`}>{dash(v)}</span>
                     </div>
                   ))}
                 </div>
@@ -305,7 +319,7 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="dark-thead"><tr>
+                <thead className="data-thead"><tr>
                   <Th onClick={procSortBtn('pid')} active={procSort.key === 'pid'} dir={procSort.dir}>PID</Th>
                   <Th onClick={procSortBtn('ppid')} active={procSort.key === 'ppid'} dir={procSort.dir}>PPID</Th>
                   <Th onClick={procSortBtn('path')} active={procSort.key === 'path'} dir={procSort.dir}>File Path</Th>
@@ -318,14 +332,14 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
                   {processes.length === 0 && <EmptyRow span={7} />}
                   {processes.map(p => (
                     <tr key={`${p.pid}-${p.name}`} className="border-b border-[#eef1f4] last:border-b-0 align-top">
-                      <td className="px-3 py-2 font-mono whitespace-nowrap">{p.pid}</td>
-                      <td className="px-3 py-2 font-mono whitespace-nowrap">
+                      <td className="px-3 py-2 log-mono whitespace-nowrap">{p.pid}</td>
+                      <td className="px-3 py-2 log-mono whitespace-nowrap">
                         {p.ppid}
                         {p.parent_terminated && <span className="ml-1.5 font-sans text-xs text-[#8b949e]">(terminated)</span>}
                       </td>
-                      <td className="px-3 py-2 font-mono break-all min-w-[16rem]">{dash(p.path)}</td>
-                      <td className="px-3 py-2 font-mono break-all min-w-[16rem] text-[#57606a]">{dash(p.cmdline)}</td>
-                      <td className="px-3 py-2 font-mono whitespace-nowrap">{dash(p.user)}</td>
+                      <td className="px-3 py-2 log-mono break-all min-w-[16rem]">{dash(p.path)}</td>
+                      <td className="px-3 py-2 log-mono break-all min-w-[16rem] text-[#57606a]">{dash(p.cmdline)}</td>
+                      <td className="px-3 py-2 log-mono whitespace-nowrap">{dash(p.user)}</td>
                       <td className="px-3 py-2 whitespace-nowrap text-[#57606a]">{p.memory_mb} MB</td>
                       <td className="px-3 py-2 whitespace-nowrap">
                         {p.entity_id && onOpenResponse && (
@@ -353,18 +367,18 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
               <div className="p-4"><SectionLabel>Connections</SectionLabel></div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                  <thead className="dark-thead"><tr>
+                  <thead className="data-thead"><tr>
                     <Th>Proto</Th><Th>Local Address</Th><Th>Remote Address</Th><Th>State</Th><Th>Process</Th>
                   </tr></thead>
                   <tbody>
                     {snap.network.connections.length === 0 && <EmptyRow span={5} />}
                     {snap.network.connections.map((c, i) => (
                       <tr key={i} className="border-b border-[#eef1f4] last:border-b-0">
-                        <td className="px-3 py-2 font-mono uppercase whitespace-nowrap">{c.proto}</td>
-                        <td className="px-3 py-2 font-mono whitespace-nowrap">{c.local_ip}{c.local_port ? `:${c.local_port}` : ''}</td>
-                        <td className="px-3 py-2 font-mono whitespace-nowrap">{c.remote_ip === '-' ? '-' : `${c.remote_ip}${c.remote_port ? `:${c.remote_port}` : ''}`}</td>
+                        <td className="px-3 py-2 log-mono uppercase whitespace-nowrap">{c.proto}</td>
+                        <td className="px-3 py-2 log-mono whitespace-nowrap">{c.local_ip}{c.local_port ? `:${c.local_port}` : ''}</td>
+                        <td className="px-3 py-2 log-mono whitespace-nowrap">{c.remote_ip === '-' ? '-' : `${c.remote_ip}${c.remote_port ? `:${c.remote_port}` : ''}`}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-[#57606a]">{c.state}</td>
-                        <td className="px-3 py-2 font-mono whitespace-nowrap">{c.process === '-' ? '-' : `${c.process}${c.pid ? ` (${c.pid})` : ''}`}</td>
+                        <td className="px-3 py-2 log-mono whitespace-nowrap">{c.process === '-' ? '-' : `${c.process}${c.pid ? ` (${c.pid})` : ''}`}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -375,14 +389,14 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
               <div className="p-4"><SectionLabel>Recent DNS</SectionLabel></div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                  <thead className="dark-thead"><tr><Th>Domain</Th><Th>Resolved IPs</Th><Th>Process</Th></tr></thead>
+                  <thead className="data-thead"><tr><Th>Domain</Th><Th>Resolved IPs</Th><Th>Process</Th></tr></thead>
                   <tbody>
                     {snap.network.dns.length === 0 && <EmptyRow span={3} />}
                     {snap.network.dns.map((d, i) => (
                       <tr key={i} className="border-b border-[#eef1f4] last:border-b-0">
-                        <td className="px-3 py-2 font-mono break-all">{d.query}</td>
-                        <td className="px-3 py-2 font-mono whitespace-nowrap">{dash(d.resolved)}</td>
-                        <td className="px-3 py-2 font-mono whitespace-nowrap">{d.process === '-' ? '-' : `${d.process}${d.pid ? ` (${d.pid})` : ''}`}</td>
+                        <td className="px-3 py-2 log-mono break-all">{d.query}</td>
+                        <td className="px-3 py-2 log-mono whitespace-nowrap">{dash(d.resolved)}</td>
+                        <td className="px-3 py-2 log-mono whitespace-nowrap">{d.process === '-' ? '-' : `${d.process}${d.pid ? ` (${d.pid})` : ''}`}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -396,14 +410,14 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
           <Card>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="dark-thead"><tr>
+                <thead className="data-thead"><tr>
                   <Th>Name</Th><Th>Display Name</Th><Th>Status</Th><Th>Startup Type</Th><Th>Path</Th><Th>Log On As</Th>
                 </tr></thead>
                 <tbody>
                   {snap.services.length === 0 && <EmptyRow span={6} />}
                   {snap.services.map(svc => (
                     <tr key={svc.name} className="border-b border-[#eef1f4] last:border-b-0 align-top">
-                      <td className="px-3 py-2 font-mono whitespace-nowrap">{svc.name}</td>
+                      <td className="px-3 py-2 log-mono whitespace-nowrap">{svc.name}</td>
                       <td className="px-3 py-2">{svc.display_name}</td>
                       <td className="px-3 py-2">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${
@@ -413,8 +427,8 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
                         }`}>{svc.status}</span>
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-[#57606a]">{svc.start_type}</td>
-                      <td className="px-3 py-2 font-mono break-all min-w-[16rem]">{svc.path}</td>
-                      <td className="px-3 py-2 font-mono whitespace-nowrap">{svc.account}</td>
+                      <td className="px-3 py-2 log-mono break-all min-w-[16rem]">{svc.path}</td>
+                      <td className="px-3 py-2 log-mono whitespace-nowrap">{svc.account}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -427,12 +441,12 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
           <Card>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="dark-thead"><tr><Th>Username</Th><Th>Type</Th><Th>Groups</Th><Th>Last Logon</Th></tr></thead>
+                <thead className="data-thead"><tr><Th>Username</Th><Th>Type</Th><Th>Groups</Th><Th>Last Logon</Th></tr></thead>
                 <tbody>
                   {snap.users.length === 0 && <EmptyRow span={4} />}
                   {snap.users.map(u => (
                     <tr key={`${u.domain}-${u.username}`} className="border-b border-[#eef1f4] last:border-b-0">
-                      <td className="px-3 py-2 font-mono whitespace-nowrap">
+                      <td className="px-3 py-2 log-mono whitespace-nowrap">
                         {u.domain && u.domain !== '-' ? `${u.domain}\\${u.username}` : u.username}
                         {!u.enabled && <span className="ml-2 font-sans text-xs text-[#8b949e]">(disabled)</span>}
                       </td>
@@ -456,7 +470,7 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="dark-thead"><tr>
+                <thead className="data-thead"><tr>
                   <Th>Entry</Th><Th>Type</Th><Th>Location</Th><Th>Command / Image</Th><Th>State</Th><Th>Action</Th>
                 </tr></thead>
                 <tbody>
@@ -465,8 +479,8 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
                     <tr key={a.persistence_entity_id || i} className="border-b border-[#eef1f4] last:border-b-0 align-top">
                       <td className="px-3 py-2 whitespace-nowrap">{a.name}</td>
                       <td className="px-3 py-2"><PersistTypeBadge type={a.persist_type} /></td>
-                      <td className="px-3 py-2 font-mono break-all min-w-[14rem]">{a.location}</td>
-                      <td className="px-3 py-2 font-mono break-all min-w-[14rem]">{a.command}</td>
+                      <td className="px-3 py-2 log-mono break-all min-w-[14rem]">{a.location}</td>
+                      <td className="px-3 py-2 log-mono break-all min-w-[14rem]">{a.command}</td>
                       <td className="px-3 py-2">
                         {a.persist_type
                           ? <StateBadges row={a} />

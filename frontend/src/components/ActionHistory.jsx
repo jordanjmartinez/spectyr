@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { apiFetch } from '../api';
+import { CARD_STYLE } from './ui';
 
 const formatDuration = (seconds) => {
   if (seconds == null || seconds < 0) return null;
@@ -56,16 +57,13 @@ const ActionHistory = ({ history: rawHistory }) => {
 
   if (!history || history.length === 0) {
     return (
-      <div>
-        <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">Post-Incident Review</h2>
-        <div
-          className="p-3 sm:p-6 rounded-xl"
-          style={{
-            background: '#ffffff',
-            border: '1px solid #e2e6ea',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-          }}
-        >
+      /* VF (section 5): Dashboard card anatomy -- the section title sits
+         INSIDE the bordered container with its empty state (shared
+         t-section token and the ONE shared CARD_STYLE, replacing the
+         hand-rolled copy of the same values). */
+      <div className="p-3 sm:p-6 rounded-xl" style={CARD_STYLE}>
+        <h2 className="t-section mb-4">Post-Incident Review</h2>
+        <div>
           <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
             <svg className="w-8 h-8 text-[#8b949e] mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
@@ -78,20 +76,15 @@ const ActionHistory = ({ history: rawHistory }) => {
   }
 
   return (
-    <div>
-      <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] mb-4">Post-Incident Review</h2>
+    /* VF (section 5): same anatomy in the populated state -- title inside
+       the one flat card, above the review table. */
+    <div className="p-3 sm:p-6 rounded-xl" style={CARD_STYLE}>
+      <h2 className="t-section mb-4">Post-Incident Review</h2>
 
-      <div
-        className="p-3 sm:p-6 rounded-xl"
-        style={{
-          background: '#ffffff',
-          border: '1px solid #e2e6ea',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-        }}
-      >
+      <div>
         <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper">
           <table className="w-full min-w-[860px] log-text text-left text-[#1a2332] border-separate border-spacing-0">
-          <thead className="dark-thead">
+          <thead className="data-thead">
             <tr className="text-xs sm:text-sm tracking-wider">
               <th className="w-10 px-2 sm:px-4 py-3 font-medium border-b border-[#d0d7de]"></th>
               <th className="w-12 px-1 sm:px-2 py-3 font-medium border-b border-[#d0d7de]"></th>

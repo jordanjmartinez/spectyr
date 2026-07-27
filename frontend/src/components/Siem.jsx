@@ -12,7 +12,7 @@ import {
   composeQuery, replaceTimeframe, rawFiltersOf, filtersOffsetOf,
   SOURCE_FAMILIES,
 } from './lcqlPivots';
-import InvestigationContext from './InvestigationContext';
+import { CARD_STYLE, PageIntro, SegmentedToggle } from './ui';
 import {
   followingClue, resultsFor, ALL_EVENTS_LABEL, INITIAL_INCIDENT_EVIDENCE,
   INITIAL_EVIDENCE, SELECTED_EVENT_HIDDEN, newEventsAvailable,
@@ -62,7 +62,7 @@ const firstSegmentToken = (text) => {
 };
 
 const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
-                descentRequest,
+                descentRequest, activeIncident = null,
                 initialQueryMode = 'simple' }) => {
   const [org, setOrg] = useState({});
   const [view, setView] = useState('cards');
@@ -486,42 +486,11 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
 
   return (
     <div>
-      {/* Header card */}
-      <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-hidden mb-4">
-        <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
-        <div className="p-4 sm:p-5 flex flex-wrap items-center gap-4">
-          <div className="w-10 h-10 rounded-lg bg-[#101218] flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" role="img" aria-label="SIEM">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-            </svg>
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332]">SIEM</h2>
-              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-[#57606a]">
-                {snapshot ? snapshot.count : 0}
-              </span>
-            </div>
-            <p className="text-sm text-[#57606a] truncate">
-              {org.name || 'ACME Corp'}: investigation workbench over the session event pool
-            </p>
-          </div>
-          <div className="ml-auto flex items-center rounded-md border border-[#d0d7de] overflow-hidden" role="group" aria-label="View">
-            {[['cards', 'Cards'], ['table', 'Table']].map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setView(key)}
-                className={`px-3 py-1.5 text-xs font-medium transition ${
-                  view === key ? 'bg-[#101218] text-white' : 'bg-white text-[#57606a] hover:bg-[#eef1f4]'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* VA1: functional subtitle + the ONE incident pill; the large
+          identity card is gone and the Cards/Table control moves down to
+          the results area. Query controls, truthful state copy, and the
+          evidence surfaces are untouched. */}
+      <PageIntro incident={activeIncident} />
 
       {/* Case-constant context + TIMEFRAME + query bar (Final pass III.0
           item 2): ONE pinned case line, one evidence universe. The old
@@ -530,12 +499,9 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
           beside the line and the error keeps its Retry block below. No
           control here can change the case (OD-15). */}
       <div className="mb-3 flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-2">
-          <InvestigationContext incidentId={activeIncidentId || null} />
-          {activeIncidentId && scope.kind === 'incident' && scope.status === 'loading' && (
-            <span className="text-xs text-[#6e7781]">Loading incident scope</span>
-          )}
-        </div>
+        {activeIncidentId && scope.kind === 'incident' && scope.status === 'loading' && (
+          <span className="text-xs text-[#6e7781]">Loading incident scope</span>
+        )}
         <div className="flex flex-wrap items-center gap-2 text-xs">
           {/* A3.5 (F7): the simple-mode Source / Event type selects own
               their tokens; value-driven (the current token always renders,
@@ -841,7 +807,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
       {!snapshot ? (
         <div
           className="p-6 rounded-xl py-12"
-          style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+          style={CARD_STYLE}
         >
           <p className="text-sm font-medium text-[#1a2332] mb-1">Run a query to begin.</p>
           {/* A3.5 (F7): mode-scoped guidance. Simple mode teaches the
@@ -878,7 +844,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
           <FieldSidebar snapshot={snapshot} running={running} onValueClick={refineAndRun} />
           <div
             className="flex-1 min-w-0 p-6 rounded-xl flex flex-col items-center justify-center py-14"
-            style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+            style={CARD_STYLE}
           >
             <p className="text-sm text-[#1a2332] mb-1">0 events match</p>
             <p className="text-xs text-[#6e7781] log-mono">{snapshot.identity.canonical_query}</p>
@@ -888,6 +854,17 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
         <div className="flex flex-col lg:flex-row gap-4">
           <FieldSidebar snapshot={snapshot} running={running} onValueClick={refineAndRun} />
           <div data-testid="workbench-results" className="flex-1 min-w-0">
+            {/* VA1: the Cards/Table control belongs with the RESULTS, not
+                the page identity area. */}
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="t-meta text-[#6e7781]">{snapshot.count} events</span>
+              <SegmentedToggle
+                ariaLabel="View"
+                value={view}
+                onChange={setView}
+                options={[['cards', 'Cards'], ['table', 'Table']]}
+              />
+            </div>
             {view === 'cards' ? (
               <SiemCards alerts={snapshot.rows} resetTrigger={resetTrigger}
                          selectedId={selectedId} onSelect={selectRow} />

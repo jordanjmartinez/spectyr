@@ -1,40 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../api';
+import { SeverityBadge } from './ui';
+import { ChromeIcons, NAV_ICONS, NAV_STROKE } from './icons';
 
-// Stage 3.9B Step 3: the three final modes. Guided (from the training engine)
-// opens the answer-neutral catalog picker and starts a single chosen incident;
-// SOC Queue (analyst engine) and Hardcore push the sampled queue. The picker
-// shows only title / severity / neutral description (difficulty is intentionally
-// not presented this stage).
+// VA2 (amendment section 4): the mode chooser. Two experiences only --
+// Guided and Hardcore. SOC Queue is removed from the player-facing
+// product; the engine's dormant "analyst" mode is NOT deleted (the
+// frozen backend batteries exercise it as a mode-universal path) and no
+// UI can reach it.
+//
+// The analyst-name input is gone with the invented identity it invited.
+// A session still needs a name field server-side (it is what marks a
+// session active), so the product supplies its own generic role label,
+// ANALYST_LABEL -- a role, never a fabricated person.
+export const ANALYST_LABEL = 'Analyst';
+
 const MODES = [
   {
     id: 'guided',
     label: 'Guided',
-    image: '/ghost_training.PNG',
-    points: ['Learn the workflow', 'Pick one scenario. Unlimited time, Check Answer available.'],
-  },
-  {
-    id: 'analyst',
-    label: 'SOC Queue',
-    image: '/ghost_analytics.png',
-    points: ['Triggered evidence arrival', 'A queue pushes in; only the trigger shows first.'],
+    Icon: ChromeIcons.BookOpen,
+    lines: ['Learn with immediate feedback and optional hints.', 'No timer.'],
   },
   {
     id: 'hardcore',
     label: 'Hardcore',
-    image: '/ghost_hacker.png',
-    points: ['Beat the clock', 'Clear the queue without a mistake.'],
+    Icon: NAV_ICONS.response,
+    lines: ['Investigate independently under time pressure.',
+            'Feedback appears after submission.'],
   },
 ];
 
-const SEV_DOT = { Critical: '#b45858', High: '#c08a3e', Medium: '#c0a93e', Low: '#6fa868' };
-
 const DifficultySelector = ({ onSelect, onCancel, initialName = '', initialStep = 'mode' }) => {
-  const [analystName, setAnalystName] = useState(initialName);
   const [step, setStep] = useState(initialStep);     // 'mode' | 'catalog'
-  const [catalog, setCatalog] = useState(null);       // null while loading
-
-  const isNameValid = analystName.trim().length > 0;
+  const [mode, setMode] = useState('guided');        // the selected experience
+  const [catalog, setCatalog] = useState(null);      // null while loading
 
   const loadCatalog = () => {
     setCatalog(null);
@@ -47,18 +47,22 @@ const DifficultySelector = ({ onSelect, onCancel, initialName = '', initialStep 
   // Practice Another opens straight at the answer-neutral Guided catalog.
   useEffect(() => { if (initialStep === 'catalog') loadCatalog(); }, [initialStep]);
 
-  const pickMode = (mode) => {
-    if (!isNameValid) return;
+  const analyst = (initialName && initialName.trim()) || ANALYST_LABEL;
+  const cont = () => {
     if (mode === 'guided') { setStep('catalog'); loadCatalog(); }
-    else onSelect(mode, analystName.trim());
+    else onSelect(mode, analyst);
   };
-
-  const pickScenario = (catalogId) => onSelect('guided', analystName.trim(), catalogId);
+  const pickScenario = (catalogId) => onSelect('guided', analyst, catalogId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/70" onClick={onCancel} />
-      <div className="relative bg-white border border-[#e2e6ea] rounded-xl p-6 w-full max-w-3xl mx-4 shadow-2xl animate-modalIn max-h-[90vh] overflow-y-auto">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={step === 'mode' ? 'Choose your experience' : 'Choose a scenario'}
+        className="relative bg-white border border-[#e2e6ea] rounded-xl p-6 w-full max-w-lg mx-4 shadow-2xl animate-modalIn max-h-[90vh] overflow-y-auto"
+      >
         <button
           type="button"
           onClick={onCancel}
@@ -72,62 +76,72 @@ const DifficultySelector = ({ onSelect, onCancel, initialName = '', initialStep 
 
         {step === 'mode' ? (
           <>
-            <h3 className="text-lg font-semibold text-[#1a2332] mb-4 pr-8">Select Mode</h3>
-            <div className="mb-5" style={{ height: '1px', background: 'linear-gradient(to right, rgba(0,0,0,0.08), transparent)' }} />
+            <h3 className="t-section pr-8">Choose your experience</h3>
+            <p className="t-body text-[#57606a] mt-1 mb-4">
+              Select how much guidance you want during the investigation.
+            </p>
 
-            <div className="mb-6">
-              <input
-                type="text"
-                value={analystName}
-                onChange={(e) => setAnalystName(e.target.value)}
-                placeholder="Your Name"
-                maxLength={12}
-                className="w-full px-4 py-2 rounded-md bg-white border border-[#d0d7de] text-[#1a2332] text-sm placeholder-[#8b949e] focus:border-[#8b949e] focus:outline-none transition-colors"
-              />
+            <div role="radiogroup" aria-label="Experience" className="space-y-2">
+              {MODES.map((m) => {
+                const selected = mode === m.id;
+                const Icon = m.Icon;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => setMode(m.id)}
+                    className={`w-full text-left flex items-start gap-3 rounded-lg border p-3 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#16436b]/40 ${
+                      selected
+                        ? 'border-[#101218] bg-[#f6f8fa]'
+                        : 'border-[#d0d7de] bg-white hover:bg-[#f6f8fa]'
+                    }`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`mt-0.5 w-4 h-4 rounded-full border-[5px] shrink-0 ${
+                        selected ? 'border-[#101218]' : 'border-[#d0d7de]'
+                      }`}
+                    />
+                    <span className="min-w-0">
+                      <span className="flex items-center gap-1.5">
+                        <Icon size={15} strokeWidth={NAV_STROKE} aria-hidden="true" className="text-[#57606a]" />
+                        <span className="t-subsection">{m.label}</span>
+                      </span>
+                      {m.lines.map((l) => (
+                        <span key={l} className="block text-sm text-[#57606a]">{l}</span>
+                      ))}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
-              {MODES.map((mode) => (
-                <button
-                  key={mode.id}
-                  onClick={() => pickMode(mode.id)}
-                  disabled={!isNameValid}
-                  className={`group relative bg-[#101218] border-2 rounded-xl p-4 sm:p-5 text-center transition-all duration-200 ${
-                    !isNameValid
-                      ? 'border-transparent opacity-50 cursor-not-allowed'
-                      : 'border-white/10 hover:border-white/40 hover:bg-[#1e2330] cursor-pointer'
-                  }`}
-                >
-                  <div className="flex flex-col items-center mb-3">
-                    <h4 className="text-lg font-semibold text-white mb-2">{mode.label}</h4>
-                    <div className="h-20 sm:h-24 flex items-center justify-center">
-                      <img src={mode.image} alt={mode.label} className="w-20 h-24 sm:w-24 sm:h-28 object-contain" />
-                    </div>
-                  </div>
-                  <ul className="space-y-1.5 text-xs sm:text-sm text-gray-300">
-                    {mode.points.map((p, i) => (
-                      <li key={p} className={i === 0 ? 'font-medium text-gray-100' : ''}>{p}</li>
-                    ))}
-                  </ul>
-                </button>
-              ))}
+            <div className="mt-5 flex justify-end">
+              <button
+                type="button"
+                onClick={cont}
+                className="px-4 py-2 text-sm font-medium rounded-md bg-[#101218] text-white hover:bg-[#1e2330] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#16436b]/40"
+              >
+                Continue
+              </button>
             </div>
           </>
         ) : (
           <>
             <div className="flex items-center gap-3 mb-4 pr-8">
               <button type="button" onClick={() => setStep('mode')} className="text-sm text-[#16436b] hover:underline">Back</button>
-              <h3 className="text-lg font-semibold text-[#1a2332]">Choose a scenario</h3>
+              <h3 className="t-section">Choose a scenario</h3>
             </div>
-            <div className="mb-4" style={{ height: '1px', background: 'linear-gradient(to right, rgba(0,0,0,0.08), transparent)' }} />
 
             <button
               type="button"
               onClick={() => pickScenario('random')}
               className="w-full text-left p-3 mb-3 rounded-lg border border-[#d0d7de] hover:bg-[#f6f8fa] transition-colors"
             >
-              <span className="text-sm font-medium text-[#1a2332]">Random scenario</span>
-              <span className="text-xs text-[#8b949e] block mt-0.5">Start a randomly chosen incident from the catalog.</span>
+              <span className="t-subsection block">Random scenario</span>
+              <span className="text-xs text-[#57606a] block mt-0.5">Start a randomly chosen incident from the catalog.</span>
             </button>
 
             {catalog === null ? (
@@ -143,10 +157,9 @@ const DifficultySelector = ({ onSelect, onCancel, initialName = '', initialStep 
                     onClick={() => pickScenario(e.catalog_id)}
                     className="w-full text-left p-3 rounded-lg border border-[#d0d7de] hover:bg-[#f6f8fa] transition-colors"
                   >
-                    <span className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: SEV_DOT[e.severity] || '#8b949e' }} />
-                      <span className="text-sm font-medium text-[#1a2332]">{e.title}</span>
-                      <span className="text-[11px] text-[#8b949e]">{e.severity}</span>
+                    <span className="flex items-center gap-2 flex-wrap">
+                      <span className="t-subsection">{e.title}</span>
+                      <SeverityBadge severity={e.severity} />
                     </span>
                     <span className="text-xs text-[#57606a] block mt-1">{e.description}</span>
                   </button>

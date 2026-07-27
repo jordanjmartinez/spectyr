@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../api';
-import { SeverityBadge, RuleTypeChip } from './Detections';
+import { SeverityBadge } from './ui';
+import { RuleTypeChip } from './Detections';
 
 // Detection detail (Stage 2), the Section 8 card anatomy: lineage as
 // first-class UI. Triggering Event card plus a stacked Parent Process card.
@@ -10,12 +11,11 @@ const basename = (p) => (p ? p.split('\\').pop().split('/').pop() : '');
 const dash = (v) => (v === null || v === undefined || v === '' ? '-' : v);
 
 const SectionLabel = ({ children }) => (
-  <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium">{children}</p>
+  <p className="t-overline">{children}</p>
 );
 
 const Card = ({ children }) => (
   <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-hidden">
-    <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
     {children}
   </div>
 );
@@ -31,7 +31,7 @@ const SignatureBadge = ({ signer }) => (
 const KvRow = ({ label, children, mono }) => (
   <div className="flex justify-between gap-3 py-2 border-b border-[#eef1f4] text-sm last:border-b-0">
     <span className="text-[#6e7781] shrink-0">{label}</span>
-    <span className={`text-[#1a2332] text-right break-all ${mono ? 'font-mono' : ''}`}>{children}</span>
+    <span className={`text-[#1a2332] text-right break-all ${mono ? 'log-mono' : ''}`}>{children}</span>
   </div>
 );
 
@@ -47,9 +47,9 @@ const ProcessCard = ({ title, name, cmdline, path, pid, ppid, signer, sha256, us
     <Card>
       <div className="p-5">
         <SectionLabel>{title}</SectionLabel>
-        <h3 className="mt-1 font-mono text-lg font-semibold text-[#1a2332] break-all">{name || '-'}</h3>
+        <h3 className="mt-1 log-mono text-lg font-semibold text-[#1a2332] break-all">{name || '-'}</h3>
         {cmdline && (
-          <pre className="mt-3 p-3 rounded-lg bg-[#f6f8fa] border border-[#eef1f4] text-xs font-mono text-[#1a2332] overflow-x-auto whitespace-pre-wrap break-all">{cmdline}</pre>
+          <pre className="mt-3 p-3 rounded-lg bg-[#f6f8fa] border border-[#eef1f4] text-xs log-mono text-[#1a2332] overflow-x-auto whitespace-pre-wrap break-all">{cmdline}</pre>
         )}
         <div className="mt-3">
           {path !== undefined && <KvRow label="File name" mono>{basename(path) || '-'}</KvRow>}
@@ -61,7 +61,7 @@ const ProcessCard = ({ title, name, cmdline, path, pid, ppid, signer, sha256, us
           {sha256 !== undefined && (
             <KvRow label="SHA256">
               <span className="inline-flex items-center gap-2">
-                <span className="font-mono text-xs break-all">{dash(sha256)}</span>
+                <span className="log-mono text-xs break-all">{dash(sha256)}</span>
                 {sha256 && (
                   <button type="button" onClick={copy} className="shrink-0 text-[#16436b] hover:underline text-xs" aria-label="Copy SHA256">
                     {copied ? 'Copied' : 'Copy'}
@@ -130,7 +130,7 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
             <SeverityBadge severity={det.severity} />
             <RuleTypeChip type={det.rule_type} />
             {det.yara_rule_name && (
-              <span className="font-mono text-xs text-[#57606a]">{det.yara_rule_name}</span>
+              <span className="log-mono text-xs text-[#57606a]">{det.yara_rule_name}</span>
             )}
           </div>
           <h2 className="mt-2 text-xl sm:text-2xl font-semibold text-[#1a2332]">{det.rule_name}</h2>
@@ -158,7 +158,7 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
               </button>
             </div>
           )}
-          <p className="mt-1 text-sm text-[#57606a] font-mono">
+          <p className="mt-1 text-sm text-[#57606a] log-mono">
             {det.time ? det.time.slice(0, 19).replace('T', ' ') : '-'}
             {' '}&middot;{' '}
             {det.entity?.host ? (
@@ -189,7 +189,7 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
             <SectionLabel>MITRE ATT&amp;CK</SectionLabel>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs border border-[#d0d7de] text-[#57606a]">{det.mitre.tactic}</span>
-              <span className="font-mono text-xs text-[#57606a]">{det.mitre.id}</span>
+              <span className="log-mono text-xs text-[#57606a]">{det.mitre.id}</span>
             </div>
           </div>
         </Card>
@@ -213,7 +213,7 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
             <div className="mt-2">
               <KvRow label="Event type" mono>{dash(ev.event_type)}</KvRow>
               <KvRow label="Source" mono>{dash(ev.source_type)}</KvRow>
-              <KvRow label="Host" mono>{dash(ev.hostname)}</KvRow>
+              <KvRow label="Hostname" mono>{dash(ev.hostname)}</KvRow>
               <KvRow label="Source IP" mono>{dash(ev.source_ip)}</KvRow>
               <KvRow label="Message">{dash(ev.message)}</KvRow>
             </div>

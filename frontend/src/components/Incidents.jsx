@@ -12,6 +12,9 @@ import {
 import { submissionReady, validClassification } from './submissionReady';
 import { toastReady } from './uiToasts';
 import { deriveAchievements } from './achievements';
+import {
+  gradeColor, CARD_STYLE, PageIntro, SegmentedToggle, IncidentIdBadge, SeverityBadge,
+} from './ui';
 
 // Stage 3.9B: the Incidents operational workspace ("what do I need to work?").
 // Search + Active / Ready / Completed views, stable incident rows, and a
@@ -21,9 +24,9 @@ import { deriveAchievements } from './achievements';
 // ticket table and the global Notable Events queue (D3/D4): the player-facing
 // object is the incident. Raw underlying events stay in SIEM (D4, unchanged).
 
-const SEV_DOT = { Critical: '#b45858', High: '#c08a3e', Medium: '#c0a93e', Low: '#6fa868' };
-const gradeColor = (g) => (!g || g === '-') ? '#8b949e' : g === 'F' ? '#b45858' : g === 'D' ? '#c08a3e' : '#6fa868';
-const CARD = { background: '#fff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' };
+// Visual pass VG: severity dots, grade colors, and the card surface come
+// from the ONE shared visual-language module (ui.jsx); nothing visual is
+// defined twice.
 const fmtTime = (iso) => { try { return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
 
 // The incident-progress checklist (Phase 2 commit 2.4, A1-B.3.2): the phase
@@ -68,6 +71,11 @@ const Incidents = ({
   isVisible, resetTrigger, onHardcoreFailure, onReset, gameMode = 'training',
   activeIncidentId, onSelectIncident, onNavigate, setGroupedAlertCount, onPracticeAnother,
   onEvidenceDescent, onOpenLearningReview,
+  // VA1: this workspace already polls the incident list, so it reports
+  // the selected incident's observable summary up to the shell, which
+  // hands it to the other pages for their ONE context pill. No new
+  // request and no new endpoint field.
+  onActiveIncidentSummary,
   // A3.4 (ratified A3-OD-3): the classification selection state is
   // SHELL-OWNED (Dashboard) so every Ready surface derives from the one
   // state; this component receives it and its setter.
@@ -100,8 +108,6 @@ const Incidents = ({
     setChosen?.(c => ({ ...c, [incidentId]: { verdict: 'threat', category: clabel, categoryId: cid } }));
   };
   const [submitBusy, setSubmitBusy] = useState(false);
-  const [checkResult, setCheckResult] = useState(null);      // Guided Check Answer feedback
-  const [checkBusy, setCheckBusy] = useState(false);
   const [practiceWarn, setPracticeWarn] = useState(false);   // Practice Another reset warning
   const [notice, setNotice] = useState('');
   const [review, setReview] = useState(null);     // {incidentId, title, grading, assisted, triage}
@@ -175,6 +181,15 @@ const Incidents = ({
   const rows = all.filter(c => byView(c) && (!q || (c.title || '').toLowerCase().includes(q) || (c.incident_id || '').toLowerCase().includes(q)));
   const selected = all.find(c => c.incident_id === selectedId) || null;
 
+  useEffect(() => {
+    if (!onActiveIncidentSummary) return;
+    const card = [...data.active, ...data.completed]
+      .find(c => c.incident_id === activeIncidentId);
+    onActiveIncidentSummary(card
+      ? { incidentId: card.incident_id, title: card.title, severity: card.severity }
+      : null);
+  }, [activeIncidentId, data, onActiveIncidentSummary]);
+
   const counts = {
     active: data.active.length,
     ready: data.active.filter(c => c.state === 'in_progress' && submissionReady(c, chosen)).length,
@@ -195,35 +210,12 @@ const Incidents = ({
       action: 'submit', verdict: sel.verdict, category: sel.category });
   };
 
-  // Check Answer (Guided only; ratified A3-OD-2): consumes the WORKSPACE
-  // classification selection (disabled until one is valid) and reveals
-  // ONLY whether it is correct, without submitting; permanently marks the
-  // incident Assisted. Never reveals detection, response, or composite
-  // grading (server-enforced).
-  const beginCheck = () => {
-    if (!isGuided || !selected || selected.state !== 'in_progress' || !selected.sealed) return;
-    const sel = chosen[selected.incident_id];
-    if (!validClassification(sel)) return;
-    doCheck({ incident_id: selected.incident_id, title: selected.title,
-      action: 'check', verdict: sel.verdict, category: sel.category });
-  };
-
-  const doCheck = async (p) => {
-    setCheckBusy(true);
-    try {
-      const res = await apiFetch(`/api/incidents/${p.incident_id}/check-answer`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ verdict: p.verdict, category: p.category }),
-      });
-      const b = await res.json().catch(() => ({}));
-      setPendingSubmit(null);
-      // check-answer nests correctness under `classification` (never top-level).
-      if (res.ok) { setCheckResult({ correct: !!(b.classification && b.classification.correct) }); fetchList(); }
-      else { flash(b.error || 'Check Answer is available in Guided mode only.'); }
-    } catch { flash('Could not check the answer.'); }
-    finally { setCheckBusy(false); }
-  };
-
+  // Visual pass V1: the pre-submission Check Answer workflow is REMOVED.
+  // Classification correctness is disclosed only across the submission
+  // boundary (the submitted Learning Review); every mode reaches it the
+  // same way, through Submit. The backend /check-answer endpoint stays as
+  // intentionally dormant server capability (the frozen 3.9A temporal
+  // leak-guard suite exercises it); no player-facing surface calls it.
   const doSubmit = async () => {
     if (!pendingSubmit) return;
     setSubmitBusy(true);
@@ -261,38 +253,35 @@ const Incidents = ({
 
   return (
     <div>
-      {/* Header + search */}
-      <div className="rounded-xl overflow-hidden mb-4" style={CARD}>
-        <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
-        <div className="p-4 sm:p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332]">Incidents</h2>
-            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-[#57606a]">{rows.length}</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="inline-flex rounded-md border border-[#d0d7de] overflow-hidden" role="group" aria-label="Incident view">
-              {[['active', `Active ${counts.active}`], ['ready', `Ready ${counts.ready}`], ['completed', `Completed ${counts.completed}`]].map(([k, label]) => (
-                <button key={k} type="button" onClick={() => setView(k)}
-                  className={`px-3 py-1.5 text-xs font-medium transition ${view === k ? 'bg-[#101218] text-white' : 'bg-white text-[#57606a] hover:bg-[#eef1f4]'}`}>{label}</button>
-              ))}
-            </div>
+      {/* VA1: functional subtitle + page controls. The incident context
+          is NOT repeated here -- this page's own detail pane already
+          names the selected incident (one context per page). */}
+      <PageIntro
+        right={(
+          <>
+            <SegmentedToggle
+              ariaLabel="Incident view"
+              value={view}
+              onChange={setView}
+              options={[['active', `Active ${counts.active}`], ['ready', `Ready ${counts.ready}`], ['completed', `Completed ${counts.completed}`]]}
+            />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search incidents..."
-              className="flex-1 min-w-[180px] px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#1a2332] placeholder-[#8b949e] focus:outline-none focus:ring-2 focus:ring-[#101218]/20" />
-          </div>
-        </div>
-      </div>
+              className="w-full sm:w-56 px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#1a2332] placeholder-[#8b949e] focus:outline-none focus:ring-2 focus:ring-[#101218]/20" />
+          </>
+        )}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Incident rows (stable) */}
-        <div className="lg:col-span-2 rounded-xl divide-y divide-[#eef1f4]" style={CARD}>
+        <div className="lg:col-span-2 rounded-xl divide-y divide-[#eef1f4]" style={CARD_STYLE}>
           {rows.length === 0 ? (
             <p className="p-4 text-sm text-[#8b949e] text-center">No incidents in this view.</p>
           ) : rows.map(c => (
             <button key={c.incident_id} onClick={() => onSelectIncident?.(c.incident_id)}
               className={`w-full text-left p-3 flex items-center justify-between gap-2 ${c.incident_id === selectedId ? 'bg-[#16436b]/5' : 'hover:bg-[#f6f8fa]'}`}>
-              <span className="min-w-0 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: SEV_DOT[c.severity] || '#8b949e' }} />
-                <span className="log-mono text-[#16436b] text-xs shrink-0">{c.incident_id}</span>
+              <span className="min-w-0 flex items-center gap-1.5">
+                <IncidentIdBadge id={c.incident_id} />
+                <SeverityBadge severity={c.severity} />
                 <span className="text-sm text-[#1a2332] truncate">{c.title}</span>
               </span>
               <span className="text-[11px] shrink-0 whitespace-nowrap" style={{ color: c.state === 'submitted' ? gradeColor(c.incident_grade?.grade) : '#8b949e' }}>
@@ -307,20 +296,19 @@ const Incidents = ({
         </div>
 
         {/* Selected incident detail (the workspace) */}
-        <div className="lg:col-span-3 rounded-xl p-4 sm:p-5" style={CARD}>
+        <div className="lg:col-span-3 rounded-xl p-4 sm:p-5" style={CARD_STYLE}>
           {!selected ? (
             <p className="text-sm text-[#8b949e] text-center py-8">Select an incident to work it.</p>
           ) : (
             <div className="space-y-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="log-mono text-[#16436b] text-xs">{selected.incident_id}</span>
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: SEV_DOT[selected.severity] || '#8b949e' }} />
-                    <span className="text-[11px] text-[#8b949e]">{selected.severity}</span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <IncidentIdBadge id={selected.incident_id} />
+                    <SeverityBadge severity={selected.severity} />
                     <span className="text-base font-semibold text-[#1a2332]">{selected.title}</span>
                     {selected.state === 'submitted' && selected.assisted && (
-                      <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#eef1f4] text-[#57606a] border border-[#d0d7de]">Assisted</span>
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#eef1f4] text-[#57606a] border border-[#d0d7de]">Assisted</span>
                     )}
                   </div>
                   {selected.briefing && <p className="mt-1 text-sm text-[#57606a] break-words">{selected.briefing}</p>}
@@ -364,7 +352,7 @@ const Incidents = ({
                   this choice. Identical for every incident (leak rule). */}
               {selected.state !== 'submitted' && selected.sealed && (
                 <div className="pt-3 border-t border-[#eef1f4] space-y-2" data-testid="workspace-classification">
-                  <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium">Classification</p>
+                  <p className="t-overline">Classification</p>
                   <ClassificationSelector
                     selected={verdictOptionId(chosen[selected.incident_id]?.verdict)}
                     onSelect={(id) => setWorkspaceVerdict(selected.incident_id, id)} />
@@ -379,8 +367,8 @@ const Incidents = ({
               {/* Related hosts / accounts (observable scope) */}
               {scope && (scope.hosts?.length || scope.accounts?.length) ? (
                 <div className="text-xs text-[#57606a] space-y-1">
-                  {scope.hosts?.length ? <p><span className="text-[#8b949e]">Related hosts:</span> {scope.hosts.join(', ')}</p> : null}
-                  {scope.accounts?.length ? <p><span className="text-[#8b949e]">Related accounts:</span> {scope.accounts.join(', ')}</p> : null}
+                  {scope.hosts?.length ? <p><span className="text-[#8b949e]">Related hosts:</span> <span className="log-mono">{scope.hosts.join(', ')}</span></p> : null}
+                  {scope.accounts?.length ? <p><span className="text-[#8b949e]">Related accounts:</span> <span className="log-mono">{scope.accounts.join(', ')}</span></p> : null}
                 </div>
               ) : null}
 
@@ -464,12 +452,6 @@ const Incidents = ({
                         </span>
                       </>
                     )}
-                    {isGuided && selected.sealed && (
-                      <button onClick={beginCheck}
-                        disabled={!validClassification(chosen[selected.incident_id])}
-                        title={!validClassification(chosen[selected.incident_id]) ? CLASSIFY_TO_SUBMIT : undefined}
-                        className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4] disabled:opacity-50">Check Answer</button>
-                    )}
                   </div>
                 )}
               </div>
@@ -486,7 +468,6 @@ const Incidents = ({
       {pendingSubmit && pendingSubmit.action === 'submit' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
           <div className="bg-white rounded-xl border border-[#e2e6ea] shadow-xl w-full max-w-md overflow-hidden">
-            <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
             <div className="p-5">
               <h3 className="text-base font-semibold text-[#1a2332]">Submit incident {pendingSubmit.incident_id}</h3>
               <p className="mt-2 text-sm text-[#57606a]">Filing as <span className="font-medium text-[#1a2332]">{pendingSubmit.category}</span>. This locks your classification for this incident and reveals how it scored. You cannot change it afterward.</p>
@@ -504,26 +485,6 @@ const Incidents = ({
         </div>
       )}
 
-      {/* Guided Check Answer result: classification correctness ONLY */}
-      {checkResult && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
-          <div className="bg-white rounded-xl border border-[#e2e6ea] shadow-xl w-full max-w-md overflow-hidden">
-            <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
-            <div className="p-5">
-              <p className="text-[11px] uppercase tracking-wider text-[#6e7781]">Check Answer</p>
-              <h3 className="text-base font-semibold mt-0.5" style={{ color: checkResult.correct ? '#6fa868' : '#b45858' }}>
-                {checkResult.correct ? 'Classification correct' : 'Not the right classification'}
-              </h3>
-              <p className="mt-2 text-sm text-[#57606a]">This reveals the classification only; detection and response are graded when you submit. This incident is now marked <span className="font-medium text-[#1a2332]">Assisted</span>.</p>
-              <div className="mt-5 flex justify-end">
-                <button type="button" onClick={() => setCheckResult(null)}
-                  className="px-3 py-1.5 text-sm rounded-md bg-[#101218] text-white hover:bg-[#1e2330]">Close</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* The Case Closed moment (5.4, A1-B.4.1): one static summary per
           submission -- incident name, earned achievements, Incident Grade.
           Restrained: no looping animation, no sound; animate-modalIn is
@@ -535,9 +496,9 @@ const Incidents = ({
           <div className="absolute inset-0 bg-black/70" onClick={() => setReview(null)} />
           <div className="relative bg-white border border-[#e2e6ea] rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 animate-modalIn" data-testid="case-closed-modal">
             <div className="flex items-center justify-between">
-              <div><p className="text-[11px] uppercase tracking-wider text-[#6e7781]">Incident Grade</p>
+              <div><p className="t-overline">Incident Grade</p>
                 <h2 className="text-lg font-semibold text-[#1a2332]">{caseClosed(review.incidentId)}</h2></div>
-              {review.assisted && <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#eef1f4] text-[#57606a] border border-[#d0d7de]">Assisted</span>}
+              {review.assisted && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#eef1f4] text-[#57606a] border border-[#d0d7de]">Assisted</span>}
             </div>
             <div className="mt-3 flex flex-wrap gap-1.5">
               {deriveAchievements(review.view).map(a => (
@@ -576,10 +537,9 @@ const Incidents = ({
       {practiceWarn && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
           <div className="bg-white rounded-xl border border-[#e2e6ea] shadow-xl w-full max-w-md overflow-hidden">
-            <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
             <div className="p-5">
               <h3 className="text-base font-semibold text-[#1a2332]">Practice another scenario?</h3>
-              <p className="mt-2 text-sm text-[#57606a]">This clears the current Guided run: its submitted incident record, your Session Performance, and this Post-Incident Review. The simulation resets and returns to the scenario picker.</p>
+              <p className="mt-2 text-sm text-[#57606a]">This clears the current Guided run: its submitted incident record, your Session performance, and this Post-Incident Review. The simulation resets and returns to the scenario picker.</p>
               <div className="mt-5 flex justify-end gap-2">
                 <button type="button" onClick={() => setPracticeWarn(false)}
                   className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4]">Cancel</button>

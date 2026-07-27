@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch } from '../api';
 import DetectionDetail from './DetectionDetail';
-import IncidentScopeBar from './IncidentScopeBar';
 import useIncidentScope from './useIncidentScope';
 import {
   detectionsReviewed, detectionsRemaining, FEED_SUBCOPY, OPEN_IN_RESPONSE,
 } from './uiCopy';
 import { TOOLTIPS } from './helpContent';
 import { toastDisposition } from './uiToasts';
+import { SeverityBadge, PageIntro, ErrorState } from './ui';
 
 // Detections tab (Stage 2; Final pass Part III.0.1): TRIAGE ONLY --
 // promote / dismiss / reopen. All dispositions are scored server-side;
@@ -16,19 +16,10 @@ import { toastDisposition } from './uiToasts';
 // only the neutral Open in Response navigation, which selects the
 // relevant target there and executes nothing.
 
-export const SEV_PILL = {
-  critical: 'bg-red-50 text-red-700 border-red-200',
-  high: 'bg-orange-50 text-orange-700 border-orange-200',
-  medium: 'bg-amber-50 text-amber-700 border-amber-200',
-};
-export const SEV_DOT = { critical: '#b26666', high: '#c28e46', medium: '#d4cc6e' };
-
-export const SeverityBadge = ({ severity }) => (
-  <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border ${SEV_PILL[severity] || 'border-[#d0d7de] text-[#57606a]'}`}>
-    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: SEV_DOT[severity] || '#8b949e' }} />
-    {String(severity || '').toUpperCase()}
-  </span>
-);
+// VD2 (visual correction section 2): the severity badge this feed
+// established is now the ONE shared SeverityBadge in ui.jsx (identical
+// treatment on every player-facing severity display); this file simply
+// consumes it.
 
 export const RuleTypeChip = ({ type }) => (
   <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs border border-[#d0d7de] text-[#57606a] whitespace-nowrap">
@@ -56,7 +47,7 @@ const shortTime = (iso) =>
 
 const Detections = ({ isVisible, resetTrigger, onHostPivot,
                       activeIncidentId = null, onEvidenceDescent,
-                      onOpenResponse }) => {
+                      onOpenResponse, activeIncident = null }) => {
   const [feed, setFeed] = useState([]);
   const [counts, setCounts] = useState({ open: 0, promoted: 0, dismissed: 0 });
   const [selected, setSelected] = useState(null);
@@ -156,31 +147,21 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
 
   return (
     <div>
-      {/* The case-constant header bar (pinned case line / All activity),
-          rendered from the same state as the row filter so the signals
-          cannot disagree. */}
-      <IncidentScopeBar scope={scope} incidentId={activeIncidentId} />
-
-      {/* Header card */}
-      <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-hidden mb-4">
-        <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
-        <div className="p-4 sm:p-5 flex flex-wrap items-center gap-4">
-          <div className="w-10 h-10 rounded-lg bg-[#101218] flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" role="img" aria-label="Detections">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z" />
-            </svg>
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332]">Detections</h2>
-              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-[#57606a]">{headerCount}</span>
-            </div>
-            <p className="text-sm text-[#57606a]">
-              Triage the feed: promote real threats, dismiss false positives.
-            </p>
-          </div>
+      {/* VA1: the functional subtitle + the ONE incident pill; the
+          retired All-activity bar and the identity card are gone. The
+          scope-failure notice stays as an inline alert (never a
+          full-width status bar) so scope truth is preserved. */}
+      <PageIntro incident={activeIncident} />
+      {activeIncidentId && scope.status === 'error' && (
+        <div className="mb-3 rounded-lg border border-[#e2e6ea] bg-[#faf6f0]">
+          <ErrorState onRetry={scope.refetch}>
+            Incident scope could not be loaded.
+            {scope.data && (
+              <span className="text-[#57606a]"> Displayed rows are from the last successful scope read.</span>
+            )}
+          </ErrorState>
         </div>
-      </div>
+      )}
 
       {/* OD-9 explanatory subcopy, one line each; counters use the 10.1
           vocabulary. With a case selected the counts are the CASE-SCOPED
@@ -205,8 +186,8 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
       {(
         <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="dark-thead">
-              <tr className="text-xs uppercase tracking-wider">
+            <thead className="data-thead">
+              <tr>
                 <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">Severity</th>
                 <th className="px-3 sm:px-4 py-3 font-medium">Rule</th>
                 <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">Type</th>
@@ -236,13 +217,13 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
                     </button>
                   </td>
                   <td className="px-3 sm:px-4 py-3"><RuleTypeChip type={d.rule_type} /></td>
-                  <td className="px-3 sm:px-4 py-3 font-mono whitespace-nowrap text-[#1a2332]">
+                  <td className="px-3 sm:px-4 py-3 log-mono whitespace-nowrap text-[#1a2332]">
                     {d.entity?.host || d.entity?.account || '-'}
                     {d.entity?.host && d.entity?.account && (
                       <span className="block text-xs text-[#8b949e]">{d.entity.account}</span>
                     )}
                   </td>
-                  <td className="px-3 sm:px-4 py-3 font-mono whitespace-nowrap text-[#57606a]">{shortTime(d.time)}</td>
+                  <td className="px-3 sm:px-4 py-3 log-mono whitespace-nowrap text-[#57606a]">{shortTime(d.time)}</td>
                   <td className="px-3 sm:px-4 py-3">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <ActionButton onClick={() => act(d.id, 'promote')} active={d.player_action === 'promoted'} activeClass="bg-[#101218] text-white border-transparent" help={TOOLTIPS.promote}>Promote</ActionButton>

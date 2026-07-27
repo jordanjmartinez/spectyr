@@ -8,6 +8,24 @@ module.exports = {
   },
   theme: {
     extend: {
+      // Visual pass VG: the named design tokens (the one visual language;
+      // values documented in src/components/ui.jsx). New and polished code
+      // uses these names; legacy arbitrary values carry the same colors.
+      colors: {
+        ink: { DEFAULT: '#101218', hover: '#1e2330' },
+        body: '#1a2332',
+        dim: '#57606a',
+        muted: '#6e7781',
+        faint: '#8b949e',
+        edge: '#e2e6ea',
+        ctrl: '#d0d7de',
+        seam: '#eef1f4',
+        canvas: '#f6f8fa',
+        accent: '#16436b',
+        ok: '#6fa868',
+        warn: '#c08a3e',
+        danger: '#b45858',
+      },
       fontFamily: {
         mono: ['"JetBrains Mono"', 'sans-serif'],
       },

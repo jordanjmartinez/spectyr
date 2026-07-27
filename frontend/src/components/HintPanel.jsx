@@ -16,13 +16,14 @@ const HintPanel = ({ gameMode, surface }) => {
   if (!hintsAllowed(gameMode)) return null;
 
   return (
-    <div className="fixed bottom-5 left-20 lg:left-60 z-40" data-testid="hint-panel">
+    // VE5 (owner mid-run instruction): the floating control clears the
+    // nav rail (w-24 below lg, w-72 at lg) instead of clipping into it.
+    <div className="fixed bottom-5 left-28 lg:left-[19rem] z-40" data-testid="hint-panel">
       {open && (
         <div className="mb-2 w-80 max-w-[85vw] bg-white border border-[#e2e6ea] rounded-xl shadow-xl overflow-hidden">
-          <div className="h-0.5" style={{ background: 'linear-gradient(to right, #16436b, #101218)' }} />
           <div className="p-4">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[11px] uppercase tracking-wider text-[#6e7781] font-medium">
+              <p className="t-overline">
                 {level === 1 ? 'How the controls work' : 'Investigation nudges'}
               </p>
               <button type="button" onClick={() => setOpen(false)} aria-label="Close hints"

@@ -880,3 +880,1527 @@ LCQL, snapshots, scoring, and roster behavior -- moved nowhere; every FP
 commit is frontend-only. Branch `stage-5-live-run-feedback` stands at
 FP7 + this record. Per the directive: NO merge to main, NO push, NO
 further planning or feature cycle. The final product pass is COMPLETE.
+
+---
+
+# Part IV. Visual Identity and Dashboard Polish
+
+Authorized as the visual-identity pass over the completed Stage 5
+product. Behavior, scoring, the incident engine, response
+centralization, query semantics, and the Learning Review model were
+already complete and are unchanged here. Seventeen concern-separated
+commits, `908e2d7..3d41d1a`, each landing green.
+
+## IV.1 Provenance note (recorded first)
+
+This pass was requested "before the merge," but the Stage 5 merge had
+already completed under the preceding FINAL MERGE AUTHORIZATION
+(`fed2ce1`, closure record `6ec048b`). The work therefore ran on
+`stage-5-live-run-feedback`, which still stood exactly at the approved
+tip `e3bfbdf`. Preconditions verified before the first commit: branch
+tip `e3bfbdf`; FP0-FP8 all ancestors of it; `run_gates.py --all` exit 0
+(29 backend suites, frontend 30/271); the two owner assets untouched
+(`spectyrvideo.mp4` SHA256 `1FF6F983...`, `spectyr_svg.svg`
+`48CD642E...`). Bringing this pass into `main` needs a fresh merge
+authorization.
+
+## IV.2 Design principles
+
+1. Solve each visual problem ONCE. `components/ui.jsx` is the single
+   visual-language module (tokens, card surface, severity/grade maps,
+   PageHeader, SegmentedToggle, Btn, StateChip, empty/loading/error
+   states); `components/icons.jsx` is the single icon system;
+   `index.css` holds the one type scale and the one table system.
+2. Uniformity is the visual language, never the layout. Each workspace
+   keeps the information architecture its function needs.
+3. Dark surfaces are reserved for chrome: primary navigation, the app
+   header, selected segmented controls, primary buttons. Data surfaces
+   are light.
+4. Data truth over decoration: every number names a real source; no
+   trends, deltas, or sparklines exist because no historical series
+   exists; correctness is never disclosed before submission.
+5. Never color alone: every state carries a word, an icon, or a text
+   equivalent.
+
+## IV.3 Commit ledger
+
+| # | Commit | Concern |
+|---|--------|---------|
+| VP1 | `908e2d7` | Remove the pre-submission Check Answer (V1) |
+| VP2 | `b48d464` | Shared visual-language module + design tokens (VG) |
+| VP3 | `b24ee2c` | One icon system, distinct nav identities (V2) |
+| VP4 | `0741ec7` | Platform/device identity on endpoint surfaces (V2b/V7) |
+| VP5 | `2623715` | Shell utility region + ghost avatar (V3) |
+| VP6 | `cb9c6a7` | ATT&CK catalog mirror + corpus pin gate (V6a) |
+| VP7 | `8d7c216` | Dashboard analytic overview grid (V5/V6b) |
+| VP8 | `02ffe8b` | Page identities: Detections, SIEM, Incidents (V8/V4) |
+| VP9 | `4cd1c62` | Response command-center identity (V9) |
+| VP10 | `a3ecb6a` | Metrics identity + three-cards Score summary (V10) |
+| VP11 | `99f3f12` | ATT&CK coverage RADAR replaces the matrix (owner correction) |
+| VP12 | `acc0922` | Severity bars, Environment status, folded progress (owner) |
+| VP13 | `a26199d` | Inter-first typography + type tokens (owner) |
+| VP14 | `0edc998` | Radar to the right-hand supporting column (owner) |
+| VP15 | `d35df79` | Clean app header; session banner retired (owner) |
+| VP16 | `f11bff4` | Light table system, no card stripes, micro-heading scale (owner) |
+| VP16f | `3d41d1a` | Header title ink fix (found in Chrome) |
+
+## IV.4 Icon inventory
+
+One family (lucide-react, already installed; audited before any
+dependency question). Navigation renders at 19px, inline identity at
+15-18px, all strokeWidth 1.75; icons are decorative (`aria-hidden`)
+with the accessible name on the control; no emoji anywhere.
+
+| Surface | Icon |
+|---|---|
+| Dashboard | `LayoutDashboard` |
+| Incidents | `AlertTriangle` (restored by the VP16 correction) |
+| SIEM | `ScanSearch` |
+| Detections | `Crosshair` |
+| Endpoints | `Monitor` |
+| Response | `ShieldCheck` |
+| Metrics | `LineChart` |
+| Rail chrome | `BookOpen`, `RotateCcw`, `Play`, `Ghost` |
+
+Device/platform layer: `platformFor()` maps the REAL serialized fields
+(`system.platform`, `os`, `role`) to a device class + platform key;
+`DeviceGlyph` (server / workstation / laptop / generic), `PlatformBadge`
+(local Windows four-pane mark, lucide `Apple`, local Linux silhouette;
+`role="img"` + label). **Unknown platforms render NO badge**; the
+PAN-OS appliance is the live case. lucide ships no Windows or Linux
+brand mark, so two local glyphs on the same 24-unit grid were drawn
+rather than adding a brand-icon dependency (reported, not silently
+done).
+
+## IV.5 Page-identity inventory
+
+| Workspace | Anatomy |
+|---|---|
+| Dashboard | Analytic overview grid: supporting column (Active investigation with folded progress, Severity distribution, Environment status) + main region (KPI tiles, Recent results, ATT&CK radar) |
+| Incidents | Master-detail case workspace |
+| SIEM | Query and evidence workbench |
+| Detections | Triage queue |
+| Endpoints | Asset explorer (list + two-pane detail) |
+| Response | Action command center (Actions / Response log, grouped targets) |
+| Metrics | Learning Review dashboard + Score summary |
+
+The workspace title lives in the ONE application header; page-identity
+cards carry icon, count, subtitle, and controls but never repeat the
+title (asserted: exactly one `t-page` per screen).
+
+## IV.6 Typography tokens
+
+`t-page` 26/650/1.2 - `t-section` 18/600/1.3 - `t-subsection` 14/600 -
+`t-card` 14/600 - `t-body` 14/400/1.5 - `t-nav` 14/500 - `t-kpi`
+28/650 tabular - `t-meta` 12/400 - `t-overline` 12/600/1.3 at 0.03em,
+no uppercase transform. Inter leads the product stack. Mono
+(`log-mono` / `font-mono`) is reserved for LCQL, raw events, IPs,
+hostnames, INC ids, technique ids, timestamps, PIDs, and account
+strings; identifiers are never lowercased or humanized.
+
+## IV.7 Dashboard data sources
+
+| Element | Source | Truth note |
+|---|---|---|
+| Active investigation | `/api/incidents` active card | Observable only; no correctness |
+| Progress bar + text | card `triage` + shell classification state | Folded into the card |
+| Severity distribution | incident `/scope` detection ids joined to `/api/detections` | Active incident; exact counts; bars scaled to the largest count; no percentage implied |
+| Environment status | `/api/endpoints` | Current state only; availability = online/managed; platform breakdown from real fields; no uptime claim |
+| Detections reviewed | `/api/detections` counts (promoted+dismissed) | Session observable |
+| Response actions executed | `/api/actions`, success outcomes | Session observable |
+| Incidents completed | `/api/incidents` completed | Session observable |
+| Latest incident grade | newest submitted card `incident_grade` | Post-submission |
+| Session performance | `/api/analytics/report_card` composite | Post-submission, aggregate |
+| Recent results | per-incident frozen `/score` records | Post-submission; labeled "This session" |
+| ATT&CK radar | static corpus mirror | Catalog coverage; no player overlay |
+
+Omitted for lack of data (stated, not faked): trend lines, deltas,
+sparklines, historical accuracy, MTTR-over-time, cross-session mastery.
+
+## IV.8 ATT&CK radar data contract
+
+One polygon over the 15 canonical pinned v19.1 tactics. Axis value =
+Spectyr-represented techniques in that tactic divided by the
+authoritative Enterprise technique count in that tactic.
+
+- **Denominators**: derived from the official pinned STIX dataset
+  (github.com/mitre/cti tag `ATT&CK-v19.1`,
+  `enterprise-attack/enterprise-attack.json`), downloaded and
+  sha256-VERIFIED byte-identical to the repo pin
+  `fc783039...2cf1c97d`. No STOP condition applied.
+- **Counting rule (both sides)**: parent techniques only
+  (sub-techniques roll up), excluding revoked and deprecated objects,
+  counted once per kill-chain tactic; 222 parents, e.g. Discovery 34,
+  Stealth 30, Persistence 22, Lateral Movement 9.
+- **Numerators**: the corpus answer keys under the same rule
+  (Credential Access = T1003 + T1110 = 2, not 3).
+- Percentages are plain represented/total, NEVER normalized against
+  the largest Spectyr category. Honest range: 0-18%.
+- Rings 0/25/50/75/100; radius labels off-axis (angle 18) so they never
+  overlap a tactic name; concise visual labels with canonical names in
+  the tooltip, each label SVG `<title>`, and the sr-only table; no
+  animation; no adversary or player overlay.
+- Guard: `test_scenario_loader_v2.test_frontend_attack_catalog_mirror`
+  pins the provenance sha256, the exact 15 denominators, ids/names vs
+  the canonical map, counts vs the corpus, and numerator <= denominator.
+
+## IV.9 Tests
+
+Frontend **36 suites / 317 tests**, backend **29 suites** (loader now
+65). New permanent batteries: `no-check-answer` (6), `icons` (7),
+`app-header` (4, replacing `utility-bar`), `attack-radar` (4),
+`typography` (4), `surface-system` (5), plus additions to `endpoints`,
+`incidents-workspace`, `response-workspace`, `score-sections`, and a
+rewritten `incident-dashboard` (13). Final battery:
+`python backend/run_gates.py --all` exit 0, ALL GREEN.
+
+## IV.10 Chrome verification
+
+Live Guided run (`INC-8340`, log-clearing) at 1536x960: mode picker
+(V1 copy, "hints available", no Check Answer), Dashboard empty /
+active / after-submission, Detections queue + detail, Incidents
+workspace + submit flow, Metrics Learning Review, Endpoints list. The
+light table system, the radar in its right column, the dark header with
+its outline, and the platform identity all render as specified. Zero
+steady-state console errors observed. **VP16f was found here**, not by
+a suite: the workspace title rendered dark-on-dark because the
+`.t-page` token ink outranks a Tailwind utility.
+
+## IV.11 Deviations and honest gaps
+
+1. **Provenance** (IV.1): the pass ran post-merge on the stage branch.
+2. **v19.1 tactic list**: the V6 brief listed the pre-v19 tactics
+   (Defense Evasion); the corpus is pinned to v19.1, where Stealth and
+   Defense Impairment replace it. The pin wins.
+3. **Services group omitted from Response** (V9): no service verb
+   exists in the eight-action vocabulary; an actionless table would
+   imply one. Backlogged to `response-vocabulary-v2`.
+4. **Related-host identity stays text-only** (V7): the Incidents scope
+   line is a comma-joined inline list where a per-host glyph pair does
+   not fit (the "where space permits" clause).
+5. **Batch-swap encoding damage**: a PowerShell pass wrote BOMs and
+   mangled sort-caret glyphs; both were detected and repaired inside the
+   same change, before any commit.
+6. **Narrow-width Chrome verification NOT completed**: `resize_window`
+   reported success but the rendered viewport stayed at desktop width,
+   so tablet and narrow layouts are evidenced only by the responsive
+   class structure and DOM reading-order assertions, not by a confirmed
+   narrow screenshot. Stated rather than claimed.
+7. **One unexplained live grade**: a Guided submission of True Positive
+   plus "Defense Evasion" on the log-clearing scenario returned
+   Classification F. Both halves were then proven correct in isolation:
+   a new UI test asserts the submitted body is exactly
+   `{verdict:'threat', category:'Defense Evasion'}`, and an engine probe
+   shows `_classification_grade` returns A for that pair (F only when
+   `actual_category` is None). The originating session could not be
+   re-examined: a diagnostic script that imported `app.py` while the dev
+   server was live triggered the boot-time orphan sweep and deleted the
+   running session log directory (the known dev-environment hazard
+   recorded in Part III). Flagged UNRESOLVED, needing one clean
+   reproduction; no evidence implicates the visual pass, which touched
+   no scoring path.
+8. **`react-scripts` act() warnings** in the Siem/Incidents tests are
+   pre-existing noise, unchanged by this pass.
+
+## IV.12 Final state
+
+Branch `stage-5-live-run-feedback`, tip **`3d41d1a`**. The working tree
+carries ONLY the two owner asset items (`spectyrvideo.mp4` modified,
+`spectyr_svg.svg` untracked), both byte-identical to their pre-pass
+hashes. NOT merged, NOT pushed. Stopped at the visual-polish checkpoint.
+
+---
+
+# Part V. Consolidated visual-polish amendment
+
+Cumulative with Part IV. Where this amendment conflicted with earlier
+dashboard or ATT&CK instructions, the amendment governs. Four
+concern-separated commits, `68d01e6..fa06099`, each landing green; no
+completed visual work was reset.
+
+## V.1 Amendment ruling applied
+
+The ATT&CK chart is **not** catalog coverage, **not** Enterprise
+framework coverage, and **not** session performance. It now represents
+the ATT&CK tactics of the **current active incident**, normalized
+against that incident's own strongest tactic. Part IV's catalog-coverage
+radar (VP11/VP14) is superseded; its verified denominator work survives
+only as retained mirror data, no longer displayed.
+
+## V.2 Removed scope furniture
+
+The full-width "All activity" container is gone from SIEM, Detections,
+Endpoints, and Response, with **no replacement bar**. Retired with it:
+`IncidentScopeBar.jsx`, `InvestigationContext.jsx`, the
+investigation-context suite, and every "Investigating INC-####" body
+line. Scope truth is preserved unchanged -- row filtering, the loading
+state, atomic replacement, and the failure path all behave as before;
+the scope-failure notice is now an inline alert with Retry (plus the
+last-successful-read sentence) instead of a bar. With no active
+incident each page uses its own truthful empty state; Response still
+shows "Select an incident to begin response."
+
+## V.3 Final functional page subtitles
+
+One source, `PAGE_SUBTITLE` in `uiCopy.js`:
+
+| Page | Subtitle |
+|---|---|
+| Incidents | Select and manage an investigation. |
+| SIEM | Search and inspect event data. |
+| Detections | Review detections and decide what is actionable. |
+| Endpoints | Inspect hosts, users, processes, and system activity. |
+| Response | Contain and remediate incident targets. |
+| Metrics | Review performance and learn from the investigation. |
+
+Decorative "ACME Corp:" branding is gone from every workspace heading;
+organization names remain in evidence, entities, and scenario content.
+
+## V.4 Incident-pill behavior
+
+`IncidentPill` renders the active-incident context **exactly once** per
+page, beside the functional subtitle: a compact mono INC tag, the title
+as readable text, and a severity badge. It is a status tag, never a
+container. The Incidents workspace deliberately shows no pill -- its
+own detail pane already names the selected incident. Plumbing: the
+Incidents workspace (which already polls the list) reports the
+selected card's observable summary up to the shell, which passes it to
+the other pages. No new request, no new endpoint field, no backend
+change.
+
+## V.5 Select Mode, before and after
+
+**Before**: "Select Mode", a required Your Name input, three
+illustrated gray cards (Guided / SOC Queue / Hardcore) with oversized
+ghost artwork.
+**After**: "Choose your experience" + "Select how much guidance you
+want during the investigation.", two compact radio rows (Guided --
+"Learn with immediate feedback and optional hints." / "No timer.";
+Hardcore -- "Investigate independently under time pressure." /
+"Feedback appears after submission."), radiogroup semantics, visible
+selected state and focus ring, one Continue button, responsive
+single-column. No inputs, no images, no invented identity. Guided
+still opens the answer-neutral catalog picker; Practice Another still
+lands on it directly.
+
+A session still needs a name field server-side (it is what marks a
+session active), so the product supplies its own generic **role**
+label, `ANALYST_LABEL = "Analyst"` -- never a fabricated person.
+
+## V.6 SOC Queue: removed vs retained
+
+**Removed (player-facing)**: the picker option, the Docs mode entry and
+its queue paragraph, and the visual tests.
+**Retained (dormant, deliberately)**: the `analyst` key in `MODE_LABEL`
+so a legacy session still labels correctly; the backend mode-universal
+loops in `test_event_disclosure.py` and `test_submission_gate.py`,
+which exercise `analyst` / `soc_queue` as NON-Guided modes and are
+frozen leak guards; and the Guided-only hint allow-list's non-Guided
+denial cases. Deleting any of these would expand the work past UI and
+navigation cleanup and would weaken a leak boundary, so per the
+inventory instruction they were left untouched. No engine code changed.
+
+## V.7 Incident ATT&CK profile formula
+
+```
+displayed(tactic) = mapped techniques in tactic
+                    / highest tactic technique count in THIS incident
+```
+
+Techniques are deduplicated by id within a tactic. The strongest tactic
+renders at 100%; absent tactics are exactly 0% with no artificial
+minimum. This shows the SHAPE of the current incident and is never
+described as framework coverage -- the card footer reads "Relative to
+the strongest tactic in this incident."
+
+Card: title "Incident ATT&CK profile", subtitle "Tactics represented in
+this investigation", one filled polygon (25% fill, 2.5px stroke,
+visible markers), five rings, canonical tactic order, concise labels
+with full names in tooltip and sr table, no tabs / selectors / expand /
+second series / animation. Truthful states replace any zero polygon:
+"Start an investigation to see its ATT&CK profile." and "No ATT&CK
+techniques are mapped to this incident." Tooltips expose tactic name,
+technique count, each technique id AND canonical name, and the relative
+percentage.
+
+Technique names come from the sha256-verified pinned v19.1 STIX dataset
+(22 ids: answer-key + pinned detection tags), stored as
+`technique_names` in the mirror and pinned by the backend gate, which
+asserts the id set exactly and every answer-key name byte-for-byte
+against `CANONICAL_TECHNIQUE_NAMES`.
+
+## V.8 Leak safety by mode
+
+The profile's source is the incident roster's **detection mitre tags**
+-- data already rendered on every detection detail in every mode. It is
+therefore NOT answer-key-derived, so **no mode requires a locked
+state** and Guided and Hardcore render identically before submission.
+The card cannot fetch (asserted structurally) and never reads grading,
+dispositions, or scenario labels. Recorded constraint: were the source
+ever changed to answer-key techniques, Hardcore before submission would
+have to show "ATT&CK profile available after submission." instead. No
+planted-marker or forbidden-answer boundary was touched.
+
+## V.9 Container heading scale
+
+`.t-subsection` (15px / Inter 600 / 1.3, sentence case, no tracking) is
+the one primary container heading, applied to Active investigation,
+Severity distribution, Environment status, Recent results, Incident
+ATT&CK profile, the Response target groups (Hosts, Accounts,
+Processes, Files, Persistence), and the Learning Review sections -- so
+the ATT&CK card no longer reads smaller than Recent results.
+Section 7 (Incidents = alert triangle) was already satisfied in VP16
+and stays pinned.
+
+## V.10 Changed files
+
+`components/ui.jsx` (PageIntro + IncidentPill), `uiCopy.js`
+(PAGE_SUBTITLE, retirement note), `Siem.jsx`, `Detections.jsx`,
+`Endpoints.jsx`, `Response.jsx`, `Incidents.jsx` (+ summary callback),
+`Analytics.jsx`, `pages/Dashboard.jsx` (activeIncident plumbing),
+`DifficultySelector.jsx` (rewritten), `pages/Docs.jsx`,
+`AttackRadar.jsx` (rewritten), `attackCatalog.json` / `.js`
+(technique_names + incidentProfile), `IncidentDashboard.jsx`,
+`LearningReview.jsx`, `index.css`, `backend/test_scenario_loader_v2.py`.
+Deleted: `IncidentScopeBar.jsx`, `InvestigationContext.jsx`,
+`investigation-context.test.js`.
+
+## V.11 Tests
+
+Frontend **36 suites / 325 tests**; backend **29 suites** (loader 65).
+New: `page-intro.test.js` (5). Rewritten: `attack-radar.test.js` (7,
+now the incident-profile battery), `difficulty-selector.test.js` (7).
+Retargeted: scope-truth, workbench-states, pivot-transitions,
+workbench-descent, workbench-cross-host (retired case-line assertions
+become absence assertions; every scope-behavior assertion kept),
+typography, incident-dashboard, detections, response-workspace.
+
+## V.12 Chrome evidence
+
+Fresh servers, new tab, Guided run `INC-4595` (log-clearing).
+Verified: Dashboard with no active incident (truthful ATT&CK empty
+state, no severity bars, "No managed hosts available."); the "Choose
+your experience" modal (two rows, no name field, no SOC Queue, no
+artwork, one Continue); Dashboard with the active incident (pill-free
+supporting column, severity bars 0/3/1/0, environment 1 host 100%, and
+the profile polygon drawn from real mappings); SIEM in the exact ruled
+hierarchy (title, subtitle, controls, query bar -- no identity card, no
+All activity); Detections (subtitle + queue directly, light table).
+**Zero console errors** across the walk.
+
+## V.13 Deviations and honest gaps
+
+1. **Polygon fullness is data-bound.** The amendment asks for a
+   visually substantial polygon; normalization already maximizes it
+   (strongest tactic = 100%). A sparse incident still reads as a
+   narrow shape -- the verified run mapped only 2 of 15 tactics, so the
+   polygon is a spike. Filling it further would require artificial
+   nonzero minimums, which the amendment forbids. Reported, not faked.
+2. **Ambient detections contribute tactics.** The profile counts every
+   roster detection's tag, including benign/ambient ones (whose tags
+   exist precisely so mitre presence cannot separate benign from
+   authored). The card claims only "tactics represented in this
+   investigation", which stays true; it never asserts they are the
+   attack.
+3. **Narrow-width Chrome verification still not completed.**
+   `resize_window` reports success but the rendered viewport stays at
+   desktop width in this session. Responsive behavior remains evidenced
+   by class structure and DOM order only. Carried forward from Part IV.
+4. **The Part IV unexplained Classification F remains open**, unchanged
+   by this amendment (no scoring path was touched).
+5. The Part IV catalog-coverage denominators and `coverageByTactic`
+   remain in the mirror and its gate though the UI no longer shows
+   them -- retained deliberately as verified data rather than deleted.
+
+## V.14 Final state
+
+Branch `stage-5-live-run-feedback`, tip recorded in the closing
+message. Working tree carries ONLY the two owner asset items, both
+byte-identical to their pre-pass hashes. NOT merged, NOT pushed.
+Stopped at the consolidated visual-polish checkpoint.
+
+---
+
+# Part VI. Evidence activity and the SPECTR lockup
+
+Cumulative with Parts IV and V. Two concern-separated commits,
+`5b53ba3` and `82ac025`, plus this record. Product behavior, scoring,
+response architecture, and SIEM semantics were not reopened.
+
+## VI.1 Final dashboard layout
+
+ONE grid whose DOM order IS the ruled narrow stack, with explicit
+desktop placement, so screen-reader order and visual order agree at
+every width:
+
+```
+[            KPI row  (spans all three columns)            ]
+[ Active inv. ][   Evidence activity   ][ ATT&CK profile   ]
+[ Severity    ][   Recent results (spans centre + right)   ]
+[ Environment ][                                           ]
+```
+
+Narrow: Active investigation, KPI, Evidence activity, Severity,
+Environment, ATT&CK profile, Recent results — the ruled order, pinned
+by `incident-dashboard.test.js`.
+
+## VI.2 Evidence activity data source and bucketing
+
+**Source, no new backend field**: the existing single query path
+`GET /api/events/query?q=all | * | * | *&scope=<INC id>`, minted through
+the approved `descentSessionAll()` generator — the same
+whitelist-serialized observable rows the SIEM serves under that
+incident's scope. No expected-but-unarrived scenario events, no
+answer-key data, no fabricated timestamps, no historical series.
+
+**Read discipline**: one read per incident, taken only after the
+incident's roster seals (its chain has finished writing), so a
+half-written chain can never be charted and no false zero-event chart
+appears before the first read. Never polled — the snapshot cannot move
+on its own.
+
+**Bucketing** (`evidenceBuckets.js`, pure):
+
+```
+ladder   = [30, 60, 120, 300, 600, 1800, 3600] seconds
+chosen   = first size where floor(span / size) + 1 <= 40
+beyond   = ceil(span / 39 / 3600) whole hours   (spans no run reaches)
+buckets  = contiguous from the first to the last observed event
+peak     = highest count, earliest interval on a tie
+```
+
+So a very short run lands on 30s and an ordinary run on 60s. A quiet
+interval renders as a real zero rather than being skipped.
+
+## VI.3 Snapshot-boundary behavior
+
+The card charts its frozen snapshot. The token-bound new-count poll
+(counts only, never rows) announces later evidence as
+"N new events available"; it enters only when the player clicks
+**Load new events**, which replaces the model atomically. Frozen
+results never move before that action. The sr-only caption names the
+snapshot boundary sequence and the waiting count.
+
+## VI.4 No-leak evidence
+
+The card cannot fetch and never sees grading, dispositions, expected
+actions, or scenario labels (asserted structurally against its source
+with comments stripped). The dashboard supplies only the scoped query
+result. Volume is never framed as suspicion: a copy guard asserts the
+card renders no anomaly / suspicious / malicious / attack / threat /
+correct vocabulary, and the highlighted interval is described purely as
+the peak.
+
+## VI.5 Incident ATT&CK placement
+
+Placement only — the VA3 data model, normalization, copy, and leak
+safeguards are unchanged. It is now the right-hand secondary card at
+~30% of the primary row, near-square, top-aligned with Evidence
+activity, and never expands to full dashboard width.
+
+## VI.6 SPECTR visible-brand ruling
+
+The visible wordmark is **SPECTR**. The sidebar carries a deliberate
+lockup: a 68px branded top area, the ghost mark at 28px (decorative,
+`aria-hidden`), the uppercase wordmark beside it, the existing subtle
+divider, alignment with the nav labels, and an sr-only accessible name.
+It keeps the app's existing home navigation, so it is not a dead
+control. No account, subscription, online state, notification count,
+profile, or logout was added. The same wordmark treatment follows on
+the loading screen, the landing navbar, the marketing footer, and both
+Docs lockups.
+
+**Internal names deliberately preserved**: `spectyr_logo.png`,
+the `spectyr_session` storage key, API paths, the package name, docs
+history, and scenario content (e.g. the authored YARA rule name
+`Spectyr_USB_Loader_Generic`). Page titles keep their forms —
+Dashboard, Incidents, SIEM, Detections, Endpoints, Response, Metrics.
+
+## VI.7 Font inventory and wordmark treatment
+
+The approved font link already loads: Aldrich, Fira Code, Fredoka One,
+IBM Plex Mono, IBM Plex Sans, Orbitron, Open Sans, **Inter**,
+Montserrat, Share Tech Mono, **Space Grotesk**, Teko, VT323. Space
+Grotesk 600 matches the brief (geometric, compact, clean rather than
+cyberpunk) and is already available, so the wordmark uses it at 0.06em
+tracking — **no new dependency, no font files added or shared**. Inter
+remains the product UI font; body typography is untouched. No Atera
+asset, logo shape, or lettering was copied or referenced.
+
+## VI.8 Changed files
+
+`components/EvidenceActivity.jsx` (new), `components/evidenceBuckets.js`
+(new), `components/IncidentDashboard.jsx` (grid + evidence state),
+`pages/Dashboard.jsx` (lockup), `App.jsx`, `components/Navbar.jsx`,
+`pages/Docs.jsx`. Tests: `__tests__/evidence-activity.test.js` (new, 9),
+`__tests__/brand-lockup.test.js` (new, 5),
+`__tests__/incident-dashboard.test.js` (reading order retargeted).
+
+## VI.9 Tests
+
+Frontend **38 suites / 339 tests**; backend 29 suites (loader 65).
+New test names: ladder determinism and cap; exact totals, contiguity
+and single peak with earliest-tie; malformed timestamps ignored;
+factual summary and accessible equivalent; no suspicion vocabulary;
+announced-but-not-merged with atomic replacement; honest loading and
+empty states; structural leak safety; one scoped non-polled read.
+Brand: lockups render SPECTR; face already loaded with no binaries
+added; labeled real destination; internal identifiers unrenamed; page
+titles unchanged.
+
+## VI.10 Chrome and responsive evidence
+
+Verified live at desktop width: the SPECTR lockup on every primary page;
+the new composition (KPI row, Active investigation | Evidence activity |
+ATT&CK profile, Severity | Recent results, Environment); Evidence
+activity and ATT&CK profile truthful no-incident states; the ATT&CK
+polygon populated from real incident mappings; Environment status with
+its real platform breakdown (Windows Server 1 · Windows Workstation 1);
+the "Choose your experience" modal. **Zero console errors.**
+
+## VI.11 Deviations and honest gaps
+
+1. **Evidence activity was NOT verified live with populated bars.** In
+   both attempted runs the session's event pool was empty, which the
+   SIEM independently confirmed ("0 events match", "as of seq #0", token
+   `cutoff_seq: 0`). The card correctly rendered its truthful empty
+   state, so the component is not implicated; the failure is
+   environmental (session/log-writer state in this dev instance, the
+   same class of dev-environment fragility recorded in Part III).
+   Bucketing, totals, peak, snapshot boundary, and atomic reload are
+   covered by nine permanent tests, but the populated chart, the
+   waiting-count state, and the Load-new-events path have **not** been
+   seen in the browser. Stated rather than claimed.
+2. **A case-collision defect was found and fixed inside this change**:
+   `EvidenceActivity.jsx` and the original `evidenceActivity.js`
+   differed only by case, which a case-insensitive filesystem resolved
+   to a single module (every dashboard test failed with an undefined
+   component). The logic module is now `evidenceBuckets.js`.
+3. **A contract gap was found by my own test**: spans beyond the ladder
+   exceeded the 40-bucket cap. The function now steps to whole hours
+   rather than silently overflowing.
+4. **Two prose mentions still read "Spectyr"** — the Docs page title
+   "How Spectyr Works" with its opening paragraph, and the footer
+   copyright line. The amendment forbids uppercasing prose or page
+   titles, and rewriting brand prose is a naming decision beyond a
+   wordmark change, so both are left for an explicit owner ruling.
+5. **Narrow and tablet Chrome verification still not completed** —
+   `resize_window` reports success but the rendered viewport stays at
+   desktop width in this session. Responsive behavior remains evidenced
+   by the grid structure and the pinned DOM reading order. Carried
+   forward from Parts IV and V.
+6. The Part IV Classification F anomaly remains open and untouched (no
+   scoring path was modified).
+
+## VI.12 Final state
+
+Branch `stage-5-live-run-feedback`; tip recorded in the closing message.
+Working tree carries ONLY the two owner asset items, both byte-identical
+to their pre-pass hashes. NOT merged, NOT pushed. Stopped at the
+consolidated visual-polish checkpoint.
+
+# Part VII. The inline application header and the SPECTR lockup corrections
+
+Cumulative with Parts IV-VI. Six concern-separated commits — `f044f00`
+(VC1), `bb8e711` (VC2), `0ce618f` (VC3), `fd057d4` (VC4), `54142d7`
+(VC5), `d49e51a` (VC6) — plus this record. Frontend presentation only:
+no backend, scoring, grading, roster, world, or SIEM semantics were
+touched; no internal identifier was renamed; the two owner assets were
+not touched.
+
+## VII.1 The unified inline-header ruling (VC1, superseding VP16's capsule)
+
+**Before**: two disconnected heading areas — the small sidebar brand
+label and the current page title inside a separate rounded black
+container (`rounded-xl bg-[#101218]`, white ink override, dark border
+box) floating in the padded content flow.
+
+**After**: ONE shell row. The sidebar brand cell and the AppHeader are
+two cells of the same fixed-height row, separated only by the sidebar
+boundary, each closed by its own subtle divider (`border-white/10` on
+the rail, `#e2e6ea` on the light cell). The header spans the main
+column edge-to-edge; tab content moved into a padded wrapper so the
+title left-aligns with page content. The title keeps the existing Inter
+`t-page` token with its own light-surface ink; the real avatar menu is
+unchanged at the far right (as a dark coin on the light surface, the
+same `#101218`/`#1e2330` treatment as the primary button). Height is
+fixed, so navigating the seven workspaces never shifts the shell. The
+`surface-system` guard was rewritten from "the dark header keeps its
+outline" to "the header is the light inline cell" — a deliberate guard
+update enforcing the superseding ruling, not a loosening.
+
+## VII.2 Wordmark display face: selection and licensing (VC2)
+
+**Availability result**: Bank Gothic itself is a commercial face with
+no license in this project — NOT bundled, added, or distributed.
+Inventory of the already-approved Google Fonts link found Orbitron
+(SIL OFL 1.1) the closest Bank-Gothic-like face already served: wide
+square-geometric uppercase construction, technical without being
+gamer-styled, with a real medium weight — which Aldrich (400 only)
+lacks and Space Grotesk (VB2's grotesque) is not. **Selected: Orbitron
+500, 0.04em tracking, uppercase, line-height 1** (LH added in VC3), as
+the single `.brand-wordmark` rule in `index.css` carrying the selection
+and licensing note. No new dependency; `src/fonts/` still contains only
+the four JetBrains Mono binaries. Chrome DevTools confirmed the face
+genuinely renders (computed `font-family: Orbitron` + `fonts.check`
+true) — no Inter fallback in play.
+
+**Scope**: LOGO ONLY. A permanent scope guard walks the source tree:
+the face name appears nowhere outside the one CSS rule, and the brand
+class appears only in the known lockup files, never outnumbering SPECTR
+renders. Inter remains the product UI font (body stack untouched,
+`t-page` token untouched at 26px/650) and JetBrains Mono remains the
+technical-value face (`@font-face` set, `.log-mono`, `.log-detail`,
+`code` all byte-untouched) — confirmed by the typography and brand
+guards plus live computed styles.
+
+## VII.3 The size-difference investigation (final correction section 2, reported before editing)
+
+Measured live before any edit (this profile runs an 18px root; 16px
+figures in parentheses):
+
+| Surface | Ghost | Wordmark | Line-height | Cause |
+|---|---|---|---|---|
+| Sim rail (VC2 state) | 32×32 px-pinned | Orbitron 28px | 28px (`leading-none`) | px pins |
+| Docs sidebar | 63×63 (56×56) `h-14` | Orbitron 22.5px (20px) `text-xl` | 31.5px (default) | rem nav-label tokens |
+| Docs mobile bar | 40.5 (36) `h-9` | Orbitron 20.25px (18px) `text-lg` | 31.5px (default) | rem nav-label tokens |
+
+Same face/weight/tracking token everywhere; `max-width: 100%` present
+but never binding; flex-shrink 1 on the Docs sides but never squeezed;
+no overflow, clipping, or transform involved. **Root cause: divergent
+authored size classes** — rem label tokens in Docs vs px pins in the
+app — plus inconsistent line-heights. No random font-size compensation
+was applied anywhere.
+
+## VII.4 One shared BrandLockup (VC3-VC6 cumulative)
+
+`components/BrandLockup.jsx` is now the ONE lockup, rendered by the sim
+sidebar brand cell and BOTH Docs shells: ghost `h-[72px] w-[72px]` +
+wordmark `.brand-wordmark text-[30px]`, both px-fixed and `shrink-0`,
+`max-w-none` (defusing the preflight img max-width), no transform
+scaling, no max-height, no clipping, white ink baked in (every shell
+lockup sits on the `#101218` rail), decorative mark + text-carried
+name. Fit came from reducing internal padding (sim cell `px-2 lg:px-3`;
+the Docs aside's `px-8` moved onto its nav/action rows so the lockup
+row runs `px-4`), never from shrinking the logo or forking per-shell
+sizes.
+
+The ghost size walked under live owner direction: 40px (VC3 ruling
+band) -> **80px** (VC4: "at least double its size right now" — exactly
+double) -> **72px** (VC6: "a little too big now, maybe just a tad bit
+smaller"). The 30px wordmark ruling never moved.
+
+**Main header surface (VC3)**: the header cell moved from the gray
+workspace tint to the same pure white surface as the primary cards
+(`bg-white`, verified live as `rgb(255, 255, 255)`), one subtle bottom
+border, no black capsule, same height as the brand cell.
+
+## VII.5 Page summary under the section header (VC5)
+
+Owner instruction applied globally: the functional page summary renders
+on its own line directly beneath the current page title, inside the
+unified header (one stack, fed per-tab from the unchanged shared
+`PAGE_SUBTITLE` copy map). `PageIntro` keeps ONLY the incident pill and
+page controls (rendering nothing with neither); Response's log view
+keeps its view-specific line as a caption attached to the log list; the
+Dashboard tab has no summary entry and renders the title alone. Guards:
+the summary is pinned as the h1's next sibling in the header, and the
+pages are pinned NOT to render it.
+
+## VII.6 Landing-navbar gap discovered and closed (VC3)
+
+The landing page renders its own hero navbar; the shared `Navbar.jsx`
+that VB2 restyled mounts only on the legacy `/analytics` route, so the
+visible landing wordmark still read "Spectyr" in IBM Plex Sans. It now
+joins the shared brand treatment, text-only at its hero scale (the
+page's 3D ghost is its mark). VB2's Part VI.6 claim ("the same
+treatment follows on ... the landing navbar") described the shared
+component, not the rendered surface — recorded here as a corrected
+record rather than silently amended.
+
+## VII.7 Shell geometry after the corrections
+
+Row height 96px on both cells (VC4; supersedes the correction-1
+"approximately 72-76px" target — the doubled mark cannot live in a 72px
+row; flagged, not silent). Sim rail `w-24 lg:w-72` (was `w-16
+lg:w-56`); Docs aside `w-72` (was `w-64`). Narrow behavior: the
+collapsed sim rail keeps the full-size ghost (wordmark hidden, the
+sanctioned reduction); the Docs mobile bar keeps the 80->72px ghost and
+yields the wordmark below 480px where ghost + wordmark + Start Sim
+exceed the viewport.
+
+## VII.8 Changed files
+
+`components/BrandLockup.jsx` (new), `components/AppHeader.jsx`,
+`components/ui.jsx` (PageIntro), `pages/Dashboard.jsx` (shell + brand
+cell + subtitle wiring), `pages/Docs.jsx` (both shells + aside
+padding), `pages/Landing.jsx` (hero wordmark), `App.jsx` (splash +
+footer wordmarks), `components/Navbar.jsx` (shared-navbar wordmark),
+`components/{Siem,Detections,Endpoints,Incidents,Analytics,Response}.jsx`
+(subtitle removal; Response log caption), `index.css`
+(`.brand-wordmark`). Cumulative: 19 files, +287/-126.
+
+## VII.9 Tests
+
+Frontend **38 suites / 341 tests** (net +2: the face-scope walk and the
+component-size guard; several rewritten to the superseding rulings —
+`brand-lockup` restructured around the shared component,
+`surface-system` pins the light 96px white cell, `app-header` pins the
+title+summary stack, `page-intro` pins header-only subtitles). Backend
+suites untouched and green in the full battery (`run_gates.py --all`,
+halt-on-failure, ALL GREEN — baseline run, per-commit hook runs, and
+the closing run at the tip).
+
+## VII.10 Chrome and responsive evidence
+
+Desktop (all seven primary pages walked): wordmark reads SPECTR in
+Orbitron on every shell; one aligned header row, constant height across
+navigation; no black capsule, no duplicate titles; pure white header
+cell; live per-surface metrics — sim rail ghost 72×72, wordmark
+Orbitron 30px / LH 30px, width 150.8px; Docs sidebar identical 72×72 /
+30px / LH 30; `scrollWidth == clientWidth` (no clipping) on every
+lockup; brand and header cells both exactly 96px; title-baseline delta
+~1px; also verified at a forced 16px root (identical px metrics, still
+unclipped).
+
+Narrow: the `resize_window` limitation recorded in VI.11.5 was BYPASSED
+this pass with fixed-width same-origin iframes (media queries evaluate
+against the iframe viewport): at 420px the sim shell keeps the 72px
+ghost centered on the collapsed rail, the page title and avatar visible
+and usable, no second title bar, no wrap; at 700px the Docs mobile bar
+renders the identical full-size lockup, unclipped. The VI.11.5
+carried-forward gap is closed by method.
+
+Behavior: a full Guided run started live (mode dialog -> catalog ->
+random -> drip -> INC-3766 active with 7 detections; incident workspace
+briefing, classification controls, related hosts/accounts;
+incident-scoped Endpoints with three online hosts). **Zero console
+errors** across every page and state checked.
+
+## VII.11 Deviations and honest notes
+
+1. **Row height 96px vs the correction-1 "72-76px" target** — forced by
+   the owner's VC4 doubling; flagged in the VC4 commit and here.
+2. **Rail/aside widths grew** (`w-24/w-72`, Docs `w-72`) — same
+   forcing; every page's content column narrows accordingly.
+3. **Docs mobile bar hides the wordmark below 480px** — the same
+   genuinely-required reduction rule as the collapsed sim rail.
+4. **The docs prose boundary stands**: "How Spectyr Works" + its
+   opening paragraph, the footer copyright line, and the document
+   `<title>` still read "Spectyr", awaiting the owner ruling recorded
+   in VI.11.4.
+5. **Environmental incident during verification**: two backend
+   processes from different sessions were found sharing port 5000
+   (split-brain session universes made a Guided run look stalled). Both
+   were killed and one relaunched; the rerun behaved perfectly. No code
+   implication.
+6. **VB2's landing-navbar claim corrected** (VII.6) — the treatment now
+   actually renders on the landing surface.
+7. The Part IV Classification F anomaly and the VI.11.1 populated
+   Evidence-activity gap remain open and untouched here.
+
+## VII.12 Final state
+
+Branch `stage-5-live-run-feedback`, tip `d49e51a` (VC1-VC6 on top of
+`9de957e`) plus this docs-only record. Working tree carries ONLY the
+two owner asset items (`frontend/public/videos/spectyrvideo.mp4`
+modified, `frontend/public/spectyr_svg.svg` untracked), untouched by
+this pass. NOT merged, NOT pushed. Full battery ALL GREEN at the tip.
+Stopped at the consolidated visual-polish checkpoint.
+
+# Part VIII. Final visual consistency, evidence density, and Response layout correction
+
+Append-only record of the 2026-07-26 correction pass (owner instruction
+"FINAL VISUAL CONSISTENCY, EVIDENCE ACTIVITY, AND RESPONSE LAYOUT
+CORRECTION" plus two mid-run superseding instructions received while
+the pass ran: the Evidence-density correction and the incident-identity
+badge correction). Concern-separated commits VD1-VD8 on
+`stage-5-live-run-feedback`; every commit landed through the pre-commit
+gate battery (never red); no merge, no push. Scope was presentation and
+shared primitives only: scoring, grading, readiness, roster sealing,
+response semantics, SIEM behavior, serialization, and all frozen
+boundaries are untouched.
+
+## VIII.1 Commit ledger (8 commits, `0b80b52..5e4aab3`)
+
+| Commit | Concern |
+|---|---|
+| `cca907f` VD1 | Evidence activity stepped/continuous form (superseded by VD7 below; its steppedPath geometry and zero-honesty rules carry forward) |
+| `547a501` VD2 | Shared identity badges + Active investigation fit (reruled by VD8 below) |
+| `89d1245` VD3 | ATT&CK profile disclosed only across the submission boundary |
+| `6b3580e` VD4 | Response workspace flattened to one command surface |
+| `ef2e155` VD5 | One technical-text token; JetBrains Mono globally |
+| `ecdd0b9` VD6 | 68px shared shell row (app + Docs) |
+| `963d9a1` VD7 | (owner mid-run instruction) Evidence activity becomes the compact rolling-density chart |
+| `5e4aab3` VD8 | (owner mid-run instruction) One incident identity system: canonical order, equal Inter badges |
+
+## VIII.2 Evidence activity visual formula (final: VD7 rolling density)
+
+The VD1 fixed-bucket histogram (every deterministic bucket as a visible
+bar) shipped and was then superseded the same day by the owner's
+rolling-density instruction; the final formula is:
+
+- Model (`evidenceDensity.js`, replacing `evidenceBuckets.js`): at
+  `SAMPLE_POINTS = 20` evenly spaced deterministic sample times across
+  [first observable event, last observable event], density = the EXACT
+  count of real events in the preceding rolling window `(t - W, t]`.
+  Window `W`: 30s when span <= 5 min (short investigation), 60s when
+  span <= 30 min (ordinary), else the smallest of [120, 300, 600,
+  1800, 3600] >= span/19, else whole hours (deterministic past the
+  ladder). Rolling counts over real events only: nothing fabricated,
+  interpolated, or redistributed. Sample times are pure arithmetic on
+  first/span, so identical rows give byte-identical models.
+- Form (per the owner's Pipeline Activity reference): ONE stepped
+  outline (`steppedPath`, horizontal/vertical segments only, no curve
+  commands) over a subtle `#eef1f4` fill; thin 2px neutral density
+  lines beneath (a zero sample paints nothing); ONE restrained accent
+  on the peak sample (a `#16436b`/7% column band through the chart, an
+  accent density line, a point marker on the step, and a "Peak" text
+  label above the interval, clamped to [6%, 94%] so it can never leave
+  the bounds); exact event-time tick marks along the baseline (one per
+  source event, mapped into the sample-column coordinate space via
+  `tickColumnPct`); a three-label axis (start / midpoint / end) in
+  normal flex flow so nothing clips, ellipsizes, or overlaps; the
+  chart plane clamped to the ruled band (`min-h-[180px] max-h-[220px]`).
+- Summary: "N events observed" + "Peak: HH:MM(:SS) · N events" (the
+  peak count is the rolling-window count; sub-minute windows label
+  with second precision so two samples never share a label). The
+  sr-only table names the window explicitly ("...the W-second rolling
+  window ending at that sample...") and carries every sample, the
+  peak, the axis, and the snapshot boundary sequence.
+- Sparse honesty: fewer than three DISTINCT event times renders exact
+  ticks, a short activity line, the total, and "Evidence arrived in a
+  small number of bursts." -- never a malformed density shape, never a
+  forced peak.
+- Snapshot truth (unchanged from VB1): active-incident-only scoped
+  read, ONE frozen snapshot per incident (never polled), token-bound
+  new-events count announced but never merged, atomic Load new events,
+  no verdict/anomaly language (leak scan unchanged).
+
+## VIII.3 Shared incident identity system (final: VD8)
+
+The original instruction specified a JetBrains Mono incident pill; VD2
+shipped it; the owner's mid-run identity instruction then reruled the
+badge to INTER and fixed the canonical order; VD8 is the final state:
+
+- `BADGE_BASE` (ui.jsx): the ONE dimension contract every badge wears:
+  `inline-flex items-center rounded-full text-xs font-medium leading-4
+  py-0.5 min-h-[22px] whitespace-nowrap shrink-0` (Inter, 12px, weight
+  500, ~22px rendered height, content vertically centered).
+- `IncidentIdBadge`: `BADGE_BASE + px-2.5 bg-[#eef1f4] text-[#1a2332]
+  border border-[#d0d7de]` -- Inter by ruling, neutral surface, dark
+  readable ink, no severity color, no accent, no mono.
+- `SeverityBadge`: `BADGE_BASE + px-2.5 gap-1.5 border` + the approved
+  Detections tint map (`SEVERITY_PILL`: critical red-50/700/200, high
+  orange, medium amber; low = neutral `#d0d7de` border + `#57606a`
+  ink) + the `severityDot` status dot + the capitalized label (never
+  color alone). Case-insensitive: 'Critical' and 'critical' render
+  byte-identically.
+- `ModeBadge`: `BADGE_BASE + px-2.5 bg-[#eef1f4] text-[#57606a] border
+  border-transparent` (the transparent border keeps box metrics
+  identical); labels from the shared `MODE_LABEL` map (Guided /
+  Hardcore byte-identical treatment).
+- `IncidentIdentityRow`: the ONE canonical composition and order --
+  `[INC-####] [Severity] ([Mode])` then the title, `flex-wrap`, title
+  un-truncated and never shrunk (drops to its own line when
+  constrained). `PageIntro` consumes it, so the SIEM / Detections /
+  Endpoints / Response / Metrics context rows inherit.
+- Migrated sites: Dashboard Active investigation (canonical structure:
+  heading, badge row, title, progress, facts, Resume), other-active
+  rows, Recent results incident cell (badge inside the existing
+  navigation button), Incidents list rows + detail header, the Guided
+  catalog picker (title + SeverityBadge), Learning Review incident
+  pickers (Inter ids inside the existing selection controls). Bare
+  severity dots survive ONLY as the severity-distribution chart fill
+  (label + exact count beside every bar). No mono/accent plain-text
+  incident id render survives (structural scan).
+
+## VIII.4 Technical typography token (VD5, with the VD8 exception)
+
+- `.log-mono` (index.css) is THE technical-text token: JetBrains Mono
+  + `tabular-nums`, defined once; `.log-detail` remains the raw
+  key=value block form of the same face.
+- All 61 Tailwind `font-mono` class uses across ten components swapped
+  to `log-mono` (both already resolved to JetBrains Mono via
+  tailwind.config, so consolidation, not a face change; the token adds
+  aligned digits). Inline JetBrains fontFamily styles retired
+  (GameTimer countdown, FailureModal status line -> the token).
+- Identifiers that had NO mono treatment now carry it: Incidents
+  detail Related hosts / Related accounts values; ATT&CK technique ids
+  in the Learning Review line and the triage-feedback MITRE chip
+  (technique NAMES stay Inter prose).
+- Inter remains the product face for titles, navigation, buttons,
+  descriptive copy, card headings, empty states, table headings, and
+  prose. VD8 exception (ruled): the IncidentIdBadge renders its INC id
+  in Inter for badge-group consistency; JetBrains Mono remains for
+  hostnames, IPs, accounts, PIDs, event ids, ATT&CK ids, timestamps,
+  LCQL, raw values, hashes everywhere else.
+
+## VIII.5 ATT&CK disclosure correction (VD3)
+
+- Temporal rule: although each roster detection's mitre tag is
+  individually visible in every mode, the AGGREGATE tactic shape
+  biases the uncommitted classification, so before submission the
+  Incident ATT&CK profile renders ONLY the neutral locked state
+  ("Available after submission." / "Complete the investigation to
+  reveal the mapped tactics.") -- no tactic axes, no technique names
+  or ids, no polygon, no normalized values, no accessible table. The
+  card ignores mappings entirely while unlocked; the rule is
+  mode-independent by construction (the component has no mode input;
+  `submitted` is the only disclosure key), so Guided and Hardcore
+  share the same dashboard boundary.
+- After submission: the profile renders from the incident's FROZEN
+  record -- the sealed roster ids (fetched once per submitted id
+  alongside score + triage-review; immutable per the standing
+  roster-finality invariant) joined to the sanitized feed's mitre
+  tags. Normalization unchanged: tactic count / strongest tactic count
+  in the submitted incident (strongest = 100%, absent = exactly 0%),
+  exact technique identities in the tooltip and the text equivalent,
+  no framework-coverage claim.
+- Dashboard focus: active focus incident -> locked; no active focus ->
+  the latest submitted incident's profile; no incidents -> "Start an
+  investigation to see its ATT&CK profile."
+
+## VIII.6 Response workspace: before / after (VD4)
+
+Before: each target category (Hosts, Accounts, Processes, Files,
+Persistence) sat inside a large rounded `GroupCard` (heading inside
+the card, table inside the same card) -- nested containers on the
+workspace.
+
+After: ONE flat command surface. Each category is a `TargetSection`
+directly on the canvas: `t-subsection` heading + count pill, a subtle
+`#e2e6ea` divider between sections (`first:` suppressed), and the
+table in the SAME minimal light boundary the Endpoints list uses
+(`bg-white border border-[#e2e6ea] rounded-xl overflow-x-auto` -- the
+table's own edge holding the shared `data-thead`; nothing rounded
+nests inside it). The Processes search moved onto the surface above
+its table; its scrolling viewport gained a sticky header. The Response
+log took the same shape: "Response log" heading + count + the
+descriptive line + the single chronological table, no decorative card.
+The promoted-context banner and the truthful empty states remain the
+only page-level card surfaces. All verbs, confirmations, observable
+state chips, promoted chips, focus navigation, and the
+one-request-one-log-entry action path are byte-untouched.
+
+## VIII.7 Header-height correction (VD6)
+
+The ruled 68px shell row supersedes the earlier 72-76px target (the
+cells had drifted to 96px when VC4's 80px ghost needed room). Applied
+as ONE value: AppHeader 96 -> 68 (title stack + avatar centered, level
+with the lockup), sim rail brand cell 96 -> 68 (divider retained),
+Docs desktop brand cell -> a fixed 68px row flush at the top (the
+aside's former 48px top padding removed FIRST per the
+reduce-padding-before-shrinking priority; nav spacing below
+unchanged), Docs mobile bar -> fixed 68px (was padding-derived ~88px).
+SPECTR wordmark unchanged (Orbitron 30px); ONE shared BrandLockup in
+all three shells; owner assets untouched. Ghost deviation: see
+VIII.10.
+
+## VIII.8 Changed files (complete, `0b80b52..5e4aab3`; 33 files, +1406/-466)
+
+Components: EvidenceActivity.jsx (rewritten twice: VD1 stepped form,
+then the VD7 density rework), evidenceDensity.js (new, 158 lines;
+evidenceBuckets.js deleted), ui.jsx (+93: BADGE_BASE + the four
+identity primitives + PageIntro recomposition), AttackRadar.jsx (+67:
+locked/loading/submitted states), IncidentDashboard.jsx (+82: badge
+row, per-submitted-id frozen-record fetch incl. scope, profile-focus
+derivation), Response.jsx (+114: TargetSection + TableSurface flatten,
+log section), Incidents.jsx (badges + mono related identifiers),
+Detections.jsx / DetectionDetail.jsx (shared SeverityBadge
+consumption; mono swaps), DifficultySelector.jsx (catalog
+SeverityBadge), LearningReview.jsx (mono swaps; Inter picker ids +
+mono technique id), TriageFeedback.jsx (mono technique id; inline font
+removed), GameTimer.jsx / FailureModal.jsx (token instead of inline
+fonts), EndpointDetail.jsx / Endpoints.jsx / EventInspector.jsx /
+SiemCards.jsx / ScoreSections.jsx / CampaignProgress.jsx (font-mono ->
+log-mono), AppHeader.jsx / BrandLockup.jsx (68px row / 68px ghost),
+pages/Dashboard.jsx (brand cell 68px), pages/Docs.jsx (both shells
+68px), index.css (token declaration + rule comments).
+
+Tests: evidence-activity.test.js (rewritten for the density model, 17
+tests), shared-badges.test.js (new, rewritten at VD8: 8 tests),
+attack-radar.test.js (rewritten: 11 tests incl. the temporal-leak
+suite), response-workspace.test.js (+2 structural),
+typography.test.js (+3 token tests + VD8 adjustments),
+brand-lockup.test.js (68px re-pin + shared-height guard),
+surface-system.test.js (68px re-pin).
+
+## VIII.9 Tests and final counts
+
+- Frontend: 39 suites / 367 tests, ALL GREEN at `5e4aab3` (every VD
+  commit individually gated green by the pre-commit battery).
+- Complete battery (`python backend/run_gates.py --all` = 29 backend
+  suites + the frontend suite, halt-on-first-failure): ALL GREEN at
+  the final tip `5e4aab3` (and earlier at the post-VD6 tip).
+
+## VIII.10 Deviations and honest notes (deviation-flagging rule)
+
+1. FLAGGED (VD4, re-flag of the standing V9 deviation): the
+   correction's Actions sketch lists a sixth "Services" section; it
+   stays out for the unchanged V9 reason -- no service verb exists in
+   the eight-action vocabulary, and an actionless Services table in
+   the execution workspace would imply one (expressibility rule). The
+   section joins when its verb exists.
+2. FLAGGED (VD6, sanctioned fallback): with the shell row ruled 68px
+   and the cell's vertical padding already zero, the VC6 72px ghost
+   cannot fit unclipped; the ghost takes the minimal trim 72px ->
+   68px, exactly the instruction's ordering ("reduce padding before
+   shrinking the brand"). Wordmark untouched.
+3. SUPERSESSIONS (owner mid-run instructions, applied as ruled): VD7
+   replaces VD1's every-bucket histogram with the rolling-density
+   chart; VD8 replaces VD2's mono INC pill with the Inter
+   IncidentIdBadge and fixes the canonical [INC] [Severity] [Mode]
+   title order (VD2 had rendered the title between id and severity in
+   the context row). Both earlier forms shipped gated-green and were
+   reworked the same day; the ledger keeps all four commits.
+4. NOTE (VD8 boundary judgment): the Learning Review incident PICKERS
+   are selection controls, not identity displays; they render Inter
+   ids inside their existing button chrome rather than nesting a badge
+   in a button. The Incidents submit-confirm dialog names the incident
+   in prose ("Submit incident INC-####"), which stays prose. The
+   hidden Reports surface (not player-reachable) keeps its legacy
+   pill.
+5. NOTE (Dashboard mono spot list): with incident ids moved to the
+   Inter badge, IncidentDashboard.jsx no longer contains `log-mono`;
+   the VD5 spot-contract test documents the exception explicitly.
+6. DEV-ENVIRONMENT FOOTGUN (recorded, not a product change): running
+   `backend/run_gates.py` while the live dev backend holds sessions
+   deletes those sessions' log directories -- the test process's
+   boot-time orphan sweep treats the SERVER's dirs as orphans. The
+   live writer thread then dies on its next append and the run stalls
+   with `injected_count` frozen. Recovery: restart the backend before
+   the next live run (done during this pass's verification; the same
+   effect explains the stale pre-pass session that showed an empty
+   evidence pool). The Part IV Classification F anomaly and VI.11.1
+   remain open and untouched.
+
+## VIII.11 Chrome evidence (2026-07-26, dev servers, fresh Guided run)
+
+Desktop (~2133 CSS px) after a clean backend restart and reset:
+- Guided catalog: every entry carries the shared SeverityBadge.
+- Dashboard pre-submission: Active investigation `[INC-5765]
+  [Critical] [Guided]` canonical badge row + full title + progress +
+  facts + Resume; Evidence activity live rolling-density chart over 7
+  real events (30s window, "7 events observed / Peak: 04:16:20 · 6
+  events", stepped outline, accent peak column + marker + Peak label,
+  exact ticks, start/mid/end axis, no clipped labels); Incident ATT&CK
+  profile LOCKED ("Available after submission."); severity bars with
+  exact counts.
+- Incidents: list row + detail header canonical identity; Related
+  hosts/accounts in mono; classification True Positive -> Defense
+  Evasion.
+- Detections: shared badges, mono entity/time columns; all five
+  dispositions (3 promote / 2 dismiss).
+- Response: flat Hosts/Accounts/Processes/Files/Persistence sections
+  (headings + count pills on the surface, Endpoints-style table
+  boundaries, search above the Processes table); executed Isolate Host
+  and Remove Persistence (WMI subscription) through the confirm
+  dialogs; host flipped to Online+Isolated with Release control; the
+  flat Response log held exactly 2 entries, one per action.
+- Submit: Case Closed INC-5765, Incident Grade A · 94% (Classification
+  A·100 / Detections B·80 / Response A·100), achievements shown.
+- Dashboard post-submission: the ATT&CK polygon rendered from the
+  frozen record (Def Impairment / Impact / C2 axes; "Relative to the
+  strongest tactic in this incident."); Recent results row with the
+  badge + grades; KPIs updated.
+- Metrics: identity row, Learning Review picker (Inter id), Session
+  performance sections + composite ring A·94%.
+- Measurements: app header, sim brand cell, Docs desktop brand cell
+  all exactly 68 CSS px at top 0 with the 68px ghost fitting
+  unclipped; Docs mobile bar fixed 68px.
+- Narrow (390px, same-origin iframe method since resize_window cannot
+  shrink a maximized window): the ruled stack order, badges wrap
+  cleanly, zero horizontal overflow (scrollWidth == clientWidth).
+- Console: zero steady-state errors across the entire walk
+  (onlyErrors sweep after every phase).
+
+## VIII.12 Final state
+
+Branch `stage-5-live-run-feedback`, tip `5e4aab3` (VD1-VD8 on top of
+`0b80b52`) plus this docs-only record. Working tree carries ONLY the
+two owner asset items (`frontend/public/videos/spectyrvideo.mp4`
+modified, `frontend/public/spectyr_svg.svg` untracked), untouched by
+this pass. NOT merged, NOT pushed, no new feature stage begun.
+Complete gate battery ALL GREEN at the tip (29 backend suites +
+frontend 39/367). Stopped at the consolidated visual-polish
+checkpoint.
+
+# Part IX. Final visual-polish pass: Spectr naming, current-product Docs, one Start control, Evidence line refinement (VE1-VE6)
+
+Owner instruction 2026-07-27 (four connected corrections plus two
+mid-run instructions), executed on `stage-5-live-run-feedback` on top
+of `fab9c6f`. Scope held to the named surfaces: no global redesign, no
+engine change, no owner-asset change (`spectyrvideo.mp4` /
+`spectyr_svg.svg` remain untouched working-tree items).
+
+## IX.1 Commit ledger
+
+| Commit | Concern |
+|---|---|
+| `622dbcb` VE1 | User-visible naming Spectyr -> Spectr; Docs content rewritten around the current product |
+| `79c5466` VE2 | Docs visual shell: dark two-column documentation surface |
+| `36140dd` VE3 | ONE shared Start control; landing hero subtitle deleted |
+| `1997b02` VE4 | Evidence activity line refinement (presentation only) |
+| `fd88c79` VE4b | Verified defect: sr-only evidence table inflated the horizontal scroll area |
+| `dd11880` VE5 | Owner mid-run: rail Reset wears the Start pill treatment; hint control clears the rail |
+| VE6 (this commit) | product-naming guard battery + this record |
+
+## IX.2 Naming (VE1)
+
+Every user-visible "Spectyr" now reads "Spectr": the browser title is
+exactly `Spectr` (the old descriptive subtitle is gone), the PWA
+manifest name/short_name follow, the boot loading line and the legacy
+footer say Spectr, and the footer's "SOC Simulation Training"
+descriptor is removed entirely. The SPECTR display wordmark treatment
+(BrandLockup + brand-wordmark token) is unchanged wherever the actual
+wordmark renders. Internal identifiers are deliberately NOT renamed,
+per the standing VB2 guard: asset filenames (`spectyr_logo.png`,
+`spectyr_fav.png`, `spectyrvideo.mp4`), the `spectyr_session_id`
+storage key, backend schema titles/comments, and the authored
+in-fiction YARA vendor prefix (`Spectyr_USB_Loader_Generic`,
+`Spectyr_Ransom_Note_Generic`), which brand-lockup.test.js pins as
+scenario content. The new `product-naming.test.js` battery enforces the
+visible rule: no capital-S brand form in product source (comments
+stripped), title/manifest exact.
+
+## IX.3 Docs content corrections (VE1)
+
+The Docs now describe the shipped game only. New navigation (eight
+sections): Getting Started / How Spectr Works / Guided and Hardcore /
+Detections / SIEM / Endpoints / Response / Learning Review. The opening
+line is the owner-supplied description verbatim. Statements removed as
+retired-model: the 10-scenario run description, 20-40s arrival cadence,
+three-open-scenarios cap, Analytics as a destination, Queue as the
+player workflow, and the old Scenarios catalog enumeration. The
+rewritten copy states the established decisions: Detections is triage
+only; Endpoints is investigation only; Response is the command surface
+where actions execute; the SIEM searches the selected incident's
+evidence; classification is selected before Submit; grading and the
+ATT&CK profile disclose only after submission; Metrics is the Learning
+Review; Guided and Hardcore are the only modes. Landing nav links
+target the new anchors (guard: every landing `/docs#` anchor must be a
+real section id). The standing copy guards all hold (no report-workflow
+vocabulary, no em dashes, no "SOC Queue", no check-answer vocabulary).
+
+## IX.4 Docs visual shell (VE2)
+
+The white marketing canvas is retired. The whole Docs viewport sits on
+the shared `#101218` chrome tone as a flat two-column documentation
+layout after the supplied Pathos structural reference: left navigation
+column (the app rail's active treatment: white ink + left marker),
+`border-r border-white/10` as the subtle divider, one `max-w-2xl`
+reading column with white headings and `#9ca3af` body, Inter prose,
+`log-mono` strictly for technical values. The LCQL segment line renders
+as a bordered code block that scrolls inside its own container. The
+68px shell rows, both shared BrandLockup sites, and the scroll-spy are
+unchanged (brand-lockup pins hold: exactly two `h-[68px]`, two
+lockups). Below `lg` the sidebar yields to the 68px top bar plus a new
+horizontal section strip (sticky under the bar, `scrollbar-hide`), so
+the eight sections stay navigable at phone widths; section
+`scroll-mt-36 lg:scroll-mt-24` keeps headings clear of the sticky
+stack. No decorative cards around ordinary sections, no gradients, no
+black top strip, no brand redesign. Accent note: on the dark shell the
+existing active treatment IS white ink + the white marker (the app
+rail's own); `#16436b` stays reserved for light surfaces per the
+accent-restraint ruling, so no new link tint was invented.
+
+## IX.5 One shared Start control (VE3, VE5)
+
+`components/StartButton.jsx` is the single product-entry CTA: the
+landing's liquid-glass pill at one fixed geometry (44px height, 26px
+horizontal padding, full radius, 15px medium Inter, filled play glyph
+from the shared icon system, hover on background/shadow only, visible
+focus-visible ring, disabled dims). The visible label is exactly
+"Start". Locations (all five verified in Chrome): landing hero, Docs
+desktop sidebar, Docs mobile top bar, the sim rail's inactive-session
+slot (label collapses below lg via `labelClass`, the BrandLockup
+wordmarkClass pattern; the icon-only pill fits the w-24 rail), and the
+legacy `/analytics` navbar (the light "Launch Sim" pill retired).
+Retired labels: Start Sim, Start Simulation, Launch Sim (guarded by
+product-naming.test.js). Submit / Resume investigation / response verbs
+/ secondary actions are untouched. VE5 (owner mid-run instruction): the
+rail Reset control now wears the same pill treatment through ONE
+exported class list (`CTA_PILL`) consumed by both rail-slot controls,
+so the geometry cannot drift; Reset remains its own control (icon,
+label, confirm flow), never a StartButton.
+
+## IX.6 Landing hero (VE3)
+
+The subheading ("A simulated SIEM with realistic log chains across
+different attack scenarios.") is deleted, not replaced. The hero is the
+heading plus the shared Start control; the heading margin is rebalanced
+(mb-6/mb-10) and the freed space stays open. Entrance delays close up
+(300ms heading, 400ms CTA).
+
+## IX.7 Evidence activity refinement (VE4, VE4b)
+
+The VD7 rolling-density model is untouched: exact rolling-window counts
+over real observable timestamps at 20 evenly spaced samples, stepped
+outline with no curve commands, thin density lines, one highlighted
+peak (restrained accent column + point marker + compact "Peak" label,
+clamped), exact event ticks, a three-label axis in normal flow, the
+honest sparse state below three distinct times, and the frozen-snapshot
+boundary with the explicit Load-new-events action. Two presentation
+corrections against the line-chart reference:
+
+- The stepped outline deepens from `#8b949e`/1.25px to `#57606a`/1.5px
+  so the outline reads as the chart's data line (the reference's clean
+  thin line) rather than a faint box edge; the fill, density lines, and
+  peak accent are unchanged.
+- The CENTER axis label now prints the true midpoint of the visible
+  range (`first + span/2`). The justify-between axis row places that
+  label at the visual center, and the previous value (sample
+  floor((n-1)/2), 47.4% of the span at n=20) mislabeled the position by
+  ~2.6% of the span. Start/end labels remain the exact first/last
+  sample times. The pinned expectation in evidence-activity.test.js was
+  updated with this rationale (a deliberate change to a frozen-suite
+  expectation, flagged here).
+
+VE4b, found by this pass's responsive verification: the card's sr-only
+textual-equivalent table inflated the document's horizontal scroll
+area by ~1300px on /sim. CSS table width is a minimum, so sr-only's 1px
+width cannot constrain a table box, and the table's containing block is
+the ICB, so the workspace overflow-x-hidden never clipped it. Fix: the
+table sits inside a visually-hidden wrapper div (strictly 1px, clips),
+with identical accessible semantics. Verified live: scrollWidth equals
+clientWidth with the chart rendered. Nothing about snapshot, new-count,
+or atomic-load behavior changed anywhere in VE4/VE4b.
+
+## IX.8 Changed files (`fab9c6f..` this pass)
+
+frontend/public/index.html, frontend/public/manifest.json,
+frontend/src/App.jsx, frontend/src/index.css,
+frontend/src/pages/Landing.jsx, frontend/src/pages/Docs.jsx,
+frontend/src/pages/Dashboard.jsx, frontend/src/components/Navbar.jsx,
+frontend/src/components/StartButton.jsx (new),
+frontend/src/components/EvidenceActivity.jsx,
+frontend/src/components/HintPanel.jsx,
+frontend/src/__tests__/evidence-activity.test.js,
+frontend/src/__tests__/product-naming.test.js (new), and this record.
+
+## IX.9 Deliberate deviations and honest notes
+
+- **Workflow wording vs the shipped product (grounded correction):**
+  the tasking note's step list places classification and Submit in
+  Response. In the shipped product, Response executes actions;
+  classification and Submit live on the incident in the Incidents
+  workspace (`workspace-classification` + the gated Submit). Repository
+  truth outranks the prompt, so the Docs describe the shipped flow:
+  respond in Response, then return to the incident to classify and
+  submit.
+- **Hardcore queue mechanics:** the tasking lists "a Hardcore run
+  always containing ten queued scenarios" as obsolete, but the engine
+  still builds the sampled 10-queue for Hardcore
+  (`build_alert_queue(n=10)`) and the dashboard still shows "N of 10
+  resolved". The rewritten Docs assert no numeric mechanics in either
+  direction: Hardcore is "a timed run under a single 15-minute clock"
+  where "incidents are pushed to you during the run". Nothing stated is
+  false against the running engine.
+- **In-fiction YARA vendor prefix stays Spectyr_*:** user-visible in
+  the detection detail, but it is authored scenario content pinned by
+  the standing brand guard ("scenario content keeps its authored
+  identifiers"); renaming it would touch the frozen v1/v2 corpus
+  parity. Flagged rather than silently decided; the owner can order a
+  corpus-content rename as its own reviewed change.
+- **/analytics legacy route:** only its entry control was aligned (the
+  shared Start). The page's own legacy copy and its rough 390px layout
+  are pre-existing and out of this pass's scope; the route is
+  unreachable from the player-facing UI.
+- **Axis-midpoint expectation change** in the frozen evidence suite:
+  recorded in IX.7.
+- **Environment note:** the long-running dev backend on :5000 (started
+  2026-07-26) had a dead drip thread; sessions started but injected
+  nothing. Restarted `python app.py` from the branch (the known
+  port-5000 split-brain gotcha); no code change involved.
+
+## IX.10 Chrome and responsive evidence (2026-07-27, dev servers)
+
+- Desktop landing: cleaned hero (heading + Start only), ghost video,
+  new docs nav links, wordmark; tab title "Spectr".
+- Desktop Docs: dark two-column shell, scroll-spy + active rail marker
+  tracking through all eight sections, LCQL code block, sidebar Start.
+- Guided run (fresh backend): INC-6839 Multiple Account Logon
+  Failures; Evidence activity rendered the refined density chart
+  (8 events, Peak 10:18 with 6 events, 60s window), peak label inside
+  bounds, axis start/mid/end readable.
+- Sparse fallback: exercised the REAL component through its real code
+  path by patching fetch in the page (view-only) so the next
+  Load-new-events read returned 2 rows: the honest sparse state
+  rendered (2 events observed, short activity line, exact ticks, the
+  sparse message, no fabricated shape, no Peak).
+- Shell geometry: the app header and sim brand cell measured 68 CSS px
+  (67.99 at the profile's 90% zoom quantization); Docs bars pinned by
+  the brand battery.
+- Horizontal overflow: /sim measured scrollWidth == clientWidth after
+  VE4b (was +1316px); landing and Docs at 390px both measured zero
+  overflow (same-origin iframe method, since resize_window cannot
+  shrink a maximized window).
+- 390px landing: hamburger menu with the four new links, Start pill,
+  no clipping. 390px Docs: 68px bar (ghost-only lockup below 480px) +
+  Start pill + horizontal section strip; strip navigation verified
+  (tap How Spectr Works -> the heading lands clear of the sticky
+  stack, active state follows); the LCQL block scrolls inside its own
+  container.
+- Collapsed rail (~900px iframe): icon-only Start pill centered and
+  unclipped in the w-24 rail; expanded rail: the Start/Reset pill
+  pair.
+- VE5 live measurements: hint control left edge 342 vs rail right
+  edge 324 (18px clear, no clipping); the Reset pill matches the Start
+  geometry.
+- Console: zero steady-state errors on /sim, /docs, and / (onlyErrors
+  sweeps after settling).
+
+## IX.11 Final state
+
+Branch `stage-5-live-run-feedback`; this pass is VE1-VE6 on top of
+`fab9c6f`. The working tree carries ONLY the two owner asset items
+(`spectyrvideo.mp4` modified, `spectyr_svg.svg` untracked), untouched.
+NOT merged, NOT pushed, no new stage begun. The complete gate battery
+(backend + frontend) was run at the tip and recorded green in the VE6
+commit. Stopped at the final visual-polish checkpoint.
+
+# Part X. Visual pass continuation: loop investigation, shell consistency, terminology, Metrics anatomy (VF1-VF8)
+
+Owner instruction 2026-07-27 (six concerns plus mid-run instructions),
+executed on `stage-5-live-run-feedback` on top of `3d2eae0`. During the
+pass the owner also instructed, mid-run: the Metrics Reset removal and
+status-dot counts (VF6), the hero headline and subheading (VF7,
+superseding this pass's own section-3 headline), and finally the merge
+to main and push to origin so the state deploys to spectyr.dev
+(superseding the standing do-not-merge / do-not-push checkpoint rule
+for this pass; recorded in X.6).
+
+## X.1 Commit ledger
+
+| Commit | Concern |
+|---|---|
+| `69926b8` VF1 | Mobile menu joins the shared #101218 shell surface (blue-cast gray-900 retired) |
+| `14120ed` VF2 | Headline "Investigate. Decide. Improve." (later superseded by VF7) |
+| `7dd0439` VF3 | Hostname is the canonical field label (Endpoints vocabulary) |
+| `b4e0daf` VF4 | Metrics sections follow the Dashboard card anatomy |
+| `7984304` VF5 | Table-presentation audit; the one CountPill |
+| `4a85a36` VF6 | Owner mid-run: Metrics Reset removed; outcome counts wear the status-dot treatment |
+| `802e5f6` VF7 | Owner mid-run: hero headline "Learn SOC Analysis Through Realistic Incidents." + static subheading |
+| VF8 (this commit) | This record; then the owner-authorized merge + push |
+
+## X.2 Landing video loop: root cause measured, asset correction required
+
+Measured in Chrome against the owner's current working-tree asset
+(`spectyrvideo.mp4`, 5.042s, 1508x1372, presented at 20fps):
+
+- **Boundary frames differ by a full pose.** Mean absolute pixel
+  difference first-vs-last = 13.41 (9.95% of pixels differ by >30),
+  versus 9.17 for a third of a second of the animation's own ordinary
+  motion. The difference map lights the ENTIRE silhouette: lean, every
+  drape fold, and the ground shadow. The final frame does not return
+  to the opening pose.
+- **Playback adds no material gap.** requestVideoFrameCallback across
+  two native loop wraps: median inter-frame delta 50ms (20fps), wrap
+  deltas 66.7/66.8ms -- one extra display refresh, imperceptible. No
+  poster attribute exists, geometry is fixed, the file is local and
+  fully buffered; playback across multiple cycles stays continuous
+  (currentTime sampling: 0.38 -> 4.43, wrap, 0.38 -> 4.41, wrap), no
+  errors, no black flash.
+
+**Verdict: the jump is the asset, and no honest playback-side fix
+exists.** A crossfade would double-expose two different poses (the
+forbidden ghosting), reverse/boomerang playback changes the artwork
+and stutters, and duplicate video nodes are excluded. The asset was
+NOT altered. **Required smallest correction: re-export the animation
+so the final frame returns to the exact opening pose (same lean, drape
+configuration, and ground-shadow position at t=0 and t=end); any
+export whose boundary frames match makes the existing native-loop
+markup seamless with no code change.**
+
+## X.3 Mobile navigation surface (VF1) and hero (VF2 -> VF7)
+
+The expanded landing menu was the one surface on Tailwind's blue-cast
+palette (bg-gray-900/95, border-gray-800, hover gray-800/50). It now
+sits on the shared shell tone (#101218/95 over the existing blur) with
+white/10 dividers and white/5 hover, and its top offset tracks the
+nav's real height (72px, 88px at md), so open/closed surfaces stay
+flush. Verified live at 390px: computed rgba(16,18,24,0.95), no blue
+cast, no flash, desktop nav untouched.
+
+The hero: VF2 set "Investigate. Decide. Improve." per the pass
+instruction; the owner then ruled the final headline mid-run (VF7):
+**"Learn SOC Analysis Through Realistic Incidents."** with the
+subheading **"Investigate alerts, follow the evidence, take response
+actions, and learn from every decision."** Both are single text nodes
+(no per-line spans -- no width can strand a duplicated or clipped
+line); the headline wraps balanced under a max-w-5xl measure (two
+lines at desktop, three at 390). The subheading deliberately carries
+NO blur entrance animation: the owner reported the old subheading
+stuck blurry on mobile (the blurFadeUp filter animation frozen
+mid-state), so it renders statically and is always legible. Verified
+at wide desktop, 1366, and 390: balanced wrapping, crisp subheading,
+zero horizontal overflow, no detached strip.
+
+## X.4 Hostname terminology (VF3) and table presentation (VF5)
+
+Endpoints is the vocabulary source of truth (`Hostname`). Renamed
+where the displayed field IS a machine hostname: the Response
+workspace's four target-table column headers (Hosts, Processes, Files,
+Persistence) and the DetectionDetail triggering-event KV row. Values
+keep log-mono. Deliberate non-renames (semantically different): the
+"Hosts" target-section heading, "Related hosts", "managed hosts"
+counts, Isolate/Release Host action labels, SIEM's lowercase technical
+field identifiers. Sweep proof: no bare "Host" display label remains
+in components.
+
+Presentation audit across Endpoints / Response / SIEM / Detections /
+Incidents / Metrics tables: header treatment is uniform BY
+CONSTRUCTION (.data-thead th carries its own padding/size/background,
+outweighing per-surface utilities), and Response target tables share
+the Endpoints list's exact boundary string. One concrete drift fixed:
+Response's two hand-rolled count-pill class strings now consume the
+shared CountPill (ui.jsx). Deliberate non-change: body-cell density
+differs per surface (Endpoints inventory py-3 vs denser Response
+command tables) under the VD4 ruling.
+
+## X.5 Metrics card anatomy (VF4, VF6)
+
+Learning Review (title + Incident Grade label), Session performance
+(both card states), Post-Incident Review (both branches, normalized to
+t-section, hand-rolled card style replaced by the shared CARD_STYLE),
+and Mean Time to Resolve (also rounded-2xl -> rounded-xl) now carry
+their headings, metadata, copy, statistics, and empty states INSIDE
+their bordered containers -- one flat card per section, no nesting.
+Deliberate non-change: "Score summary" remains a group heading because
+it titles FOUR self-labeled cards; pulling it into any one card would
+mislabel the group. VF6 (owner): the page-level Reset Simulation
+control is gone from Metrics (Reset lives in the rail + avatar menu),
+and the outcome band's "N correct · N missed" wears the Environment
+status dot treatment verbatim (#6fa868/#b45858 dots, medium-ink count,
+neutral label).
+
+## X.6 Verification and the push authorization
+
+- Live Guided run (INC-2494, Event Logs Cleared on Workstation):
+  Endpoints list and all four Response target tables verified with
+  Hostname headers, shared boundaries, CountPills; 5 detections
+  triaged through the real UI controls; classified Defense Evasion and
+  submitted through the confirm dialog.
+- Metrics WITHOUT data: all three named sections render their headings
+  inside their cards with empty states. Metrics WITH submitted data:
+  outcome band (dot-treatment counts, no Reset control), Learning
+  Review detail inside the card (achievements, A/A/F rows, composite
+  C·70%), Session performance graded grid with the ring, MTTR chart
+  card, Score summary group, Post-Incident Review table with the
+  Defense Evasion / T1685.005 row. Grading meaning unchanged
+  (Response F·0% correctly reflects zero actions taken).
+- Landing: video loops continuously across cycles (X.2 measurements);
+  menu open/closed at 390 verified; headline + subheading at three
+  widths; zero console errors on /, /docs, /sim steady-state sweeps.
+- **Push authorization (owner, mid-run): "Let's push to git, as the
+  main, so its live on spectyr.dev."** This supersedes the pass's
+  standing do-not-merge / do-not-push rule. Executed after this
+  record: the owner's own working-tree asset update
+  (`spectyrvideo.mp4` modified, `spectyr_svg.svg` untracked) is
+  committed AS THE OWNER'S CHANGE so the deployed site matches the
+  locally verified state (the loop verdict in X.2 applies to exactly
+  this asset version); the branch merges to main with --no-ff per
+  repo convention; main pushes to origin (which was ~250 commits
+  behind, an ancestor -- a fast-forward push). The complete gate
+  battery runs green before the merge.
