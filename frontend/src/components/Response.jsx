@@ -30,8 +30,21 @@ import { DeviceGlyph, PlatformBadge, platformFor } from './icons';
 // stretching one). The five actionable groups below match the pinned
 // Guided hint copy. A service verb is response-vocabulary-v2 backlog
 // material; the group joins this workspace when its verb exists.
+// VD4 (visual correction section 5) re-flags the same deviation: the
+// correction's sketch lists Services again, and the group stays out for
+// the same still-standing reason.
 
-// Visual pass VG: card surface + StateChip from the shared module.
+// VD4 (visual correction section 5): ONE FLAT COMMAND WORKSPACE. The
+// large rounded card around each target category is retired. Each
+// category renders directly on the workspace surface as a section --
+// heading + count pill, then the table in the same minimal light table
+// boundary the Endpoints list uses (the shared light data-thead needs
+// one clean container edge for its rounded corners; that boundary is
+// the table's own, never a card around the section). Sections separate
+// by vertical spacing and a subtle divider. No card sits inside another
+// card; semantically different target types never merge into one table.
+
+// Visual pass VG: StateChip from the shared module.
 
 const shortTime = (iso) =>
   iso ? new Date(iso).toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
@@ -67,12 +80,27 @@ const PromotedChips = ({ rules }) => (rules && rules.length ? (
   </span>
 ) : null);
 
-const GroupCard = ({ title, count, children }) => (
-  <div className="rounded-xl overflow-hidden" style={CARD_STYLE}>
-    <div className="px-4 py-2.5 border-b border-[#eef1f4] flex items-center gap-2">
+// The flat target section (VD4): heading + count on the workspace
+// surface, content below; a subtle divider separates it from the
+// section above (suppressed when it opens the list).
+const TargetSection = ({ title, count, children }) => (
+  <section
+    data-testid="target-section"
+    className="pt-4 border-t border-[#e2e6ea] first:pt-0 first:border-t-0"
+  >
+    <div className="mb-2 flex items-center gap-2">
       <h3 className="t-subsection">{title}</h3>
       <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-[#57606a]">{count}</span>
     </div>
+    {children}
+  </section>
+);
+
+// The minimal light table boundary (the Endpoints-list treatment): the
+// table's own edge, not a section card.
+const TableSurface = ({ scroll = false, children }) => (
+  <div className={`bg-white border border-[#e2e6ea] rounded-xl overflow-x-auto ${
+    scroll ? 'max-h-96 overflow-y-auto' : ''}`}>
     {children}
   </div>
 );
@@ -228,10 +256,16 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
 
       {view === 'log' ? (
         <div>
-        {/* VC5: the log view's descriptive line stays with the list it
-            describes (the page summary itself lives in the AppHeader) */}
+        {/* VD4: the log is one flat section -- heading + count on the
+            workspace surface, then the single chronological table in the
+            minimal table boundary (no decorative card around it). VC5:
+            the descriptive line stays with the list it describes. */}
+        <div className="mb-2 flex items-center gap-2">
+          <h3 className="t-subsection">Response log</h3>
+          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-[#57606a]">{logNewestFirst.length}</span>
+        </div>
         <p className="t-body text-[#57606a] mb-2">Every response action this session, in order.</p>
-        <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-x-auto">
+        <TableSurface>
           <table className="w-full text-left text-sm">
             <thead className="data-thead">
               <tr>
@@ -257,7 +291,7 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
               ))}
             </tbody>
           </table>
-        </div>
+        </TableSurface>
         </div>
       ) : !activeIncidentId ? (
         <div className="rounded-xl p-8 text-center text-sm text-[#57606a]" style={CARD_STYLE}>
@@ -279,7 +313,8 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
           ) : (
             <>
               {hostRows.length > 0 && (
-                <GroupCard title="Hosts" count={hostRows.length}>
+                <TargetSection title="Hosts" count={hostRows.length}>
+                  <TableSurface>
                   <table className="w-full text-left text-sm">
                     <thead className="data-thead"><tr>
                       <th className="px-3 py-2.5 font-medium">Host</th>
@@ -317,11 +352,13 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                       ))}
                     </tbody>
                   </table>
-                </GroupCard>
+                  </TableSurface>
+                </TargetSection>
               )}
 
               {accounts.length > 0 && (
-                <GroupCard title="Accounts" count={accounts.length}>
+                <TargetSection title="Accounts" count={accounts.length}>
+                  <TableSurface>
                   <table className="w-full text-left text-sm">
                     <thead className="data-thead"><tr>
                       <th className="px-3 py-2.5 font-medium">Account</th>
@@ -357,19 +394,20 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                       ))}
                     </tbody>
                   </table>
-                </GroupCard>
+                  </TableSurface>
+                </TargetSection>
               )}
 
               {procRows.length > 0 && (
-                <GroupCard title="Processes" count={procRows.length}>
-                  <div className="px-3 py-2 border-b border-[#eef1f4]">
+                <TargetSection title="Processes" count={procRows.length}>
+                  <div className="mb-2">
                     <input value={procSearch} onChange={e => setProcSearch(e.target.value)}
                       placeholder="Search processes..." aria-label="Search processes"
-                      className="w-full sm:w-72 px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#1a2332] placeholder-[#8b949e] focus:outline-none focus:ring-2 focus:ring-[#101218]/20" />
+                      className="w-full sm:w-72 px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] bg-white text-[#1a2332] placeholder-[#8b949e] focus:outline-none focus:ring-2 focus:ring-[#101218]/20" />
                   </div>
-                  <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                  <TableSurface scroll>
                     <table className="w-full text-left text-sm">
-                      <thead className="data-thead"><tr>
+                      <thead className="data-thead sticky top-0 z-10"><tr>
                         <th className="px-3 py-2.5 font-medium whitespace-nowrap">Host</th>
                         <th className="px-3 py-2.5 font-medium whitespace-nowrap">PID</th>
                         <th className="px-3 py-2.5 font-medium">Process</th>
@@ -393,12 +431,13 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                         ))}
                       </tbody>
                     </table>
-                  </div>
-                </GroupCard>
+                  </TableSurface>
+                </TargetSection>
               )}
 
               {fileRows.length > 0 && (
-                <GroupCard title="Files" count={fileRows.length}>
+                <TargetSection title="Files" count={fileRows.length}>
+                  <TableSurface>
                   <table className="w-full text-left text-sm">
                     <thead className="data-thead"><tr>
                       <th className="px-3 py-2.5 font-medium whitespace-nowrap">Host</th>
@@ -426,11 +465,13 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                       ))}
                     </tbody>
                   </table>
-                </GroupCard>
+                  </TableSurface>
+                </TargetSection>
               )}
 
               {persistRows.length > 0 && (
-                <GroupCard title="Persistence" count={persistRows.length}>
+                <TargetSection title="Persistence" count={persistRows.length}>
+                  <TableSurface>
                   <table className="w-full text-left text-sm">
                     <thead className="data-thead"><tr>
                       <th className="px-3 py-2.5 font-medium whitespace-nowrap">Host</th>
@@ -460,7 +501,8 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                       ))}
                     </tbody>
                   </table>
-                </GroupCard>
+                  </TableSurface>
+                </TargetSection>
               )}
             </>
           )}

@@ -255,3 +255,59 @@ test('V9: no correctness, recommendation, or expected-count vocabulary anywhere 
   expect(text).not.toMatch(/\bremaining\b/i);
   expect(text).not.toMatch(/correct(ly)?\b/i);
 });
+
+// --- VD4 (visual correction section 5): the flat command workspace ----------
+
+test('VD4: target categories are flat sections -- no rounded card wraps a category, no card inside a card', async () => {
+  mockApi();
+  await renderResponse();
+  await screen.findByText('Hosts');
+  const sections = screen.getAllByTestId('target-section');
+  // the five actionable groups, in the ruled order, as flat sections
+  expect(sections.map(s => s.querySelector('h3').textContent))
+    .toEqual(['Hosts', 'Accounts', 'Processes', 'Files', 'Persistence']);
+  for (const s of sections) {
+    // the section itself sits on the workspace surface: never a card
+    expect(s.tagName).toBe('SECTION');
+    expect(s.className).not.toMatch(/rounded|shadow|bg-white/);
+    expect(s.getAttribute('style')).toBeNull();
+    // heading + count pill directly on the surface
+    expect(s.querySelector('h3.t-subsection')).not.toBeNull();
+    expect(s.querySelector('h3 + span').textContent).toMatch(/^\d+$/);
+    // inside: exactly ONE bordered container -- the minimal light table
+    // boundary holding the table -- and nothing rounded nests within it
+    const rounded = [...s.querySelectorAll('[class*="rounded-xl"]')];
+    expect(rounded).toHaveLength(1);
+    expect(rounded[0].querySelector(':scope > table')).not.toBeNull();
+    expect(rounded[0].querySelector('[class*="rounded-xl"]')).toBeNull();
+    // responsive: the boundary scrolls horizontally, the page never does
+    expect(rounded[0].className).toMatch(/overflow-x-auto/);
+    // the shared light table header survives the flattening
+    expect(rounded[0].querySelector('thead.data-thead, thead[class*="data-thead"]')).not.toBeNull();
+  }
+  // the Processes search field stays, on the surface above its table
+  const procs = sections[2];
+  expect(within(procs).getByLabelText('Search processes')).toBeInTheDocument();
+  expect(within(procs).getByLabelText('Search processes').closest('[class*="rounded-xl"]')).toBeNull();
+});
+
+test('VD4: the Response log is one flat chronological table, never a decorative card stack', async () => {
+  mockApi();
+  await renderResponse();
+  fireEvent.click(await screen.findByRole('button', { name: 'Response log' }));
+  expect(await screen.findByText('ACME-SVR02')).toBeInTheDocument();
+  // heading + count on the surface, then the single table
+  const heading = screen.getByRole('heading', { name: 'Response log' });
+  expect(heading.className).toMatch(/t-subsection/);
+  const tables = screen.getAllByRole('table');
+  expect(tables).toHaveLength(1);
+  // the table sits in the minimal boundary; NO rounded container above it
+  const boundary = tables[0].parentElement;
+  expect(boundary.className).toMatch(/border-\[#e2e6ea\]/);
+  expect(boundary.className).toMatch(/overflow-x-auto/);
+  let up = boundary.parentElement;
+  while (up) {
+    expect(/rounded-xl/.test(up.className || '')).toBe(false);
+    up = up.parentElement;
+  }
+});
