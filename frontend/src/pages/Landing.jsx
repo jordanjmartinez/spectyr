@@ -142,19 +142,27 @@ const Landing = () => {
       <div className="relative z-10 flex-1 flex flex-col justify-end px-4 sm:px-6 md:px-12 pb-8 md:pb-16">
         <div className="flex flex-col md:flex-row md:items-end gap-8">
           <div className="flex-1">
-            {/* Final polish (section 5): the hero is the heading and the
-                shared Start control alone -- the descriptive subheading is
-                deleted, not replaced, and the freed space stays open.
-                VF (section 3): the headline is the single line
-                "Investigate. Decide. Improve." -- one text node (no per-line
-                block spans, so narrow widths can never strand a duplicate
-                or clipped line), balanced wrapping where it must break. */}
+            {/* VF7 (owner mid-run instructions, superseding the section-3
+                and section-5 hero rulings): the headline reads "Learn SOC
+                Analysis Through Realistic Incidents." with the supplied
+                subheading beneath it. Both are single text nodes (no
+                per-line block spans, so narrow widths can never strand a
+                duplicate or clipped line); the headline wraps balanced.
+                The subheading deliberately carries NO blur entrance
+                animation: the owner reported it stuck blurry on mobile
+                (the blurFadeUp filter animation frozen mid-state), so it
+                renders statically and is always legible. */}
             <h1
-              className="animate-blur-fade-up text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold leading-[1.1] mb-6 md:mb-10"
+              className="animate-blur-fade-up text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold leading-[1.1] mb-4 md:mb-6 max-w-5xl"
               style={{ animationDelay: '300ms', fontFamily: "'IBM Plex Sans', sans-serif", letterSpacing: '-0.02em', textWrap: 'balance' }}
             >
-              Investigate. Decide. Improve.
+              Learn SOC Analysis Through Realistic Incidents.
             </h1>
+
+            <p className="text-base sm:text-lg md:text-xl text-gray-400 mb-6 md:mb-10 max-w-2xl">
+              Investigate alerts, follow the evidence, take response actions, and learn from
+              every decision.
+            </p>
 
             {/* CTA */}
             <div className="flex flex-wrap gap-3 sm:gap-4">
