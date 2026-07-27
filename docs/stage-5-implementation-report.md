@@ -1108,3 +1108,213 @@ Branch `stage-5-live-run-feedback`, tip **`3d41d1a`**. The working tree
 carries ONLY the two owner asset items (`spectyrvideo.mp4` modified,
 `spectyr_svg.svg` untracked), both byte-identical to their pre-pass
 hashes. NOT merged, NOT pushed. Stopped at the visual-polish checkpoint.
+
+---
+
+# Part V. Consolidated visual-polish amendment
+
+Cumulative with Part IV. Where this amendment conflicted with earlier
+dashboard or ATT&CK instructions, the amendment governs. Four
+concern-separated commits, `68d01e6..fa06099`, each landing green; no
+completed visual work was reset.
+
+## V.1 Amendment ruling applied
+
+The ATT&CK chart is **not** catalog coverage, **not** Enterprise
+framework coverage, and **not** session performance. It now represents
+the ATT&CK tactics of the **current active incident**, normalized
+against that incident's own strongest tactic. Part IV's catalog-coverage
+radar (VP11/VP14) is superseded; its verified denominator work survives
+only as retained mirror data, no longer displayed.
+
+## V.2 Removed scope furniture
+
+The full-width "All activity" container is gone from SIEM, Detections,
+Endpoints, and Response, with **no replacement bar**. Retired with it:
+`IncidentScopeBar.jsx`, `InvestigationContext.jsx`, the
+investigation-context suite, and every "Investigating INC-####" body
+line. Scope truth is preserved unchanged -- row filtering, the loading
+state, atomic replacement, and the failure path all behave as before;
+the scope-failure notice is now an inline alert with Retry (plus the
+last-successful-read sentence) instead of a bar. With no active
+incident each page uses its own truthful empty state; Response still
+shows "Select an incident to begin response."
+
+## V.3 Final functional page subtitles
+
+One source, `PAGE_SUBTITLE` in `uiCopy.js`:
+
+| Page | Subtitle |
+|---|---|
+| Incidents | Select and manage an investigation. |
+| SIEM | Search and inspect event data. |
+| Detections | Review detections and decide what is actionable. |
+| Endpoints | Inspect hosts, users, processes, and system activity. |
+| Response | Contain and remediate incident targets. |
+| Metrics | Review performance and learn from the investigation. |
+
+Decorative "ACME Corp:" branding is gone from every workspace heading;
+organization names remain in evidence, entities, and scenario content.
+
+## V.4 Incident-pill behavior
+
+`IncidentPill` renders the active-incident context **exactly once** per
+page, beside the functional subtitle: a compact mono INC tag, the title
+as readable text, and a severity badge. It is a status tag, never a
+container. The Incidents workspace deliberately shows no pill -- its
+own detail pane already names the selected incident. Plumbing: the
+Incidents workspace (which already polls the list) reports the
+selected card's observable summary up to the shell, which passes it to
+the other pages. No new request, no new endpoint field, no backend
+change.
+
+## V.5 Select Mode, before and after
+
+**Before**: "Select Mode", a required Your Name input, three
+illustrated gray cards (Guided / SOC Queue / Hardcore) with oversized
+ghost artwork.
+**After**: "Choose your experience" + "Select how much guidance you
+want during the investigation.", two compact radio rows (Guided --
+"Learn with immediate feedback and optional hints." / "No timer.";
+Hardcore -- "Investigate independently under time pressure." /
+"Feedback appears after submission."), radiogroup semantics, visible
+selected state and focus ring, one Continue button, responsive
+single-column. No inputs, no images, no invented identity. Guided
+still opens the answer-neutral catalog picker; Practice Another still
+lands on it directly.
+
+A session still needs a name field server-side (it is what marks a
+session active), so the product supplies its own generic **role**
+label, `ANALYST_LABEL = "Analyst"` -- never a fabricated person.
+
+## V.6 SOC Queue: removed vs retained
+
+**Removed (player-facing)**: the picker option, the Docs mode entry and
+its queue paragraph, and the visual tests.
+**Retained (dormant, deliberately)**: the `analyst` key in `MODE_LABEL`
+so a legacy session still labels correctly; the backend mode-universal
+loops in `test_event_disclosure.py` and `test_submission_gate.py`,
+which exercise `analyst` / `soc_queue` as NON-Guided modes and are
+frozen leak guards; and the Guided-only hint allow-list's non-Guided
+denial cases. Deleting any of these would expand the work past UI and
+navigation cleanup and would weaken a leak boundary, so per the
+inventory instruction they were left untouched. No engine code changed.
+
+## V.7 Incident ATT&CK profile formula
+
+```
+displayed(tactic) = mapped techniques in tactic
+                    / highest tactic technique count in THIS incident
+```
+
+Techniques are deduplicated by id within a tactic. The strongest tactic
+renders at 100%; absent tactics are exactly 0% with no artificial
+minimum. This shows the SHAPE of the current incident and is never
+described as framework coverage -- the card footer reads "Relative to
+the strongest tactic in this incident."
+
+Card: title "Incident ATT&CK profile", subtitle "Tactics represented in
+this investigation", one filled polygon (25% fill, 2.5px stroke,
+visible markers), five rings, canonical tactic order, concise labels
+with full names in tooltip and sr table, no tabs / selectors / expand /
+second series / animation. Truthful states replace any zero polygon:
+"Start an investigation to see its ATT&CK profile." and "No ATT&CK
+techniques are mapped to this incident." Tooltips expose tactic name,
+technique count, each technique id AND canonical name, and the relative
+percentage.
+
+Technique names come from the sha256-verified pinned v19.1 STIX dataset
+(22 ids: answer-key + pinned detection tags), stored as
+`technique_names` in the mirror and pinned by the backend gate, which
+asserts the id set exactly and every answer-key name byte-for-byte
+against `CANONICAL_TECHNIQUE_NAMES`.
+
+## V.8 Leak safety by mode
+
+The profile's source is the incident roster's **detection mitre tags**
+-- data already rendered on every detection detail in every mode. It is
+therefore NOT answer-key-derived, so **no mode requires a locked
+state** and Guided and Hardcore render identically before submission.
+The card cannot fetch (asserted structurally) and never reads grading,
+dispositions, or scenario labels. Recorded constraint: were the source
+ever changed to answer-key techniques, Hardcore before submission would
+have to show "ATT&CK profile available after submission." instead. No
+planted-marker or forbidden-answer boundary was touched.
+
+## V.9 Container heading scale
+
+`.t-subsection` (15px / Inter 600 / 1.3, sentence case, no tracking) is
+the one primary container heading, applied to Active investigation,
+Severity distribution, Environment status, Recent results, Incident
+ATT&CK profile, the Response target groups (Hosts, Accounts,
+Processes, Files, Persistence), and the Learning Review sections -- so
+the ATT&CK card no longer reads smaller than Recent results.
+Section 7 (Incidents = alert triangle) was already satisfied in VP16
+and stays pinned.
+
+## V.10 Changed files
+
+`components/ui.jsx` (PageIntro + IncidentPill), `uiCopy.js`
+(PAGE_SUBTITLE, retirement note), `Siem.jsx`, `Detections.jsx`,
+`Endpoints.jsx`, `Response.jsx`, `Incidents.jsx` (+ summary callback),
+`Analytics.jsx`, `pages/Dashboard.jsx` (activeIncident plumbing),
+`DifficultySelector.jsx` (rewritten), `pages/Docs.jsx`,
+`AttackRadar.jsx` (rewritten), `attackCatalog.json` / `.js`
+(technique_names + incidentProfile), `IncidentDashboard.jsx`,
+`LearningReview.jsx`, `index.css`, `backend/test_scenario_loader_v2.py`.
+Deleted: `IncidentScopeBar.jsx`, `InvestigationContext.jsx`,
+`investigation-context.test.js`.
+
+## V.11 Tests
+
+Frontend **36 suites / 325 tests**; backend **29 suites** (loader 65).
+New: `page-intro.test.js` (5). Rewritten: `attack-radar.test.js` (7,
+now the incident-profile battery), `difficulty-selector.test.js` (7).
+Retargeted: scope-truth, workbench-states, pivot-transitions,
+workbench-descent, workbench-cross-host (retired case-line assertions
+become absence assertions; every scope-behavior assertion kept),
+typography, incident-dashboard, detections, response-workspace.
+
+## V.12 Chrome evidence
+
+Fresh servers, new tab, Guided run `INC-4595` (log-clearing).
+Verified: Dashboard with no active incident (truthful ATT&CK empty
+state, no severity bars, "No managed hosts available."); the "Choose
+your experience" modal (two rows, no name field, no SOC Queue, no
+artwork, one Continue); Dashboard with the active incident (pill-free
+supporting column, severity bars 0/3/1/0, environment 1 host 100%, and
+the profile polygon drawn from real mappings); SIEM in the exact ruled
+hierarchy (title, subtitle, controls, query bar -- no identity card, no
+All activity); Detections (subtitle + queue directly, light table).
+**Zero console errors** across the walk.
+
+## V.13 Deviations and honest gaps
+
+1. **Polygon fullness is data-bound.** The amendment asks for a
+   visually substantial polygon; normalization already maximizes it
+   (strongest tactic = 100%). A sparse incident still reads as a
+   narrow shape -- the verified run mapped only 2 of 15 tactics, so the
+   polygon is a spike. Filling it further would require artificial
+   nonzero minimums, which the amendment forbids. Reported, not faked.
+2. **Ambient detections contribute tactics.** The profile counts every
+   roster detection's tag, including benign/ambient ones (whose tags
+   exist precisely so mitre presence cannot separate benign from
+   authored). The card claims only "tactics represented in this
+   investigation", which stays true; it never asserts they are the
+   attack.
+3. **Narrow-width Chrome verification still not completed.**
+   `resize_window` reports success but the rendered viewport stays at
+   desktop width in this session. Responsive behavior remains evidenced
+   by class structure and DOM order only. Carried forward from Part IV.
+4. **The Part IV unexplained Classification F remains open**, unchanged
+   by this amendment (no scoring path was touched).
+5. The Part IV catalog-coverage denominators and `coverageByTactic`
+   remain in the mirror and its gate though the UI no longer shows
+   them -- retained deliberately as verified data rather than deleted.
+
+## V.14 Final state
+
+Branch `stage-5-live-run-feedback`, tip recorded in the closing
+message. Working tree carries ONLY the two owner asset items, both
+byte-identical to their pre-pass hashes. NOT merged, NOT pushed.
+Stopped at the consolidated visual-polish checkpoint.
