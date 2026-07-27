@@ -62,7 +62,7 @@ const Docs = () => {
       <div className="lg:hidden sticky top-0 z-20 flex items-center justify-between px-5 py-3.5 bg-[#101218] border-b border-white/10 text-white">
         <Link to="/" className="flex items-center gap-2.5">
           <img src="/spectyr_logo.png" alt="" className="h-9 w-9 object-contain" />
-          <span className="text-lg font-semibold" style={{ fontFamily: "'Space Grotesk', 'Inter', sans-serif", letterSpacing: '0.06em' }}>SPECTR</span>
+          <span className="brand-wordmark text-lg">SPECTR</span>
         </Link>
         <Link
           to="/sim"
@@ -78,7 +78,7 @@ const Docs = () => {
         <aside className="hidden lg:flex flex-col shrink-0 w-64 sticky top-0 h-screen bg-[#101218] text-white px-8 py-12">
           <Link to="/" className="flex items-center gap-3 mb-12">
             <img src="/spectyr_logo.png" alt="" className="h-14 w-14 object-contain" />
-            <span className="text-xl font-semibold" style={{ fontFamily: "'Space Grotesk', 'Inter', sans-serif", letterSpacing: '0.06em' }}>SPECTR</span>
+            <span className="brand-wordmark text-xl">SPECTR</span>
           </Link>
 
           <nav className="flex flex-col gap-2">

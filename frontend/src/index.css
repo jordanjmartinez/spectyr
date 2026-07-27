@@ -78,6 +78,23 @@ body {
 .t-subsection { font-size: 15px; font-weight: 600; line-height: 1.3;
                 letter-spacing: normal; text-transform: none; color: #1a2332; }
 
+/* VC2 (header correction section 3): the SPECTR wordmark's display face.
+   LOGO ONLY -- this class exists solely for the visible SPECTR lockups
+   and must never spread to page titles, navigation, headings, buttons,
+   cards, tables, charts, modals, body copy, or technical values (those
+   stay Inter / JetBrains Mono). Bank Gothic itself is a commercial face
+   with no license in this project, so it is NOT bundled or distributed;
+   the wordmark uses Orbitron (SIL OFL 1.1), the closest Bank-Gothic-like
+   wide square-geometric display face already served by the approved
+   Google Fonts link -- no new dependency, no font files added. Medium
+   (500) weight with restrained tracking; the face is wide by design. */
+.brand-wordmark {
+  font-family: 'Orbitron', 'Inter', sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 code {
   font-family: 'JetBrains Mono', sans-serif;
 }

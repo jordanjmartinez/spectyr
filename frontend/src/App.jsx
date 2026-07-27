@@ -68,8 +68,9 @@ function BackendGate({ children }) {
     return (
       <div className="min-h-screen bg-[#0d1117] flex flex-col items-center justify-center text-white">
         <img src="/spectyr_logo.png" alt="" aria-hidden="true" className="h-32 w-32 mb-6 animate-pulse" />
-        {/* VB2: the SPECTR wordmark (visible branding only) */}
-        <h1 className="text-4xl mb-4" style={{ fontFamily: "'Space Grotesk', 'Inter', sans-serif", letterSpacing: '0.08em', fontWeight: 600 }}>
+        {/* VC2: the SPECTR wordmark in the shared brand display face
+            (visible branding only) */}
+        <h1 className="brand-wordmark text-4xl mb-4">
           SPECTR
         </h1>
         <p className="text-gray-400 text-lg mb-8">{LOADING_MESSAGES[messageIndex]}</p>
@@ -111,7 +112,7 @@ function AppContent() {
         <footer className="bg-[#0d1117] px-4 sm:px-6 py-4 flex flex-col min-[674px]:flex-row items-center min-[674px]:justify-between gap-2">
           <div className="flex items-center gap-2">
             <img src="/spectyr_logo.png" alt="" aria-hidden="true" className="h-8 w-8 object-contain" />
-            <span className="text-base text-white" style={{ fontFamily: "'Space Grotesk', 'Inter', sans-serif", letterSpacing: '0.06em', fontWeight: 600 }}>SPECTR</span>
+            <span className="brand-wordmark text-base text-white">SPECTR</span>
             <span className="text-sm text-gray-500 hidden sm:inline">|</span>
             <span className="text-sm text-white hidden sm:inline">SOC Simulation Training</span>
           </div>

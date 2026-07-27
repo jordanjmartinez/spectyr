@@ -15,11 +15,9 @@ const Navbar = () => {
           aria-hidden="true"
           className="h-8 w-8 sm:h-9 sm:w-9 object-contain"
         />
-        {/* VB2: the SPECTR wordmark (visible branding only) */}
-        <span
-          className="text-xl sm:text-2xl font-semibold text-white hidden min-[460px]:inline"
-          style={{ fontFamily: "'Space Grotesk', 'Inter', sans-serif", letterSpacing: '0.06em' }}
-        >
+        {/* VC2: the SPECTR wordmark in the shared brand display face
+            (visible branding only) */}
+        <span className="brand-wordmark text-xl sm:text-2xl text-white hidden min-[460px]:inline">
           SPECTR
         </span>
       </div>
