@@ -2259,3 +2259,148 @@ Branch `stage-5-live-run-feedback`; this pass is VE1-VE6 on top of
 NOT merged, NOT pushed, no new stage begun. The complete gate battery
 (backend + frontend) was run at the tip and recorded green in the VE6
 commit. Stopped at the final visual-polish checkpoint.
+
+# Part X. Visual pass continuation: loop investigation, shell consistency, terminology, Metrics anatomy (VF1-VF8)
+
+Owner instruction 2026-07-27 (six concerns plus mid-run instructions),
+executed on `stage-5-live-run-feedback` on top of `3d2eae0`. During the
+pass the owner also instructed, mid-run: the Metrics Reset removal and
+status-dot counts (VF6), the hero headline and subheading (VF7,
+superseding this pass's own section-3 headline), and finally the merge
+to main and push to origin so the state deploys to spectyr.dev
+(superseding the standing do-not-merge / do-not-push checkpoint rule
+for this pass; recorded in X.6).
+
+## X.1 Commit ledger
+
+| Commit | Concern |
+|---|---|
+| `69926b8` VF1 | Mobile menu joins the shared #101218 shell surface (blue-cast gray-900 retired) |
+| `14120ed` VF2 | Headline "Investigate. Decide. Improve." (later superseded by VF7) |
+| `7dd0439` VF3 | Hostname is the canonical field label (Endpoints vocabulary) |
+| `b4e0daf` VF4 | Metrics sections follow the Dashboard card anatomy |
+| `7984304` VF5 | Table-presentation audit; the one CountPill |
+| `4a85a36` VF6 | Owner mid-run: Metrics Reset removed; outcome counts wear the status-dot treatment |
+| `802e5f6` VF7 | Owner mid-run: hero headline "Learn SOC Analysis Through Realistic Incidents." + static subheading |
+| VF8 (this commit) | This record; then the owner-authorized merge + push |
+
+## X.2 Landing video loop: root cause measured, asset correction required
+
+Measured in Chrome against the owner's current working-tree asset
+(`spectyrvideo.mp4`, 5.042s, 1508x1372, presented at 20fps):
+
+- **Boundary frames differ by a full pose.** Mean absolute pixel
+  difference first-vs-last = 13.41 (9.95% of pixels differ by >30),
+  versus 9.17 for a third of a second of the animation's own ordinary
+  motion. The difference map lights the ENTIRE silhouette: lean, every
+  drape fold, and the ground shadow. The final frame does not return
+  to the opening pose.
+- **Playback adds no material gap.** requestVideoFrameCallback across
+  two native loop wraps: median inter-frame delta 50ms (20fps), wrap
+  deltas 66.7/66.8ms -- one extra display refresh, imperceptible. No
+  poster attribute exists, geometry is fixed, the file is local and
+  fully buffered; playback across multiple cycles stays continuous
+  (currentTime sampling: 0.38 -> 4.43, wrap, 0.38 -> 4.41, wrap), no
+  errors, no black flash.
+
+**Verdict: the jump is the asset, and no honest playback-side fix
+exists.** A crossfade would double-expose two different poses (the
+forbidden ghosting), reverse/boomerang playback changes the artwork
+and stutters, and duplicate video nodes are excluded. The asset was
+NOT altered. **Required smallest correction: re-export the animation
+so the final frame returns to the exact opening pose (same lean, drape
+configuration, and ground-shadow position at t=0 and t=end); any
+export whose boundary frames match makes the existing native-loop
+markup seamless with no code change.**
+
+## X.3 Mobile navigation surface (VF1) and hero (VF2 -> VF7)
+
+The expanded landing menu was the one surface on Tailwind's blue-cast
+palette (bg-gray-900/95, border-gray-800, hover gray-800/50). It now
+sits on the shared shell tone (#101218/95 over the existing blur) with
+white/10 dividers and white/5 hover, and its top offset tracks the
+nav's real height (72px, 88px at md), so open/closed surfaces stay
+flush. Verified live at 390px: computed rgba(16,18,24,0.95), no blue
+cast, no flash, desktop nav untouched.
+
+The hero: VF2 set "Investigate. Decide. Improve." per the pass
+instruction; the owner then ruled the final headline mid-run (VF7):
+**"Learn SOC Analysis Through Realistic Incidents."** with the
+subheading **"Investigate alerts, follow the evidence, take response
+actions, and learn from every decision."** Both are single text nodes
+(no per-line spans -- no width can strand a duplicated or clipped
+line); the headline wraps balanced under a max-w-5xl measure (two
+lines at desktop, three at 390). The subheading deliberately carries
+NO blur entrance animation: the owner reported the old subheading
+stuck blurry on mobile (the blurFadeUp filter animation frozen
+mid-state), so it renders statically and is always legible. Verified
+at wide desktop, 1366, and 390: balanced wrapping, crisp subheading,
+zero horizontal overflow, no detached strip.
+
+## X.4 Hostname terminology (VF3) and table presentation (VF5)
+
+Endpoints is the vocabulary source of truth (`Hostname`). Renamed
+where the displayed field IS a machine hostname: the Response
+workspace's four target-table column headers (Hosts, Processes, Files,
+Persistence) and the DetectionDetail triggering-event KV row. Values
+keep log-mono. Deliberate non-renames (semantically different): the
+"Hosts" target-section heading, "Related hosts", "managed hosts"
+counts, Isolate/Release Host action labels, SIEM's lowercase technical
+field identifiers. Sweep proof: no bare "Host" display label remains
+in components.
+
+Presentation audit across Endpoints / Response / SIEM / Detections /
+Incidents / Metrics tables: header treatment is uniform BY
+CONSTRUCTION (.data-thead th carries its own padding/size/background,
+outweighing per-surface utilities), and Response target tables share
+the Endpoints list's exact boundary string. One concrete drift fixed:
+Response's two hand-rolled count-pill class strings now consume the
+shared CountPill (ui.jsx). Deliberate non-change: body-cell density
+differs per surface (Endpoints inventory py-3 vs denser Response
+command tables) under the VD4 ruling.
+
+## X.5 Metrics card anatomy (VF4, VF6)
+
+Learning Review (title + Incident Grade label), Session performance
+(both card states), Post-Incident Review (both branches, normalized to
+t-section, hand-rolled card style replaced by the shared CARD_STYLE),
+and Mean Time to Resolve (also rounded-2xl -> rounded-xl) now carry
+their headings, metadata, copy, statistics, and empty states INSIDE
+their bordered containers -- one flat card per section, no nesting.
+Deliberate non-change: "Score summary" remains a group heading because
+it titles FOUR self-labeled cards; pulling it into any one card would
+mislabel the group. VF6 (owner): the page-level Reset Simulation
+control is gone from Metrics (Reset lives in the rail + avatar menu),
+and the outcome band's "N correct · N missed" wears the Environment
+status dot treatment verbatim (#6fa868/#b45858 dots, medium-ink count,
+neutral label).
+
+## X.6 Verification and the push authorization
+
+- Live Guided run (INC-2494, Event Logs Cleared on Workstation):
+  Endpoints list and all four Response target tables verified with
+  Hostname headers, shared boundaries, CountPills; 5 detections
+  triaged through the real UI controls; classified Defense Evasion and
+  submitted through the confirm dialog.
+- Metrics WITHOUT data: all three named sections render their headings
+  inside their cards with empty states. Metrics WITH submitted data:
+  outcome band (dot-treatment counts, no Reset control), Learning
+  Review detail inside the card (achievements, A/A/F rows, composite
+  C·70%), Session performance graded grid with the ring, MTTR chart
+  card, Score summary group, Post-Incident Review table with the
+  Defense Evasion / T1685.005 row. Grading meaning unchanged
+  (Response F·0% correctly reflects zero actions taken).
+- Landing: video loops continuously across cycles (X.2 measurements);
+  menu open/closed at 390 verified; headline + subheading at three
+  widths; zero console errors on /, /docs, /sim steady-state sweeps.
+- **Push authorization (owner, mid-run): "Let's push to git, as the
+  main, so its live on spectyr.dev."** This supersedes the pass's
+  standing do-not-merge / do-not-push rule. Executed after this
+  record: the owner's own working-tree asset update
+  (`spectyrvideo.mp4` modified, `spectyr_svg.svg` untracked) is
+  committed AS THE OWNER'S CHANGE so the deployed site matches the
+  locally verified state (the loop verdict in X.2 applies to exactly
+  this asset version); the branch merges to main with --no-ff per
+  repo convention; main pushes to origin (which was ~250 commits
+  behind, an ancestor -- a fast-forward push). The complete gate
+  battery runs green before the merge.
