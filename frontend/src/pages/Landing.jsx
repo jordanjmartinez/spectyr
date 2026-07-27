@@ -144,13 +144,16 @@ const Landing = () => {
           <div className="flex-1">
             {/* Final polish (section 5): the hero is the heading and the
                 shared Start control alone -- the descriptive subheading is
-                deleted, not replaced, and the freed space stays open. */}
+                deleted, not replaced, and the freed space stays open.
+                VF (section 3): the headline is the single line
+                "Investigate. Decide. Improve." -- one text node (no per-line
+                block spans, so narrow widths can never strand a duplicate
+                or clipped line), balanced wrapping where it must break. */}
             <h1
               className="animate-blur-fade-up text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold leading-[1.1] mb-6 md:mb-10"
-              style={{ animationDelay: '300ms', fontFamily: "'IBM Plex Sans', sans-serif", letterSpacing: '-0.02em' }}
+              style={{ animationDelay: '300ms', fontFamily: "'IBM Plex Sans', sans-serif", letterSpacing: '-0.02em', textWrap: 'balance' }}
             >
-              <span className="block">Triage Real Alerts.</span>
-              <span className="block">Build Real Instincts.</span>
+              Investigate. Decide. Improve.
             </h1>
 
             {/* CTA */}
