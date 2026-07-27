@@ -1498,3 +1498,212 @@ Branch `stage-5-live-run-feedback`; tip recorded in the closing message.
 Working tree carries ONLY the two owner asset items, both byte-identical
 to their pre-pass hashes. NOT merged, NOT pushed. Stopped at the
 consolidated visual-polish checkpoint.
+
+# Part VII. The inline application header and the SPECTR lockup corrections
+
+Cumulative with Parts IV-VI. Six concern-separated commits — `f044f00`
+(VC1), `bb8e711` (VC2), `0ce618f` (VC3), `fd057d4` (VC4), `54142d7`
+(VC5), `d49e51a` (VC6) — plus this record. Frontend presentation only:
+no backend, scoring, grading, roster, world, or SIEM semantics were
+touched; no internal identifier was renamed; the two owner assets were
+not touched.
+
+## VII.1 The unified inline-header ruling (VC1, superseding VP16's capsule)
+
+**Before**: two disconnected heading areas — the small sidebar brand
+label and the current page title inside a separate rounded black
+container (`rounded-xl bg-[#101218]`, white ink override, dark border
+box) floating in the padded content flow.
+
+**After**: ONE shell row. The sidebar brand cell and the AppHeader are
+two cells of the same fixed-height row, separated only by the sidebar
+boundary, each closed by its own subtle divider (`border-white/10` on
+the rail, `#e2e6ea` on the light cell). The header spans the main
+column edge-to-edge; tab content moved into a padded wrapper so the
+title left-aligns with page content. The title keeps the existing Inter
+`t-page` token with its own light-surface ink; the real avatar menu is
+unchanged at the far right (as a dark coin on the light surface, the
+same `#101218`/`#1e2330` treatment as the primary button). Height is
+fixed, so navigating the seven workspaces never shifts the shell. The
+`surface-system` guard was rewritten from "the dark header keeps its
+outline" to "the header is the light inline cell" — a deliberate guard
+update enforcing the superseding ruling, not a loosening.
+
+## VII.2 Wordmark display face: selection and licensing (VC2)
+
+**Availability result**: Bank Gothic itself is a commercial face with
+no license in this project — NOT bundled, added, or distributed.
+Inventory of the already-approved Google Fonts link found Orbitron
+(SIL OFL 1.1) the closest Bank-Gothic-like face already served: wide
+square-geometric uppercase construction, technical without being
+gamer-styled, with a real medium weight — which Aldrich (400 only)
+lacks and Space Grotesk (VB2's grotesque) is not. **Selected: Orbitron
+500, 0.04em tracking, uppercase, line-height 1** (LH added in VC3), as
+the single `.brand-wordmark` rule in `index.css` carrying the selection
+and licensing note. No new dependency; `src/fonts/` still contains only
+the four JetBrains Mono binaries. Chrome DevTools confirmed the face
+genuinely renders (computed `font-family: Orbitron` + `fonts.check`
+true) — no Inter fallback in play.
+
+**Scope**: LOGO ONLY. A permanent scope guard walks the source tree:
+the face name appears nowhere outside the one CSS rule, and the brand
+class appears only in the known lockup files, never outnumbering SPECTR
+renders. Inter remains the product UI font (body stack untouched,
+`t-page` token untouched at 26px/650) and JetBrains Mono remains the
+technical-value face (`@font-face` set, `.log-mono`, `.log-detail`,
+`code` all byte-untouched) — confirmed by the typography and brand
+guards plus live computed styles.
+
+## VII.3 The size-difference investigation (final correction section 2, reported before editing)
+
+Measured live before any edit (this profile runs an 18px root; 16px
+figures in parentheses):
+
+| Surface | Ghost | Wordmark | Line-height | Cause |
+|---|---|---|---|---|
+| Sim rail (VC2 state) | 32×32 px-pinned | Orbitron 28px | 28px (`leading-none`) | px pins |
+| Docs sidebar | 63×63 (56×56) `h-14` | Orbitron 22.5px (20px) `text-xl` | 31.5px (default) | rem nav-label tokens |
+| Docs mobile bar | 40.5 (36) `h-9` | Orbitron 20.25px (18px) `text-lg` | 31.5px (default) | rem nav-label tokens |
+
+Same face/weight/tracking token everywhere; `max-width: 100%` present
+but never binding; flex-shrink 1 on the Docs sides but never squeezed;
+no overflow, clipping, or transform involved. **Root cause: divergent
+authored size classes** — rem label tokens in Docs vs px pins in the
+app — plus inconsistent line-heights. No random font-size compensation
+was applied anywhere.
+
+## VII.4 One shared BrandLockup (VC3-VC6 cumulative)
+
+`components/BrandLockup.jsx` is now the ONE lockup, rendered by the sim
+sidebar brand cell and BOTH Docs shells: ghost `h-[72px] w-[72px]` +
+wordmark `.brand-wordmark text-[30px]`, both px-fixed and `shrink-0`,
+`max-w-none` (defusing the preflight img max-width), no transform
+scaling, no max-height, no clipping, white ink baked in (every shell
+lockup sits on the `#101218` rail), decorative mark + text-carried
+name. Fit came from reducing internal padding (sim cell `px-2 lg:px-3`;
+the Docs aside's `px-8` moved onto its nav/action rows so the lockup
+row runs `px-4`), never from shrinking the logo or forking per-shell
+sizes.
+
+The ghost size walked under live owner direction: 40px (VC3 ruling
+band) -> **80px** (VC4: "at least double its size right now" — exactly
+double) -> **72px** (VC6: "a little too big now, maybe just a tad bit
+smaller"). The 30px wordmark ruling never moved.
+
+**Main header surface (VC3)**: the header cell moved from the gray
+workspace tint to the same pure white surface as the primary cards
+(`bg-white`, verified live as `rgb(255, 255, 255)`), one subtle bottom
+border, no black capsule, same height as the brand cell.
+
+## VII.5 Page summary under the section header (VC5)
+
+Owner instruction applied globally: the functional page summary renders
+on its own line directly beneath the current page title, inside the
+unified header (one stack, fed per-tab from the unchanged shared
+`PAGE_SUBTITLE` copy map). `PageIntro` keeps ONLY the incident pill and
+page controls (rendering nothing with neither); Response's log view
+keeps its view-specific line as a caption attached to the log list; the
+Dashboard tab has no summary entry and renders the title alone. Guards:
+the summary is pinned as the h1's next sibling in the header, and the
+pages are pinned NOT to render it.
+
+## VII.6 Landing-navbar gap discovered and closed (VC3)
+
+The landing page renders its own hero navbar; the shared `Navbar.jsx`
+that VB2 restyled mounts only on the legacy `/analytics` route, so the
+visible landing wordmark still read "Spectyr" in IBM Plex Sans. It now
+joins the shared brand treatment, text-only at its hero scale (the
+page's 3D ghost is its mark). VB2's Part VI.6 claim ("the same
+treatment follows on ... the landing navbar") described the shared
+component, not the rendered surface — recorded here as a corrected
+record rather than silently amended.
+
+## VII.7 Shell geometry after the corrections
+
+Row height 96px on both cells (VC4; supersedes the correction-1
+"approximately 72-76px" target — the doubled mark cannot live in a 72px
+row; flagged, not silent). Sim rail `w-24 lg:w-72` (was `w-16
+lg:w-56`); Docs aside `w-72` (was `w-64`). Narrow behavior: the
+collapsed sim rail keeps the full-size ghost (wordmark hidden, the
+sanctioned reduction); the Docs mobile bar keeps the 80->72px ghost and
+yields the wordmark below 480px where ghost + wordmark + Start Sim
+exceed the viewport.
+
+## VII.8 Changed files
+
+`components/BrandLockup.jsx` (new), `components/AppHeader.jsx`,
+`components/ui.jsx` (PageIntro), `pages/Dashboard.jsx` (shell + brand
+cell + subtitle wiring), `pages/Docs.jsx` (both shells + aside
+padding), `pages/Landing.jsx` (hero wordmark), `App.jsx` (splash +
+footer wordmarks), `components/Navbar.jsx` (shared-navbar wordmark),
+`components/{Siem,Detections,Endpoints,Incidents,Analytics,Response}.jsx`
+(subtitle removal; Response log caption), `index.css`
+(`.brand-wordmark`). Cumulative: 19 files, +287/-126.
+
+## VII.9 Tests
+
+Frontend **38 suites / 341 tests** (net +2: the face-scope walk and the
+component-size guard; several rewritten to the superseding rulings —
+`brand-lockup` restructured around the shared component,
+`surface-system` pins the light 96px white cell, `app-header` pins the
+title+summary stack, `page-intro` pins header-only subtitles). Backend
+suites untouched and green in the full battery (`run_gates.py --all`,
+halt-on-failure, ALL GREEN — baseline run, per-commit hook runs, and
+the closing run at the tip).
+
+## VII.10 Chrome and responsive evidence
+
+Desktop (all seven primary pages walked): wordmark reads SPECTR in
+Orbitron on every shell; one aligned header row, constant height across
+navigation; no black capsule, no duplicate titles; pure white header
+cell; live per-surface metrics — sim rail ghost 72×72, wordmark
+Orbitron 30px / LH 30px, width 150.8px; Docs sidebar identical 72×72 /
+30px / LH 30; `scrollWidth == clientWidth` (no clipping) on every
+lockup; brand and header cells both exactly 96px; title-baseline delta
+~1px; also verified at a forced 16px root (identical px metrics, still
+unclipped).
+
+Narrow: the `resize_window` limitation recorded in VI.11.5 was BYPASSED
+this pass with fixed-width same-origin iframes (media queries evaluate
+against the iframe viewport): at 420px the sim shell keeps the 72px
+ghost centered on the collapsed rail, the page title and avatar visible
+and usable, no second title bar, no wrap; at 700px the Docs mobile bar
+renders the identical full-size lockup, unclipped. The VI.11.5
+carried-forward gap is closed by method.
+
+Behavior: a full Guided run started live (mode dialog -> catalog ->
+random -> drip -> INC-3766 active with 7 detections; incident workspace
+briefing, classification controls, related hosts/accounts;
+incident-scoped Endpoints with three online hosts). **Zero console
+errors** across every page and state checked.
+
+## VII.11 Deviations and honest notes
+
+1. **Row height 96px vs the correction-1 "72-76px" target** — forced by
+   the owner's VC4 doubling; flagged in the VC4 commit and here.
+2. **Rail/aside widths grew** (`w-24/w-72`, Docs `w-72`) — same
+   forcing; every page's content column narrows accordingly.
+3. **Docs mobile bar hides the wordmark below 480px** — the same
+   genuinely-required reduction rule as the collapsed sim rail.
+4. **The docs prose boundary stands**: "How Spectyr Works" + its
+   opening paragraph, the footer copyright line, and the document
+   `<title>` still read "Spectyr", awaiting the owner ruling recorded
+   in VI.11.4.
+5. **Environmental incident during verification**: two backend
+   processes from different sessions were found sharing port 5000
+   (split-brain session universes made a Guided run look stalled). Both
+   were killed and one relaunched; the rerun behaved perfectly. No code
+   implication.
+6. **VB2's landing-navbar claim corrected** (VII.6) — the treatment now
+   actually renders on the landing surface.
+7. The Part IV Classification F anomaly and the VI.11.1 populated
+   Evidence-activity gap remain open and untouched here.
+
+## VII.12 Final state
+
+Branch `stage-5-live-run-feedback`, tip `d49e51a` (VC1-VC6 on top of
+`9de957e`) plus this docs-only record. Working tree carries ONLY the
+two owner asset items (`frontend/public/videos/spectyrvideo.mp4`
+modified, `frontend/public/spectyr_svg.svg` untracked), untouched by
+this pass. NOT merged, NOT pushed. Full battery ALL GREEN at the tip.
+Stopped at the consolidated visual-polish checkpoint.
