@@ -9,6 +9,15 @@ import BrandLockup from '../components/BrandLockup';
 // mechanics, Analytics destination, pre-submit reveals) is gone. The
 // standing copy guards apply: no em dashes, no "SOC Queue", no
 // report-workflow vocabulary, and the old product name never renders.
+//
+// Docs shell (final polish, section 3): ONE dark documentation surface on
+// the shared #101218 chrome tone -- the white marketing canvas is
+// retired. Flat two-column layout: left documentation navigation, a
+// subtle white/10 divider, and the reading column. The 68px shell row,
+// the shared BrandLockup, Inter prose, and log-mono technical values are
+// unchanged; no decorative cards around ordinary sections. Below lg the
+// sidebar yields to the 68px top bar plus a horizontal section strip so
+// navigation survives narrow widths.
 const SECTIONS = [
   { id: 'getting-started', label: 'Getting Started' },
   { id: 'how-spectr-works', label: 'How Spectr Works' },
@@ -21,9 +30,9 @@ const SECTIONS = [
 ];
 
 const Section = ({ id, title, children }) => (
-  <section id={id} className="scroll-mt-24 mt-16">
-    <h2 className="text-2xl font-medium text-[#1a2332] mb-5">{title}</h2>
-    <div className="space-y-4 text-[#57606a] text-base leading-relaxed">{children}</div>
+  <section id={id} className="scroll-mt-36 lg:scroll-mt-24 mt-16">
+    <h2 className="text-2xl font-medium text-white mb-5">{title}</h2>
+    <div className="space-y-4 text-[#9ca3af] text-base leading-relaxed">{children}</div>
   </section>
 );
 
@@ -66,7 +75,7 @@ const Docs = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white text-[#1a2332]" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-screen bg-[#101218] text-white">
       {/* Mobile top bar */}
       {/* VC3: the shared full-size BrandLockup (same component and size
           as the app shell -- no smaller Docs variant). VD6: the bar is
@@ -88,6 +97,28 @@ const Docs = () => {
         </Link>
       </div>
 
+      {/* Mobile section navigation: a horizontal strip under the shell
+          bar, so the documentation stays navigable without the sidebar */}
+      <nav
+        aria-label="Documentation sections"
+        className="lg:hidden sticky top-[68px] z-10 bg-[#101218]/95 backdrop-blur border-b border-white/10 overflow-x-auto scrollbar-hide"
+      >
+        <div className="flex items-center gap-5 px-4 py-2.5 w-max">
+          {SECTIONS.map((s) => (
+            <a
+              key={s.id}
+              href={`#${s.id}`}
+              onClick={(e) => goTo(e, s.id)}
+              className={`text-sm whitespace-nowrap transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 rounded-sm ${
+                active === s.id ? 'text-white font-medium' : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              {s.label}
+            </a>
+          ))}
+        </div>
+      </nav>
+
       <div className="flex">
         {/* Sidebar */}
         {/* VC3: the aside's horizontal padding moves off the shell so the
@@ -95,20 +126,23 @@ const Docs = () => {
             dimensions preserved); nav and the action keep the original
             px-8 inset. VD6: the brand cell is the same fixed 68px shell
             row as the sim rail, flush at the top (the aside's former top
-            padding is removed first, per the ruling), lockup centered. */}
-        <aside className="hidden lg:flex flex-col shrink-0 w-72 sticky top-0 h-screen bg-[#101218] text-white pb-12">
+            padding is removed first, per the ruling), lockup centered.
+            The aside's right edge is the two-column divider. */}
+        <aside className="hidden lg:flex flex-col shrink-0 w-72 sticky top-0 h-screen bg-[#101218] text-white pb-12 border-r border-white/10">
           <Link to="/" className="flex items-center h-[68px] mb-12 px-4">
             <BrandLockup />
           </Link>
 
-          <nav className="flex flex-col gap-2 px-8">
+          <nav aria-label="Documentation sections" className="flex flex-col gap-1 px-8">
             {SECTIONS.map((s) => (
               <a
                 key={s.id}
                 href={`#${s.id}`}
                 onClick={(e) => goTo(e, s.id)}
-                className={`text-sm transition-colors ${
-                  active === s.id ? 'text-white font-medium' : 'text-gray-400 hover:text-white'
+                className={`text-sm py-1 pl-3 border-l-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 rounded-sm ${
+                  active === s.id
+                    ? 'border-white text-white font-medium'
+                    : 'border-transparent text-gray-400 hover:text-white'
                 }`}
               >
                 {s.label}
@@ -126,12 +160,12 @@ const Docs = () => {
         </aside>
 
         {/* Content */}
-        <main className="flex-1 min-w-0 px-6 sm:px-10 lg:px-20 py-14 lg:py-24">
+        <main className="flex-1 min-w-0 px-6 sm:px-10 lg:px-20 py-14 lg:py-20">
           <div className="max-w-2xl">
-            <h1 className="text-5xl sm:text-6xl font-light tracking-tight text-[#1a2332] mb-8">
+            <h1 className="text-5xl sm:text-6xl font-light tracking-tight text-white mb-8">
               Spectr
             </h1>
-            <div className="space-y-4 text-[#57606a] text-lg leading-relaxed">
+            <div className="space-y-4 text-[#9ca3af] text-lg leading-relaxed">
               <p>
                 Spectr is a SOC investigation simulator. Choose Guided or Hardcore, investigate a
                 single incident across Detections, SIEM, Endpoints, and Response, select your
@@ -152,8 +186,8 @@ const Docs = () => {
               </p>
               <p>
                 The sidebar moves between workspaces: Dashboard, Incidents, SIEM, Detections,
-                Endpoints, Response, and Metrics. Keys <span className="log-mono">1</span> through{' '}
-                <span className="log-mono">7</span> switch between them.
+                Endpoints, Response, and Metrics. Keys <span className="log-mono text-[#e6edf3]">1</span> through{' '}
+                <span className="log-mono text-[#e6edf3]">7</span> switch between them.
               </p>
             </Section>
 
@@ -177,7 +211,7 @@ const Docs = () => {
 
             <Section id="guided-and-hardcore" title="Guided and Hardcore">
               <div>
-                <p className="text-[#1a2332] font-medium mb-1">Guided</p>
+                <p className="text-white font-medium mb-1">Guided</p>
                 <p>
                   Pick one scenario from the catalog, or take a random one. There is no timer, and
                   optional hints are available while you investigate. After you submit, review the
@@ -185,7 +219,7 @@ const Docs = () => {
                 </p>
               </div>
               <div>
-                <p className="text-[#1a2332] font-medium mb-1">Hardcore</p>
+                <p className="text-white font-medium mb-1">Hardcore</p>
                 <p>
                   A timed run under a single 15-minute clock. Incidents are pushed to you during
                   the run and you investigate without hints. One wrong classification or an expired
@@ -226,7 +260,11 @@ const Docs = () => {
                 searched.
               </p>
               <p>Queries are written in LCQL, four segments joined by pipes:</p>
-              <p className="log-mono text-[#1a2332]">TIMEFRAME | SENSOR | EVENT TYPE | FILTERS</p>
+              <div className="overflow-x-auto">
+                <p className="log-mono text-sm text-[#e6edf3] bg-white/[0.04] border border-white/10 rounded-lg px-4 py-3 w-max min-w-full">
+                  TIMEFRAME | SENSOR | EVENT TYPE | FILTERS
+                </p>
+              </div>
               <p>
                 Run Query executes the bar as a frozen snapshot: results never move until you run
                 again. When new matching telemetry arrives, a count appears with a Load new events
@@ -243,9 +281,10 @@ const Docs = () => {
               </p>
               <p>
                 Quoting rules for filter values: values containing spaces or any of{' '}
-                <span className="log-mono">&quot; &#39; = ! | *</span> must be quoted, and the bare
-                words and, or, not, contains must be quoted to match literally. Double-quoted and
-                unquoted values match case-insensitively; single quotes match exactly.
+                <span className="log-mono text-[#e6edf3]">&quot; &#39; = ! | *</span> must be
+                quoted, and the bare words and, or, not, contains must be quoted to match
+                literally. Double-quoted and unquoted values match case-insensitively; single
+                quotes match exactly.
               </p>
             </Section>
 
