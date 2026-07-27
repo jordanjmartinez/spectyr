@@ -289,7 +289,7 @@ const Dashboard = () => {
         <Link
           to="/"
           title="Back to home"
-          className="flex items-center gap-2.5 h-[68px] px-3 lg:px-5 border-b border-white/10 hover:bg-white/5 transition-colors"
+          className="flex items-center gap-2.5 h-[72px] px-3 lg:px-5 border-b border-white/10 hover:bg-white/5 transition-colors"
         >
           <img src="/spectyr_logo.png" alt="" aria-hidden="true" className="h-7 w-7 object-contain shrink-0" />
           <span
@@ -360,12 +360,15 @@ const Dashboard = () => {
       </aside>
 
       {/* Light content */}
-      <main className="flex-1 min-w-0 p-4 sm:p-6 overflow-x-hidden">
-        {/* VH (owner correction): the clean application header -- the
-            current workspace title + the ghost avatar with its
-            real-controls menu. No mode or analyst name in the shell; no
-            case context here (the pinned case line lives on the working
-            surfaces). */}
+      <main className="flex-1 min-w-0 overflow-x-hidden">
+        {/* VC1 (owner correction): ONE inline application header row. The
+            header is the light main cell -- full column width, 72px like
+            the sidebar brand cell beside it, closed by a divider -- so
+            brand cell + page title read as one shell row separated only
+            by the sidebar boundary. It keeps the VH content: the current
+            workspace title + the ghost avatar with its real-controls
+            menu. No mode or analyst name in the shell; no case context
+            here (the pinned case line lives on the working surfaces). */}
         <AppHeader
           title={(tabs.find(t => t.key === view) || {}).label || 'Dashboard'}
           gameMode={gameMode}
@@ -373,6 +376,7 @@ const Dashboard = () => {
           simActive={simActive}
           onReset={() => setShowResetModal(true)}
         />
+        <div className="p-4 sm:p-6">
         {/* Stage 5 Phase 1 (Amendment 1 Delta A): the global focus banner is
             REPLACED by the per-surface pinned case header ("Investigating
             INC-####" / "All activity") on Detections, Endpoints, and the
@@ -428,6 +432,7 @@ const Dashboard = () => {
 
         <div className={view === "analytics" ? "block" : "hidden"}>
           <Analytics onReset={() => setShowResetModal(true)} analystName={analystName} setAnalyticsCount={setAnalyticsCount} isVisible={view === "analytics"} reviewRequest={reviewRequest} activeIncident={activeIncident} />
+        </div>
         </div>
       </main>
 

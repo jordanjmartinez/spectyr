@@ -43,8 +43,9 @@ test('the sidebar lockup is a real destination with an accessible name, never a 
   expect(rail).toMatch(/SPECTR home/);
   // it keeps the app's existing home navigation (not a new behavior)
   expect(rail).toMatch(/<Link\s+to="\/"/);
-  // a taller branded top area with the divider retained
-  expect(rail).toMatch(/h-\[68px\][^"]*border-b border-white\/10/);
+  // the branded top area is the sidebar cell of the unified 72px shell
+  // row (VC1), with the divider retained
+  expect(rail).toMatch(/h-\[72px\][^"]*border-b border-white\/10/);
 });
 
 test('internal identifiers are NOT renamed by this visible-brand change', () => {

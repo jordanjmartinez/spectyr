@@ -78,14 +78,18 @@ test('no ordinary content card carries a decorative dark top stripe', () => {
   expect(card).not.toMatch(/HAIRLINE/);
 });
 
-test('the dark app header keeps a subtle translucent outline (chrome, not content)', () => {
+test('the app header is the light inline cell of the unified shell row (VC1: the black capsule is retired)', () => {
   const hdr = read('components/AppHeader.jsx');
   // the HEADER BAR's own classes (the dropdown panel below it is a
   // separate surface and legitimately carries an elevation shadow)
   const bar = hdr.match(/<header\s+className="([^"]+)"/)[1];
-  expect(bar).toMatch(/bg-\[#101218\]/);            // deliberate chrome
-  expect(bar).toMatch(/border border-white\/1\d/);  // ~1px restrained outline
+  expect(bar).not.toMatch(/bg-\[#101218\]/);        // no rounded black container
+  expect(bar).not.toMatch(/rounded/);               // a row cell, not a capsule
+  expect(bar).toMatch(/h-\[72px\]/);                // shares the brand-cell height
+  expect(bar).toMatch(/border-b border-\[#e2e6ea\]/); // divider only, no border box
+  expect(bar).not.toMatch(/border border-/);        // no leftover dark border box
   expect(bar).not.toMatch(/shadow/);                // no heavy shadow
   expect(bar).not.toMatch(/drop-shadow|blur-/);     // no glow
-  expect(bar).toMatch(/rounded-xl/);                // shared radius
+  // the title keeps the shared token with its own light-surface ink
+  expect(hdr).toMatch(/<h1 className="t-page">/);
 });
