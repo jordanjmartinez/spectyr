@@ -5,8 +5,14 @@ import React from 'react';
 // sim sidebar brand cell and both Docs shells). VC4 doubled the ghost
 // mark to 80px per the owner's 2026-07-26 instruction ("at least double
 // its size"); VC6 trims it to 72px per the follow-up ("a little too
-// big now, maybe just a tad bit smaller"). The 30px wordmark ruling is
-// unchanged. Both are px-FIXED
+// big now, maybe just a tad bit smaller"). VD6 (visual correction
+// section 6): the shared shell row is now ruled 68px, superseding the
+// earlier 72-76px target. The cell's vertical padding is already zero,
+// so per the instruction's own priority (reduce padding BEFORE
+// shrinking the brand) the ghost takes the minimal trim 72px -> 68px to
+// sit in the fixed cell unclipped -- FLAGGED as the sanctioned
+// brand-shrink fallback, recorded in the correction appendix. The 30px
+// wordmark ruling is unchanged. Both are px-FIXED
 // and shrink-0, so the designed proportion never drifts with the
 // viewer's rem scale, a parent flex squeeze, or a navigation-label size
 // token; no transform scaling, no max-height, no clipping (max-w-none
@@ -22,7 +28,7 @@ const BrandLockup = ({ wordmarkClass = '' }) => (
       src="/spectyr_logo.png"
       alt=""
       aria-hidden="true"
-      className="h-[72px] w-[72px] max-w-none object-contain shrink-0"
+      className="h-[68px] w-[68px] max-w-none object-contain shrink-0"
     />
     <span className={`brand-wordmark text-[30px] text-white whitespace-nowrap shrink-0 ${wordmarkClass}`.trim()}>
       SPECTR

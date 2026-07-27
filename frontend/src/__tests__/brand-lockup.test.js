@@ -86,12 +86,13 @@ test('the display face is scoped to the SPECTR wordmark only', () => {
   }
 });
 
-test('ONE shared lockup at the ruled size: 72px ghost + 30px wordmark, shrink-proof, unclipped', () => {
+test('ONE shared lockup at the ruled size: 68px ghost + 30px wordmark, shrink-proof, unclipped', () => {
   const c = read('components/BrandLockup.jsx');
-  // px-FIXED dimensions (VC3 sections 3+5; VC4 doubled the ghost per the
-  // owner's "at least double" instruction, VC6 trimmed it "a tad" to
-  // 72px on the follow-up): never rem/nav-label derived
-  expect(c).toMatch(/h-\[72px\] w-\[72px\][^"]*object-contain[^"]*shrink-0/);
+  // px-FIXED dimensions (VC3 sections 3+5; VC4 doubled the ghost, VC6
+  // trimmed to 72px; VD6's 68px shell row takes the ghost to 68px --
+  // padding was already zero, so the sanctioned brand-shrink fallback
+  // applies): never rem/nav-label derived
+  expect(c).toMatch(/h-\[68px\] w-\[68px\][^"]*object-contain[^"]*shrink-0/);
   expect(c).toMatch(/brand-wordmark text-\[30px\][^"]*shrink-0/);
   // no transform-based scaling, no max-height shrinking, no clipping --
   // judged on the rendered class strings, not prose comments
@@ -110,8 +111,26 @@ test('the sidebar lockup is a real destination with an accessible name, never a 
   // it keeps the app's existing home navigation (not a new behavior)
   expect(rail).toMatch(/<Link\s+to="\/"/);
   // the branded top area is the sidebar cell of the unified shell row
-  // (VC1; 96px since VC4 to carry the 80px ghost), divider retained
-  expect(rail).toMatch(/h-\[96px\][^"]*border-b border-white\/10/);
+  // (VC1; 68px since VD6), divider retained
+  expect(rail).toMatch(/h-\[68px\][^"]*border-b border-white\/10/);
+});
+
+test('VD6: ONE 68px shell row height in the app AND Docs; the lockup fits it unclipped', () => {
+  // the ruled shared height, superseding the earlier 72-76px target
+  expect(read('components/AppHeader.jsx')).toMatch(/<header\s+className="h-\[68px\]/);
+  expect(read('pages/Dashboard.jsx')).toMatch(/h-\[68px\][^"]*border-b border-white\/10/);
+  const docs = read('pages/Docs.jsx');
+  // Docs desktop brand cell and mobile bar carry the same fixed height
+  expect((docs.match(/h-\[68px\]/g) || []).length).toBe(2);
+  // no shell keeps a different fixed shell-row height
+  for (const f of ['components/AppHeader.jsx', 'pages/Dashboard.jsx', 'pages/Docs.jsx']) {
+    const heights = (read(f).match(/h-\[(\d+)px\]/g) || []);
+    heights.forEach((h) => expect([f, h]).toEqual([f, 'h-[68px]']));
+  }
+  // the ghost fits the cell exactly (68 <= 68) with the lockup centered
+  // (items-center), so nothing clips and no shell shrinks the brand
+  expect(read('components/BrandLockup.jsx')).toMatch(/h-\[68px\] w-\[68px\]/);
+  expect(docs).toMatch(/h-\[68px\] flex items-center|flex items-center h-\[68px\]/);
 });
 
 test('internal identifiers are NOT renamed by this visible-brand change', () => {

@@ -61,10 +61,12 @@ const Docs = () => {
     <div className="min-h-screen bg-white text-[#1a2332]" style={{ fontFamily: "'Inter', sans-serif" }}>
       {/* Mobile top bar */}
       {/* VC3: the shared full-size BrandLockup (same component and size
-          as the app shell -- no smaller Docs variant) */}
-      <div className="lg:hidden sticky top-0 z-20 flex items-center justify-between px-4 py-2 bg-[#101218] border-b border-white/10 text-white">
+          as the app shell -- no smaller Docs variant). VD6: the bar is
+          the same fixed 68px shell row as the primary app (no
+          shell-specific height differences). */}
+      <div className="lg:hidden sticky top-0 z-20 h-[68px] flex items-center justify-between px-4 bg-[#101218] border-b border-white/10 text-white">
         <Link to="/" className="flex items-center">
-          {/* VC4: below 480px the bar cannot hold the 80px ghost, the
+          {/* VC4: below 480px the bar cannot hold the ghost, the
               wordmark, and the action; the wordmark yields (the ghost
               is retained), same reduction rule as the sim icon rail */}
           <BrandLockup wordmarkClass="hidden min-[480px]:inline" />
@@ -83,9 +85,11 @@ const Docs = () => {
         {/* VC3: the aside's horizontal padding moves off the shell so the
             lockup row can run tighter (padding reduced first, logo
             dimensions preserved); nav and the action keep the original
-            px-8 inset */}
-        <aside className="hidden lg:flex flex-col shrink-0 w-72 sticky top-0 h-screen bg-[#101218] text-white py-12">
-          <Link to="/" className="flex items-center mb-12 px-4">
+            px-8 inset. VD6: the brand cell is the same fixed 68px shell
+            row as the sim rail, flush at the top (the aside's former top
+            padding is removed first, per the ruling), lockup centered. */}
+        <aside className="hidden lg:flex flex-col shrink-0 w-72 sticky top-0 h-screen bg-[#101218] text-white pb-12">
+          <Link to="/" className="flex items-center h-[68px] mb-12 px-4">
             <BrandLockup />
           </Link>
 

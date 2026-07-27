@@ -278,24 +278,25 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen flex bg-[#f6f8fa] text-[#1a2332]">
       {/* Navy nav rail */}
-      {/* VC4: the rail widens (w-24 collapsed / w-72 expanded) to carry the
-          doubled 80px ghost without clipping the lockup */}
+      {/* VC4: the rail widens (w-24 collapsed / w-72 expanded) so the
+          full-size ghost never clips the lockup (68px since VD6) */}
       <aside className="sticky top-0 self-start h-screen w-24 lg:w-72 shrink-0 bg-[#101218] text-gray-300 flex flex-col z-30">
-        {/* VC3 (final lockup correction, cumulative over VC1-VC2): the
-            brand cell of the unified 72px shell row renders the ONE
-            shared BrandLockup (40px ghost + 30px wordmark; sizing and
+        {/* VC3 (final lockup correction, cumulative over VC1-VC2) + VD6:
+            the brand cell of the unified 68px shell row renders the ONE
+            shared BrandLockup (68px ghost + 30px wordmark; sizing and
             face live on the component and its shared brand token).
-            Cell padding is reduced so the full-size lockup fits the
-            rail without clipping. VISIBLE branding only: no glow,
-            bevel, gradient, animation, or copied shapes; the lockup
-            keeps the app's existing home navigation, so it is not a
-            dead control. No account, status, notification, or profile
-            information is added. Internal identifiers (asset filenames,
-            storage keys, API paths, package names) are untouched. */}
+            Vertical cell padding is zero so the full-size lockup fits
+            the fixed row without clipping. VISIBLE branding only: no
+            glow, bevel, gradient, animation, or copied shapes; the
+            lockup keeps the app's existing home navigation, so it is
+            not a dead control. No account, status, notification, or
+            profile information is added. Internal identifiers (asset
+            filenames, storage keys, API paths, package names) are
+            untouched. */}
         <Link
           to="/"
           title="Back to home"
-          className="flex items-center justify-center lg:justify-start h-[96px] px-2 lg:px-3 border-b border-white/10 hover:bg-white/5 transition-colors"
+          className="flex items-center justify-center lg:justify-start h-[68px] px-2 lg:px-3 border-b border-white/10 hover:bg-white/5 transition-colors"
         >
           <BrandLockup wordmarkClass="hidden lg:inline" />
           <span className="sr-only">SPECTR home</span>

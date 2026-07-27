@@ -3,13 +3,14 @@ import { Link } from 'react-router-dom';
 import { MODE_LABEL } from './uiCopy';
 import { ChromeIcons, NAV_STROKE } from './icons';
 
-// VC1 + VC3 (owner corrections): the app shell has ONE inline header
-// row. This is the light main cell of that row -- it shares the 72px
-// height of the sidebar brand cell, sits on the same pure white surface
-// as the primary cards (VC3: bg-white, not the gray workspace tint),
-// and is closed by a subtle divider instead of the retired rounded
-// black capsule. Left: the current workspace title (the shared t-page
-// token,
+// VC1 + VC3 (owner corrections) + VD6 (visual correction section 6):
+// the app shell has ONE inline header row. This is the light main cell
+// of that row -- it shares the ruled 68px height of the sidebar brand
+// cell (VD6 supersedes the earlier 72-76px target), sits on the same
+// pure white surface as the primary cards (VC3: bg-white, not the gray
+// workspace tint), and is closed by a subtle divider instead of the
+// retired rounded black capsule. Left: the current workspace title (the
+// shared t-page token,
 // its own light-surface ink) -- never a mode or analyst name. Right: a
 // compact utility area of REAL functionality only. No notification
 // surface exists in this product and the only Help surface is the Guided
@@ -45,13 +46,14 @@ const AppHeader = ({ title, subtitle, gameMode, analystName, simActive, onReset 
   const itemCls = 'w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-[#57606a] hover:bg-[#f6f8fa] hover:text-[#1a2332]';
 
   return (
-    // VC1 + VC3: an inline row cell -- fixed 72px height matching the
-    // sidebar brand cell, the shared pure white card surface, bottom
+    // VC1 + VC3 + VD6: an inline row cell -- fixed 68px height matching
+    // the sidebar brand cell, the shared pure white card surface, bottom
     // divider only (no border box, no radius, no shadow). Horizontal
     // padding matches the content wrapper below so the title left-aligns
-    // with the page content.
+    // with the page content; title stack and avatar center vertically in
+    // the row, aligned with the brand lockup beside them.
     <header
-      className="h-[96px] px-4 sm:px-6 flex items-center justify-between gap-4 bg-white border-b border-[#e2e6ea]"
+      className="h-[68px] px-4 sm:px-6 flex items-center justify-between gap-4 bg-white border-b border-[#e2e6ea]"
       data-testid="app-header"
     >
       {/* VC5 (owner instruction): the page's functional summary reads on
