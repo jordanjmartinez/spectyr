@@ -110,9 +110,14 @@ const Landing = () => {
         </div>
       </nav>
 
-      {/* Mobile menu */}
+      {/* Mobile menu. VF (consistency bug): the expanded surface is the
+          SHARED shell tone #101218 (the same surface as the sim rail and
+          Docs shells), not the blue-cast Tailwind gray-900; dividers and
+          hover join the shell's white/10 + white/5 treatment. The panel
+          top tracks the nav's real height (72px mobile, 88px at md where
+          py-6 applies) so open/closed surfaces stay flush. */}
       <div
-        className={`lg:hidden absolute top-[72px] left-0 right-0 z-40 bg-gray-900/95 backdrop-blur-lg border-t border-b border-gray-800 shadow-2xl transition-all duration-500 ease-out ${
+        className={`lg:hidden absolute top-[72px] md:top-[88px] left-0 right-0 z-40 bg-[#101218]/95 backdrop-blur-lg border-t border-b border-white/10 shadow-2xl transition-all duration-500 ease-out ${
           menuOpen ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0 pointer-events-none'
         }`}
       >
@@ -122,7 +127,7 @@ const Landing = () => {
               key={label}
               to={to}
               onClick={() => setMenuOpen(false)}
-              className={`text-left py-3 px-3 rounded-lg hover:bg-gray-800/50 transition-all duration-300 ${
+              className={`text-left py-3 px-3 rounded-lg hover:bg-white/5 transition-all duration-300 ${
                 menuOpen ? 'translate-x-0 opacity-100' : '-translate-x-4 opacity-0'
               }`}
               style={{ transitionDelay: `${i * 50}ms` }}
