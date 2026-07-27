@@ -88,6 +88,54 @@ test('every primary workspace consumes the shared tokens (no page styles its own
     && uses(comp('LearningReview.jsx'))).toBe(true);        // Metrics
 });
 
+// ---- VD5 (visual correction section 3): ONE technical-text token ------------
+
+test('VD5: .log-mono is THE technical token (JetBrains Mono + tabular numerals), defined once', () => {
+  const rule = css.match(/\.log-mono\s*{[^}]*}/)[0];
+  expect(rule).toMatch(/font-family:\s*'JetBrains Mono', ui-monospace, monospace/);
+  expect(rule).toMatch(/font-variant-numeric:\s*tabular-nums/);
+  // raw key=value blocks keep their dedicated block token, same face
+  expect(css).toMatch(/\.log-detail\s*{\s*font-family:\s*'JetBrains Mono'/);
+});
+
+test('VD5: no page chooses its own technical font -- font-mono and inline JetBrains picks are retired', () => {
+  const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) return ['__tests__', 'fonts'].includes(e.name) ? [] : walk(p);
+    return /\.(js|jsx)$/.test(e.name) ? [p] : [];
+  });
+  for (const p of walk(path.join(__dirname, '..'))) {
+    const rel = path.relative(path.join(__dirname, '..'), p).replace(/\\/g, '/');
+    const s = fs.readFileSync(p, 'utf8');
+    // the Tailwind utility spelling is banned in product code: one token
+    expect([rel, /\bfont-mono\b/.test(s)]).toEqual([rel, false]);
+    // no inline JetBrains Mono font-family styles outside index.css
+    expect([rel, /fontFamily:\s*["']'?JetBrains/.test(s)]).toEqual([rel, false]);
+  }
+});
+
+test('VD5: technical identifiers wear the token on every workspace; chrome and prose stay Inter', () => {
+  const comp = (f) => fs.readFileSync(path.join(__dirname, '..', 'components', f), 'utf8');
+  // spot contract: each workspace's technical renders reach log-mono
+  for (const f of ['Detections.jsx', 'DetectionDetail.jsx', 'Endpoints.jsx',
+                   'EndpointDetail.jsx', 'Response.jsx', 'Incidents.jsx',
+                   'IncidentDashboard.jsx', 'SiemTable.jsx', 'SiemCards.jsx',
+                   'EventInspector.jsx', 'Siem.jsx', 'GameTimer.jsx']) {
+    expect([f, /log-mono/.test(comp(f))]).toEqual([f, true]);
+  }
+  // ATT&CK ids in the teaching surfaces are mono
+  expect(comp('LearningReview.jsx')).toMatch(/log-mono[^>]*>\{triage\.mitre\.id\}/);
+  expect(comp('TriageFeedback.jsx')).toMatch(/log-mono[^>]*>\{review\.mitre\.id\}/);
+  // related hosts/accounts identifiers are mono in the incident detail
+  expect(comp('Incidents.jsx')).toMatch(/log-mono">\{scope\.hosts\.join/);
+  // navigation, buttons, and headings never wear the token (Inter chrome)
+  const dash = fs.readFileSync(path.join(__dirname, '..', 'pages', 'Dashboard.jsx'), 'utf8');
+  const navBlock = dash.match(/<nav[\s\S]*?<\/nav>/)[0];
+  expect(navBlock).not.toMatch(/log-mono/);
+  expect(css.match(/\.t-page\s*{[^}]*}/)[0]).not.toMatch(/JetBrains/);
+  expect(css.match(/\.t-nav\s*{[^}]*}/)[0]).not.toMatch(/JetBrains/);
+});
+
 test('ruled section labels are sentence case; technical identifiers stay technical', () => {
   // the ruled label set
   expect(SESSION_PERFORMANCE_LABEL).toBe('Session performance');

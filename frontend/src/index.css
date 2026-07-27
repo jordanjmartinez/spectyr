@@ -50,9 +50,14 @@ body {
 
 /* ===== Visual pass VT: the shared typography tokens =====
    The ONE type scale every workspace consumes (no page styles its own
-   hierarchy). Mono stays reserved for genuinely technical values via
-   .log-mono / font-mono (queries, raw events, IPs, hostnames, INC ids,
-   technique ids, timestamps, PIDs, account strings). */
+   hierarchy). VD5 (visual correction section 3): .log-mono below is the
+   ONE technical-text token -- JetBrains Mono is reserved for genuinely
+   technical identifiers (queries, raw events, IPs, hostnames, INC ids,
+   ATT&CK technique ids, timestamps, PIDs, hashes, account strings) and
+   every surface reaches it through this class (or .log-detail for raw
+   key=value blocks). The Tailwind font-mono utility and inline
+   fontFamily choices are retired from product code; Inter remains the
+   product face for titles, navigation, buttons, headings, and prose. */
 .t-page     { font-size: 26px; font-weight: 650; line-height: 1.2;  color: #1a2332; }
 .t-section  { font-size: 18px; font-weight: 600; line-height: 1.3;  color: #1a2332; }
 .t-card     { font-size: 14px; font-weight: 600; color: #1a2332; }
@@ -127,10 +132,12 @@ code {
   }
 }
 
-/* Machine-data table cells (times, IPs, event codes) render in JetBrains Mono
-   with tabular numerals, so digit columns line up and glyphs disambiguate
-   (0/O, 1/l/I). Applied per-cell so prose columns (source, message) stay sans.
-   Set directly on the <td>, so it wins over the Inter inherited from .log-text. */
+/* THE technical-text token (VD5). Machine data -- INC ids, hostnames,
+   IPs, accounts, PIDs, event ids, ATT&CK ids, timestamps, LCQL, raw
+   values, hashes -- renders in JetBrains Mono with tabular numerals, so
+   digit columns line up and glyphs disambiguate (0/O, 1/l/I). Applied
+   per-cell/per-span so prose columns (source, message) stay sans. Set
+   directly on the element, so it wins over any inherited face. */
 .log-mono {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-variant-numeric: tabular-nums;

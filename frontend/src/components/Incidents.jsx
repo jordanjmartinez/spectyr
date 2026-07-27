@@ -367,8 +367,8 @@ const Incidents = ({
               {/* Related hosts / accounts (observable scope) */}
               {scope && (scope.hosts?.length || scope.accounts?.length) ? (
                 <div className="text-xs text-[#57606a] space-y-1">
-                  {scope.hosts?.length ? <p><span className="text-[#8b949e]">Related hosts:</span> {scope.hosts.join(', ')}</p> : null}
-                  {scope.accounts?.length ? <p><span className="text-[#8b949e]">Related accounts:</span> {scope.accounts.join(', ')}</p> : null}
+                  {scope.hosts?.length ? <p><span className="text-[#8b949e]">Related hosts:</span> <span className="log-mono">{scope.hosts.join(', ')}</span></p> : null}
+                  {scope.accounts?.length ? <p><span className="text-[#8b949e]">Related accounts:</span> <span className="log-mono">{scope.accounts.join(', ')}</span></p> : null}
                 </div>
               ) : null}
 

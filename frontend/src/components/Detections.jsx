@@ -217,13 +217,13 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
                     </button>
                   </td>
                   <td className="px-3 sm:px-4 py-3"><RuleTypeChip type={d.rule_type} /></td>
-                  <td className="px-3 sm:px-4 py-3 font-mono whitespace-nowrap text-[#1a2332]">
+                  <td className="px-3 sm:px-4 py-3 log-mono whitespace-nowrap text-[#1a2332]">
                     {d.entity?.host || d.entity?.account || '-'}
                     {d.entity?.host && d.entity?.account && (
                       <span className="block text-xs text-[#8b949e]">{d.entity.account}</span>
                     )}
                   </td>
-                  <td className="px-3 sm:px-4 py-3 font-mono whitespace-nowrap text-[#57606a]">{shortTime(d.time)}</td>
+                  <td className="px-3 sm:px-4 py-3 log-mono whitespace-nowrap text-[#57606a]">{shortTime(d.time)}</td>
                   <td className="px-3 sm:px-4 py-3">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <ActionButton onClick={() => act(d.id, 'promote')} active={d.player_action === 'promoted'} activeClass="bg-[#101218] text-white border-transparent" help={TOOLTIPS.promote}>Promote</ActionButton>

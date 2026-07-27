@@ -52,8 +52,7 @@ const FailureModal = ({ onRetry, onQuit, failureType }) => {
         <div className="inline-flex items-center gap-2 mb-5">
           <span className="w-1.5 h-1.5 rounded-full bg-[#b26666]" />
           <span
-            className="text-xs tracking-[0.2em] text-[#b26666] uppercase"
-            style={{ fontFamily: "'JetBrains Mono', monospace" }}
+            className="log-mono text-xs tracking-[0.2em] text-[#b26666] uppercase"
           >
             Session Terminated
           </span>

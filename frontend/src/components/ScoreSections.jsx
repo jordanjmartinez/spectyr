@@ -44,7 +44,7 @@ const ScoreSections = ({ isVisible = true, report = null }) => {
         {entries.map(e => (
           <li key={e.seq} className="text-sm text-[#57606a]">
             <span className="text-[#1a2332]">{ACTION_LABELS[e.action] || e.action}</span>
-            {' '}<span className="font-mono">{e.target?.label}</span>
+            {' '}<span className="log-mono">{e.target?.label}</span>
             {e.reason ? `: ${e.reason}` : ''}
           </li>
         ))}

@@ -29,7 +29,7 @@ const EntryRow = ({ e }) => (
     {e.action ? (
       <p className="text-[#1a2332]">
         <span className="font-medium">{ACTION_LABELS[e.action] || e.action}</span>
-        {e.target_label ? <span className="font-mono text-[#57606a]"> {e.target_label}</span> : null}
+        {e.target_label ? <span className="log-mono text-[#57606a]"> {e.target_label}</span> : null}
       </p>
     ) : null}
     <p className="text-[#57606a]">{e.why}</p>
@@ -220,7 +220,7 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                       {review.attempt_history.map(h => (
                         <li key={h.seq} className="text-sm text-[#57606a]">
                           <span className="text-[#1a2332]">{ACTION_LABELS[h.action] || h.action}</span>
-                          {h.target_label ? <span className="font-mono"> {h.target_label}</span> : null}
+                          {h.target_label ? <span className="log-mono"> {h.target_label}</span> : null}
                           {' '}<span className="text-[#8b949e]">({h.outcome === 'no_op' ? 'no effect, already in state' : 'did not execute'})</span>
                         </li>
                       ))}
@@ -253,7 +253,7 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                 {/* Educational content (moved from the modal: one venue) */}
                 {triage?.what_is_it && (
                   <div className="pt-3 border-t border-[#eef1f4]">
-                    {triage.mitre && <p className="text-xs text-[#16436b] font-medium mb-1">{triage.mitre.id} · {triage.mitre.name}</p>}
+                    {triage.mitre && <p className="text-xs text-[#16436b] font-medium mb-1"><span className="log-mono">{triage.mitre.id}</span> · {triage.mitre.name}</p>}
                     <p className="text-sm font-medium text-[#1a2332]">{triage.what_is_it.title}</p>
                     <p className="text-sm text-[#57606a] mt-1 break-words">{triage.what_is_it.description}</p>
                   </div>

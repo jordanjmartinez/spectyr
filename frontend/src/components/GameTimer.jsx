@@ -64,10 +64,9 @@ const GameTimer = ({ onTimeout, disabled }) => {
         className={`w-7 h-7 shrink-0 object-contain ${isCritical ? 'animate-pulse' : ''}`}
       />
       <span
-        className={`text-base lg:text-lg tracking-widest ${
+        className={`log-mono text-base lg:text-lg tracking-widest ${
           isCritical ? 'text-[#e0a0a0]' : isLow ? 'text-[#e0c48a]' : 'text-gray-200'
         }`}
-        style={{ fontFamily: "'JetBrains Mono', sans-serif" }}
       >
         {minutes}:{seconds.toString().padStart(2, '0')}
       </span>

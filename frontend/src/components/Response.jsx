@@ -282,9 +282,9 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
               )}
               {logNewestFirst.map(e => (
                 <tr key={e.seq} className="border-b border-[#eef1f4] last:border-b-0">
-                  <td className="px-3 sm:px-4 py-3 font-mono whitespace-nowrap text-[#57606a]">{shortTime(e.timestamp)}</td>
+                  <td className="px-3 sm:px-4 py-3 log-mono whitespace-nowrap text-[#57606a]">{shortTime(e.timestamp)}</td>
                   <td className="px-3 sm:px-4 py-3 whitespace-nowrap">{ACTION_LABELS[e.action] || e.action}</td>
-                  <td className="px-3 sm:px-4 py-3 font-mono break-all">{e.target?.label || '-'}</td>
+                  <td className="px-3 sm:px-4 py-3 log-mono break-all">{e.target?.label || '-'}</td>
                   <td className="px-3 sm:px-4 py-3"><OutcomeChip outcome={e.outcome} /></td>
                   <td className="px-3 sm:px-4 py-3 text-[#57606a]">{e.reason || '-'}</td>
                 </tr>
@@ -328,7 +328,7 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                             <span className="inline-flex items-center gap-1.5">
                               <DeviceGlyph deviceKind={h.ident?.deviceKind} size={15} className="text-[#57606a]" />
                               <button type="button" onClick={() => onHostPivot?.(h.hostname)}
-                                className="font-mono text-[#16436b] hover:underline" title={`Open ${h.hostname} in Endpoints`}>
+                                className="log-mono text-[#16436b] hover:underline" title={`Open ${h.hostname} in Endpoints`}>
                                 {h.hostname}
                               </button>
                               <PlatformBadge platformKey={h.ident?.platformKey} size={12} className="text-[#57606a]" />
@@ -369,8 +369,8 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                       {accounts.map(a => (
                         <tr key={a.entityId} {...focusProps('account', a)}>
                           <td className="px-3 py-2.5">
-                            <span className="font-mono text-[#1a2332]">{a.account}</span>
-                            {a.host && <span className="block text-xs text-[#8b949e] font-mono">{a.host}</span>}
+                            <span className="log-mono text-[#1a2332]">{a.account}</span>
+                            {a.host && <span className="block text-xs text-[#8b949e] log-mono">{a.host}</span>}
                             <PromotedChips rules={a.promotedRules} />
                           </td>
                           <td className="px-3 py-2.5">
@@ -417,13 +417,13 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                       <tbody>
                         {procFiltered.map(p => (
                           <tr key={`${p.hostname}-${p.pid}`} {...focusProps('process', p)}>
-                            <td className="px-3 py-2 font-mono whitespace-nowrap text-[#57606a]">{p.hostname}</td>
-                            <td className="px-3 py-2 font-mono whitespace-nowrap">{p.pid}</td>
-                            <td className="px-3 py-2 font-mono break-all min-w-[12rem]">
+                            <td className="px-3 py-2 log-mono whitespace-nowrap text-[#57606a]">{p.hostname}</td>
+                            <td className="px-3 py-2 log-mono whitespace-nowrap">{p.pid}</td>
+                            <td className="px-3 py-2 log-mono break-all min-w-[12rem]">
                               {p.name}
                               <PromotedChips rules={promotedFor(x => x.entity?.host === p.hostname && x.sha256 && x.sha256 === p.sha256)} />
                             </td>
-                            <td className="px-3 py-2 font-mono whitespace-nowrap">{p.user || '-'}</td>
+                            <td className="px-3 py-2 log-mono whitespace-nowrap">{p.user || '-'}</td>
                             <td className="px-3 py-2 whitespace-nowrap">
                               <VerbButton onClick={() => setConfirm(confirmSpecs.kill_process(p))}>Kill</VerbButton>
                             </td>
@@ -448,8 +448,8 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                     <tbody>
                       {fileRows.map(a => (
                         <tr key={`f-${a.hostname}-${a.file_entity_id}`} {...focusProps('autorun', { ...a, persistence_entity_id: null })}>
-                          <td className="px-3 py-2.5 font-mono whitespace-nowrap text-[#57606a]">{a.hostname}</td>
-                          <td className="px-3 py-2.5 font-mono break-all min-w-[14rem]">
+                          <td className="px-3 py-2.5 log-mono whitespace-nowrap text-[#57606a]">{a.hostname}</td>
+                          <td className="px-3 py-2.5 log-mono break-all min-w-[14rem]">
                             {a.name}
                             <span className="block text-xs text-[#8b949e]">{a.command}</span>
                           </td>
@@ -483,9 +483,9 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                     <tbody>
                       {persistRows.map(a => (
                         <tr key={`p-${a.hostname}-${a.persistence_entity_id}`} {...focusProps('autorun', { ...a, file_entity_id: null })}>
-                          <td className="px-3 py-2.5 font-mono whitespace-nowrap text-[#57606a]">{a.hostname}</td>
+                          <td className="px-3 py-2.5 log-mono whitespace-nowrap text-[#57606a]">{a.hostname}</td>
                           <td className="px-3 py-2.5 whitespace-nowrap">{PERSIST_LABEL[a.persist_type] || 'Autorun'}</td>
-                          <td className="px-3 py-2.5 font-mono break-all min-w-[14rem]">
+                          <td className="px-3 py-2.5 log-mono break-all min-w-[14rem]">
                             {a.name}
                             <span className="block text-xs text-[#8b949e]">{a.location}</span>
                           </td>

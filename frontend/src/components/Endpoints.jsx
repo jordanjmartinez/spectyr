@@ -202,7 +202,7 @@ const Endpoints = ({ isVisible, resetTrigger, pivotHost,
                   <button
                     type="button"
                     onClick={() => setSelected(r.hostname)}
-                    className="inline-flex items-center gap-2 font-mono text-[#16436b] hover:underline"
+                    className="inline-flex items-center gap-2 log-mono text-[#16436b] hover:underline"
                   >
                     <DeviceGlyph deviceKind={ident.deviceKind} size={16} className="text-[#57606a]" />
                     {r.hostname}
@@ -215,8 +215,8 @@ const Endpoints = ({ isVisible, resetTrigger, pivotHost,
                   </span>
                 </td>
                 <td className="px-3 sm:px-4 py-3"><OsChip os={r.os} /></td>
-                <td className="px-3 sm:px-4 py-3 font-mono whitespace-nowrap">{r.ip}</td>
-                <td className="px-3 sm:px-4 py-3 font-mono whitespace-nowrap">{r.external_ip}</td>
+                <td className="px-3 sm:px-4 py-3 log-mono whitespace-nowrap">{r.ip}</td>
+                <td className="px-3 sm:px-4 py-3 log-mono whitespace-nowrap">{r.external_ip}</td>
                 <td className="px-3 sm:px-4 py-3 text-[#8b949e]">-</td>
                 <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-[#57606a]">{shortDate(r.first_seen)}</td>
                 <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-[#57606a]">{r.status === 'online' ? 'just now' : shortDate(r.last_seen)}</td>
