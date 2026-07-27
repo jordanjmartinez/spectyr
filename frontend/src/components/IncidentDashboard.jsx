@@ -178,11 +178,17 @@ const IncidentDashboard = ({
       .catch(() => setEvidence({ forId: id, snapshot: null, loading: false }));
   }, []);
 
+  // The read waits for the roster seal (the incident's chain has finished
+  // writing). Before that the card shows the existing telemetry-loading
+  // state rather than a false zero-event chart, and a single read after
+  // the seal cannot land on a half-written chain.
+  const focusSealed = !!focus?.sealed;
   useEffect(() => {
     if (!focusId) { setEvidence({ forId: null, snapshot: null, loading: false }); setEvidenceNew(0); return; }
-    if (evidence.forId !== focusId) loadEvidence(focusId);
+    if (!focusSealed) { setEvidence({ forId: focusId, snapshot: null, loading: true }); return; }
+    if (evidence.forId !== focusId || !evidence.snapshot) loadEvidence(focusId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusId]);
+  }, [focusId, focusSealed]);
 
   // token-bound waiting count: counts only, never rows, never a mutation
   const evidenceToken = evidence.snapshot?.token || null;
@@ -260,7 +266,7 @@ const IncidentDashboard = ({
           profile as the smaller near-square card on its right (tops
           aligned), Recent results across the wider centre region. Screen
           reader order and visual order agree at every width. */}
-      <div className="grid grid-cols-1 xl:grid-cols-[19rem_minmax(0,1fr)_minmax(280px,30%)] gap-4 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-[19rem_minmax(0,1fr)_minmax(280px,30%)] gap-4 items-stretch">
           {/* A. Active Investigation (observable fields only; Resume navigates) */}
           <div className="rounded-xl p-4 xl:col-start-1 xl:row-start-2" style={CARD_STYLE} data-testid="active-investigation">
             <WidgetLabel>Active investigation</WidgetLabel>
@@ -355,8 +361,10 @@ const IncidentDashboard = ({
             />
           </div>
 
-          {/* B. Evidence activity -- the PRIMARY visualization, centre. */}
-          <div className="xl:col-start-2 xl:row-start-2 min-w-0">
+          {/* B. Evidence activity -- the PRIMARY visualization, centre.
+              Stretches to the row height so the chart fills its card
+              instead of floating in whitespace beside the radar. */}
+          <div className="xl:col-start-2 xl:row-start-2 min-w-0 h-full">
             <EvidenceActivity
               incidentId={focusId}
               snapshot={evidence.forId === focusId ? evidence.snapshot : null}

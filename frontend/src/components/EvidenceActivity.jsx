@@ -20,7 +20,7 @@ export const NO_INCIDENT = 'Start an investigation to see evidence activity.';
 export const NO_EVENTS = 'No evidence observed yet.';
 
 const Frame = ({ children }) => (
-  <div className="rounded-xl min-w-0" style={CARD_STYLE} data-testid="evidence-activity">
+  <div className="rounded-xl min-w-0 h-full flex flex-col" style={CARD_STYLE} data-testid="evidence-activity">
     <div className="px-4 pt-4">
       <p className="t-subsection">Evidence activity</p>
       <p className="t-meta text-[#6e7781]">Event volume during this investigation</p>
@@ -82,8 +82,8 @@ const EvidenceActivity = ({
 
       {/* thin vertical bars over a soft baseline fill; no curve, no
           animation, reduced-motion safe by construction (static) */}
-      <div className="px-4 pb-2" aria-hidden="true">
-        <div className="relative h-40 rounded-md bg-[#f6f8fa] border border-[#eef1f4] flex items-end gap-[2px] px-2 pt-2 pb-0 overflow-hidden">
+      <div className="px-4 pb-2 flex-1 flex flex-col min-h-0" aria-hidden="true">
+        <div className="relative flex-1 min-h-[10rem] rounded-md bg-[#f6f8fa] border border-[#eef1f4] flex items-end gap-[2px] px-2 pt-2 pb-0 overflow-hidden">
           {model.buckets.map((b) => (
             <span
               key={b.start}
