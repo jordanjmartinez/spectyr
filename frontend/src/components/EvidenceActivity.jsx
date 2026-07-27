@@ -236,8 +236,13 @@ const EvidenceActivity = ({
         </div>
       </div>
 
-      {/* the complete textual equivalent */}
-      <table className="sr-only">
+      {/* the complete textual equivalent. VE4b: the table sits INSIDE a
+          visually-hidden wrapper because sr-only's 1px width cannot
+          constrain a table box (CSS table width is a minimum), so a bare
+          sr-only table lays out at its natural width and inflates the
+          document's horizontal scroll area. */}
+      <div className="sr-only">
+      <table>
         <caption>
           Evidence activity for {incidentId}: {model.total} events observed. Rolling
           density at {n} evenly spaced sample times; each count is the number of
@@ -257,6 +262,7 @@ const EvidenceActivity = ({
           ))}
         </tbody>
       </table>
+      </div>
 
       <div className="px-4 pb-3 text-[11px] text-[#8b949e]">
         Rolling density: events in the preceding {model.windowSeconds}s at each sample.
