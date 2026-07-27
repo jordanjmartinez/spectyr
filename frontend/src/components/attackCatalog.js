@@ -37,6 +37,43 @@ export const ATTACK_TACTICS = catalog.tactics;
 export const ATTACK_TECHNIQUES = catalog.techniques;
 export const TACTIC_TOTALS = catalog.tactic_totals;
 export const SOURCE_DATASET = catalog.source_dataset;
+// VA3: canonical technique names for every id the product can surface
+// (answer-key techniques + pinned detection tags), derived from the same
+// sha256-verified dataset and pinned by the backend gate. Used to name
+// techniques in the incident-profile tooltip and its text equivalent.
+export const TECHNIQUE_NAMES = catalog.technique_names;
+
+// VA3 (amendment section 5): the INCIDENT ATT&CK profile.
+// Input: the ATT&CK mappings legitimately visible for the active
+// incident (its roster detections' mitre tags -- already rendered on
+// every detection detail in every mode, so aggregating them discloses
+// nothing new and never touches the answer key).
+// Output: per-tactic technique counts normalized against THIS
+// INCIDENT's strongest tactic, so the profile shows the SHAPE of the
+// current investigation. This is never framework coverage.
+export const incidentProfile = (mappings) => {
+  const perTactic = new Map(ATTACK_TACTICS.map((t) => [t, new Map()]));
+  for (const m of mappings || []) {
+    if (!m || !m.id || !perTactic.has(m.tactic)) continue;
+    perTactic.get(m.tactic).set(m.id, TECHNIQUE_NAMES[m.id] || m.name || m.id);
+  }
+  const counts = ATTACK_TACTICS.map((tactic) => ({
+    tactic,
+    techniques: [...perTactic.get(tactic).entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.id.localeCompare(b.id)),
+  }));
+  const max = counts.reduce((m, r) => Math.max(m, r.techniques.length), 0);
+  return {
+    max,
+    rows: counts.map((r) => ({
+      ...r,
+      count: r.techniques.length,
+      // absent tactics stay exactly 0; no artificial minimum
+      pct: max === 0 ? 0 : Math.round((r.techniques.length / max) * 100),
+    })),
+  };
+};
 
 // tactic -> [technique entries], in catalog (id) order.
 export const techniquesByTactic = () => {

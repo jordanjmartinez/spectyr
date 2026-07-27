@@ -1,83 +1,117 @@
 /**
- * V6-R (owner correction): the ATT&CK coverage radar. ONE restrained
- * polygon over the canonical pinned v19.1 tactics; axis value =
- * scenario-represented techniques / AUTHORITATIVE per-tactic technique
- * count (derived from the sha256-verified pinned STIX dataset, parent
- * technique counting on both sides, never normalized against Spectyr's
- * own largest category). No tabs, no list control, no matrix cards, no
- * player or adversary overlay, no buttons at all; percentage rings at
- * 0/25/50/75/100; a complete sr-only table is the text equivalent.
+ * VA3 (amendment section 5): the INCIDENT ATT&CK PROFILE. One polygon
+ * showing the ATT&CK shape of the CURRENT ACTIVE INCIDENT, normalized
+ * against that incident's own strongest tactic. Never catalog coverage,
+ * never Enterprise-framework coverage, never session performance, never
+ * a second series. Absent tactics stay exactly 0%.
  */
 import React from 'react';
+import fs from 'fs';
+import path from 'path';
 import { render, screen, within } from '@testing-library/react';
-import AttackRadar from '../components/AttackRadar';
-import { coverageByTactic, ATTACK_TACTICS, TACTIC_TOTALS } from '../components/attackCatalog';
+import AttackRadar, { NO_INCIDENT, NO_MAPPINGS } from '../components/AttackRadar';
+import { incidentProfile, ATTACK_TACTICS, TECHNIQUE_NAMES } from '../components/attackCatalog';
 
-test('coverage rows: pinned order, authoritative denominators, parent-technique dedup, honest percentages', () => {
-  const rows = coverageByTactic();
-  expect(rows.map(r => r.tactic)).toEqual(ATTACK_TACTICS);
-  expect(rows).toHaveLength(15);
-  const by = Object.fromEntries(rows.map(r => [r.tactic, r]));
-  // parent dedup: three Credential Access mirror entries (T1003.001,
-  // T1110.001, T1110.003) are TWO parent techniques
-  expect(by['Credential Access']).toEqual({ tactic: 'Credential Access', represented: 2, total: 17, pct: 12 });
-  expect(by['Initial Access']).toEqual({ tactic: 'Initial Access', represented: 2, total: 11, pct: 18 });
-  expect(by['Discovery']).toEqual({ tactic: 'Discovery', represented: 1, total: 34, pct: 3 });
-  expect(by['Reconnaissance']).toEqual({ tactic: 'Reconnaissance', represented: 0, total: 12, pct: 0 });
-  expect(by['Defense Impairment']).toEqual({ tactic: 'Defense Impairment', represented: 1, total: 18, pct: 6 });
-  // every denominator is the authoritative dataset count, present and positive
-  rows.forEach(r => {
-    expect(r.total).toBe(TACTIC_TOTALS[r.tactic]);
-    expect(r.total).toBeGreaterThan(0);
-    expect(r.represented).toBeLessThanOrEqual(r.total);
+// the amendment's worked example
+const EXAMPLE = [
+  { id: 'T1685', tactic: 'Defense Impairment' },
+  { id: 'T1685.005', tactic: 'Defense Impairment' },
+  { id: 'T1036.005', tactic: 'Defense Impairment' },
+  { id: 'T1218.011', tactic: 'Stealth' },
+  { id: 'T1090', tactic: 'Command and Control' },
+  { id: 'T1071.001', tactic: 'Command and Control' },
+  { id: 'T1046', tactic: 'Discovery' },
+];
+
+const rowFor = (rows, tactic) => rows.find((r) => r.tactic === tactic);
+
+test('normalization is incident-relative: strongest tactic is 100%, others proportional, absent 0%', () => {
+  const { rows, max } = incidentProfile(EXAMPLE);
+  expect(max).toBe(3);
+  expect(rowFor(rows, 'Defense Impairment')).toMatchObject({ count: 3, pct: 100 });
+  expect(rowFor(rows, 'Command and Control')).toMatchObject({ count: 2, pct: 67 });
+  expect(rowFor(rows, 'Stealth')).toMatchObject({ count: 1, pct: 33 });
+  expect(rowFor(rows, 'Discovery')).toMatchObject({ count: 1, pct: 33 });
+  // every other tactic is EXACTLY zero -- no artificial minimum
+  const named = new Set(EXAMPLE.map((m) => m.tactic));
+  rows.filter((r) => !named.has(r.tactic)).forEach((r) => {
+    expect([r.tactic, r.count, r.pct]).toEqual([r.tactic, 0, 0]);
   });
+  // canonical tactic order preserved
+  expect(rows.map((r) => r.tactic)).toEqual(ATTACK_TACTICS);
 });
 
-test('renders one polygon with percentage rings and the sr-only table equivalent', () => {
-  const { container } = render(<AttackRadar />);
-  // exactly one radar polygon; no animation classes in play
+test('duplicate technique ids within a tactic count once', () => {
+  const { rows, max } = incidentProfile([
+    { id: 'T1685', tactic: 'Defense Impairment' },
+    { id: 'T1685', tactic: 'Defense Impairment' },
+    { id: 'T1046', tactic: 'Discovery' },
+  ]);
+  expect(max).toBe(1);
+  expect(rowFor(rows, 'Defense Impairment').count).toBe(1);
+  expect(rowFor(rows, 'Defense Impairment').pct).toBe(100);
+  expect(rowFor(rows, 'Discovery').pct).toBe(100);
+});
+
+test('no catalog-wide data feeds the profile (scenario counts are never read)', () => {
+  const empty = incidentProfile([]);
+  expect(empty.max).toBe(0);
+  expect(empty.rows.every((r) => r.count === 0 && r.pct === 0)).toBe(true);
+  // the component must not import the catalog coverage helper
+  const src = fs.readFileSync(path.join(__dirname, '..', 'components', 'AttackRadar.jsx'), 'utf8');
+  expect(src).not.toMatch(/coverageByTactic|TACTIC_TOTALS|scenarios/);
+});
+
+test('renders one polygon with markers, rings, and the exact tooltip identities', () => {
+  const { container } = render(<AttackRadar incidentId="INC-8340" mappings={EXAMPLE} />);
   expect(container.querySelectorAll('.recharts-radar')).toHaveLength(1);
-  // percentage rings 0/25/50/75/100
   for (const ring of ['0%', '25%', '50%', '75%', '100%']) {
     expect(container.textContent).toContain(ring);
   }
-  // the complete text equivalent
+  expect(container.querySelectorAll('.recharts-radar-dot').length).toBeGreaterThan(0);
+  // the text equivalent carries tactic, count, technique identities, percent
   const table = screen.getByRole('table');
-  expect(within(table).getAllByRole('row')).toHaveLength(1 + 15);
-  const caption = container.querySelector('caption');
-  expect(caption.textContent).toMatch(/Enterprise ATT&CK v19\.1 \(pinned\)/);
-  expect(caption.textContent).toMatch(/ATT&CK-v19\.1/);
-  const discovery = within(table).getByText('Discovery').closest('tr');
-  expect(discovery.textContent).toBe('Discovery1343%');
-  // VL: concise footer + the full derivation on the accessible info tooltip
-  expect(screen.getByText(/v19\.1 · represented \/ total techniques per tactic/)).toBeInTheDocument();
-  const info = screen.getByRole('button', { name: 'Coverage data source' });
-  expect(info.getAttribute('data-help')).toMatch(/parent-technique counting/);
-  expect(info.getAttribute('data-help')).toMatch(/ATT&CK-v19\.1/);
-  // VL: subtitle + concise visual labels, full names in the sr table
-  expect(screen.getByText('Catalog technique coverage')).toBeInTheDocument();
-  expect(within(table).getByText('Command and Control')).toBeInTheDocument();
+  const di = within(table).getByText('Defense Impairment').closest('tr');
+  expect(di.textContent).toContain('3');
+  expect(di.textContent).toContain('T1685.005');
+  expect(di.textContent).toContain(TECHNIQUE_NAMES['T1685.005']);
+  expect(di.textContent).toContain('100%');
+  expect(container.querySelector('caption').textContent).toMatch(/INC-8340/);
 });
 
-test('no tabs, no list control, no matrix leftovers, no overlays, no view controls', () => {
-  const { container } = render(<AttackRadar />);
-  expect(screen.queryByText('Catalog coverage')).toBeNull();
-  expect(screen.queryByText('This session')).toBeNull();
-  expect(screen.queryByText('List view')).toBeNull();
-  expect(screen.queryByText('No coverage')).toBeNull();
-  // the ONLY button is the accessible data-source info tooltip (VL)
-  const buttons = screen.queryAllByRole('button');
-  expect(buttons).toHaveLength(1);
-  expect(buttons[0]).toHaveAccessibleName('Coverage data source');
+test('card copy is the incident profile, never a framework-coverage claim', () => {
+  const { container } = render(<AttackRadar incidentId="INC-8340" mappings={EXAMPLE} />);
+  expect(screen.getByText('Incident ATT&CK profile')).toBeInTheDocument();
+  expect(screen.getByText('Tactics represented in this investigation')).toBeInTheDocument();
+  expect(container.textContent).toMatch(/Relative to the strongest tactic in this incident\./);
+  expect(container.textContent).not.toMatch(/catalog|coverage of|Enterprise ATT&CK v|represented \/ total/i);
+  expect(container.textContent).not.toMatch(/mastery|session performance|adversar/i);
+  // no tabs, selectors, expand, or list controls
+  expect(screen.queryAllByRole('button')).toHaveLength(0);
   expect(screen.queryAllByRole('tab')).toHaveLength(0);
-  // no player-performance or adversary overlay vocabulary
-  expect(container.textContent).not.toMatch(/submitted|Incident Grade|adversar/i);
-  // one polygon only -- never multiple overlapping series
-  expect(container.querySelectorAll('.recharts-radar')).toHaveLength(1);
 });
 
-test('hidden dashboards render the equivalent table but not the chart', () => {
-  const { container } = render(<AttackRadar isVisible={false} />);
-  expect(container.querySelector('.recharts-radar')).toBeNull();
-  expect(screen.getByRole('table')).toBeInTheDocument();
+test('truthful states: no incident, and an incident with no mapped techniques', () => {
+  const a = render(<AttackRadar incidentId={null} mappings={[]} />);
+  expect(screen.getByText(NO_INCIDENT)).toBeInTheDocument();
+  expect(a.container.querySelector('.recharts-radar')).toBeNull();   // no zero polygon
+  a.unmount();
+  const b = render(<AttackRadar incidentId="INC-1" mappings={[]} />);
+  expect(screen.getByText(NO_MAPPINGS)).toBeInTheDocument();
+  expect(b.container.querySelector('.recharts-radar')).toBeNull();
+});
+
+test('leak safety: the profile reads only already-visible detection mappings', () => {
+  // The dashboard feeds mitre tags from the incident roster's detections
+  // -- data every detection detail already renders in every mode. The
+  // card itself never fetches and never sees answer-key material.
+  // comments may DESCRIBE the boundary; only executable code is scanned
+  const src = fs.readFileSync(path.join(__dirname, '..', 'components', 'AttackRadar.jsx'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  expect(src).not.toMatch(/apiFetch|answer|expected_|disposition|scenario_label/);
+  const dash = fs.readFileSync(path.join(__dirname, '..', 'components', 'IncidentDashboard.jsx'), 'utf8');
+  // the mappings come from the sanitized feed joined to the observable
+  // scope -- never from triage-review or any grading payload
+  expect(dash).toMatch(/profileMappings\s*=\s*scopedIds/);
+  expect(dash).toMatch(/feed\.filter\(d => scopedIds\.has\(d\.id\) && d\.mitre/);
 });

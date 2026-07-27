@@ -38,7 +38,7 @@ const EntryRow = ({ e }) => (
 
 const Section = ({ title, entries, emptyLine }) => (
   <div className="pt-3 border-t border-[#eef1f4]">
-    <p className="t-overline mb-1.5">{title}</p>
+    <p className="t-subsection mb-1.5">{title}</p>
     {entries.length === 0 ? (
       <p className="text-sm text-[#8b949e]">{emptyLine}</p>
     ) : (

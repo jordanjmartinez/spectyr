@@ -43,8 +43,10 @@ const Metric = ({ label, value, accent, sub }) => (
   </div>
 );
 
+// VA3 section 6: primary container headings use the shared heading
+// token, not the small label token.
 const WidgetLabel = ({ children }) => (
-  <p className="t-overline mb-2">{children}</p>
+  <p className="t-subsection mb-2">{children}</p>
 );
 
 const IncidentDashboard = ({
@@ -164,6 +166,14 @@ const IncidentDashboard = ({
     count: scopedIds ? feed.filter(d => scopedIds.has(d.id) && String(d.severity).toLowerCase() === k).length : 0,
   }));
   const sevMax = Math.max(...sevRows.map(r => r.count));
+
+  // VA3: the incident ATT&CK profile inputs -- the mitre mappings of the
+  // focus incident's roster detections. Already-visible data (every
+  // detection detail renders its tag in every mode); never the answer key.
+  const profileMappings = scopedIds
+    ? feed.filter(d => scopedIds.has(d.id) && d.mitre && d.mitre.id)
+        .map(d => ({ id: d.mitre.id, tactic: d.mitre.tactic, name: d.mitre.name }))
+    : [];
 
   // Environment status (VS owner correction): current observable state
   // only -- no uptime claims, no history. Platform breakdown from the
@@ -381,7 +391,7 @@ const IncidentDashboard = ({
               record. Rows navigate to the incident. */}
           <div className="rounded-xl min-w-0" style={CARD_STYLE} data-testid="recent-results">
             <div className="px-4 pt-4 pb-2 flex items-baseline gap-2">
-              <p className="text-sm font-semibold text-[#1a2332]">Recent results</p>
+              <p className="t-subsection">Recent results</p>
               <span className="text-xs text-[#6e7781]">&middot; This session</span>
             </div>
             {completedSorted.length === 0 ? (
@@ -427,10 +437,14 @@ const IncidentDashboard = ({
             )}
           </div>
 
-          {/* D. ATT&CK catalog coverage (V6-R): one polygon against the
-              authoritative pinned per-tactic counts; supports the
-              dashboard, never dominates it. */}
-          <AttackRadar isVisible={isVisible} />
+          {/* D. The incident ATT&CK profile (VA3): the shape of the
+              CURRENT investigation, normalized against its own strongest
+              tactic. Secondary supporting card, never full width. */}
+          <AttackRadar
+            isVisible={isVisible}
+            incidentId={focusId}
+            mappings={profileMappings}
+          />
           </div>
         </div>
       </div>

@@ -71,7 +71,7 @@ const PromotedChips = ({ rules }) => (rules && rules.length ? (
 const GroupCard = ({ title, count, children }) => (
   <div className="rounded-xl overflow-hidden" style={CARD_STYLE}>
     <div className="px-4 py-2.5 border-b border-[#eef1f4] flex items-center gap-2">
-      <h3 className="t-card">{title}</h3>
+      <h3 className="t-subsection">{title}</h3>
       <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-[#57606a]">{count}</span>
     </div>
     {children}

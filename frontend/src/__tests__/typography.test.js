@@ -43,8 +43,15 @@ test('the ruled token scale is defined once, with the ruled values', () => {
   const tracking = parseFloat(overline.match(/letter-spacing:\s*([\d.]+)em/)[1]);
   expect(tracking).toBeLessThanOrEqual(0.03);
   expect(overline).toMatch(/text-transform:\s*none/);
-  // the ordinary subsection title token
-  expect(css).toMatch(/\.t-subsection\s*{[^}]*font-size:\s*14px[^}]*font-weight:\s*600/);
+  // VA3 section 6: the shared primary CONTAINER heading, 15-16px / 600 /
+  // ~1.3, sentence case, no wide tracking
+  const sub = css.match(/\.t-subsection\s*{[^}]*}/)[0];
+  const subSize = parseFloat(sub.match(/font-size:\s*([\d.]+)px/)[1]);
+  expect(subSize).toBeGreaterThanOrEqual(15);
+  expect(subSize).toBeLessThanOrEqual(16);
+  expect(sub).toMatch(/font-weight:\s*600/);
+  expect(sub).toMatch(/line-height:\s*1\.3/);
+  expect(sub).toMatch(/letter-spacing:\s*normal/);
   // Inter leads the product body stack
   expect(css).toMatch(/body\s*{[^}]*font-family:\s*'Inter'/);
 });
@@ -91,7 +98,7 @@ test('ruled section labels are sentence case; technical identifiers stay technic
   expect(dash).toContain('Environment status');
   expect(dash).toContain('Recent results');
   const radar = fs.readFileSync(path.join(__dirname, '..', 'components', 'AttackRadar.jsx'), 'utf8');
-  expect(radar).toContain('ATT&amp;CK coverage');
+  expect(radar).toContain('Incident ATT&amp;CK profile');   // VA3 card title
   const scores = fs.readFileSync(path.join(__dirname, '..', 'components', 'ScoreSections.jsx'), 'utf8');
   expect(scores).toContain('Score summary');
   // technical identifiers are never humanized: the INC accent + technique

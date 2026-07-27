@@ -1106,7 +1106,8 @@ def test_frontend_attack_catalog_mirror(_use=None):
     # strict shape whitelist (V6-R adds the radar's authoritative
     # denominators + their provenance)
     assert set(mirror.keys()) == {"attack_version", "source_dataset", "counting",
-                                  "tactics", "techniques", "tactic_totals"}, mirror.keys()
+                                  "tactics", "techniques", "tactic_totals",
+                                  "technique_names"}, mirror.keys()
     assert mirror["attack_version"] == "Enterprise ATT&CK v19.1 (pinned)"
     for t in mirror["techniques"]:
         assert set(t.keys()) == {"id", "name", "tactic", "scenarios"}, t.keys()
@@ -1182,6 +1183,19 @@ def test_frontend_attack_catalog_mirror(_use=None):
             m = d.get("mitre")
             if m and m["id"] in mirror_tactic:
                 assert m["tactic"] == mirror_tactic[m["id"]], (label, m)
+
+    # VA3: technique_names covers EXACTLY the ids the product can surface
+    # (answer-key techniques + pinned detection tags) and every name is
+    # the canonical string. Derived from the same sha256-verified dataset;
+    # the answer-key subset must match CANONICAL_TECHNIQUE_NAMES byte for
+    # byte, so a corpus rename cannot drift the incident-profile tooltip.
+    names = mirror["technique_names"]
+    assert set(names) == set(CANONICAL_TECHNIQUE_NAMES) | set(PINNED_DETECTION_TECHNIQUES), (
+        set(names) ^ (set(CANONICAL_TECHNIQUE_NAMES) | set(PINNED_DETECTION_TECHNIQUES)))
+    for tid, canonical in CANONICAL_TECHNIQUE_NAMES.items():
+        assert names[tid] == canonical, (tid, names[tid], canonical)
+    for tid, name in names.items():
+        assert isinstance(name, str) and name.strip(), (tid, name)
 
     # leak guard: no scenario label appears anywhere in the mirror text
     for label in catalog:
