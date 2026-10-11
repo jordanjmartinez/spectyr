@@ -1357,7 +1357,7 @@ the trap UI-reachability audit, so the account is detection-surfaced in
 every seed. One scenario per commit, per the 3c cadence:
 
 - [x] S6-1 `c2_dns_tunnel` - acceptable revoke_sessions + force_password_reset on `victim`
-- [ ] S6-2 `malware_ransomware` - acceptable revoke_sessions + force_password_reset on `victim`
+- [x] S6-2 `malware_ransomware` - acceptable revoke_sessions + force_password_reset on `victim`
 - [ ] S6-3 `defense_evasion_log_clearing` - acceptable revoke_sessions + force_password_reset on `victim`
 
 (Checkboxes ticked in each scenario's own commit; this section lands with
