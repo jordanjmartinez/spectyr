@@ -41,10 +41,27 @@ idempotent, confirmed on the client:
 2. Freeze this incident's inputs: the classification payload (verdict +
    category + optional report note), the detection dispositions on its
    scenario-tagged and ambient-benign detections, the successful response
-   actions in scope, and the isolation end state.
+   actions ATTRIBUTED to this incident (Stage 6: every action carries the
+   execution-time `incident_id` stamp; cross-incident actions never enter),
+   and the per-case isolation end state (the hosts whose latest successful
+   isolate belongs to this incident and still holds).
 3. Run the UNCHANGED `compute_*` scorers once over those frozen inputs to build
    the per-incident report card (classification / detection / response /
    composite).
+
+Stage 6 notes on the boundary:
+
+- The action log's `incident_id` is OBSERVABLE attribution (the case the
+  player executed under, echoed on the Response Log's Case column), not a
+  grading disclosure; serializing it pre-submit leaks nothing.
+- The frozen `response_review` gains two keys, served only inside the
+  submitted-state grading: `expected_actions` (the full expected list --
+  action, status, target label, ref; required and acceptable alike,
+  including never-executed acceptable targets) and `inaction_zero` (the
+  earliest attributed collateral that spoiled intentional inaction, with
+  the canonical why). Both are inside the temporal guard
+  (`FORBIDDEN_IN_PROGRESS` markers in test_submission_gate.py): no
+  in_progress payload or session-wide aggregate ever carries them.
 4. Store the immutable record in `session["submissions"][incident_id]`, mark the
    raw events classified, resolve the queue entry, and append the post-boundary
    rows (`scenario_history` for pass/fail, `analyst_actions` for the Triage

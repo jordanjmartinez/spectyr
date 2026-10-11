@@ -207,6 +207,13 @@ export const REVIEW_EMPTY_MISSED = 'No required response actions were missed.';
 export const REVIEW_EMPTY_COLLATERAL =
   'No unnecessary or harmful actions were taken.';
 export const REVIEW_EMPTY_DETECTIONS = 'No detection calls to review.';
+// Stage 6 (A4): the post-submit expected-response disclosure.
+export const REVIEW_SECTION_EXPECTED = 'Expected response actions';
+export const REVIEW_EMPTY_EXPECTED =
+  'No response actions were expected for this incident.';
+export const EXPECTED_REQUIRED_LABEL = 'Required';
+export const EXPECTED_ACCEPTABLE_LABEL = 'Acceptable';
+export const INACTION_ZERO_HEADING = 'Why the Response score is zero';
 export const BREAKDOWN_LOAD_ERROR = 'The detailed breakdown could not be loaded';
 export const SELECT_REVIEW_INCIDENT = 'Select a submitted incident to review.';
 export const NO_SUBMITTED_INCIDENTS =

@@ -6,6 +6,8 @@ import {
   REVIEW_SECTION_COLLATERAL, REVIEW_SECTION_ACCEPTABLE,
   REVIEW_SECTION_ATTEMPTS, REVIEW_SECTION_DETECTIONS,
   REVIEW_SECTION_PLAYBOOK, REVIEW_SECTION_TAKEAWAY,
+  REVIEW_SECTION_EXPECTED, REVIEW_EMPTY_EXPECTED,
+  EXPECTED_REQUIRED_LABEL, EXPECTED_ACCEPTABLE_LABEL, INACTION_ZERO_HEADING,
   correctDetectionCalls, NO_CORRECT_CALLS, NO_COMPLETED_REQUIRED,
   REVIEW_EMPTY_MISSED, REVIEW_EMPTY_COLLATERAL, REVIEW_EMPTY_DETECTIONS,
   BREAKDOWN_LOAD_ERROR, CALL_CORRECT, CALL_WRONG, ACTION_LABELS,
@@ -212,8 +214,48 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                 </div>
                 <Section title={REVIEW_SECTION_MISSED} entries={missedEntries} emptyLine={REVIEW_EMPTY_MISSED} />
                 <Section title={REVIEW_SECTION_COLLATERAL} entries={collateralEntries} emptyLine={REVIEW_EMPTY_COLLATERAL} />
+                {/* Stage 6 (A4): the inaction-zero callout, adjacent to the
+                    collateral it explains; frozen fields only. */}
+                {review.inaction_zero && (
+                  <div className="rounded-md border border-[#e4c5c5] bg-[#fdf6f6] px-3 py-2" data-testid="inaction-zero">
+                    <p className="text-sm font-medium text-[#b45858]">{INACTION_ZERO_HEADING}</p>
+                    <p className="text-sm text-[#1a2332] mt-0.5">
+                      <span className="font-medium">{ACTION_LABELS[review.inaction_zero.action] || review.inaction_zero.action}</span>
+                      {review.inaction_zero.target_label ? <span className="log-mono text-[#57606a]"> {review.inaction_zero.target_label}</span> : null}
+                    </p>
+                    <p className="text-sm text-[#57606a] mt-0.5">{review.inaction_zero.why}</p>
+                  </div>
+                )}
                 {acceptableEntries.length > 0 && (
                   <Section title={REVIEW_SECTION_ACCEPTABLE} entries={acceptableEntries} />
+                )}
+
+                {/* Stage 6 (A4): the full expected response, disclosed only
+                    post-submit from the frozen record -- required and
+                    acceptable alike, including targets never executed. */}
+                {review.expected_actions && (
+                  <div className="pt-3 border-t border-[#eef1f4]" data-testid="expected-actions">
+                    <p className="t-overline mb-1.5">{REVIEW_SECTION_EXPECTED}</p>
+                    {review.expected_actions.length === 0 ? (
+                      <p className="text-sm text-[#8b949e]">{REVIEW_EMPTY_EXPECTED}</p>
+                    ) : (
+                      <ul className="space-y-1">
+                        {review.expected_actions.map((x, i) => (
+                          <li key={i} className="text-sm flex items-center gap-2">
+                            <span className={`shrink-0 text-[11px] font-medium px-1.5 py-0.5 rounded border ${x.status === 'required'
+                              ? 'bg-[#eef1f4] text-[#1a2332] border-[#d0d7de]'
+                              : 'bg-white text-[#57606a] border-[#e2e6ea]'}`}>
+                              {x.status === 'required' ? EXPECTED_REQUIRED_LABEL : EXPECTED_ACCEPTABLE_LABEL}
+                            </span>
+                            <span className="min-w-0 text-[#1a2332]">
+                              <span className="font-medium">{ACTION_LABELS[x.action] || x.action}</span>
+                              {x.target_label ? <span className="log-mono text-[#57606a]"> {x.target_label}</span> : null}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 )}
 
                 {/* Attempt history: factual, separately labeled, never a

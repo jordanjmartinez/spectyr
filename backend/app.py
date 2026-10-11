@@ -3587,10 +3587,47 @@ def _incident_report_card(s, scenario_id, incident_id, grading_rec, payload,
     scenario_label = next((l.get("label") for l in all_logs
                            if l.get("scenario_id") == scenario_id
                            and l.get("label")), "")
+    # Stage 6 (A4): post-submit disclosure of the FULL expected action list
+    # -- required + acceptable, including never-executed acceptable targets.
+    # The pre-submit rule is unchanged (nothing here serializes before the
+    # record exists); the disclosure is per-incident, frozen at submit, and
+    # served only inside the submitted-state grading. Gated on the reviewed
+    # marker exactly like the scorer.
+    expected_block = []
+    if grading_rec and grading_rec.get("reviewed"):
+        for x in exp:
+            tkey = _action_target_key(x["action"], x["target"])
+            expected_block.append({
+                "action": x["action"],
+                "status": x.get("status"),
+                "target_label": response_review.expected_label(
+                    x["action"], x["target"], registry),
+                "expected_ref": response_review.expected_ref(x["action"], tkey),
+            })
+        expected_block.sort(key=lambda r: (r["status"] != "required",
+                                           r["expected_ref"]))
+    # The inaction-zero callout: when intentional inaction was spoiled,
+    # deterministically name the earliest attributed collateral that spoiled
+    # it; the remaining hits stay in the collateral bucket.
+    inaction_zero = None
+    if inaction_collateral:
+        coll = [e for e in entries
+                if e["reason_code"] == response_review.COLLATERAL_IN_SCOPE]
+        if coll:
+            trig = min(coll, key=lambda e: (e["source_action_seq"] is None,
+                                            e["source_action_seq"] or 0))
+            inaction_zero = {
+                "action": trig["action"],
+                "target_label": trig["target_label"],
+                "source_action_seq": trig["source_action_seq"],
+                "why": response_review.INACTION_ZERO_WHY,
+            }
     response_review_block = {
         "entries": entries,
         "attempt_history": attempt_history,
         "detections": det_block,
+        "expected_actions": expected_block,
+        "inaction_zero": inaction_zero,
         # Tier 2 scenario paragraph (D2, wired at 5.5): frozen from the
         # scenario's expected_response at submit; a record submitted before
         # its paragraph exists freezes null permanently (ruling H).

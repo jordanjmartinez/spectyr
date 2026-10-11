@@ -71,6 +71,11 @@ INACTION_CORRECT_WHY = ("No response action was required. The correct "
 INACTION_SPOILED_WHY = ("No response action was required here, and action "
                         "was taken against this incident's assets; the "
                         "collateral entries carry what was done.")
+# Stage 6 (A4): the inaction-zero callout template. Purpose-only like every
+# Tier 1 string: the structured fields name the action and target; this
+# text states only the rule and the cost.
+INACTION_ZERO_WHY = ("No response action was required for this incident. "
+                     "This action zeroed the Response score.")
 RELEASED_WHY = ("Isolation only counts while it holds: this host was "
                 "isolated but released before submission, so containment "
                 "was not in effect when it mattered.")

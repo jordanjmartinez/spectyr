@@ -34,6 +34,9 @@ FORBIDDEN_IN_PROGRESS = [
     '"grading"', '"composite"', '"accuracy"', '"grade"',
     '"threats_caught"', '"correct_category"', '"category_correct"',
     '"required"', '"missed"', '"collateral"',
+    # Stage 6 (A4): the post-submit expected-list disclosure must never
+    # appear in any in_progress payload.
+    '"expected_actions"', '"inaction_zero"',
 ]
 
 

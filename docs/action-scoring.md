@@ -111,8 +111,16 @@ impossible; submit order cannot change any grade
     shared 10-point scale; `-` before anything is graded.
 - **Loader guarantees:** duplicate expected actions are rejected, as is
   any action-target pair declared under both statuses. The status field
-  is server-side answer-key data and never serializes (planted-marker
-  leak test); unexecuted acceptable targets never surface.
+  is server-side answer-key data and never serializes PRE-SUBMIT
+  (planted-marker leak test); unexecuted acceptable targets never surface
+  PRE-SUBMIT. Stage 6 (A4): after submission, the frozen per-incident
+  `response_review.expected_actions` disclosure carries the full expected
+  list -- action, status, target label, and ref, required and acceptable
+  alike, including never-executed acceptable targets -- served only inside
+  the submitted-state grading (the temporal guard suite pins both
+  directions). `response_review.inaction_zero` names the earliest
+  attributed collateral when intentional inaction was spoiled and states
+  that it zeroed the Response score.
 
 ## The tri-state grading marker (`answer_key.actions_reviewed`)
 
