@@ -125,6 +125,9 @@ def test_scope_structural_no_grading_or_expected_actions():
     src += inspect.getsource(app._incident_detections)
     src += inspect.getsource(app._incident_open_detections)
     src += inspect.getsource(app.incident_submission_readiness)
+    # Stage 6: the pre-submit progress surface joins on the attribution
+    # stamp, so it too must stay free of grading-side inputs.
+    src += inspect.getsource(app._incident_progress)
     for forbidden in ("expected_actions", "scenario_grading", "_grading_record_for",
                       "grading_rec", "answer_key"):
         assert forbidden not in src, f"scope/roster read references {forbidden!r}"

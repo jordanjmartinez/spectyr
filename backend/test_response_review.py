@@ -340,18 +340,20 @@ def _seed_review_incident(s):
     ov["log"] = [
         {"seq": 1, "timestamp": STARTED, "action": "isolate_host",
          "target": {"id": "ent-aaaaaaaaaaaa", "kind": "host", "label": WS},
-         "outcome": "success", "reason": None},
+         "outcome": "success", "reason": None, "incident_id": INC},
         {"seq": 2, "timestamp": STARTED, "action": "kill_process",
          "target": {"id": "ent-cccccccccccc", "kind": "process",
                     "label": "payload.exe (PID 4756) on ACME-WS12"},
-         "outcome": "failed_precondition", "reason": "Process not found."},
+         "outcome": "failed_precondition", "reason": "Process not found.",
+         "incident_id": INC},
         {"seq": 3, "timestamp": STARTED, "action": "delete_file",
          "target": {"id": "ent-dddddddddddd", "kind": "file",
                     "label": "C:\\clean\\doc.txt on ACME-WS12"},
-         "outcome": "success", "reason": None},
+         "outcome": "success", "reason": None, "incident_id": INC},
         {"seq": 4, "timestamp": STARTED, "action": "isolate_host",
          "target": {"id": "ent-aaaaaaaaaaaa", "kind": "host", "label": WS},
-         "outcome": "no_op", "reason": "Host is already isolated."},
+         "outcome": "no_op", "reason": "Host is already isolated.",
+         "incident_id": INC},
     ]
     ov["isolated"] = {WS}
     ov["deleted_files"] = {(WS, "c:\\clean\\doc.txt")}

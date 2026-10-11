@@ -759,17 +759,19 @@ def test_score_endpoint_shape_surfacing_and_no_leak():
                 {"seq": 1, "timestamp": STARTED, "action": "kill_process",
                  "target": {"id": "ent-cccccccccccc", "kind": "process",
                             "label": "helper.exe (PID 500) on ACME-WS77"},
-                 "outcome": "success", "reason": None},
+                 "outcome": "success", "reason": None, "incident_id": INC},
                 {"seq": 2, "timestamp": STARTED, "action": "isolate_host",
                  "target": {"id": "ent-aaaaaaaaaaaa", "kind": "host",
                             "label": "ACME-OFF01"},
                  "outcome": "failed_precondition",
                  "reason": "Host is offline. The isolation command could not "
-                           "be delivered to the endpoint agent."},
+                           "be delivered to the endpoint agent.",
+                 "incident_id": INC},
                 {"seq": 3, "timestamp": STARTED, "action": "disable_account",
                  "target": {"id": "ent-bbbbbbbbbbbb", "kind": "account",
                             "label": "ACME\\jdoe"},
-                 "outcome": "no_op", "reason": "Account is already disabled."},
+                 "outcome": "no_op", "reason": "Account is already disabled.",
+                 "incident_id": INC},
             ]
             s["overlay"]["seq"] = 3
 

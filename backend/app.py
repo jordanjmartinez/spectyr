@@ -3412,21 +3412,30 @@ def _incident_expected(s, scenario_id):
     return [e for e in s.get("expected_actions", []) if e["scenario_id"] == scenario_id]
 
 
-def _entry_in_scope(entry, grading_rec, registry):
-    e = registry.get(entry["target"]["id"])
-    if e is None or grading_rec is None:
-        return False
-    if e["kind"] == "account":
-        return action_overlay.account_key(e["domain"], e["username"]) in grading_rec["accounts"]
-    return e.get("hostname") in grading_rec["hostnames"]
+def _attributed_isolated_hosts(overlay, registry, incident_id):
+    """Stage 6 per-case isolation ownership: the hosts currently isolated
+    whose isolation THIS incident owns -- the host is in the overlay's
+    isolated set and the LATEST successful isolate_host on it carries this
+    incident's attribution stamp. Isolate under A, release, re-isolate
+    under B: A keeps only its occurrence (forfeited end-state), B owns the
+    live isolation. Pure read; caller holds the session lock."""
+    owner = {}
+    for e in overlay.get("log", []):
+        if (e.get("action") != "isolate_host"
+                or e.get("outcome") != action_overlay.SUCCESS):
+            continue
+        ent = registry.get((e.get("target") or {}).get("id"))
+        if ent is not None:
+            owner[ent.get("hostname")] = e.get("incident_id")
+    return {h for h in overlay.get("isolated", ()) if owner.get(h) == incident_id}
 
 
 def _entry_in_observable_scope(entry, obs_hosts, obs_account_ids, registry):
     """Stage 5 Phase 2, D4 (ratified OD-8): does this action-log entry's
     registry-resolved target sit in the incident's OBSERVABLE scope? A
-    deliberately separate join from _entry_in_scope's grading-record join
-    (scaffold ruling D: _incident_progress keeps its frozen 3.9A behavior;
-    D4 uses the observable sets). Reads ONLY the registry entity, the
+    presentation-only join (related-activity rows), deliberately separate
+    from grading: Stage 6 grading joins on the per-case attribution stamp,
+    never on scope membership. Reads ONLY the registry entity, the
     observable host set, and account entity ids pre-resolved from the
     observable account strings via the sanctioned resolver -- never grading
     records, expected actions, or answer keys."""
@@ -3465,9 +3474,13 @@ def _scenario_rationale(label):
     return entry.get("expected_response") or None
 
 
-def _incident_report_card(s, scenario_id, grading_rec, payload, all_logs):
+def _incident_report_card(s, scenario_id, incident_id, grading_rec, payload,
+                          all_logs):
     """Compute this incident's per-incident report card at submit time. Calls
-    the unchanged scoring functions over frozen per-incident inputs."""
+    the unchanged scoring functions over frozen per-incident inputs. Stage 6:
+    the response inputs are the actions ATTRIBUTED to this incident (the
+    execution-time stamp), so one incident's actions can never credit,
+    charge, or zero another's grade."""
     actual_category = _incident_actual_category(all_logs, scenario_id)
     classification = _classification_grade(
         payload.get("verdict"), payload.get("category"), actual_category)
@@ -3477,10 +3490,10 @@ def _incident_report_card(s, scenario_id, grading_rec, payload, all_logs):
 
     overlay = s.get("overlay") or action_overlay.new_overlay()
     registry = s.get("entity_index", {})
-    executed = action_overlay.successful_executions(overlay, registry)
+    executed = action_overlay.successful_executions(overlay, registry,
+                                                    incident_id=incident_id)
     exp = _incident_expected(s, scenario_id)
-    isolated = {h for h in overlay.get("isolated", ())
-                if grading_rec and h in grading_rec["hostnames"]}
+    isolated = _attributed_isolated_hosts(overlay, registry, incident_id)
     response = compute_action_score(exp, executed, isolated,
                                     [grading_rec] if grading_rec else [])
     # 5.2 (ruling B): pop the internal review detail at this call site; the
@@ -3495,10 +3508,10 @@ def _incident_report_card(s, scenario_id, grading_rec, payload, all_logs):
     response["acceptable_taken"] = {"count": len(acc_entries), "entries": acc_entries}
     failed = [action_overlay.sanitize_action_entry(e) for e in log
               if e["outcome"] == action_overlay.FAILED
-              and _entry_in_scope(e, grading_rec, registry)]
+              and e.get("incident_id") == incident_id]
     noop = [action_overlay.sanitize_action_entry(e) for e in log
             if e["outcome"] == action_overlay.NO_OP
-            and _entry_in_scope(e, grading_rec, registry)]
+            and e.get("incident_id") == incident_id]
     response["not_executed"] = {"count": len(failed), "entries": failed}
     response["no_effect"] = {"count": len(noop), "entries": noop}
 
@@ -3509,7 +3522,8 @@ def _incident_report_card(s, scenario_id, grading_rec, payload, all_logs):
     # submissions only. ---
     failed_keys = set()
     for e in log:
-        if e.get("outcome") != action_overlay.FAILED:
+        if (e.get("outcome") != action_overlay.FAILED
+                or e.get("incident_id") != incident_id):
             continue
         ent = registry.get((e.get("target") or {}).get("id"))
         if ent is not None:
@@ -3694,11 +3708,16 @@ def submit_incident(s, incident_id, payload):
 
         all_logs = _read_ndjson_unlocked(s["paths"]["generated_logs"])
         overlay = s.get("overlay") or action_overlay.new_overlay()
-        rc = _incident_report_card(s, scenario_id, grading_rec, payload, all_logs)
+        rc = _incident_report_card(s, scenario_id, incident_id, grading_rec,
+                                   payload, all_logs)
 
         dets = _incident_detections(s, scenario_id, written=all_logs)
-        isolated = sorted(h for h in overlay.get("isolated", ())
-                          if grading_rec and h in grading_rec["hostnames"])
+        # Stage 6: both the isolation end-state and the audit seq list are
+        # the ATTRIBUTED derivations the scorer consumed -- never the
+        # session-wide overlay state.
+        registry = s.get("entity_index", {})
+        isolated = sorted(
+            _attributed_isolated_hosts(overlay, registry, incident_id))
         record = {
             "incident_id": incident_id,
             "assisted": incident_id in s.get("assisted", set()),
@@ -3710,6 +3729,9 @@ def submit_incident(s, incident_id, payload):
                 "detection_dispositions": {d["id"]: d["player_action"] for d in dets},
                 "action_seq_cutoff": overlay.get("seq", 0),
                 "isolation_end_state": isolated,
+                "attributed_action_seqs": [
+                    e["seq"] for e in overlay.get("log", [])
+                    if e.get("incident_id") == incident_id],
             },
             "report_card": rc,
         }
@@ -3771,14 +3793,16 @@ def submit_incident(s, incident_id, payload):
         return {"status": "created", "record": record}
 
 
-def _incident_progress(s, scenario_id, grading_rec):
+def _incident_progress(s, scenario_id, incident_id):
     """Observable activity only — never required-action counts or any
-    answer-key-derived total. Served for an unsubmitted incident."""
+    answer-key-derived total. Served for an unsubmitted incident. Stage 6:
+    the action counts join on the attribution stamp (purely observable),
+    removing the last grading-record read from a pre-submit surface."""
     dets = _incident_detections(s, scenario_id)
     triaged = sum(1 for d in dets if d.get("player_action") != "open")
     overlay = s.get("overlay") or action_overlay.new_overlay()
-    registry = s.get("entity_index", {})
-    scoped = [e for e in overlay.get("log", []) if _entry_in_scope(e, grading_rec, registry)]
+    scoped = [e for e in overlay.get("log", [])
+              if e.get("incident_id") == incident_id]
     executed = sum(1 for e in scoped if e["outcome"] == action_overlay.SUCCESS)
     state, open_n = incident_submission_readiness(s, scenario_id)
     return {
@@ -3808,9 +3832,8 @@ def incident_score_view(s, incident_id):
                    if not k.startswith("_")}
         return {"state": "submitted", "assisted": rec["assisted"],
                 "grading": grading}
-    grading_rec = _grading_record_for(s, scenario_id)
     return {"state": "in_progress",
-            "progress": _incident_progress(s, scenario_id, grading_rec)}
+            "progress": _incident_progress(s, scenario_id, incident_id)}
 
 
 def _pool(records, dim):

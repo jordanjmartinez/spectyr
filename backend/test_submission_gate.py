@@ -120,7 +120,8 @@ def _add_incident(s, incident_id, scenario_id, host, category, label,
         ov.setdefault("log", []).append({
             "seq": seq, "timestamp": STARTED, "action": "isolate_host",
             "target": {"id": ent, "kind": "host", "label": host},
-            "outcome": "success", "reason": None})
+            "outcome": "success", "reason": None,
+            "incident_id": incident_id})
         ov["isolated"] = set(ov.get("isolated", set())) | {host}
         ov["seq"] = seq
 
