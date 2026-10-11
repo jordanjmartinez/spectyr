@@ -19,7 +19,11 @@ import re
 import sys
 import app
 
-ENTRY_KEYS = {"catalog_id", "title", "severity", "description", "difficulty"}
+# Stage 6: `playable` added with the catalog cut (owner-ruled) -- a
+# deliberate edit to this permanent whitelist; the boolean reveals only
+# which entries the picker may start, never anything about answers.
+ENTRY_KEYS = {"catalog_id", "title", "severity", "description", "difficulty",
+              "playable"}
 TOP_KEYS = {"catalog", "random_available"}
 SEVERITIES = {"Low", "Medium", "High", "Critical"}
 
@@ -209,7 +213,8 @@ def test_build_guided_queue_random_and_reject():
 
 
 def test_guided_start_creates_one_incident_and_leaks_no_answer_key():
-    e = _payload()["catalog"][3]
+    # Stage 6: pick a PLAYABLE entry (a fixed index may land on a shelved one)
+    e = next(x for x in _payload()["catalog"] if x["playable"])
     label = app._resolve_catalog_id(e["catalog_id"])
     c, sid, s = _client_session()
     try:
@@ -244,9 +249,6 @@ def test_inc_and_catalog_ids_are_disjoint_id_spaces():
         assert not e["catalog_id"].startswith("INC-")  # INC-#### is the incident id space
 
 
-TESTS = [v for k, v in sorted(globals().items())
-         if k.startswith("test_") and callable(v)]
-
 def test_campaign_levels_category_matches_yaml_answer_key():
     """Stage 6 (W7b): classification grading reads the category from the
     CAMPAIGN_LEVELS dict KEY (stamped onto events at drip and compared by
@@ -268,6 +270,65 @@ def test_campaign_levels_category_matches_yaml_answer_key():
                  f"answer_key.classification "
                  f"{y['answer_key'].get('classification')!r}")
 
+
+# --- Stage 6 catalog cut: the playable allowlist ------------------------------
+
+def test_catalog_playable_flag_is_the_allowlist_and_only_that():
+    """All 20 entries stay in the payload; `playable` is the only
+    distinguishing field and mirrors PLAYABLE_SCENARIOS exactly."""
+    data = _payload()
+    assert len(data["catalog"]) == 20
+    playable = {app._resolve_catalog_id(e["catalog_id"])
+                for e in data["catalog"] if e["playable"] is True}
+    locked = {app._resolve_catalog_id(e["catalog_id"])
+              for e in data["catalog"] if e["playable"] is False}
+    assert playable == set(app.PLAYABLE_SCENARIOS)
+    assert len(playable) == 5 and len(locked) == 15
+    for e in data["catalog"]:
+        assert isinstance(e["playable"], bool)
+
+
+def test_guided_random_draws_playable_only():
+    for _ in range(40):
+        q = app.build_guided_queue("random")
+        assert q[0]["scenario_label"] in app.PLAYABLE_SCENARIOS, \
+            "Random handed the player a shelved scenario"
+
+
+def test_locked_scenario_start_is_neutral_400_and_starts_nothing():
+    """Explicitly starting a shelved scenario rejects with the SAME body as
+    an unknown catalog id (no distinction a client could mine) and leaves
+    the session untouched."""
+    locked_id = next(e["catalog_id"] for e in _payload()["catalog"]
+                     if not e["playable"])
+    c, sid, s = _client_session()
+    try:
+        r_locked = c.post("/api/start-simulator", headers={"X-Session-ID": sid},
+                          json={"game_mode": "guided", "catalog_id": locked_id})
+        r_unknown = c.post("/api/start-simulator", headers={"X-Session-ID": sid},
+                           json={"game_mode": "guided",
+                                 "catalog_id": "cat-000000000000"})
+        assert r_locked.status_code == r_unknown.status_code == 400
+        assert r_locked.get_json() == r_unknown.get_json(), \
+            "locked rejection distinguishable from unknown"
+        assert not s.get("alert_queue")
+    finally:
+        _cleanup(sid)
+
+
+def test_sampled_queue_draws_playable_only():
+    """Hardcore (and every non-guided mode) samples from the allowlist: with
+    a 5-pool the queue is all five, exactly one FP, length honest."""
+    for _ in range(10):
+        q = app.build_alert_queue(n=10, fp_min=1, fp_max=2)
+        labels = {e["scenario_label"] for e in q}
+        assert labels <= set(app.PLAYABLE_SCENARIOS), labels
+        assert len(q) == 5 and len(labels) == 5
+        assert sum(1 for e in q if e["is_fp"]) == 1
+
+
+TESTS = [v for k, v in sorted(globals().items())
+         if k.startswith("test_") and callable(v)]
 
 if __name__ == "__main__":
     failed = 0

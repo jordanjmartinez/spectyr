@@ -940,17 +940,36 @@ CAMPAIGN_LEVELS = [
 ]
 
 
+# Stage 6 (owner-ruled catalog cut, 2026-10-11): the PLAYER-REACHABLE
+# catalog. The corpus deliberately stays at 20 (loaders, gates, parity, and
+# the revert paths are untouched); this allowlist gates only the
+# player-facing samplers and the Guided picker. The shelved 15 surface as
+# "more scenarios coming soon" in the picker and return by growing this
+# set. The five were owner-picked to show the full range: host malware,
+# persistence response, identity attack, C2, and an FP triage trap.
+PLAYABLE_SCENARIOS = frozenset({
+    "malware_ransomware",
+    "false_positive_pentest",
+    "defense_evasion_log_clearing",
+    "password_spray",
+    "c2_dns_tunnel",
+})
+
+
 def build_alert_queue(n=10, fp_min=1, fp_max=2):
     """
-    Build a randomized queue of N unique scenarios drawn from the full pool of
-    15 across all CAMPAIGN_LEVELS, with 1-2 FPs (or scaled fp_min/fp_max).
-    Levels do not constrain selection — any scenario can land at any slot.
-    Returns a list ordered by queue_position 1..N.
+    Build a randomized queue of N unique scenarios drawn from the PLAYABLE
+    pool across all CAMPAIGN_LEVELS, with 1-2 FPs (or scaled fp_min/fp_max;
+    the min() clamps absorb a pool smaller than n). Levels do not constrain
+    selection — any scenario can land at any slot. Returns a list ordered by
+    queue_position 1..N.
     """
     threat_pool = []
     fp_pool = []
     for level_config in CAMPAIGN_LEVELS:
         for category, scenario in level_config["scenarios"].items():
+            if scenario["scenario_label"] not in PLAYABLE_SCENARIOS:
+                continue
             entry = {
                 "scenario_label": scenario["scenario_label"],
                 "category": category,
@@ -4286,6 +4305,11 @@ def guided_catalog():
         "severity": _catalog_severity(label),
         "description": storyline,
         "difficulty": None,
+        # Stage 6 catalog cut: all 20 entries stay in the payload (the
+        # shelved ones read as "coming soon" in the picker, never as
+        # absence); only this boolean separates them. Ids are salted
+        # digests, so playability is necessarily backend-originated.
+        "playable": label in PLAYABLE_SCENARIOS,
     } for label, title, storyline in _guided_catalog_scenarios()]
     catalog.sort(key=lambda e: e["catalog_id"])
     return jsonify({"catalog": catalog, "random_available": True})
@@ -4299,7 +4323,12 @@ def build_guided_queue(catalog_id):
     None if the catalog_id does not resolve, so the caller rejects the intake
     without building a session (no partial state, no answer-key exposure)."""
     if catalog_id == "random":
-        label = random.choice([lbl for lbl, _t, _s in _guided_catalog_scenarios()])
+        # Stage 6: Random draws from the PLAYABLE set only. The explicit-id
+        # branch stays label-permissive on purpose -- the corpus gates
+        # real-drip all 20 through it; the player-facing playability
+        # rejection lives in start_simulator.
+        label = random.choice([lbl for lbl, _t, _s in _guided_catalog_scenarios()
+                               if lbl in PLAYABLE_SCENARIOS])
     else:
         label = _resolve_catalog_id(catalog_id)
         if label is None:
@@ -5167,6 +5196,13 @@ def start_simulator():
     if mode == "guided":
         alert_queue = build_guided_queue(data.get("catalog_id"))
         if alert_queue is None:
+            return jsonify({"error": "Unknown scenario"}), 400
+        # Stage 6 catalog cut: an explicit start of a shelved (non-playable)
+        # scenario is rejected with the SAME neutral 400 as an unknown id --
+        # no partial state, no distinction a client could mine.
+        # build_guided_queue itself stays label-permissive for the corpus
+        # gates that real-drip all 20.
+        if alert_queue[0]["scenario_label"] not in PLAYABLE_SCENARIOS:
             return jsonify({"error": "Unknown scenario"}), 400
     else:
         alert_queue = build_alert_queue(n=10, fp_min=1, fp_max=2)

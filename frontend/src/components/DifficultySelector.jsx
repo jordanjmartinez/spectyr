@@ -150,7 +150,10 @@ const DifficultySelector = ({ onSelect, onCancel, initialName = '', initialStep 
               <p className="text-sm text-[#8b949e] text-center py-6">No scenarios available.</p>
             ) : (
               <div className="space-y-2">
-                {catalog.map((e) => (
+                {/* Stage 6 catalog cut: a missing playable flag means
+                    playable (backward-compatible); locked entries render
+                    as a non-interactive coming-soon list below. */}
+                {catalog.filter((e) => e.playable !== false).map((e) => (
                   <button
                     key={e.catalog_id}
                     type="button"
@@ -164,6 +167,23 @@ const DifficultySelector = ({ onSelect, onCancel, initialName = '', initialStep 
                     <span className="text-xs text-[#57606a] block mt-1">{e.description}</span>
                   </button>
                 ))}
+                {catalog.some((e) => e.playable === false) && (
+                  <div className="pt-3 mt-3 border-t border-[#eef1f4]" data-testid="coming-soon">
+                    <p className="t-overline mb-2">More scenarios coming soon</p>
+                    <div className="space-y-1">
+                      {catalog.filter((e) => e.playable === false).map((e) => (
+                        <div key={e.catalog_id}
+                          className="w-full text-left px-3 py-2 rounded-lg border border-[#eef1f4] bg-[#fafbfc]"
+                          aria-disabled="true">
+                          <span className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm text-[#8b949e]">{e.title}</span>
+                            <SeverityBadge severity={e.severity} />
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </>

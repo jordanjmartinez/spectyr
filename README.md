@@ -12,16 +12,16 @@ A SIEM simulation platform for training cybersecurity analysts. Spectyr generate
 
 ### Rolling Alert Queue
 
-Each run builds a randomized queue of 10 scenarios drawn from a catalog of 20 attack chains and false positives — with up to 3 incidents in flight at once, dripping into your queue the way a real shift does. One or two of them are false positives designed to test whether you can tell the difference.
+Each run builds a randomized queue from the playable scenario catalog — currently five hand-picked incidents spanning ransomware, event-log clearing with WMI persistence, password spraying, DNS tunneling C2, and a security-training false positive, with more scenarios on the way — dripping into your queue with up to 3 incidents in flight at once, the way a real shift does. At least one is a false positive designed to test whether you can tell the difference.
 
 **Attack Categories:** Malware, Phishing, Command & Control, Lateral Movement, Brute Force, Data Exfiltration, Insider Threat, Defense Evasion
 
-**False Positives:** Not every alert is a real threat. Some levels inject benign activity — security training tools, backup software, data migrations, OAuth flows — that looks suspicious but isn't. Identifying these correctly is part of your score.
+**False Positives:** Not every alert is a real threat. Benign activity — security training tools, backup software, data migrations, OAuth flows — can look suspicious without being hostile. Identifying it correctly is part of your score.
 
 ### Game Modes
 
-- **Training** — No timer, no penalties. Learn at your own pace and review feedback after each scenario.
-- **Hardcore** — 15-minute countdown for the whole queue. One wrong classification — or the clock hitting zero — ends the run.
+- **Guided** — Pick your scenario (or take a random one), no timer, optional Check Answer. Learn at your own pace and review feedback after each incident.
+- **Hardcore** — 15-minute countdown for the whole queue. One wrong submission — or the clock hitting zero — ends the run.
 
 ### Log Generation
 

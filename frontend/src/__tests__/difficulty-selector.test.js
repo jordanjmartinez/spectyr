@@ -98,6 +98,39 @@ test('Practice Another opens straight at the Guided catalog', async () => {
   expect(onSelect).toHaveBeenCalledWith('guided', 'Reviewer', 'cat-bbbbbbbbbbbb');
 });
 
+test('Stage 6 catalog cut: locked entries render as a non-interactive coming-soon list', async () => {
+  const onSelect = jest.fn();
+  apiFetch.mockImplementation((path) => Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve(path === '/api/guided-catalog' ? {
+      catalog: [
+        { catalog_id: 'cat-aaaaaaaaaaaa', title: 'Playable One', severity: 'High', description: 'd1', difficulty: null, playable: true },
+        { catalog_id: 'cat-bbbbbbbbbbbb', title: 'Shelved One', severity: 'Medium', description: 'd2', difficulty: null, playable: false },
+      ],
+      random_available: true,
+    } : {}),
+  }));
+  render(<DifficultySelector onSelect={onSelect} onCancel={jest.fn()} initialStep="catalog" />);
+  expect(await screen.findByText('Playable One')).toBeInTheDocument();
+  // the playable entry is a button; the shelved one is not interactive
+  expect(screen.getByRole('button', { name: /Playable One/ })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Shelved One/ })).toBeNull();
+  const soon = screen.getByTestId('coming-soon');
+  expect(soon).toHaveTextContent('More scenarios coming soon');
+  expect(soon).toHaveTextContent('Shelved One');
+  fireEvent.click(screen.getByText('Shelved One'));
+  expect(onSelect).not.toHaveBeenCalled();
+});
+
+test('a catalog without playable flags treats every entry as playable (back-compat)', async () => {
+  const onSelect = jest.fn();
+  render(<DifficultySelector onSelect={onSelect} onCancel={jest.fn()} initialStep="catalog" />);
+  expect(await screen.findByText('Event Logs Cleared on Workstation')).toBeInTheDocument();
+  expect(screen.queryByTestId('coming-soon')).toBeNull();
+  fireEvent.click(screen.getByText('Event Logs Cleared on Workstation'));
+  expect(onSelect).toHaveBeenCalledWith('guided', ANALYST_LABEL, 'cat-aaaaaaaaaaaa');
+});
+
 test('SOC Queue is unreachable from the player-facing product', () => {
   const fs = require('fs');
   const path = require('path');
