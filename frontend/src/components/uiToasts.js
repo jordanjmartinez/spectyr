@@ -33,16 +33,25 @@ export function toastDisposition(playerAction, remaining) {
 
 // T2/T3: a response action attempt returned. Success confirms the action
 // and target; no_op / failed_precondition surface the factual in-fiction
-// reason verbatim. Identical shape for every target.
+// reason verbatim. Identical shape for every target. Any 200 entry always
+// announces: an outcome this helper does not recognize still surfaces its
+// factual reason rather than disappearing.
 export function toastActionResult(entry) {
   if (!entry || !entry.action) return;
   const label = ACTION_LABELS[entry.action] || entry.action;
   const target = entry.target?.label || '';
   if (entry.outcome === 'success') {
     toast(`${label}: ${target}`, OPTS);
-  } else if (entry.outcome === 'no_op' || entry.outcome === 'failed_precondition') {
+  } else {
     toast(`${label}: ${entry.reason || 'No effect.'}`, OPTS);
   }
+}
+
+// T3b: the API rejected the request (identical neutral body, nothing
+// logged). The server's error text verbatim; a response action must never
+// fail invisibly.
+export function toastActionRejected(body) {
+  toast((body && body.error) || 'The action could not be completed.', OPTS);
 }
 
 // T4/T5 (coinciding milestone): fired on the observable false -> true

@@ -89,6 +89,9 @@ const mockApi = (overrides = {}) => {
     if (path === '/api/actions' && opts?.method === 'POST') {
       const body = JSON.parse(opts.body);
       posted.push(body);
+      if (overrides.postReject) {
+        return Promise.resolve({ ok: false, status: 400, json: () => Promise.resolve(overrides.postReject) });
+      }
       return ok(overrides.postResult || {
         seq: 9, timestamp: '2026-07-16T12:09:00+00:00', action: body.action,
         outcome: 'success', reason: null,
@@ -147,6 +150,34 @@ test('an action executes through the one request path exactly once (confirm -> P
   });
   await waitFor(() => expect(posted).toEqual([{ action: 'isolate_host', target: 'ent-aaaa11112222' }]));
   expect(toast).toHaveBeenCalledTimes(1);
+});
+
+test('Kill posts the real process entity id through the one request path', async () => {
+  // Regression guard (playtest bug 1): process rows must map the snapshot's
+  // snake_case entity_id to the camelCase entityId the confirm specs read;
+  // before the fix this POST carried no target at all.
+  mockApi();
+  await renderResponse();
+  const kills = await screen.findAllByRole('button', { name: 'Kill' });
+  fireEvent.click(kills[1]);   // winupdate.exe row (second process)
+  await act(async () => {
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Kill' }));
+  });
+  await waitFor(() => expect(posted).toEqual([{ action: 'kill_process', target: 'ent-abab11112222' }]));
+  expect(toast).toHaveBeenCalledTimes(1);
+});
+
+test('an API rejection surfaces its error text instead of failing silently', async () => {
+  mockApi({ postReject: { error: 'Unknown target for this action.' } });
+  await renderResponse();
+  const kills = await screen.findAllByRole('button', { name: 'Kill' });
+  fireEvent.click(kills[0]);
+  await act(async () => {
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Kill' }));
+  });
+  await waitFor(() => expect(toast).toHaveBeenCalledWith('Unknown target for this action.', expect.anything()));
+  // the dialog closes and nothing is treated as a logged attempt
+  expect(screen.queryByRole('dialog')).toBeNull();
 });
 
 test('identity actions execute on the roster account and disabled flags read the observable state', async () => {

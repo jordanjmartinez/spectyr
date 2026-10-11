@@ -163,7 +163,12 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
     setBusy(true);
     postResponseAction(spec.action, spec.target)
       .then(() => { setConfirm(null); setBusy(false); fetchAll(); })
-      .catch(() => { setConfirm(null); setBusy(false); });
+      .catch((e) => {
+        // API rejections already announced themselves (err.rejected); only
+        // transport-level failures still need a voice here.
+        if (!(e && e.rejected)) toastActionRejected(null);
+        setConfirm(null); setBusy(false);
+      });
   };
 
   // --- data derivations (roster-scoped, observable only) ------------------
@@ -203,7 +208,9 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
         promotedRules: promotedFor(x => x.entity?.host === h),
       });
       for (const p of snap.processes || []) {
-        if (p.entity_id) procRows.push({ ...p, hostname: h });
+        // The confirm specs read the camelCase entityId (like every other
+        // target group); the snapshot serializes snake_case entity_id.
+        if (p.entity_id) procRows.push({ ...p, entityId: p.entity_id, hostname: h });
       }
       for (const a of snap.autoruns || []) {
         if (a.persistence_entity_id) {

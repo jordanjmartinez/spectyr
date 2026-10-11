@@ -7,21 +7,31 @@
 // no-ops, and failures are its outcomes); the client reads only
 // observable state for badges and disabled hints.
 import { apiFetch } from '../api';
-import { toastActionResult } from './uiToasts';
+import { toastActionResult, toastActionRejected } from './uiToasts';
 import { ACTION_LABELS } from './uiCopy';
 
 export const PERSIST_LABEL = { wmi_subscription: 'WMI subscription', run_key: 'Run key' };
 
 // The ONE request path. Resolves with the log entry; the toast is the one
-// announcement (one fact, one announcement).
+// announcement (one fact, one announcement). A non-2xx means the API
+// rejected the request outright (nothing was logged): announce the
+// rejection and reject the promise so no caller treats it as an attempt.
 export const postResponseAction = (action, target) =>
   apiFetch('/api/actions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action, target }),
   })
-    .then(res => res.json())
-    .then(entry => { toastActionResult(entry); return entry; });
+    .then(res => res.json().then(entry => {
+      if (!res.ok) {
+        toastActionRejected(entry);
+        const err = new Error((entry && entry.error) || 'Action rejected.');
+        err.rejected = true;
+        throw err;
+      }
+      toastActionResult(entry);
+      return entry;
+    }));
 
 // Confirmation specs per verb. `t` carries only observable identity:
 // {entityId, hostname?, name?, pid?, account?, persistType?}.
