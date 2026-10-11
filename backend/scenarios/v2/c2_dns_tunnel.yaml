@@ -302,6 +302,18 @@ answer_key:
       target:
         host: "ws_victim"
         pid: 17892
+    # Stage 6 (owner ruling 2026-10-11): credential hygiene on the
+    # signed-in victim of a compromised endpoint is defensible and never
+    # penalized. disable_account stays a trap (host compromise is not
+    # credential compromise; disabling the user is business disruption).
+    - action: "revoke_sessions"
+      status: "acceptable"
+      target:
+        account: "victim"
+    - action: "force_password_reset"
+      status: "acceptable"
+      target:
+        account: "victim"
   traps:
     - action: "disable_account"
       target:
