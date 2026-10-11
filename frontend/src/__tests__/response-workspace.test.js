@@ -89,6 +89,9 @@ const mockApi = (overrides = {}) => {
     if (path === '/api/actions' && opts?.method === 'POST') {
       const body = JSON.parse(opts.body);
       posted.push(body);
+      if (overrides.postNetworkError) {
+        return Promise.reject(new Error('net'));
+      }
       if (overrides.postReject) {
         return Promise.resolve({ ok: false, status: 400, json: () => Promise.resolve(overrides.postReject) });
       }
@@ -179,6 +182,20 @@ test('an API rejection surfaces its error text instead of failing silently', asy
   });
   await waitFor(() => expect(toast).toHaveBeenCalledWith('Unknown target for this action.', expect.anything()));
   // the dialog closes and nothing is treated as a logged attempt
+  expect(screen.queryByRole('dialog')).toBeNull();
+});
+
+test('a transport-level failure still announces and closes the dialog (never silent)', async () => {
+  // Exercises run()'s catch branch for non-rejection errors -- the branch a
+  // missing toastActionRejected import once left referencing an undefined
+  // symbol that the short-circuiting rejection test never evaluated.
+  mockApi({ postNetworkError: true });
+  await renderResponse();
+  fireEvent.click(await screen.findByRole('button', { name: 'Isolate Host' }));
+  await act(async () => {
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Isolate' }));
+  });
+  await waitFor(() => expect(toast).toHaveBeenCalledWith('The action could not be completed.', expect.anything()));
   expect(screen.queryByRole('dialog')).toBeNull();
 });
 
