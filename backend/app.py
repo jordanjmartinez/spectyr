@@ -226,6 +226,11 @@ def create_session():
         "submissions": {},
         "incident_index": {},
         "assisted": set(),
+        # Stage 6 (W5): hostnames of env-declared NON-endpoint log sources
+        # (firewall/proxy) seen at drip. Observable role data only; used to
+        # keep log-source devices out of the serialized incident scope so
+        # the case-scoped UI never offers or fetches them as endpoints.
+        "non_endpoint_hosts": set(),
     }
     with sessions_lock:
         sessions[session_id] = session
@@ -2550,6 +2555,8 @@ def build_attack_chain_logs(session, scenario_entry, employee=None):
                     accounts = concrete_env.get("accounts", [])
                     for host in concrete_env["hosts"]:
                         if host["role"] in snapshot_generator.NON_ENDPOINT_ROLES:
+                            session.setdefault("non_endpoint_hosts", set()) \
+                                .add(host["hostname"])
                             continue
                         if host["hostname"] in session["benign_hosts"]:
                             continue
@@ -3167,6 +3174,7 @@ def reset_simulator():
         s["submissions"] = {}
         s["incident_index"] = {}
         s["assisted"] = set()
+        s["non_endpoint_hosts"] = set()
         for filepath in [s["paths"]["generated_logs"], s["paths"]["analyst_actions"], s["paths"]["incident_reports"]]:
             with open(filepath, "w", encoding="utf-8") as f:
                 f.truncate(0)
@@ -4084,6 +4092,13 @@ def _incident_observable_scope(s, incident_id):
     # so every surface is equal by construction.
     ro = _incident_roster(s, scenario_id)
     events, tagged, hosts = ro["events"], ro["tagged"], ro["hosts"]
+    # Stage 6 (W5): log-source devices (firewall/proxy) observe events but
+    # are never endpoints; keep them out of the SERIALIZED scope so the
+    # case-scoped Endpoints/Response surfaces never offer or fetch them.
+    # Roster/readiness/grading are untouched: the roster join above is the
+    # shared derivation, and PAN-OS devices carry no detections, so this is
+    # presentation-only by construction.
+    hosts = set(hosts) - s.get("non_endpoint_hosts", set())
     accounts = set()
     for l in events:
         acct = (l.get("key_value_pairs") or {}).get("account_name")
@@ -5187,6 +5202,7 @@ def start_simulator():
         s["submissions"] = {}
         s["incident_index"] = {}
         s["assisted"] = set()
+        s["non_endpoint_hosts"] = set()
     # Stage 4 A1: dedicated per-session stream for authored [lo, hi] gap
     # ranges, seeded from the epoch digest (never the shared global RNG).
     s["gap_rng"] = sim_epoch.gap_rng(s["id"])
