@@ -4469,17 +4469,18 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
       surfaced factually). Any successful action matching neither list is
       collateral (scoped below).
     - Tri-state gate: a scenario with actions_reviewed false is excluded
-      entirely: it earns nothing, costs nothing, and targets it claims are
-      out of grading scope. actions_reviewed true with required actions
-      grades normally. actions_reviewed true with NO required actions
-      (empty set, or acceptable-only) is intentional correct inaction:
-      one graded unit, credited when no collateral lands in its scope
-      (acceptable executions never cost it).
-    - Collateral scoping: a successful unnecessary action is collateral
-      only when its target is claimed by at least one REVIEWED scenario
-      and by NO unreviewed scenario (shared targets get the benefit of
-      the doubt while the corpus review is in flight; the ambiguity
-      vanishes at the 3d all-reviewed gate).
+      entirely: it earns nothing and costs nothing. actions_reviewed true
+      with required actions grades normally. actions_reviewed true with NO
+      required actions (empty set, or acceptable-only) is intentional
+      correct inaction: one graded unit, credited when the case's own
+      attributed actions are clean (acceptable executions never cost it).
+    - Collateral (Stage 6 per-case model): executed actions arrive already
+      ATTRIBUTED to this incident, so any successful attributed action
+      matching neither list is collateral, gated only on the scenario
+      being reviewed. The old environment-membership scope test
+      (claims/in_grading_scope) is gone: it could only EXEMPT a crafted
+      off-world action from collateral, and its cross-scenario join was
+      the cross-charging defect the attribution model replaced.
     - Isolation grades on END-STATE at scoring time: required containment
       released before submission forfeits that credit (nothing stacked).
       An ACCEPTABLE isolation is score-neutral whether it remains active
@@ -4502,21 +4503,14 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
     surface factually; the route pops it before serialization.
     """
     reviewed = [g for g in grading if g["reviewed"]]
-    unreviewed = [g for g in grading if not g["reviewed"]]
     reviewed_ids = {g["scenario_id"] for g in reviewed}
     expected = [e for e in expected if e["scenario_id"] in reviewed_ids]
     required_exp = [e for e in expected if e.get("status") == "required"]
     acceptable_exp = [e for e in expected if e.get("status") == "acceptable"]
-
-    def claims(g, action, target):
-        if action in _IDENTITY_ACTION_NAMES:
-            return action_overlay.account_key(
-                target["domain"], target["username"]) in g["accounts"]
-        return target["hostname"] in g["hostnames"]
-
-    def in_grading_scope(action, target):
-        return (any(claims(g, action, target) for g in reviewed)
-                and not any(claims(g, action, target) for g in unreviewed))
+    # Stage 6: executed actions are pre-attributed to this incident, so
+    # off-list success IS collateral whenever the scenario is reviewed --
+    # no environment-membership test survives.
+    graded_scope = bool(reviewed)
 
     first = {}
     for e in executed:
@@ -4608,7 +4602,7 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
             continue  # isolation collateral is end-state, counted below
         if (action, key) in required_keys or (action, key) in acceptable_keys:
             continue
-        if in_grading_scope(action, target):
+        if graded_scope:
             collateral_hits.append((action, target))
             review_entries.append({
                 "reason_code": response_review.COLLATERAL_IN_SCOPE,
@@ -4621,8 +4615,8 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
     for hostname in sorted(isolated_hosts):
         if hostname in required_iso or hostname in acceptable_iso:
             continue
-        target = {"hostname": hostname}
-        if in_grading_scope("isolate_host", target):
+        if graded_scope:
+            target = {"hostname": hostname}
             collateral_hits.append(("isolate_host", target))
             iso_hit = first.get(("isolate_host", (hostname,)))
             review_entries.append({
@@ -4632,15 +4626,15 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
 
     # Intentional correct inaction: each reviewed scenario with no REQUIRED
     # actions (empty, or acceptable-only) is one graded unit, credited only
-    # with clean hands in its scope. Acceptable executions never cost it; a
-    # shared-target collateral hit costs every claiming scenario its
-    # inaction credit (deterministic multi-attribution).
+    # with clean hands -- Stage 6: "hands" are the actions ATTRIBUTED to
+    # this case, so any attributed collateral spoils it; acceptable
+    # executions never cost it.
     scenarios_with_required = {e["scenario_id"] for e in required_exp}
     for g in reviewed:
         if g["scenario_id"] in scenarios_with_required:
             continue
         required += 1
-        if any(claims(g, action, target) for action, target in collateral_hits):
+        if collateral_hits:
             missed += 1
             review_entries.append({
                 "reason_code": response_review.INACTION_SPOILED,
@@ -4664,9 +4658,7 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
     # per-scenario formula and a multi-scenario session pools proportionally.
     inaction_scenarios = [g for g in reviewed
                           if g["scenario_id"] not in scenarios_with_required]
-    inaction_collateral = any(
-        any(claims(g, action, target) for g in inaction_scenarios)
-        for action, target in collateral_hits)
+    inaction_collateral = bool(inaction_scenarios) and bool(collateral_hits)
     graded = required  # R + I: the proportional denominator (collateral is a penalty, not a unit)
     base = (correct / graded * 100) if graded else 0.0
     accuracy_raw = 0.0 if inaction_collateral else max(0.0, base - 20.0 * collateral)

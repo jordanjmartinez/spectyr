@@ -1,13 +1,46 @@
-# Response-Action Scoring (Stage 3b, amended by the 3c rulings)
+# Response-Action Scoring (Stage 3b, amended by the 3c rulings and the Stage 6 per-case attribution ruling)
 
 The single reference for how response actions are scored, surfaced, or
 rejected. `compute_action_score` (backend/app.py) implements exactly this
-model; `test_action_scoring.py` proves it cell by cell.
+model; `test_action_scoring.py` proves it cell by cell, and
+`test_action_attribution.py` guards the Stage 6 attribution model.
+
+## Per-case attribution (Stage 6, owner-ruled)
+
+Every response action is taken UNDER a case. `POST /api/actions` requires
+`incident_id` (the active case in the Response workspace), validated
+against the session's incident index exactly like a target id: a
+missing/malformed/unknown/foreign incident id draws the same neutral 400,
+never logged. The validated stamp is stored on the overlay log entry and
+serializes on the Response Log (the Case column). Submitted incidents
+remain valid contexts (their frozen records never recompute, so
+post-submit actions are grading-inert; `release_host` after closing a
+case must stay possible).
+
+**Each incident's grade is computed ONLY over the actions attributed to
+it**: required/acceptable credit, collateral, the inaction-zero, the
+failed/no_op factual surfacing, and the required-attempt-failed upgrade
+all join on the stamp. Isolation end-state is per-case OWNERSHIP: a host
+counts for the case whose successful isolate is the LATEST on that host
+and still in effect (isolate under A, release, re-isolate under B: A
+forfeits via released_after_isolation; B owns the end state). Entries
+without a stamp (direct harness writes) attribute to no case and are
+grading-inert.
+
+This replaced the pooled model in which every submitted incident re-judged
+the whole session's actions against its own answer key over
+environment-declared scope — the mechanism that charged one incident's
+textbook response as collateral in sibling incidents sharing infra hosts
+or a re-drawn employee, zeroed inaction-correct FP incidents, and made
+grades submit-order dependent. Cross-charging is now structurally
+impossible; submit order cannot change any grade
+(test_action_attribution.py proves both).
 
 ## The grading model
 
-- **Successful actions only.** The scorer consumes successful log entries.
-  Everything else is score-neutral by construction.
+- **Successful actions only.** The scorer consumes successful log entries
+  attributed to the incident being graded. Everything else is
+  score-neutral by construction.
 - **Every answer-key action carries an explicit status** (`required` or
   `acceptable`; no default, authoring is deliberate):
   - `required`: earns credit; omission is a missing-action deduction.
@@ -16,7 +49,10 @@ model; `test_action_scoring.py` proves it cell by cell.
     omitting it never lowers the score. If executed, it is surfaced in
     the report as an acceptable response (factual wording, zero score
     impact).
-  - Any successful action matching neither list is collateral.
+  - Any successful attributed action matching neither list is collateral
+    (gated only on the scenario being reviewed; Stage 6 removed the old
+    environment-membership scope test, which could only EXEMPT a crafted
+    off-world action from collateral).
 - **Isolation grades on end-state** at scoring time. Required containment
   released before submission forfeits that credit; the forfeiture is the
   whole cost (no stacked reversal penalty). Re-isolating before
@@ -84,9 +120,9 @@ Server-side only; never serialized (leak-guard tested).
 
 | Marker | actions | Meaning |
 |---|---|---|
-| absent / `false` | any | Not yet reviewed: the scenario is EXCLUDED from action scoring. It earns nothing, costs nothing, and targets it claims are out of grading scope. The Response section renders `-` until a reviewed scenario drips. |
+| absent / `false` | any | Not yet reviewed: the scenario is EXCLUDED from action scoring. It earns nothing and costs nothing (its case's attributed actions are ungraded). The Response section renders `-` until a reviewed scenario drips. |
 | `true` | has required actions | Graded normally. |
-| `true` | no required actions (`[]`, or acceptable-only) | Intentional correct inaction: the scenario contributes one graded unit, credited when no collateral lands in its scope; a hit costs both the collateral and the inaction credit. Executing an acceptable action never costs the unit. |
+| `true` | no required actions (`[]`, or acceptable-only) | Intentional correct inaction: the scenario contributes one graded unit, credited when its case's attributed actions are clean; an attributed collateral costs both the collateral and the inaction credit. Executing an acceptable action never costs the unit. |
 
 **Correct inaction is not exclusive to false positives.** A reviewed
 ATTACK scenario may also have no required action when the environment
@@ -101,13 +137,15 @@ test_brute_force_system_contained_scores_a_for_nothing_and_reset_only).
 The lesson is not to over-react (isolating the DC or disabling the
 account is collateral) to an attack the system already stopped.
 
-Collateral scoping while the corpus review is in flight: a successful
-unnecessary action is collateral only when its target is claimed by at
-least one reviewed scenario and by NO unreviewed scenario. Shared targets
-(infra hosts appearing in both) get the benefit of the doubt; the
-ambiguity vanishes at the 3d all-reviewed gate. A shared-target collateral
-hit costs every claiming reviewed inaction scenario its credit
-(deterministic multi-attribution).
+Collateral scoping (Stage 6): executed actions arrive pre-attributed to
+the incident being graded, so a successful unnecessary action is
+collateral exactly when its case's scenario is reviewed. The old
+claims/in_grading_scope membership join (reviewed-claims +
+unreviewed-benefit-of-the-doubt, and with it shared-target
+multi-attribution) is deleted: its cross-scenario reach was the
+cross-charging defect, and at 20/20 reviewed its only residual effect was
+exempting off-environment actions from collateral. An inaction scenario
+is spoiled only by collateral attributed to ITS case.
 
 Each 3c scenario commit flips its scenario to `actions_reviewed: true`.
 3d completion gate: all 20 reviewed; a close-out test asserts no
@@ -119,11 +157,13 @@ unreviewed scenario remains.
 |---|---|
 | Successful REQUIRED action | Credit (per the model above); omission is a miss |
 | Successful ACCEPTABLE action | Neutral; surfaced factually as an acceptable response; excluded from the denominator; never collateral |
-| Successful action on neither list | Collateral penalty (any scenario, including FPs) |
+| Successful attributed action on neither list | Collateral penalty in ITS case (any scenario, including FPs) |
 | `release_host` success | Globally score-neutral; only indirect effect is forfeiting a required isolation's end-state credit |
-| `failed_precondition` attempt | Score-neutral; surfaced FACTUALLY in the report's Response section as attempted actions that did not execute (count + entries, no editorial label); full detail in the Response Log |
+| `failed_precondition` attempt | Score-neutral; surfaced FACTUALLY in its case's Response section as attempted actions that did not execute (count + entries, no editorial label); full detail in the Response Log |
 | `no_op` repeat | Score-neutral; surfaced FACTUALLY (count + entries; the first success already carried whatever it earned or cost) |
 | Malformed / foreign-session / stale / wrong-kind target | API rejection (identical 400 body; no cross-session existence leak), never logged, never scored |
+| Missing / malformed / unknown / foreign incident id | API rejection (identical neutral 400 body for the class; Stage 6), never logged, never scored |
+| Log entry with no attribution stamp | Grading-inert: belongs to no case; never credits, never charges, never spoils inaction |
 | Required actions | Must be achievable from the initial scenario state (validator-enforced, seed-independent); the same bar applies to acceptable actions |
 
 ## Achievability (validator-enforced, seed-independent)
@@ -201,6 +241,17 @@ per-scenario single-collateral cost is now UNIFORM: exactly 20 points on
 every attack scenario (independent of required-set size) and 100 (zeroed)
 on every inaction scenario. See docs/stage-3-final-report.md for the full
 run.
+
+**Stage 6 note (per-case attribution):** correct-response (100/100) and
+act-on-nothing (13.3/30.0) are unchanged by attribution — the correct
+strategy stamps each action with its own case, and no-actions has nothing
+to attribute. Act-on-everything now depends on the attribution convention
+the spree uses: sprayed under every case in turn it stays ~0 (every case
+charges its own copy of the collateral); sprayed under ONE case it zeroes
+that case and leaves the others at act-on-nothing values (still strictly
+below correct on micro and macro). Either way no naive strategy
+outperforms correct play, which is the property the baselines exist to
+prove.
 
 ## Composite headline-grade options (Stage 3d — RULED: Option C, wired)
 

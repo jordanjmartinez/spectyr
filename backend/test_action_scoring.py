@@ -277,22 +277,25 @@ def test_no_grading_records_grades_dash():
     assert r["grade"] == "-" and r["graded"] == 0 and r["accuracy"] == 0.0
 
 
-def test_shared_target_with_unreviewed_scenario_gets_benefit_of_doubt():
-    """A target claimed by BOTH a reviewed and an unreviewed scenario is
-    out of collateral scope while the review is in flight; a target
-    claimed only by the reviewed scenario still counts."""
-    grading = [
-        _grading(scenario="scenario-r", reviewed=True, hostnames={WS, SVR}),
-        _grading(scenario="scenario-u", reviewed=False, hostnames={SVR},
-                 accounts=()),
-    ]
+def test_attributed_off_list_success_is_collateral_regardless_of_env():
+    """Stage 6 (replaces the retired benefit-of-doubt test, whose premise
+    died with the cross-scenario claims join): executed actions arrive
+    pre-attributed to this case, so ANY off-list success is collateral once
+    the scenario is reviewed -- including a target outside the scenario's
+    declared environment (the old membership test could only EXEMPT such an
+    action; that hole is closed). Unreviewed stays excluded entirely."""
+    grading = [_grading(scenario="scenario-r", reviewed=True,
+                        hostnames={WS}, accounts=())]
     executed = [
-        _run("kill_process", {"hostname": SVR, "pid": 3312, "name": "net.exe"}, 1),
-        _run("kill_process", {"hostname": WS, "pid": 900, "name": "x.exe"}, 2),
+        _run("kill_process", {"hostname": WS, "pid": 900, "name": "x.exe"}, 1),
+        _run("kill_process", {"hostname": "ACME-ELSEWHERE", "pid": 901,
+                              "name": "y.exe"}, 2),
     ]
     r = _score([], executed, set(), grading)
-    assert r["collateral"] == 1, \
-        "shared-host action must be ungraded; reviewed-only host counts"
+    assert r["collateral"] == 2, "off-env attributed success must still charge"
+    r0 = _score([], executed, set(),
+                [_grading(scenario="scenario-u", reviewed=False)])
+    assert r0["collateral"] == 0 and r0["grade"] == "-"
 
 
 def test_brute_force_system_contained_scores_a_for_nothing_and_reset_only():
@@ -853,16 +856,22 @@ def test_inaction_scenario_zeroes_on_any_collateral():
     assert one["accuracy"] == 0.0 and one["inaction_collateral"] is True
 
 
-def test_inaction_collateral_zeroes_session_even_with_handled_attacks():
-    """Strict inaction contract: a collateral in an inaction scenario's scope
-    zeroes the Response score even when a co-dripped attack was handled."""
+def test_inaction_collateral_zeroes_the_case_it_is_attributed_to():
+    """Strict inaction contract, per-case (Stage 6 rewrite of the pooled
+    session-zero test): the inaction case is zeroed by ITS OWN attributed
+    collateral, while a handled attack graded as its own case is untouched
+    (cross-charging is structurally gone -- see test_action_attribution.py
+    for the route-level regression guard)."""
     gA = _grading(scenario="scenario-a", hostnames={WS}, accounts=())
-    gB = _grading(scenario="scenario-b", hostnames={SVR}, accounts=())
     expected = [_exp("isolate_host", {"hostname": WS}, scenario="scenario-a")]
-    executed = [_run("isolate_host", {"hostname": WS}, 1),
-                _run("kill_process", {"hostname": SVR, "pid": 900, "name": "x.exe"}, 2)]
-    r = app.compute_action_score(expected, executed, {WS}, [gA, gB])
-    assert r["inaction_collateral"] is True and r["accuracy"] == 0.0
+    r_a = app.compute_action_score(
+        expected, [_run("isolate_host", {"hostname": WS}, 1)], {WS}, [gA])
+    assert r_a["accuracy"] == 100.0 and r_a["inaction_collateral"] is False
+    gB = _grading(scenario="scenario-b", hostnames={SVR}, accounts=())
+    r_b = app.compute_action_score(
+        [], [_run("kill_process", {"hostname": SVR, "pid": 900,
+                                   "name": "x.exe"}, 2)], set(), [gB])
+    assert r_b["inaction_collateral"] is True and r_b["accuracy"] == 0.0
 
 
 def test_acceptable_and_neutral_outcomes_do_not_price_as_collateral():
