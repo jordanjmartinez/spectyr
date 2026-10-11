@@ -431,7 +431,8 @@ AUTHORED_LM1 = [
 
 
 def _world_for_seed(label, seed):
-    sc, resolved, env, world, _dets, _reg, _keys = _full_world_for_seed(label, seed)
+    sc, resolved, env, world, _dets, _reg, _keys, _written = \
+        _full_world_for_seed(label, seed)
     return sc, resolved, env, world
 
 
@@ -468,7 +469,8 @@ def _full_world_for_seed(label, seed):
         f"scenario-{label}", sc, logs, seed,
         supplemental_logs=sup_logs, supplemental_meta=sup_meta, concrete_env=env)
     det_keys = app.detection_account_keys(detections, registry)
-    return sc, resolved, env, world, detections, registry, det_keys
+    return sc, resolved, env, world, detections, registry, det_keys, \
+        logs + sup_logs
 
 
 def _dependency_order(expected):
@@ -525,7 +527,8 @@ def test_required_and_acceptable_actions_are_ui_reachable_across_seeds():
         if not ak.get("actions_reviewed"):
             continue
         for seed in SEED_SET:
-            sc2, resolved, env, world, dets, reg, det_keys = _full_world_for_seed(label, seed)
+            sc2, resolved, env, world, dets, reg, det_keys, _written = \
+                _full_world_for_seed(label, seed)
             expected = app.materialize_expected_actions(
                 ak["actions"], f"scenario-{label}", env, resolved, world=world)
             for exp in expected:
@@ -546,7 +549,8 @@ def test_declared_traps_execute_reachable_and_grade_collateral_across_seeds():
         if not traps:
             continue
         for seed in SEED_SET:
-            sc2, resolved, env, world, dets, reg, det_keys = _full_world_for_seed(label, seed)
+            sc2, resolved, env, world, dets, reg, det_keys, _written = \
+                _full_world_for_seed(label, seed)
             grading = [app.scenario_grading_record(f"scenario-{label}", sc, env)]
             expected = app.materialize_expected_actions(
                 ak_actions(sc), f"scenario-{label}", env, resolved, world=world)
@@ -580,18 +584,30 @@ def test_declared_traps_execute_reachable_and_grade_collateral_across_seeds():
 
 
 def test_actions_ui_reachable_within_incident_scope_across_seeds():
-    """Stage 3.9B / B3 + C1: while an incident's scope is active, EVERY required,
-    acceptable, AND declared-trap target must be reachable within the incident's
-    OBSERVABLE presentation scope, across the fixed five-seed set:
+    """Stage 3.9B / B3 + C1, CORRECTED at Stage 6: while an incident's scope
+    is active, every REQUIRED and declared-trap target must be reachable
+    within the incident's OBSERVABLE presentation scope, across the fixed
+    five-seed set:
     - host / process / file / persistence targets: the target host must be an
-      observable participant of the incident (an event-participant managed host,
-      mirroring _incident_observable_scope, or a tagged-detection host) -> the
-      scoped Endpoints view surfaces it;
-    - identity targets: the account must be a detection-surfaced account of THIS
-      incident (its own det_keys) -> the scoped Threats view surfaces it.
-    Answer-key data (expected actions, traps) is used ONLY in this test, never in
-    the presentation scope; a gap here is fixed in telemetry/content, never by
-    injecting answer-key targets into the scope."""
+      observable participant of the incident (an EVENT hostname or a
+      tagged-detection entity host -- the real _incident_roster derivation)
+      AND a managed world host -> the case-scoped Response/Endpoints
+      surfaces render it;
+    - identity targets: the account must be a detection-surfaced account of
+      THIS incident (its own det_keys) -> the scoped Threats view surfaces it.
+    The pre-Stage-6 version read set(world["hosts"]) -- the ENVIRONMENT-
+    DECLARED set, the exact env-join defect class the pre-Stage-5 hotfix
+    removed from production -- so a required isolation on a never-observable
+    host (password_spray's victim workstation) passed while being
+    unperformable in the UI. ACCEPTABLE actions are held to world
+    reachability only (test_required_and_acceptable_actions_are_ui_reachable
+    _across_seeds): an out-of-scope acceptable target is score-neutral and
+    unexecutable, surfacing post-submit purely as teaching (the
+    password_spray demotion, owner-ruled 2026-10-11; flagged in the Stage 6
+    report for the no-phantom tension with the 3c Batch-2 ruling).
+    Answer-key data (expected actions, traps) is used ONLY in this test,
+    never in the presentation scope; a gap here is fixed in telemetry/
+    content, never by injecting answer-key targets into the scope."""
     IDENTITY = ("disable_account", "revoke_sessions", "force_password_reset")
     checked = 0
     for label, sc in app.yaml_catalog.items():
@@ -599,16 +615,19 @@ def test_actions_ui_reachable_within_incident_scope_across_seeds():
         if not ak.get("actions_reviewed"):
             continue
         for seed in SEED_SET:
-            sc2, resolved, env, world, dets, reg, det_keys = _full_world_for_seed(label, seed)
-            # observable scope hosts: event-participant managed hosts + tagged-
-            # detection hosts (the same derivation _incident_observable_scope uses).
-            obs_hosts = set(world["hosts"].keys())
+            sc2, resolved, env, world, dets, reg, det_keys, written = \
+                _full_world_for_seed(label, seed)
+            # observable scope hosts: WRITTEN event hostnames + tagged-
+            # detection entity hosts (the _incident_roster derivation),
+            # never the environment-declared world set.
+            obs_hosts = {l.get("hostname") for l in written if l.get("hostname")}
             for d in dets:
                 h = (d.get("entity") or {}).get("host")
                 if h:
                     obs_hosts.add(h)
-            targets = list(app.materialize_expected_actions(
-                ak.get("actions", []), f"scenario-{label}", env, resolved, world=world))
+            targets = [t for t in app.materialize_expected_actions(
+                ak.get("actions", []), f"scenario-{label}", env, resolved,
+                world=world) if t.get("status") == "required"]
             targets += list(app.materialize_traps(
                 sc.get("traps", []), f"scenario-{label}", env, resolved, world=world))
             for t in targets:
@@ -619,7 +638,7 @@ def test_actions_ui_reachable_within_incident_scope_across_seeds():
                          f"the incident scope")
                 else:
                     host = target.get("hostname") or target.get("host")
-                    assert host in obs_hosts, \
+                    assert host in obs_hosts and host in world["hosts"], \
                         (f"{label}/{seed}: {action} target host {host!r} is not in "
                          f"the incident's observable scope {sorted(obs_hosts)}")
                 checked += 1
