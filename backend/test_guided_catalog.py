@@ -247,6 +247,28 @@ def test_inc_and_catalog_ids_are_disjoint_id_spaces():
 TESTS = [v for k, v in sorted(globals().items())
          if k.startswith("test_") and callable(v)]
 
+def test_campaign_levels_category_matches_yaml_answer_key():
+    """Stage 6 (W7b): classification grading reads the category from the
+    CAMPAIGN_LEVELS dict KEY (stamped onto events at drip and compared by
+    _classification_grade), while the loader suite pins only YAML<->YAML
+    (v2 category == answer_key.classification, v1 == v2). Nothing tied the
+    runtime source to the corpus, so editing one silently diverged grading
+    from the authored answer key. Every label's dict-key category must
+    equal its YAML category AND its YAML answer_key.classification."""
+    for grp in app.CAMPAIGN_LEVELS:
+        for category, sc in grp["scenarios"].items():
+            label = sc["scenario_label"]
+            y = app.yaml_catalog.get(label)
+            assert y is not None, f"{label}: in CAMPAIGN_LEVELS but not the corpus"
+            assert y.get("category") == category, \
+                (f"{label}: CAMPAIGN_LEVELS key {category!r} != YAML "
+                 f"category {y.get('category')!r}")
+            assert y["answer_key"].get("classification") == category, \
+                (f"{label}: CAMPAIGN_LEVELS key {category!r} != YAML "
+                 f"answer_key.classification "
+                 f"{y['answer_key'].get('classification')!r}")
+
+
 if __name__ == "__main__":
     failed = 0
     for t in TESTS:
