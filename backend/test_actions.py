@@ -219,9 +219,14 @@ def test_replay_determinism_byte_identical_logs():
 
 # --- API level -----------------------------------------------------------------
 
-def _api_session():
+INCIDENT = "INC-7000"
+
+
+def _api_session(incident=INCIDENT):
     """A live session through the Flask test client, world populated the way
-    the drip populates it. Returns (client, sid, session)."""
+    the drip populates it (incident_index included: per-case attribution
+    requires a valid incident context on every POST). Returns
+    (client, sid, session)."""
     client = app.app.test_client()
     r = client.get("/api/health")
     sid = r.headers["X-Session-ID"]
@@ -234,6 +239,7 @@ def _api_session():
         ao.collect_env_accounts(s["env_accounts"], env)
         s["entity_index"] = ao.build_entity_registry(
             s["world"], s["env_accounts"], s["id"])
+        s["incident_index"][incident] = "scenario-malware_usb"
     return client, sid, s
 
 
@@ -243,8 +249,13 @@ def _cleanup(sid):
         shutil.rmtree(s["session_dir"], ignore_errors=True)
 
 
-def _post(client, sid, body):
-    return client.post("/api/actions", json=body, headers={"X-Session-ID": sid})
+def _post(client, sid, body, incident=INCIDENT):
+    """POST an action; the attribution stamp defaults to the fixture
+    incident (pass incident=None to send a body without one)."""
+    payload = dict(body)
+    if incident is not None and "incident_id" not in payload:
+        payload["incident_id"] = incident
+    return client.post("/api/actions", json=payload, headers={"X-Session-ID": sid})
 
 
 def _assert_clean(payload):
@@ -261,7 +272,9 @@ def test_api_execute_and_response_log():
         assert r.status_code == 200
         body = r.get_json()
         assert body["outcome"] == "success" and body["seq"] == 1
-        assert set(body) == {"seq", "timestamp", "action", "outcome", "reason", "target"}
+        assert set(body) == {"seq", "timestamp", "action", "outcome", "reason",
+                             "incident_id", "target"}
+        assert body["incident_id"] == INCIDENT
         assert set(body["target"]) == {"id", "kind", "label"}
         _assert_clean(body)
 
@@ -289,11 +302,18 @@ def test_api_rejects_invalid_targets_unlogged():
             {"action": "isolate_host", "target": "ent-000000000000"},  # stale
             {"action": "isolate_host"},                       # missing target
             {"action": "isolate_host", "target": None},
+            # Stage 6 attribution: unknown incident id, valid target
+            {"action": "isolate_host", "target": host_id, "incident_id": "INC-9999"},
         ]
         for body in cases:
             r = _post(client, sid, body)
             assert r.status_code == 400, body
             _assert_clean(r.get_json())
+        # missing incident id entirely
+        r = _post(client, sid, {"action": "isolate_host", "target": host_id},
+                  incident=None)
+        assert r.status_code == 400
+        _assert_clean(r.get_json())
         r = client.get("/api/actions", headers={"X-Session-ID": sid})
         assert r.get_json()["count"] == 0, "a rejected attempt reached the log"
     finally:
@@ -303,30 +323,62 @@ def test_api_rejects_invalid_targets_unlogged():
 def test_api_foreign_session_ids_indistinguishable_from_unknown():
     """Logging boundary: a valid entity id from ANOTHER session is rejected
     exactly like a garbage id (same status, same body: no cross-session
-    existence leak) and neither session's action log records the attempt."""
-    client_a, sid_a, s_a = _api_session()
+    existence leak) and neither session's action log records the attempt.
+    Stage 6 extends the same rule to incident ids: a foreign session's
+    incident id rejects exactly like a garbage incident id."""
+    client_a, sid_a, s_a = _api_session(incident="INC-A777")
     client_b, sid_b, s_b = _api_session()
     try:
         foreign_id, _ = _eid(s_a["entity_index"], "host", hostname="ACME-WS12")
         assert foreign_id not in s_b["entity_index"], \
             "fixture invalid: entity id collided across sessions"
 
-        r_foreign = client_b.post("/api/actions",
-                                  json={"action": "isolate_host", "target": foreign_id},
-                                  headers={"X-Session-ID": sid_b})
-        r_garbage = client_b.post("/api/actions",
-                                  json={"action": "isolate_host",
-                                        "target": "ent-000000000000"},
-                                  headers={"X-Session-ID": sid_b})
+        r_foreign = _post(client_b, sid_b,
+                          {"action": "isolate_host", "target": foreign_id})
+        r_garbage = _post(client_b, sid_b,
+                          {"action": "isolate_host", "target": "ent-000000000000"})
         assert r_foreign.status_code == r_garbage.status_code == 400
         assert r_foreign.get_json() == r_garbage.get_json(), \
             "foreign-session rejection distinguishable from unknown-id rejection"
+
+        own_target, _ = _eid(s_b["entity_index"], "host", hostname="ACME-WS12")
+        r_foreign_inc = _post(client_b, sid_b,
+                              {"action": "isolate_host", "target": own_target,
+                               "incident_id": "INC-A777"})      # exists only in A
+        r_garbage_inc = _post(client_b, sid_b,
+                              {"action": "isolate_host", "target": own_target,
+                               "incident_id": "INC-0000"})
+        assert r_foreign_inc.status_code == r_garbage_inc.status_code == 400
+        assert r_foreign_inc.get_json() == r_garbage_inc.get_json(), \
+            "foreign-session incident rejection distinguishable from unknown"
         for sid, client in ((sid_a, client_a), (sid_b, client_b)):
             log = client.get("/api/actions", headers={"X-Session-ID": sid}).get_json()
             assert log["count"] == 0, "a rejected attempt reached an action log"
     finally:
         _cleanup(sid_a)
         _cleanup(sid_b)
+
+
+def test_api_attribution_round_trip():
+    """Per-case attribution: the validated incident stamp rides the log
+    entry and serializes on every read; entries recorded without one (the
+    legacy/back-compat shape) serialize incident_id null."""
+    client, sid, s = _api_session()
+    try:
+        host_id, _ = _eid(s["entity_index"], "host", hostname="ACME-WS12")
+        r = _post(client, sid, {"action": "isolate_host", "target": host_id})
+        assert r.get_json()["incident_id"] == INCIDENT
+        with s["io_lock"]:
+            assert s["overlay"]["log"][0]["incident_id"] == INCIDENT
+            # a directly-recorded legacy entry carries no stamp
+            entry = s["entity_index"][host_id]
+            ao.record_attempt(s["overlay"], s["world"]["started_at"],
+                              "release_host", host_id, entry, ao.SUCCESS, None)
+        log = client.get("/api/actions", headers={"X-Session-ID": sid}).get_json()
+        assert [e["incident_id"] for e in log["actions"]] == [INCIDENT, None]
+        _assert_clean(log)
+    finally:
+        _cleanup(sid)
 
 
 def test_api_immutable_evidence_after_kill():
@@ -375,7 +427,8 @@ def test_api_concurrent_isolate_single_success():
         def worker():
             c = app.app.test_client()
             r = c.post("/api/actions",
-                       json={"action": "isolate_host", "target": host_id},
+                       json={"action": "isolate_host", "target": host_id,
+                             "incident_id": INCIDENT},
                        headers={"X-Session-ID": sid})
             with lock:
                 results.append(r.get_json()["outcome"])

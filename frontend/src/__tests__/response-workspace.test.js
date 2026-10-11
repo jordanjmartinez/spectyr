@@ -69,10 +69,10 @@ const FEED = {
 const LOG = {
   actions: [
     { seq: 1, timestamp: '2026-07-16T12:00:01+00:00', action: 'isolate_host',
-      outcome: 'success', reason: null,
+      outcome: 'success', reason: null, incident_id: 'INC-A',
       target: { id: 'ent-aaaa11112222', kind: 'host', label: 'ACME-WS12' } },
     { seq: 2, timestamp: '2026-07-16T12:00:02+00:00', action: 'isolate_host',
-      outcome: 'failed_precondition',
+      outcome: 'failed_precondition', incident_id: null,
       reason: 'Host is offline. The isolation command could not be delivered to the endpoint agent.',
       target: { id: 'ent-bbbb11112222', kind: 'host', label: 'ACME-SVR02' } },
   ],
@@ -148,7 +148,8 @@ test('an action executes through the one request path exactly once (confirm -> P
   await act(async () => {
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Isolate' }));
   });
-  await waitFor(() => expect(posted).toEqual([{ action: 'isolate_host', target: 'ent-aaaa11112222' }]));
+  await waitFor(() => expect(posted).toEqual([
+    { action: 'isolate_host', target: 'ent-aaaa11112222', incident_id: 'INC-A' }]));
   expect(toast).toHaveBeenCalledTimes(1);
 });
 
@@ -163,7 +164,8 @@ test('Kill posts the real process entity id through the one request path', async
   await act(async () => {
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Kill' }));
   });
-  await waitFor(() => expect(posted).toEqual([{ action: 'kill_process', target: 'ent-abab11112222' }]));
+  await waitFor(() => expect(posted).toEqual([
+    { action: 'kill_process', target: 'ent-abab11112222', incident_id: 'INC-A' }]));
   expect(toast).toHaveBeenCalledTimes(1);
 });
 
@@ -192,7 +194,8 @@ test('identity actions execute on the roster account and disabled flags read the
   await act(async () => {
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Disable' }));
   });
-  await waitFor(() => expect(posted).toEqual([{ action: 'disable_account', target: 'ent-1234567890ab' }]));
+  await waitFor(() => expect(posted).toEqual([
+    { action: 'disable_account', target: 'ent-1234567890ab', incident_id: 'INC-A' }]));
 });
 
 test('the Response Log is the single chronological history with outcomes and detail', async () => {
@@ -204,6 +207,9 @@ test('the Response Log is the single chronological history with outcomes and det
   expect(screen.getByText('Success')).toBeInTheDocument();
   expect(screen.getByText('Failed')).toBeInTheDocument();
   expect(screen.getByText(/isolation command could not be delivered/)).toBeInTheDocument();
+  // the Case column renders the attribution stamp; unattributed entries dash
+  expect(screen.getByText('Case')).toBeInTheDocument();
+  expect(screen.getByText('INC-A')).toBeInTheDocument();
 });
 
 test('the ruled empty states render exactly and reveal nothing', async () => {

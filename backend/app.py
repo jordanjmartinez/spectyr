@@ -3072,13 +3072,21 @@ def _attach_account_ref(view, s):
 def execute_response_action():
     """Execute one response action against a client entity id.
 
-    Body: {"action": <name>, "target": <ent-id>}.
+    Body: {"action": <name>, "target": <ent-id>, "incident_id": "INC-####"}.
 
-    Logging boundary (ruled at the 3a close-out):
+    incident_id (Stage 6 per-case attribution) is REQUIRED: the incident
+    the action is taken under. The Response workspace always has an active
+    case; the stamp is what each incident's grade is computed over. A
+    submitted incident stays a valid context (its frozen record never
+    recomputes, so post-submit actions are grading-inert by construction),
+    and there is no sealing/readiness gate here.
+
+    Logging boundary (ruled at the 3a close-out, extended at Stage 6):
     - Rejected at the API, NEVER logged: malformed ids, foreign-session
-      ids, stale/unknown ids, wrong-kind ids. All of these return the same
-      400 body, so a foreign-session rejection is indistinguishable from
-      an unknown-id rejection (no cross-session existence leak).
+      ids, stale/unknown ids, wrong-kind ids -- and missing/unknown/
+      foreign incident ids, all with one identical 400 body per class, so
+      a foreign-session rejection is indistinguishable from an unknown-id
+      rejection (no cross-session existence leak).
     - Logged as failed_precondition: a valid session target that fails an
       in-world precondition (offline isolate, missing pid/path, release
       of a non-isolated host), with the in-fiction reason.
@@ -3094,7 +3102,12 @@ def execute_response_action():
     if kind is None:
         return jsonify({"error": "Unknown action."}), 400
     target_id = body.get("target")
+    incident_id = body.get("incident_id")
     with s["io_lock"]:
+        if incident_id not in s.get("incident_index", {}):
+            # missing, malformed, unknown, or foreign incident id: rejected,
+            # never logged, one neutral body for the whole class
+            return jsonify({"error": "Unknown incident for this action."}), 400
         entry = s.get("entity_index", {}).get(target_id)
         if entry is None or entry["kind"] != kind:
             # invalid, stale, or wrong-kind target: rejected, never logged
@@ -3103,7 +3116,7 @@ def execute_response_action():
             s["world"], s["overlay"], entry, action)
         log_entry = action_overlay.record_attempt(
             s["overlay"], s["world"]["started_at"], action, target_id, entry,
-            outcome, reason)
+            outcome, reason, incident_id=incident_id)
         view = action_overlay.sanitize_action_entry(log_entry)
     return jsonify(view)
 

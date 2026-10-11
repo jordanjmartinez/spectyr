@@ -459,12 +459,19 @@ def target_label(entry):
     return f"{entry['domain']}\\{entry['username']}"
 
 
-def record_attempt(overlay, started_at, action, target_id, entry, outcome, reason):
+def record_attempt(overlay, started_at, action, target_id, entry, outcome, reason,
+                   incident_id=None):
     """Append one attempt to the action log. Deterministic by construction:
     the logical timestamp is the frozen session clock plus the monotonic
     sequence number, never the wall clock, and the entry carries no random
     ids. Callers only reach this with a registry-validated target, and a
     non-empty registry implies the session world (and started_at) exists.
+
+    incident_id is the Stage 6 per-case attribution stamp: the (validated)
+    client incident the action was taken under. The route always supplies
+    it; entries without one attribute to no case and are excluded from
+    every per-case grade. Never the scenario_id -- attribution is an
+    observable client value, not answer-key linkage.
     """
     overlay["seq"] += 1
     ts = (datetime.fromisoformat(started_at)
@@ -477,6 +484,7 @@ def record_attempt(overlay, started_at, action, target_id, entry, outcome, reaso
                    "label": target_label(entry)},
         "outcome": outcome,
         "reason": reason,
+        "incident_id": incident_id,
     }
     overlay["log"].append(log_entry)
     return log_entry
@@ -492,20 +500,27 @@ def sanitize_action_entry(log_entry):
         "action": log_entry["action"],
         "outcome": log_entry["outcome"],
         "reason": log_entry.get("reason"),
+        "incident_id": log_entry.get("incident_id"),
         "target": {"id": log_entry["target"]["id"],
                    "kind": log_entry["target"]["kind"],
                    "label": log_entry["target"]["label"]},
     }
 
 
-def successful_executions(overlay, registry):
+def successful_executions(overlay, registry, incident_id=None):
     """The scorer's view of the action log: successful entries only (the
     binding 3b rule: no_op and failed_precondition are score-neutral),
     each resolved to its server-side composite through the registry. Pure
-    read; caller holds the session lock."""
+    read; caller holds the session lock.
+
+    With incident_id, only entries attributed to that incident are
+    returned (Stage 6 per-case grading); unattributed entries never match.
+    """
     out = []
     for e in overlay["log"]:
         if e["outcome"] != SUCCESS:
+            continue
+        if incident_id is not None and e.get("incident_id") != incident_id:
             continue
         entry = registry.get(e["target"]["id"])
         if entry is None:

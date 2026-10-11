@@ -16,11 +16,13 @@ export const PERSIST_LABEL = { wmi_subscription: 'WMI subscription', run_key: 'R
 // announcement (one fact, one announcement). A non-2xx means the API
 // rejected the request outright (nothing was logged): announce the
 // rejection and reject the promise so no caller treats it as an attempt.
-export const postResponseAction = (action, target) =>
+// incidentId is the per-case attribution stamp: the case the action is
+// taken under, required by the server.
+export const postResponseAction = (action, target, incidentId) =>
   apiFetch('/api/actions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action, target }),
+    body: JSON.stringify({ action, target, incident_id: incidentId }),
   })
     .then(res => res.json().then(entry => {
       if (!res.ok) {
