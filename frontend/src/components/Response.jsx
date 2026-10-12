@@ -3,11 +3,12 @@ import { apiFetch } from '../api';
 import ConfirmDialog from './ConfirmDialog';
 import useIncidentScope from './useIncidentScope';
 import { postResponseAction, confirmSpecs, PERSIST_LABEL } from './responseActions';
+import { toastActionRejected } from './uiToasts';
 import {
   ACTION_LABELS, RESPONSE_SELECT_INCIDENT, RESPONSE_NO_PROMOTED,
   RESPONSE_NO_PROMOTED_SUB, RESPONSE_NO_TARGETS, RESPONSE_NO_ACTIONS,
 } from './uiCopy';
-import { CARD_STYLE, StateChip, PageIntro, SegmentedToggle, CountPill } from './ui';
+import { CARD_STYLE, StateChip, PageIntro, SegmentedToggle, CountPill, IncidentIdBadge } from './ui';
 import { DeviceGlyph, PlatformBadge, platformFor } from './icons';
 
 // Final pass Part III.0.1: the ONE canonical action-execution workspace
@@ -161,9 +162,14 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
 
   const run = (spec) => {
     setBusy(true);
-    postResponseAction(spec.action, spec.target)
+    postResponseAction(spec.action, spec.target, activeIncidentId)
       .then(() => { setConfirm(null); setBusy(false); fetchAll(); })
-      .catch(() => { setConfirm(null); setBusy(false); });
+      .catch((e) => {
+        // API rejections already announced themselves (err.rejected); only
+        // transport-level failures still need a voice here.
+        if (!(e && e.rejected)) toastActionRejected(null);
+        setConfirm(null); setBusy(false);
+      });
   };
 
   // --- data derivations (roster-scoped, observable only) ------------------
@@ -203,7 +209,9 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
         promotedRules: promotedFor(x => x.entity?.host === h),
       });
       for (const p of snap.processes || []) {
-        if (p.entity_id) procRows.push({ ...p, hostname: h });
+        // The confirm specs read the camelCase entityId (like every other
+        // target group); the snapshot serializes snake_case entity_id.
+        if (p.entity_id) procRows.push({ ...p, entityId: p.entity_id, hostname: h });
       }
       for (const a of snap.autoruns || []) {
         if (a.persistence_entity_id) {
@@ -272,6 +280,7 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
             <thead className="data-thead">
               <tr>
                 <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">Time</th>
+                <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">Case</th>
                 <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">Action</th>
                 <th className="px-3 sm:px-4 py-3 font-medium">Target</th>
                 <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">Outcome</th>
@@ -280,11 +289,14 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
             </thead>
             <tbody>
               {logNewestFirst.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-[#8b949e]">{RESPONSE_NO_ACTIONS}</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-[#8b949e]">{RESPONSE_NO_ACTIONS}</td></tr>
               )}
               {logNewestFirst.map(e => (
                 <tr key={e.seq} className="border-b border-[#eef1f4] last:border-b-0">
                   <td className="px-3 sm:px-4 py-3 log-mono whitespace-nowrap text-[#57606a]">{shortTime(e.timestamp)}</td>
+                  <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+                    {e.incident_id ? <IncidentIdBadge id={e.incident_id} /> : <span className="text-[#57606a]">-</span>}
+                  </td>
                   <td className="px-3 sm:px-4 py-3 whitespace-nowrap">{ACTION_LABELS[e.action] || e.action}</td>
                   <td className="px-3 sm:px-4 py-3 log-mono break-all">{e.target?.label || '-'}</td>
                   <td className="px-3 sm:px-4 py-3"><OutcomeChip outcome={e.outcome} /></td>

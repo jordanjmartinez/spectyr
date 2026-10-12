@@ -34,6 +34,9 @@ FORBIDDEN_IN_PROGRESS = [
     '"grading"', '"composite"', '"accuracy"', '"grade"',
     '"threats_caught"', '"correct_category"', '"category_correct"',
     '"required"', '"missed"', '"collateral"',
+    # Stage 6 (A4): the post-submit expected-list disclosure must never
+    # appear in any in_progress payload.
+    '"expected_actions"', '"inaction_zero"',
 ]
 
 
@@ -120,7 +123,8 @@ def _add_incident(s, incident_id, scenario_id, host, category, label,
         ov.setdefault("log", []).append({
             "seq": seq, "timestamp": STARTED, "action": "isolate_host",
             "target": {"id": ent, "kind": "host", "label": host},
-            "outcome": "success", "reason": None})
+            "outcome": "success", "reason": None,
+            "incident_id": incident_id})
         ov["isolated"] = set(ov.get("isolated", set())) | {host}
         ov["seq"] = seq
 

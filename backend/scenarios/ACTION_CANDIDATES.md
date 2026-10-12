@@ -1341,3 +1341,27 @@ On approval: D1 in its own commit (flips `actions_reviewed: true`, ledger
 becomes all-20 and the blocked-exception is removed, restoring the 20/20
 review gate. After that, Stage 3d begins (composite report-card ruling
 with full-corpus distributions).
+
+## Stage 6 - acceptable credential hygiene on host-compromise keepers (owner-ruled 2026-10-11)
+
+Playtest finding: the three kept host-compromise attack scenarios offered
+NO non-penalized identity action on the signed-in victim, so the standard
+"assume credentials exposed on a compromised endpoint" posture graded
+collateral. Owner ruling: add ACCEPTABLE `revoke_sessions` +
+`force_password_reset` on the victim to `c2_dns_tunnel`,
+`malware_ransomware`, and `defense_evasion_log_clearing`. The
+`disable_account` trap stays in each (host compromise is not credential
+compromise; disabling the user is business disruption). Reachability is
+pre-proven: the disable_account trap on the same account already passes
+the trap UI-reachability audit, so the account is detection-surfaced in
+every seed. One scenario per commit, per the 3c cadence:
+
+- [x] S6-1 `c2_dns_tunnel` - acceptable revoke_sessions + force_password_reset on `victim`
+- [x] S6-2 `malware_ransomware` - acceptable revoke_sessions + force_password_reset on `victim`
+- [x] S6-3 `defense_evasion_log_clearing` - acceptable revoke_sessions + force_password_reset on `victim`
+
+(Checkboxes ticked in each scenario's own commit; this section lands with
+S6-1. The other host-compromise scenarios with the same gap --
+`c2_http`, `data_exfil_archive`, `defense_evasion`, `malware_usb`,
+`phishing_link` -- are shelved by the Stage 6 catalog cut and tracked in
+BACKLOG.md for the same treatment when they return.)

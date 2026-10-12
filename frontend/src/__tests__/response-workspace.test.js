@@ -69,10 +69,10 @@ const FEED = {
 const LOG = {
   actions: [
     { seq: 1, timestamp: '2026-07-16T12:00:01+00:00', action: 'isolate_host',
-      outcome: 'success', reason: null,
+      outcome: 'success', reason: null, incident_id: 'INC-A',
       target: { id: 'ent-aaaa11112222', kind: 'host', label: 'ACME-WS12' } },
     { seq: 2, timestamp: '2026-07-16T12:00:02+00:00', action: 'isolate_host',
-      outcome: 'failed_precondition',
+      outcome: 'failed_precondition', incident_id: null,
       reason: 'Host is offline. The isolation command could not be delivered to the endpoint agent.',
       target: { id: 'ent-bbbb11112222', kind: 'host', label: 'ACME-SVR02' } },
   ],
@@ -89,6 +89,12 @@ const mockApi = (overrides = {}) => {
     if (path === '/api/actions' && opts?.method === 'POST') {
       const body = JSON.parse(opts.body);
       posted.push(body);
+      if (overrides.postNetworkError) {
+        return Promise.reject(new Error('net'));
+      }
+      if (overrides.postReject) {
+        return Promise.resolve({ ok: false, status: 400, json: () => Promise.resolve(overrides.postReject) });
+      }
       return ok(overrides.postResult || {
         seq: 9, timestamp: '2026-07-16T12:09:00+00:00', action: body.action,
         outcome: 'success', reason: null,
@@ -145,8 +151,52 @@ test('an action executes through the one request path exactly once (confirm -> P
   await act(async () => {
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Isolate' }));
   });
-  await waitFor(() => expect(posted).toEqual([{ action: 'isolate_host', target: 'ent-aaaa11112222' }]));
+  await waitFor(() => expect(posted).toEqual([
+    { action: 'isolate_host', target: 'ent-aaaa11112222', incident_id: 'INC-A' }]));
   expect(toast).toHaveBeenCalledTimes(1);
+});
+
+test('Kill posts the real process entity id through the one request path', async () => {
+  // Regression guard (playtest bug 1): process rows must map the snapshot's
+  // snake_case entity_id to the camelCase entityId the confirm specs read;
+  // before the fix this POST carried no target at all.
+  mockApi();
+  await renderResponse();
+  const kills = await screen.findAllByRole('button', { name: 'Kill' });
+  fireEvent.click(kills[1]);   // winupdate.exe row (second process)
+  await act(async () => {
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Kill' }));
+  });
+  await waitFor(() => expect(posted).toEqual([
+    { action: 'kill_process', target: 'ent-abab11112222', incident_id: 'INC-A' }]));
+  expect(toast).toHaveBeenCalledTimes(1);
+});
+
+test('an API rejection surfaces its error text instead of failing silently', async () => {
+  mockApi({ postReject: { error: 'Unknown target for this action.' } });
+  await renderResponse();
+  const kills = await screen.findAllByRole('button', { name: 'Kill' });
+  fireEvent.click(kills[0]);
+  await act(async () => {
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Kill' }));
+  });
+  await waitFor(() => expect(toast).toHaveBeenCalledWith('Unknown target for this action.', expect.anything()));
+  // the dialog closes and nothing is treated as a logged attempt
+  expect(screen.queryByRole('dialog')).toBeNull();
+});
+
+test('a transport-level failure still announces and closes the dialog (never silent)', async () => {
+  // Exercises run()'s catch branch for non-rejection errors -- the branch a
+  // missing toastActionRejected import once left referencing an undefined
+  // symbol that the short-circuiting rejection test never evaluated.
+  mockApi({ postNetworkError: true });
+  await renderResponse();
+  fireEvent.click(await screen.findByRole('button', { name: 'Isolate Host' }));
+  await act(async () => {
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Isolate' }));
+  });
+  await waitFor(() => expect(toast).toHaveBeenCalledWith('The action could not be completed.', expect.anything()));
+  expect(screen.queryByRole('dialog')).toBeNull();
 });
 
 test('identity actions execute on the roster account and disabled flags read the observable state', async () => {
@@ -161,7 +211,8 @@ test('identity actions execute on the roster account and disabled flags read the
   await act(async () => {
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Disable' }));
   });
-  await waitFor(() => expect(posted).toEqual([{ action: 'disable_account', target: 'ent-1234567890ab' }]));
+  await waitFor(() => expect(posted).toEqual([
+    { action: 'disable_account', target: 'ent-1234567890ab', incident_id: 'INC-A' }]));
 });
 
 test('the Response Log is the single chronological history with outcomes and detail', async () => {
@@ -173,6 +224,9 @@ test('the Response Log is the single chronological history with outcomes and det
   expect(screen.getByText('Success')).toBeInTheDocument();
   expect(screen.getByText('Failed')).toBeInTheDocument();
   expect(screen.getByText(/isolation command could not be delivered/)).toBeInTheDocument();
+  // the Case column renders the attribution stamp; unattributed entries dash
+  expect(screen.getByText('Case')).toBeInTheDocument();
+  expect(screen.getByText('INC-A')).toBeInTheDocument();
 });
 
 test('the ruled empty states render exactly and reveal nothing', async () => {

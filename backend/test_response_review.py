@@ -340,18 +340,20 @@ def _seed_review_incident(s):
     ov["log"] = [
         {"seq": 1, "timestamp": STARTED, "action": "isolate_host",
          "target": {"id": "ent-aaaaaaaaaaaa", "kind": "host", "label": WS},
-         "outcome": "success", "reason": None},
+         "outcome": "success", "reason": None, "incident_id": INC},
         {"seq": 2, "timestamp": STARTED, "action": "kill_process",
          "target": {"id": "ent-cccccccccccc", "kind": "process",
                     "label": "payload.exe (PID 4756) on ACME-WS12"},
-         "outcome": "failed_precondition", "reason": "Process not found."},
+         "outcome": "failed_precondition", "reason": "Process not found.",
+         "incident_id": INC},
         {"seq": 3, "timestamp": STARTED, "action": "delete_file",
          "target": {"id": "ent-dddddddddddd", "kind": "file",
                     "label": "C:\\clean\\doc.txt on ACME-WS12"},
-         "outcome": "success", "reason": None},
+         "outcome": "success", "reason": None, "incident_id": INC},
         {"seq": 4, "timestamp": STARTED, "action": "isolate_host",
          "target": {"id": "ent-aaaaaaaaaaaa", "kind": "host", "label": WS},
-         "outcome": "no_op", "reason": "Host is already isolated."},
+         "outcome": "no_op", "reason": "Host is already isolated.",
+         "incident_id": INC},
     ]
     ov["isolated"] = {WS}
     ov["deleted_files"] = {(WS, "c:\\clean\\doc.txt")}
@@ -382,8 +384,17 @@ def test_frozen_record_carries_the_complete_response_review():
         assert r.status_code == 200, r.get_json()
         rev = s["submissions"][INC]["report_card"]["response_review"]
         assert set(rev.keys()) == {"entries", "attempt_history",
-                                   "detections", "scenario_rationale"}
+                                   "detections", "expected_actions",
+                                   "inaction_zero", "scenario_rationale"}
         assert rev["scenario_rationale"] is None
+        # Stage 6 (A4): the frozen expected-list disclosure carries the full
+        # required set (this fixture has no acceptable), ordered
+        # required-first, with status + registry-grammar labels.
+        assert [(e["action"], e["status"]) for e in rev["expected_actions"]] \
+            == [("isolate_host", "required"), ("kill_process", "required")]
+        assert all(set(e) == {"action", "status", "target_label",
+                              "expected_ref"} for e in rev["expected_actions"])
+        assert rev["inaction_zero"] is None
         shape = {"bucket", "reason_code", "action", "target_label", "why",
                  "source_action_seq", "expected_ref"}
         assert all(set(e.keys()) == shape for e in rev["entries"])
@@ -476,7 +487,8 @@ def test_unknown_incident_404_and_no_review_before_submission():
         body = view.get_data(as_text=True)
         assert json.loads(body)["state"] == "in_progress"
         for marker in ('"response_review"', '"reason_code"', '"bucket"',
-                       '"why"', '"expected_ref"', '"scenario_rationale"'):
+                       '"why"', '"expected_ref"', '"scenario_rationale"',
+                       '"expected_actions"', '"inaction_zero"'):
             assert marker not in body, marker
     finally:
         _cleanup(sid, s)
@@ -589,7 +601,8 @@ def test_aggregates_never_carry_review_content():
         assert inc_view["state"] == "submitted"
         rev = inc_view["grading"]["response_review"]
         assert set(rev.keys()) == {"entries", "attempt_history",
-                                   "detections", "scenario_rationale"}
+                                   "detections", "expected_actions",
+                                   "inaction_zero", "scenario_rationale"}
         assert rev["entries"], "submitted review must carry its entries"
         for path in ("/api/analytics/report_card",
                      "/api/analytics/action_score",
@@ -598,7 +611,8 @@ def test_aggregates_never_carry_review_content():
                 .get_data(as_text=True)
             assert json.loads(body)["state"] == "submitted"
             for marker in ('"response_review"', '"reason_code"', '"_review"',
-                           '"scenario_rationale"'):
+                           '"scenario_rationale"', '"expected_actions"',
+                           '"inaction_zero"'):
                 assert marker not in body, (path, marker)
     finally:
         _cleanup(sid, s)
@@ -630,6 +644,80 @@ def test_empty_states_correct_inaction_review():
         assert rev["attempt_history"] == []
         assert len(rev["detections"]) == 2
         assert all(d["your_call"] == "promoted" for d in rev["detections"])
+        # Stage 6 (A4): no expected actions -> empty disclosure, no callout
+        assert rev["expected_actions"] == []
+        assert rev["inaction_zero"] is None
+    finally:
+        _cleanup(sid, s)
+
+
+def test_inaction_zero_callout_names_the_earliest_trigger():
+    """Stage 6 (A4): when attributed collateral spoils intentional inaction,
+    the frozen inaction_zero callout names the EARLIEST collateral action
+    (action, target label, source seq) with the canonical why; the
+    collateral entries themselves stay in their bucket."""
+    client, sid, s = _api_session()
+    try:
+        with s["io_lock"]:
+            _seed_review_incident(s)
+            s["expected_actions"] = []       # reviewed, no required: inaction
+            # two attributed collateral successes; seq 1 must be the trigger
+            s["overlay"]["log"] = [
+                {"seq": 1, "timestamp": STARTED, "action": "delete_file",
+                 "target": {"id": "ent-dddddddddddd", "kind": "file",
+                            "label": "C:\\clean\\doc.txt on ACME-WS12"},
+                 "outcome": "success", "reason": None, "incident_id": INC},
+                {"seq": 2, "timestamp": STARTED, "action": "kill_process",
+                 "target": {"id": "ent-cccccccccccc", "kind": "process",
+                            "label": "payload.exe (PID 4756) on ACME-WS12"},
+                 "outcome": "success", "reason": None, "incident_id": INC},
+            ]
+            s["overlay"]["isolated"] = set()
+            s["overlay"]["deleted_files"] = {(WS, "c:\\clean\\doc.txt")}
+            s["overlay"]["seq"] = 2
+        assert _submit(client, sid, verdict="false_positive",
+                       category=None).status_code == 200
+        rc = s["submissions"][INC]["report_card"]
+        assert rc["_inaction_collateral"] is True
+        assert rc["response"]["accuracy"] == 0.0
+        iz = rc["response_review"]["inaction_zero"]
+        assert iz["action"] == "delete_file"
+        assert iz["source_action_seq"] == 1
+        assert iz["target_label"] == "C:\\clean\\doc.txt on ACME-WS12"
+        assert iz["why"] == rr.INACTION_ZERO_WHY
+        colls = [e for e in rc["response_review"]["entries"]
+                 if e["reason_code"] == rr.COLLATERAL_IN_SCOPE]
+        assert len(colls) == 2, "collateral entries must stay in their bucket"
+    finally:
+        _cleanup(sid, s)
+
+
+def test_expected_list_freezes_at_submit():
+    """Stage 6 (A4): the disclosed expected list is FROZEN into the record;
+    later mutation of the session's expected_actions never reaches a stored
+    record or its served view (correction-6 semantics, extended)."""
+    client, sid, s = _api_session()
+    try:
+        with s["io_lock"]:
+            _seed_review_incident(s)
+        assert _submit(client, sid).status_code == 200
+        view1 = client.get(f"/api/incidents/{INC}/score",
+                           headers={"X-Session-ID": sid}).get_json()
+        frozen = json.dumps(
+            view1["grading"]["response_review"]["expected_actions"],
+            sort_keys=True)
+        with s["io_lock"]:
+            s["expected_actions"].append(
+                {"scenario_id": SCEN, "eid": None, "action": "disable_account",
+                 "status": "required",
+                 "target": {"domain": "ACME", "username": "mutated"},
+                 "after": []})
+        view2 = client.get(f"/api/incidents/{INC}/score",
+                           headers={"X-Session-ID": sid}).get_json()
+        assert json.dumps(
+            view2["grading"]["response_review"]["expected_actions"],
+            sort_keys=True) == frozen
+        assert "mutated" not in frozen
     finally:
         _cleanup(sid, s)
 
@@ -742,6 +830,24 @@ def test_corpus_real_drip_review_reconciles_with_frozen_scores():
             # (None while unauthored; the loader-suite ledger pins which)
             assert rev["scenario_rationale"] == \
                 (app.yaml_catalog[label].get("expected_response") or None), label
+            # Stage 6 (A4): the frozen expected-list disclosure reconciles
+            # with the session's expected actions for this scenario --
+            # one row per answer-key action, required first, every row
+            # labeled; act-on-nothing never trips the inaction-zero callout
+            exp_session = [e for e in s["expected_actions"]
+                           if e["scenario_id"] == entry["scenario_id"]]
+            disclosed = rev["expected_actions"]
+            assert len(disclosed) == len(exp_session), label
+            assert [d["status"] for d in disclosed] == sorted(
+                (d["status"] for d in disclosed),
+                key=lambda st: st != "required"), label
+            assert all(d["target_label"] and d["expected_ref"]
+                       for d in disclosed), label
+            assert {d["expected_ref"] for d in disclosed} == {
+                rr.expected_ref(e["action"],
+                                app._action_target_key(e["action"], e["target"]))
+                for e in exp_session}, label
+            assert rev["inaction_zero"] is None, label
         finally:
             _cleanup(sid, s)
     print(f"  corpus reconciliation: {len(_catalog_labels())} scenarios")

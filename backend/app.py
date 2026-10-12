@@ -226,6 +226,11 @@ def create_session():
         "submissions": {},
         "incident_index": {},
         "assisted": set(),
+        # Stage 6 (W5): hostnames of env-declared NON-endpoint log sources
+        # (firewall/proxy) seen at drip. Observable role data only; used to
+        # keep log-source devices out of the serialized incident scope so
+        # the case-scoped UI never offers or fetches them as endpoints.
+        "non_endpoint_hosts": set(),
     }
     with sessions_lock:
         sessions[session_id] = session
@@ -935,17 +940,36 @@ CAMPAIGN_LEVELS = [
 ]
 
 
+# Stage 6 (owner-ruled catalog cut, 2026-10-11): the PLAYER-REACHABLE
+# catalog. The corpus deliberately stays at 20 (loaders, gates, parity, and
+# the revert paths are untouched); this allowlist gates only the
+# player-facing samplers and the Guided picker. The shelved 15 surface as
+# "more scenarios coming soon" in the picker and return by growing this
+# set. The five were owner-picked to show the full range: host malware,
+# persistence response, identity attack, C2, and an FP triage trap.
+PLAYABLE_SCENARIOS = frozenset({
+    "malware_ransomware",
+    "false_positive_pentest",
+    "defense_evasion_log_clearing",
+    "password_spray",
+    "c2_dns_tunnel",
+})
+
+
 def build_alert_queue(n=10, fp_min=1, fp_max=2):
     """
-    Build a randomized queue of N unique scenarios drawn from the full pool of
-    15 across all CAMPAIGN_LEVELS, with 1-2 FPs (or scaled fp_min/fp_max).
-    Levels do not constrain selection — any scenario can land at any slot.
-    Returns a list ordered by queue_position 1..N.
+    Build a randomized queue of N unique scenarios drawn from the PLAYABLE
+    pool across all CAMPAIGN_LEVELS, with 1-2 FPs (or scaled fp_min/fp_max;
+    the min() clamps absorb a pool smaller than n). Levels do not constrain
+    selection — any scenario can land at any slot. Returns a list ordered by
+    queue_position 1..N.
     """
     threat_pool = []
     fp_pool = []
     for level_config in CAMPAIGN_LEVELS:
         for category, scenario in level_config["scenarios"].items():
+            if scenario["scenario_label"] not in PLAYABLE_SCENARIOS:
+                continue
             entry = {
                 "scenario_label": scenario["scenario_label"],
                 "category": category,
@@ -2550,6 +2574,8 @@ def build_attack_chain_logs(session, scenario_entry, employee=None):
                     accounts = concrete_env.get("accounts", [])
                     for host in concrete_env["hosts"]:
                         if host["role"] in snapshot_generator.NON_ENDPOINT_ROLES:
+                            session.setdefault("non_endpoint_hosts", set()) \
+                                .add(host["hostname"])
                             continue
                         if host["hostname"] in session["benign_hosts"]:
                             continue
@@ -3072,13 +3098,21 @@ def _attach_account_ref(view, s):
 def execute_response_action():
     """Execute one response action against a client entity id.
 
-    Body: {"action": <name>, "target": <ent-id>}.
+    Body: {"action": <name>, "target": <ent-id>, "incident_id": "INC-####"}.
 
-    Logging boundary (ruled at the 3a close-out):
+    incident_id (Stage 6 per-case attribution) is REQUIRED: the incident
+    the action is taken under. The Response workspace always has an active
+    case; the stamp is what each incident's grade is computed over. A
+    submitted incident stays a valid context (its frozen record never
+    recomputes, so post-submit actions are grading-inert by construction),
+    and there is no sealing/readiness gate here.
+
+    Logging boundary (ruled at the 3a close-out, extended at Stage 6):
     - Rejected at the API, NEVER logged: malformed ids, foreign-session
-      ids, stale/unknown ids, wrong-kind ids. All of these return the same
-      400 body, so a foreign-session rejection is indistinguishable from
-      an unknown-id rejection (no cross-session existence leak).
+      ids, stale/unknown ids, wrong-kind ids -- and missing/unknown/
+      foreign incident ids, all with one identical 400 body per class, so
+      a foreign-session rejection is indistinguishable from an unknown-id
+      rejection (no cross-session existence leak).
     - Logged as failed_precondition: a valid session target that fails an
       in-world precondition (offline isolate, missing pid/path, release
       of a non-isolated host), with the in-fiction reason.
@@ -3094,7 +3128,12 @@ def execute_response_action():
     if kind is None:
         return jsonify({"error": "Unknown action."}), 400
     target_id = body.get("target")
+    incident_id = body.get("incident_id")
     with s["io_lock"]:
+        if incident_id not in s.get("incident_index", {}):
+            # missing, malformed, unknown, or foreign incident id: rejected,
+            # never logged, one neutral body for the whole class
+            return jsonify({"error": "Unknown incident for this action."}), 400
         entry = s.get("entity_index", {}).get(target_id)
         if entry is None or entry["kind"] != kind:
             # invalid, stale, or wrong-kind target: rejected, never logged
@@ -3103,7 +3142,7 @@ def execute_response_action():
             s["world"], s["overlay"], entry, action)
         log_entry = action_overlay.record_attempt(
             s["overlay"], s["world"]["started_at"], action, target_id, entry,
-            outcome, reason)
+            outcome, reason, incident_id=incident_id)
         view = action_overlay.sanitize_action_entry(log_entry)
     return jsonify(view)
 
@@ -3154,6 +3193,7 @@ def reset_simulator():
         s["submissions"] = {}
         s["incident_index"] = {}
         s["assisted"] = set()
+        s["non_endpoint_hosts"] = set()
         for filepath in [s["paths"]["generated_logs"], s["paths"]["analyst_actions"], s["paths"]["incident_reports"]]:
             with open(filepath, "w", encoding="utf-8") as f:
                 f.truncate(0)
@@ -3399,21 +3439,30 @@ def _incident_expected(s, scenario_id):
     return [e for e in s.get("expected_actions", []) if e["scenario_id"] == scenario_id]
 
 
-def _entry_in_scope(entry, grading_rec, registry):
-    e = registry.get(entry["target"]["id"])
-    if e is None or grading_rec is None:
-        return False
-    if e["kind"] == "account":
-        return action_overlay.account_key(e["domain"], e["username"]) in grading_rec["accounts"]
-    return e.get("hostname") in grading_rec["hostnames"]
+def _attributed_isolated_hosts(overlay, registry, incident_id):
+    """Stage 6 per-case isolation ownership: the hosts currently isolated
+    whose isolation THIS incident owns -- the host is in the overlay's
+    isolated set and the LATEST successful isolate_host on it carries this
+    incident's attribution stamp. Isolate under A, release, re-isolate
+    under B: A keeps only its occurrence (forfeited end-state), B owns the
+    live isolation. Pure read; caller holds the session lock."""
+    owner = {}
+    for e in overlay.get("log", []):
+        if (e.get("action") != "isolate_host"
+                or e.get("outcome") != action_overlay.SUCCESS):
+            continue
+        ent = registry.get((e.get("target") or {}).get("id"))
+        if ent is not None:
+            owner[ent.get("hostname")] = e.get("incident_id")
+    return {h for h in overlay.get("isolated", ()) if owner.get(h) == incident_id}
 
 
 def _entry_in_observable_scope(entry, obs_hosts, obs_account_ids, registry):
     """Stage 5 Phase 2, D4 (ratified OD-8): does this action-log entry's
     registry-resolved target sit in the incident's OBSERVABLE scope? A
-    deliberately separate join from _entry_in_scope's grading-record join
-    (scaffold ruling D: _incident_progress keeps its frozen 3.9A behavior;
-    D4 uses the observable sets). Reads ONLY the registry entity, the
+    presentation-only join (related-activity rows), deliberately separate
+    from grading: Stage 6 grading joins on the per-case attribution stamp,
+    never on scope membership. Reads ONLY the registry entity, the
     observable host set, and account entity ids pre-resolved from the
     observable account strings via the sanctioned resolver -- never grading
     records, expected actions, or answer keys."""
@@ -3452,9 +3501,13 @@ def _scenario_rationale(label):
     return entry.get("expected_response") or None
 
 
-def _incident_report_card(s, scenario_id, grading_rec, payload, all_logs):
+def _incident_report_card(s, scenario_id, incident_id, grading_rec, payload,
+                          all_logs):
     """Compute this incident's per-incident report card at submit time. Calls
-    the unchanged scoring functions over frozen per-incident inputs."""
+    the unchanged scoring functions over frozen per-incident inputs. Stage 6:
+    the response inputs are the actions ATTRIBUTED to this incident (the
+    execution-time stamp), so one incident's actions can never credit,
+    charge, or zero another's grade."""
     actual_category = _incident_actual_category(all_logs, scenario_id)
     classification = _classification_grade(
         payload.get("verdict"), payload.get("category"), actual_category)
@@ -3464,10 +3517,10 @@ def _incident_report_card(s, scenario_id, grading_rec, payload, all_logs):
 
     overlay = s.get("overlay") or action_overlay.new_overlay()
     registry = s.get("entity_index", {})
-    executed = action_overlay.successful_executions(overlay, registry)
+    executed = action_overlay.successful_executions(overlay, registry,
+                                                    incident_id=incident_id)
     exp = _incident_expected(s, scenario_id)
-    isolated = {h for h in overlay.get("isolated", ())
-                if grading_rec and h in grading_rec["hostnames"]}
+    isolated = _attributed_isolated_hosts(overlay, registry, incident_id)
     response = compute_action_score(exp, executed, isolated,
                                     [grading_rec] if grading_rec else [])
     # 5.2 (ruling B): pop the internal review detail at this call site; the
@@ -3482,10 +3535,10 @@ def _incident_report_card(s, scenario_id, grading_rec, payload, all_logs):
     response["acceptable_taken"] = {"count": len(acc_entries), "entries": acc_entries}
     failed = [action_overlay.sanitize_action_entry(e) for e in log
               if e["outcome"] == action_overlay.FAILED
-              and _entry_in_scope(e, grading_rec, registry)]
+              and e.get("incident_id") == incident_id]
     noop = [action_overlay.sanitize_action_entry(e) for e in log
             if e["outcome"] == action_overlay.NO_OP
-            and _entry_in_scope(e, grading_rec, registry)]
+            and e.get("incident_id") == incident_id]
     response["not_executed"] = {"count": len(failed), "entries": failed}
     response["no_effect"] = {"count": len(noop), "entries": noop}
 
@@ -3496,7 +3549,8 @@ def _incident_report_card(s, scenario_id, grading_rec, payload, all_logs):
     # submissions only. ---
     failed_keys = set()
     for e in log:
-        if e.get("outcome") != action_overlay.FAILED:
+        if (e.get("outcome") != action_overlay.FAILED
+                or e.get("incident_id") != incident_id):
             continue
         ent = registry.get((e.get("target") or {}).get("id"))
         if ent is not None:
@@ -3560,10 +3614,47 @@ def _incident_report_card(s, scenario_id, grading_rec, payload, all_logs):
     scenario_label = next((l.get("label") for l in all_logs
                            if l.get("scenario_id") == scenario_id
                            and l.get("label")), "")
+    # Stage 6 (A4): post-submit disclosure of the FULL expected action list
+    # -- required + acceptable, including never-executed acceptable targets.
+    # The pre-submit rule is unchanged (nothing here serializes before the
+    # record exists); the disclosure is per-incident, frozen at submit, and
+    # served only inside the submitted-state grading. Gated on the reviewed
+    # marker exactly like the scorer.
+    expected_block = []
+    if grading_rec and grading_rec.get("reviewed"):
+        for x in exp:
+            tkey = _action_target_key(x["action"], x["target"])
+            expected_block.append({
+                "action": x["action"],
+                "status": x.get("status"),
+                "target_label": response_review.expected_label(
+                    x["action"], x["target"], registry),
+                "expected_ref": response_review.expected_ref(x["action"], tkey),
+            })
+        expected_block.sort(key=lambda r: (r["status"] != "required",
+                                           r["expected_ref"]))
+    # The inaction-zero callout: when intentional inaction was spoiled,
+    # deterministically name the earliest attributed collateral that spoiled
+    # it; the remaining hits stay in the collateral bucket.
+    inaction_zero = None
+    if inaction_collateral:
+        coll = [e for e in entries
+                if e["reason_code"] == response_review.COLLATERAL_IN_SCOPE]
+        if coll:
+            trig = min(coll, key=lambda e: (e["source_action_seq"] is None,
+                                            e["source_action_seq"] or 0))
+            inaction_zero = {
+                "action": trig["action"],
+                "target_label": trig["target_label"],
+                "source_action_seq": trig["source_action_seq"],
+                "why": response_review.INACTION_ZERO_WHY,
+            }
     response_review_block = {
         "entries": entries,
         "attempt_history": attempt_history,
         "detections": det_block,
+        "expected_actions": expected_block,
+        "inaction_zero": inaction_zero,
         # Tier 2 scenario paragraph (D2, wired at 5.5): frozen from the
         # scenario's expected_response at submit; a record submitted before
         # its paragraph exists freezes null permanently (ruling H).
@@ -3681,11 +3772,16 @@ def submit_incident(s, incident_id, payload):
 
         all_logs = _read_ndjson_unlocked(s["paths"]["generated_logs"])
         overlay = s.get("overlay") or action_overlay.new_overlay()
-        rc = _incident_report_card(s, scenario_id, grading_rec, payload, all_logs)
+        rc = _incident_report_card(s, scenario_id, incident_id, grading_rec,
+                                   payload, all_logs)
 
         dets = _incident_detections(s, scenario_id, written=all_logs)
-        isolated = sorted(h for h in overlay.get("isolated", ())
-                          if grading_rec and h in grading_rec["hostnames"])
+        # Stage 6: both the isolation end-state and the audit seq list are
+        # the ATTRIBUTED derivations the scorer consumed -- never the
+        # session-wide overlay state.
+        registry = s.get("entity_index", {})
+        isolated = sorted(
+            _attributed_isolated_hosts(overlay, registry, incident_id))
         record = {
             "incident_id": incident_id,
             "assisted": incident_id in s.get("assisted", set()),
@@ -3697,6 +3793,9 @@ def submit_incident(s, incident_id, payload):
                 "detection_dispositions": {d["id"]: d["player_action"] for d in dets},
                 "action_seq_cutoff": overlay.get("seq", 0),
                 "isolation_end_state": isolated,
+                "attributed_action_seqs": [
+                    e["seq"] for e in overlay.get("log", [])
+                    if e.get("incident_id") == incident_id],
             },
             "report_card": rc,
         }
@@ -3758,14 +3857,16 @@ def submit_incident(s, incident_id, payload):
         return {"status": "created", "record": record}
 
 
-def _incident_progress(s, scenario_id, grading_rec):
+def _incident_progress(s, scenario_id, incident_id):
     """Observable activity only — never required-action counts or any
-    answer-key-derived total. Served for an unsubmitted incident."""
+    answer-key-derived total. Served for an unsubmitted incident. Stage 6:
+    the action counts join on the attribution stamp (purely observable),
+    removing the last grading-record read from a pre-submit surface."""
     dets = _incident_detections(s, scenario_id)
     triaged = sum(1 for d in dets if d.get("player_action") != "open")
     overlay = s.get("overlay") or action_overlay.new_overlay()
-    registry = s.get("entity_index", {})
-    scoped = [e for e in overlay.get("log", []) if _entry_in_scope(e, grading_rec, registry)]
+    scoped = [e for e in overlay.get("log", [])
+              if e.get("incident_id") == incident_id]
     executed = sum(1 for e in scoped if e["outcome"] == action_overlay.SUCCESS)
     state, open_n = incident_submission_readiness(s, scenario_id)
     return {
@@ -3795,9 +3896,8 @@ def incident_score_view(s, incident_id):
                    if not k.startswith("_")}
         return {"state": "submitted", "assisted": rec["assisted"],
                 "grading": grading}
-    grading_rec = _grading_record_for(s, scenario_id)
     return {"state": "in_progress",
-            "progress": _incident_progress(s, scenario_id, grading_rec)}
+            "progress": _incident_progress(s, scenario_id, incident_id)}
 
 
 def _pool(records, dim):
@@ -4011,6 +4111,13 @@ def _incident_observable_scope(s, incident_id):
     # so every surface is equal by construction.
     ro = _incident_roster(s, scenario_id)
     events, tagged, hosts = ro["events"], ro["tagged"], ro["hosts"]
+    # Stage 6 (W5): log-source devices (firewall/proxy) observe events but
+    # are never endpoints; keep them out of the SERIALIZED scope so the
+    # case-scoped Endpoints/Response surfaces never offer or fetch them.
+    # Roster/readiness/grading are untouched: the roster join above is the
+    # shared derivation, and PAN-OS devices carry no detections, so this is
+    # presentation-only by construction.
+    hosts = set(hosts) - s.get("non_endpoint_hosts", set())
     accounts = set()
     for l in events:
         acct = (l.get("key_value_pairs") or {}).get("account_name")
@@ -4198,6 +4305,11 @@ def guided_catalog():
         "severity": _catalog_severity(label),
         "description": storyline,
         "difficulty": None,
+        # Stage 6 catalog cut: all 20 entries stay in the payload (the
+        # shelved ones read as "coming soon" in the picker, never as
+        # absence); only this boolean separates them. Ids are salted
+        # digests, so playability is necessarily backend-originated.
+        "playable": label in PLAYABLE_SCENARIOS,
     } for label, title, storyline in _guided_catalog_scenarios()]
     catalog.sort(key=lambda e: e["catalog_id"])
     return jsonify({"catalog": catalog, "random_available": True})
@@ -4211,7 +4323,12 @@ def build_guided_queue(catalog_id):
     None if the catalog_id does not resolve, so the caller rejects the intake
     without building a session (no partial state, no answer-key exposure)."""
     if catalog_id == "random":
-        label = random.choice([lbl for lbl, _t, _s in _guided_catalog_scenarios()])
+        # Stage 6: Random draws from the PLAYABLE set only. The explicit-id
+        # branch stays label-permissive on purpose -- the corpus gates
+        # real-drip all 20 through it; the player-facing playability
+        # rejection lives in start_simulator.
+        label = random.choice([lbl for lbl, _t, _s in _guided_catalog_scenarios()
+                               if lbl in PLAYABLE_SCENARIOS])
     else:
         label = _resolve_catalog_id(catalog_id)
         if label is None:
@@ -4433,17 +4550,18 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
       surfaced factually). Any successful action matching neither list is
       collateral (scoped below).
     - Tri-state gate: a scenario with actions_reviewed false is excluded
-      entirely: it earns nothing, costs nothing, and targets it claims are
-      out of grading scope. actions_reviewed true with required actions
-      grades normally. actions_reviewed true with NO required actions
-      (empty set, or acceptable-only) is intentional correct inaction:
-      one graded unit, credited when no collateral lands in its scope
-      (acceptable executions never cost it).
-    - Collateral scoping: a successful unnecessary action is collateral
-      only when its target is claimed by at least one REVIEWED scenario
-      and by NO unreviewed scenario (shared targets get the benefit of
-      the doubt while the corpus review is in flight; the ambiguity
-      vanishes at the 3d all-reviewed gate).
+      entirely: it earns nothing and costs nothing. actions_reviewed true
+      with required actions grades normally. actions_reviewed true with NO
+      required actions (empty set, or acceptable-only) is intentional
+      correct inaction: one graded unit, credited when the case's own
+      attributed actions are clean (acceptable executions never cost it).
+    - Collateral (Stage 6 per-case model): executed actions arrive already
+      ATTRIBUTED to this incident, so any successful attributed action
+      matching neither list is collateral, gated only on the scenario
+      being reviewed. The old environment-membership scope test
+      (claims/in_grading_scope) is gone: it could only EXEMPT a crafted
+      off-world action from collateral, and its cross-scenario join was
+      the cross-charging defect the attribution model replaced.
     - Isolation grades on END-STATE at scoring time: required containment
       released before submission forfeits that credit (nothing stacked).
       An ACCEPTABLE isolation is score-neutral whether it remains active
@@ -4466,21 +4584,14 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
     surface factually; the route pops it before serialization.
     """
     reviewed = [g for g in grading if g["reviewed"]]
-    unreviewed = [g for g in grading if not g["reviewed"]]
     reviewed_ids = {g["scenario_id"] for g in reviewed}
     expected = [e for e in expected if e["scenario_id"] in reviewed_ids]
     required_exp = [e for e in expected if e.get("status") == "required"]
     acceptable_exp = [e for e in expected if e.get("status") == "acceptable"]
-
-    def claims(g, action, target):
-        if action in _IDENTITY_ACTION_NAMES:
-            return action_overlay.account_key(
-                target["domain"], target["username"]) in g["accounts"]
-        return target["hostname"] in g["hostnames"]
-
-    def in_grading_scope(action, target):
-        return (any(claims(g, action, target) for g in reviewed)
-                and not any(claims(g, action, target) for g in unreviewed))
+    # Stage 6: executed actions are pre-attributed to this incident, so
+    # off-list success IS collateral whenever the scenario is reviewed --
+    # no environment-membership test survives.
+    graded_scope = bool(reviewed)
 
     first = {}
     for e in executed:
@@ -4572,7 +4683,7 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
             continue  # isolation collateral is end-state, counted below
         if (action, key) in required_keys or (action, key) in acceptable_keys:
             continue
-        if in_grading_scope(action, target):
+        if graded_scope:
             collateral_hits.append((action, target))
             review_entries.append({
                 "reason_code": response_review.COLLATERAL_IN_SCOPE,
@@ -4585,8 +4696,8 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
     for hostname in sorted(isolated_hosts):
         if hostname in required_iso or hostname in acceptable_iso:
             continue
-        target = {"hostname": hostname}
-        if in_grading_scope("isolate_host", target):
+        if graded_scope:
+            target = {"hostname": hostname}
             collateral_hits.append(("isolate_host", target))
             iso_hit = first.get(("isolate_host", (hostname,)))
             review_entries.append({
@@ -4596,15 +4707,15 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
 
     # Intentional correct inaction: each reviewed scenario with no REQUIRED
     # actions (empty, or acceptable-only) is one graded unit, credited only
-    # with clean hands in its scope. Acceptable executions never cost it; a
-    # shared-target collateral hit costs every claiming scenario its
-    # inaction credit (deterministic multi-attribution).
+    # with clean hands -- Stage 6: "hands" are the actions ATTRIBUTED to
+    # this case, so any attributed collateral spoils it; acceptable
+    # executions never cost it.
     scenarios_with_required = {e["scenario_id"] for e in required_exp}
     for g in reviewed:
         if g["scenario_id"] in scenarios_with_required:
             continue
         required += 1
-        if any(claims(g, action, target) for action, target in collateral_hits):
+        if collateral_hits:
             missed += 1
             review_entries.append({
                 "reason_code": response_review.INACTION_SPOILED,
@@ -4628,9 +4739,7 @@ def compute_action_score(expected, executed, isolated_hosts, grading):
     # per-scenario formula and a multi-scenario session pools proportionally.
     inaction_scenarios = [g for g in reviewed
                           if g["scenario_id"] not in scenarios_with_required]
-    inaction_collateral = any(
-        any(claims(g, action, target) for g in inaction_scenarios)
-        for action, target in collateral_hits)
+    inaction_collateral = bool(inaction_scenarios) and bool(collateral_hits)
     graded = required  # R + I: the proportional denominator (collateral is a penalty, not a unit)
     base = (correct / graded * 100) if graded else 0.0
     accuracy_raw = 0.0 if inaction_collateral else max(0.0, base - 20.0 * collateral)
@@ -5088,6 +5197,13 @@ def start_simulator():
         alert_queue = build_guided_queue(data.get("catalog_id"))
         if alert_queue is None:
             return jsonify({"error": "Unknown scenario"}), 400
+        # Stage 6 catalog cut: an explicit start of a shelved (non-playable)
+        # scenario is rejected with the SAME neutral 400 as an unknown id --
+        # no partial state, no distinction a client could mine.
+        # build_guided_queue itself stays label-permissive for the corpus
+        # gates that real-drip all 20.
+        if alert_queue[0]["scenario_label"] not in PLAYABLE_SCENARIOS:
+            return jsonify({"error": "Unknown scenario"}), 400
     else:
         alert_queue = build_alert_queue(n=10, fp_min=1, fp_max=2)
 
@@ -5122,6 +5238,7 @@ def start_simulator():
         s["submissions"] = {}
         s["incident_index"] = {}
         s["assisted"] = set()
+        s["non_endpoint_hosts"] = set()
     # Stage 4 A1: dedicated per-session stream for authored [lo, hi] gap
     # ranges, seeded from the epoch digest (never the shared global RNG).
     s["gap_rng"] = sim_epoch.gap_rng(s["id"])

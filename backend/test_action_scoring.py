@@ -277,22 +277,25 @@ def test_no_grading_records_grades_dash():
     assert r["grade"] == "-" and r["graded"] == 0 and r["accuracy"] == 0.0
 
 
-def test_shared_target_with_unreviewed_scenario_gets_benefit_of_doubt():
-    """A target claimed by BOTH a reviewed and an unreviewed scenario is
-    out of collateral scope while the review is in flight; a target
-    claimed only by the reviewed scenario still counts."""
-    grading = [
-        _grading(scenario="scenario-r", reviewed=True, hostnames={WS, SVR}),
-        _grading(scenario="scenario-u", reviewed=False, hostnames={SVR},
-                 accounts=()),
-    ]
+def test_attributed_off_list_success_is_collateral_regardless_of_env():
+    """Stage 6 (replaces the retired benefit-of-doubt test, whose premise
+    died with the cross-scenario claims join): executed actions arrive
+    pre-attributed to this case, so ANY off-list success is collateral once
+    the scenario is reviewed -- including a target outside the scenario's
+    declared environment (the old membership test could only EXEMPT such an
+    action; that hole is closed). Unreviewed stays excluded entirely."""
+    grading = [_grading(scenario="scenario-r", reviewed=True,
+                        hostnames={WS}, accounts=())]
     executed = [
-        _run("kill_process", {"hostname": SVR, "pid": 3312, "name": "net.exe"}, 1),
-        _run("kill_process", {"hostname": WS, "pid": 900, "name": "x.exe"}, 2),
+        _run("kill_process", {"hostname": WS, "pid": 900, "name": "x.exe"}, 1),
+        _run("kill_process", {"hostname": "ACME-ELSEWHERE", "pid": 901,
+                              "name": "y.exe"}, 2),
     ]
     r = _score([], executed, set(), grading)
-    assert r["collateral"] == 1, \
-        "shared-host action must be ungraded; reviewed-only host counts"
+    assert r["collateral"] == 2, "off-env attributed success must still charge"
+    r0 = _score([], executed, set(),
+                [_grading(scenario="scenario-u", reviewed=False)])
+    assert r0["collateral"] == 0 and r0["grade"] == "-"
 
 
 def test_brute_force_system_contained_scores_a_for_nothing_and_reset_only():
@@ -428,7 +431,8 @@ AUTHORED_LM1 = [
 
 
 def _world_for_seed(label, seed):
-    sc, resolved, env, world, _dets, _reg, _keys = _full_world_for_seed(label, seed)
+    sc, resolved, env, world, _dets, _reg, _keys, _written = \
+        _full_world_for_seed(label, seed)
     return sc, resolved, env, world
 
 
@@ -465,7 +469,8 @@ def _full_world_for_seed(label, seed):
         f"scenario-{label}", sc, logs, seed,
         supplemental_logs=sup_logs, supplemental_meta=sup_meta, concrete_env=env)
     det_keys = app.detection_account_keys(detections, registry)
-    return sc, resolved, env, world, detections, registry, det_keys
+    return sc, resolved, env, world, detections, registry, det_keys, \
+        logs + sup_logs
 
 
 def _dependency_order(expected):
@@ -522,7 +527,8 @@ def test_required_and_acceptable_actions_are_ui_reachable_across_seeds():
         if not ak.get("actions_reviewed"):
             continue
         for seed in SEED_SET:
-            sc2, resolved, env, world, dets, reg, det_keys = _full_world_for_seed(label, seed)
+            sc2, resolved, env, world, dets, reg, det_keys, _written = \
+                _full_world_for_seed(label, seed)
             expected = app.materialize_expected_actions(
                 ak["actions"], f"scenario-{label}", env, resolved, world=world)
             for exp in expected:
@@ -543,7 +549,8 @@ def test_declared_traps_execute_reachable_and_grade_collateral_across_seeds():
         if not traps:
             continue
         for seed in SEED_SET:
-            sc2, resolved, env, world, dets, reg, det_keys = _full_world_for_seed(label, seed)
+            sc2, resolved, env, world, dets, reg, det_keys, _written = \
+                _full_world_for_seed(label, seed)
             grading = [app.scenario_grading_record(f"scenario-{label}", sc, env)]
             expected = app.materialize_expected_actions(
                 ak_actions(sc), f"scenario-{label}", env, resolved, world=world)
@@ -577,18 +584,30 @@ def test_declared_traps_execute_reachable_and_grade_collateral_across_seeds():
 
 
 def test_actions_ui_reachable_within_incident_scope_across_seeds():
-    """Stage 3.9B / B3 + C1: while an incident's scope is active, EVERY required,
-    acceptable, AND declared-trap target must be reachable within the incident's
-    OBSERVABLE presentation scope, across the fixed five-seed set:
+    """Stage 3.9B / B3 + C1, CORRECTED at Stage 6: while an incident's scope
+    is active, every REQUIRED and declared-trap target must be reachable
+    within the incident's OBSERVABLE presentation scope, across the fixed
+    five-seed set:
     - host / process / file / persistence targets: the target host must be an
-      observable participant of the incident (an event-participant managed host,
-      mirroring _incident_observable_scope, or a tagged-detection host) -> the
-      scoped Endpoints view surfaces it;
-    - identity targets: the account must be a detection-surfaced account of THIS
-      incident (its own det_keys) -> the scoped Threats view surfaces it.
-    Answer-key data (expected actions, traps) is used ONLY in this test, never in
-    the presentation scope; a gap here is fixed in telemetry/content, never by
-    injecting answer-key targets into the scope."""
+      observable participant of the incident (an EVENT hostname or a
+      tagged-detection entity host -- the real _incident_roster derivation)
+      AND a managed world host -> the case-scoped Response/Endpoints
+      surfaces render it;
+    - identity targets: the account must be a detection-surfaced account of
+      THIS incident (its own det_keys) -> the scoped Threats view surfaces it.
+    The pre-Stage-6 version read set(world["hosts"]) -- the ENVIRONMENT-
+    DECLARED set, the exact env-join defect class the pre-Stage-5 hotfix
+    removed from production -- so a required isolation on a never-observable
+    host (password_spray's victim workstation) passed while being
+    unperformable in the UI. ACCEPTABLE actions are held to world
+    reachability only (test_required_and_acceptable_actions_are_ui_reachable
+    _across_seeds): an out-of-scope acceptable target is score-neutral and
+    unexecutable, surfacing post-submit purely as teaching (the
+    password_spray demotion, owner-ruled 2026-10-11; flagged in the Stage 6
+    report for the no-phantom tension with the 3c Batch-2 ruling).
+    Answer-key data (expected actions, traps) is used ONLY in this test,
+    never in the presentation scope; a gap here is fixed in telemetry/
+    content, never by injecting answer-key targets into the scope."""
     IDENTITY = ("disable_account", "revoke_sessions", "force_password_reset")
     checked = 0
     for label, sc in app.yaml_catalog.items():
@@ -596,16 +615,19 @@ def test_actions_ui_reachable_within_incident_scope_across_seeds():
         if not ak.get("actions_reviewed"):
             continue
         for seed in SEED_SET:
-            sc2, resolved, env, world, dets, reg, det_keys = _full_world_for_seed(label, seed)
-            # observable scope hosts: event-participant managed hosts + tagged-
-            # detection hosts (the same derivation _incident_observable_scope uses).
-            obs_hosts = set(world["hosts"].keys())
+            sc2, resolved, env, world, dets, reg, det_keys, written = \
+                _full_world_for_seed(label, seed)
+            # observable scope hosts: WRITTEN event hostnames + tagged-
+            # detection entity hosts (the _incident_roster derivation),
+            # never the environment-declared world set.
+            obs_hosts = {l.get("hostname") for l in written if l.get("hostname")}
             for d in dets:
                 h = (d.get("entity") or {}).get("host")
                 if h:
                     obs_hosts.add(h)
-            targets = list(app.materialize_expected_actions(
-                ak.get("actions", []), f"scenario-{label}", env, resolved, world=world))
+            targets = [t for t in app.materialize_expected_actions(
+                ak.get("actions", []), f"scenario-{label}", env, resolved,
+                world=world) if t.get("status") == "required"]
             targets += list(app.materialize_traps(
                 sc.get("traps", []), f"scenario-{label}", env, resolved, world=world))
             for t in targets:
@@ -616,7 +638,7 @@ def test_actions_ui_reachable_within_incident_scope_across_seeds():
                          f"the incident scope")
                 else:
                     host = target.get("hostname") or target.get("host")
-                    assert host in obs_hosts, \
+                    assert host in obs_hosts and host in world["hosts"], \
                         (f"{label}/{seed}: {action} target host {host!r} is not in "
                          f"the incident's observable scope {sorted(obs_hosts)}")
                 checked += 1
@@ -759,17 +781,19 @@ def test_score_endpoint_shape_surfacing_and_no_leak():
                 {"seq": 1, "timestamp": STARTED, "action": "kill_process",
                  "target": {"id": "ent-cccccccccccc", "kind": "process",
                             "label": "helper.exe (PID 500) on ACME-WS77"},
-                 "outcome": "success", "reason": None},
+                 "outcome": "success", "reason": None, "incident_id": INC},
                 {"seq": 2, "timestamp": STARTED, "action": "isolate_host",
                  "target": {"id": "ent-aaaaaaaaaaaa", "kind": "host",
                             "label": "ACME-OFF01"},
                  "outcome": "failed_precondition",
                  "reason": "Host is offline. The isolation command could not "
-                           "be delivered to the endpoint agent."},
+                           "be delivered to the endpoint agent.",
+                 "incident_id": INC},
                 {"seq": 3, "timestamp": STARTED, "action": "disable_account",
                  "target": {"id": "ent-bbbbbbbbbbbb", "kind": "account",
                             "label": "ACME\\jdoe"},
-                 "outcome": "no_op", "reason": "Account is already disabled."},
+                 "outcome": "no_op", "reason": "Account is already disabled.",
+                 "incident_id": INC},
             ]
             s["overlay"]["seq"] = 3
 
@@ -851,16 +875,22 @@ def test_inaction_scenario_zeroes_on_any_collateral():
     assert one["accuracy"] == 0.0 and one["inaction_collateral"] is True
 
 
-def test_inaction_collateral_zeroes_session_even_with_handled_attacks():
-    """Strict inaction contract: a collateral in an inaction scenario's scope
-    zeroes the Response score even when a co-dripped attack was handled."""
+def test_inaction_collateral_zeroes_the_case_it_is_attributed_to():
+    """Strict inaction contract, per-case (Stage 6 rewrite of the pooled
+    session-zero test): the inaction case is zeroed by ITS OWN attributed
+    collateral, while a handled attack graded as its own case is untouched
+    (cross-charging is structurally gone -- see test_action_attribution.py
+    for the route-level regression guard)."""
     gA = _grading(scenario="scenario-a", hostnames={WS}, accounts=())
-    gB = _grading(scenario="scenario-b", hostnames={SVR}, accounts=())
     expected = [_exp("isolate_host", {"hostname": WS}, scenario="scenario-a")]
-    executed = [_run("isolate_host", {"hostname": WS}, 1),
-                _run("kill_process", {"hostname": SVR, "pid": 900, "name": "x.exe"}, 2)]
-    r = app.compute_action_score(expected, executed, {WS}, [gA, gB])
-    assert r["inaction_collateral"] is True and r["accuracy"] == 0.0
+    r_a = app.compute_action_score(
+        expected, [_run("isolate_host", {"hostname": WS}, 1)], {WS}, [gA])
+    assert r_a["accuracy"] == 100.0 and r_a["inaction_collateral"] is False
+    gB = _grading(scenario="scenario-b", hostnames={SVR}, accounts=())
+    r_b = app.compute_action_score(
+        [], [_run("kill_process", {"hostname": SVR, "pid": 900,
+                                   "name": "x.exe"}, 2)], set(), [gB])
+    assert r_b["inaction_collateral"] is True and r_b["accuracy"] == 0.0
 
 
 def test_acceptable_and_neutral_outcomes_do_not_price_as_collateral():

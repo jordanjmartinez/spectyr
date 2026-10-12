@@ -139,3 +139,53 @@ gate boot cleanup can remove the live session directory. (Observed during Stage
 3.9B runtime verification: a gate-process boot sweep deleted the running dev
 server's active session dir, killing its drip thread so incidents stopped
 sealing. Not a product defect; a dev-workflow collision on the shared logs dir.)
+
+## Stage 6 trust-layer deferrals (recorded 2026-10-11)
+
+**Target: when the shelved scenarios return to PLAYABLE_SCENARIOS (or a
+dedicated content pass).** The Stage 6 catalog cut shelved 15 scenarios as
+"coming soon"; the playtest findings that live entirely inside shelved
+content were deliberately deferred rather than fixed blind:
+
+1. **Taxonomy rework.** `insider_shadow_it` grades "Insider Threat" while
+   every MITRE tag in its own file is Exfiltration (T1567.002), and
+   `lateral_movement_2` grades "Lateral Movement" while its only answer-key
+   technique is T1003.001 Credential Access with no player category for
+   credential theft. Classification is an exact string match with no
+   multi-accept. Options sketched in the Stage 6 investigation: re-key
+   shadow IT to Data Exfiltration (4 coupled edits incl. the CAMPAIGN_LEVELS
+   dict key + the S1 contrast-pair rubric rewrite), add a Credential Theft
+   category (9-file blast radius incl. the picker grid and level pools), or
+   add graded-tier `classification_acceptable` support to the answer key
+   (lowest risk, one scorer + schema change). Owner decision required. The
+   W7b guard (CAMPAIGN_LEVELS key == YAML category == classification) now
+   makes a partial re-key impossible to land silently.
+2. **Missing acceptable `remove_persistence` on `malware_usb` and
+   `phishing_link`.** Both plant real file-backed Run keys surfaced by their
+   own detections; removing that persistence grades -20. The governing rule
+   (ACTION_CANDIDATES.md ~line 1306: neutralizing the registration "must not
+   grade as collateral") was applied to defense_evasion only - 1 of the 3
+   Run-key scenarios. Same treatment as the Stage 6 S6-1..3 additions when
+   these scenarios return.
+3. **Acceptable credential hygiene on the remaining shelved host-compromise
+   scenarios** (`c2_http`, `data_exfil_archive`, `defense_evasion`,
+   `malware_usb`, `phishing_link`): the S6-1..3 ruling (acceptable
+   revoke_sessions + force_password_reset on the signed-in victim;
+   disable_account stays a trap) should be applied uniformly on return.
+4. **`insider_shadow_it` stale `expected_response` copy.** The frozen Tier 2
+   rationale paragraph describes "unsanctioned remote-access tooling... cut
+   the remote channel"; the scenario is Dropbox cloud-sync exfiltration.
+   Copy correction when the scenario returns.
+5. **FP variety under the cut.** With one playable FP, every Hardcore run's
+   false positive is the same training ticket (memorizable after one run;
+   owner-accepted tradeoff). Restore variety by promoting at least one more
+   FP into PLAYABLE_SCENARIOS when its trust-layer review is done.
+6. **Phantom acceptable disclosure (flagged deviation, W3).** The demoted
+   password_spray isolation (acceptable, never case-scope reachable) shows
+   post-submit in the expected-response disclosure as a teaching-only row a
+   player could not have performed - in tension with the 3c Batch-2
+   no-phantom ruling. Owner review: accept as teaching, remove the action,
+   or make the workstation observable (content change).
+7. **`playable` catalog flag** rides next to the `difficulty: null` field in
+   the picker payload (same additive-catalog-field class as the deferred
+   difficulty rubric above).

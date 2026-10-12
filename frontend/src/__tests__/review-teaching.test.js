@@ -21,6 +21,8 @@ import { deriveAchievements } from '../components/achievements';
 import {
   REVIEW_SECTION_CORRECT, REVIEW_SECTION_MISSED, REVIEW_SECTION_COLLATERAL,
   REVIEW_SECTION_ACCEPTABLE, REVIEW_SECTION_ATTEMPTS, REVIEW_SECTION_TAKEAWAY,
+  REVIEW_SECTION_EXPECTED, REVIEW_EMPTY_EXPECTED, INACTION_ZERO_HEADING,
+  EXPECTED_REQUIRED_LABEL, EXPECTED_ACCEPTABLE_LABEL,
   correctDetectionCalls, NO_CORRECT_CALLS, NO_COMPLETED_REQUIRED,
   REVIEW_EMPTY_MISSED, REVIEW_EMPTY_COLLATERAL,
   BREAKDOWN_LOAD_ERROR, NO_SUBMITTED_INCIDENTS,
@@ -56,6 +58,19 @@ const REVIEW = {
     { rule_name: 'Rule A', entity_label: 'ACME-WS12', your_call: 'promoted', correct: true },
     { rule_name: 'Rule B', entity_label: 'ACME-WS12', your_call: 'promoted', correct: false },
   ],
+  // Stage 6 (A4): the frozen post-submit disclosure -- the full expected
+  // list (incl. a never-executed acceptable target) and the zero callout.
+  expected_actions: [
+    { action: 'isolate_host', status: 'required', target_label: 'ACME-WS12',
+      expected_ref: 'isolate_host:ACME-WS12' },
+    { action: 'kill_process', status: 'required',
+      target_label: 'payload.exe (PID 4756) on ACME-WS12',
+      expected_ref: 'kill_process:ACME-WS12/4756' },
+    { action: 'force_password_reset', status: 'acceptable',
+      target_label: 'ACME\\UNEXECUTED-ACCEPTABLE',
+      expected_ref: 'force_password_reset:acme/nkhan' },
+  ],
+  inaction_zero: null,
   scenario_rationale: 'TAKEAWAY-TEXT',
 };
 const GRADING = {
@@ -131,6 +146,35 @@ test('renders the full frozen teaching content with bucket routing, whys, verdic
   expect(chips.queryByText('No Collateral')).toBeNull();
   expect(chips.queryByText('Clean Triage')).toBeNull();
   expect(chips.queryByText('Perfect Case')).toBeNull();
+});
+
+test('Stage 6: the expected-response section renders the frozen full list with status chips, including never-executed targets', async () => {
+  await renderReview();
+  const d = within(await screen.findByTestId('expected-actions'));
+  expect(screen.getByText(REVIEW_SECTION_EXPECTED)).toBeInTheDocument();
+  expect(d.getAllByText(EXPECTED_REQUIRED_LABEL)).toHaveLength(2);
+  expect(d.getAllByText(EXPECTED_ACCEPTABLE_LABEL)).toHaveLength(1);
+  // the acceptable row was never executed; post-submit it still discloses
+  expect(d.getByText('ACME\\UNEXECUTED-ACCEPTABLE')).toBeInTheDocument();
+});
+
+test('Stage 6: an empty expected list renders its named empty line; the inaction-zero callout names the trigger', async () => {
+  const review = {
+    ...REVIEW,
+    entries: REVIEW.entries.filter(e => e.bucket === 'collateral'),
+    expected_actions: [],
+    inaction_zero: { action: 'delete_file',
+      target_label: 'C:\\clean\\doc.txt on ACME-WS12',
+      source_action_seq: 3, why: 'WHY-ZERO' },
+  };
+  await renderReview({ ...SCORE_VIEW, grading: { ...GRADING, response_review: review } });
+  await screen.findByTestId('learning-review-detail');
+  expect(screen.getByText(REVIEW_EMPTY_EXPECTED)).toBeInTheDocument();
+  const z = within(screen.getByTestId('inaction-zero'));
+  expect(z.getByText(INACTION_ZERO_HEADING)).toBeInTheDocument();
+  expect(z.getByText('Delete File')).toBeInTheDocument();
+  expect(z.getByText('C:\\clean\\doc.txt on ACME-WS12')).toBeInTheDocument();
+  expect(z.getByText('WHY-ZERO')).toBeInTheDocument();
 });
 
 test('ruling H: a null scenario_rationale omits the Key takeaway section', async () => {
@@ -252,10 +296,12 @@ test('19.19 one venue: the Case Closed modal after submit carries the moment + a
   const m = within(modal);
   expect(m.getByText('Case Closed: INC-4000')).toBeInTheDocument();
   expect(m.getByText('Solo Close')).toBeInTheDocument();      // achievements render
-  // NEVER teaching content: no section headers, no whys, no takeaway
+  // NEVER teaching content: no section headers, no whys, no takeaway, and
+  // (Stage 6) never the expected-list disclosure or the zero callout
   for (const marker of [REVIEW_SECTION_CORRECT, REVIEW_SECTION_MISSED,
     REVIEW_SECTION_COLLATERAL, 'WHY-COMPLETED', 'WHY-MISSED', 'WHY-COLLATERAL',
-    'TAKEAWAY-TEXT']) {
+    'TAKEAWAY-TEXT', REVIEW_SECTION_EXPECTED, INACTION_ZERO_HEADING,
+    'ACME\\UNEXECUTED-ACCEPTABLE']) {
     expect(m.queryByText(marker)).toBeNull();
   }
   fireEvent.click(m.getByRole('button', { name: 'Review what you learned' }));

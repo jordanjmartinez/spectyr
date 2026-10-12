@@ -93,6 +93,35 @@ def test_scope_serializes_observable_fields_only():
         _cleanup(sid, s)
 
 
+def test_scope_excludes_non_endpoint_log_sources():
+    """Stage 6 (W5): a firewall/proxy that logs events for the incident is
+    observable telemetry but never an endpoint. The SERIALIZED scope hosts
+    exclude it (the case-scoped Endpoints/Response surfaces must never offer
+    or fetch it as an endpoint), while the shared roster derivation is
+    untouched (presentation-only filter; PAN-OS devices carry no detections,
+    so rosters/readiness/grading cannot change by construction)."""
+    client, sid, s = _api_session()
+    try:
+        with s["io_lock"]:
+            _seed(s)
+            logs = app._read_ndjson_unlocked(s["paths"]["generated_logs"])
+            logs.append({**logs[0], "id": "e2", "hostname": "ACME-FW01",
+                         "key_value_pairs": {}})
+            app._write_ndjson_unlocked(s["paths"]["generated_logs"], logs)
+            s["non_endpoint_hosts"] = {"ACME-FW01"}
+        body = client.get(f"/api/incidents/{INC}/scope",
+                          headers={"X-Session-ID": sid}).get_json()
+        assert WS in body["hosts"]
+        assert "ACME-FW01" not in body["hosts"], \
+            "a log-source device entered the serialized incident scope"
+        with s["io_lock"]:
+            ro = app._incident_roster(s, SID)
+        assert "ACME-FW01" in ro["hosts"], \
+            "the shared roster derivation must stay untouched (W5 is presentation-only)"
+    finally:
+        _cleanup(sid, s)
+
+
 def test_scope_withholds_roster_total_before_seal():
     client, sid, s = _api_session()
     try:
@@ -125,6 +154,9 @@ def test_scope_structural_no_grading_or_expected_actions():
     src += inspect.getsource(app._incident_detections)
     src += inspect.getsource(app._incident_open_detections)
     src += inspect.getsource(app.incident_submission_readiness)
+    # Stage 6: the pre-submit progress surface joins on the attribution
+    # stamp, so it too must stay free of grading-side inputs.
+    src += inspect.getsource(app._incident_progress)
     for forbidden in ("expected_actions", "scenario_grading", "_grading_record_for",
                       "grading_rec", "answer_key"):
         assert forbidden not in src, f"scope/roster read references {forbidden!r}"
