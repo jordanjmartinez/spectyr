@@ -13,11 +13,17 @@ import DifficultySelector from '../components/DifficultySelector';
 import GameTimer from '../components/GameTimer';
 import FailureModal from '../components/FailureModal';
 import HintPanel from '../components/HintPanel';
+import { hintsAllowed } from '../components/helpContent';
 import { NAV_ICONS, NAV_STROKE, ChromeIcons } from '../components/icons';
 import AppHeader from '../components/AppHeader';
 import BrandLockup from '../components/BrandLockup';
 import StartButton, { CTA_PILL } from '../components/StartButton';
 import { PAGE_SUBTITLE } from '../components/uiCopy';
+
+// Stage 6 playtest fix: the reset POST is bounded. A stalled request aborts
+// after this long and surfaces an error in the dialog instead of holding it
+// on "Resetting..." forever.
+const RESET_TIMEOUT_MS = 10000;
 
 const Dashboard = () => {
   const [groupedAlertCount, setGroupedAlertCount] = useState(0);
@@ -40,7 +46,33 @@ const Dashboard = () => {
   const [resetTrigger, setResetTrigger] = useState(0);
   const [showResetModal, setShowResetModal] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  // Stage 6 playtest fix: the reset request is bounded (abortable, 10s
+  // timeout) and failures surface in the dialog instead of freezing it.
+  const [resetError, setResetError] = useState(null);
+  const resetAbortRef = useRef(null);
   const [showSimulateModal, setShowSimulateModal] = useState(false);
+  // Stage 6 playtest fix (mobile rail): below md the rail is an off-canvas
+  // drawer behind a header hamburger. isMobileViewport (matchMedia, guarded
+  // for test environments without it) decides which single GameTimer
+  // instance mounts -- rail on desktop, header slot on mobile -- so the
+  // timer never polls twice and stays visible during a Hardcore run with
+  // the drawer closed.
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(() =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(max-width: 767px)').matches
+      : false
+  );
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return undefined;
+    const mq = window.matchMedia('(max-width: 767px)');
+    const onChange = (e) => {
+      setIsMobileViewport(e.matches);
+      if (!e.matches) setMobileNavOpen(false); // drawer is a below-md surface
+    };
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
   const [showDifficultyModal, setShowDifficultyModal] = useState(false);
   const [practiceAnother, setPracticeAnother] = useState(false); // opens picker at the Guided catalog
   const [showFailureModal, setShowFailureModal] = useState(false);
@@ -175,17 +207,15 @@ const Dashboard = () => {
     }
   };
 
-  const handleTimeout = async () => {
-    // Get the current level's category for the failure message
-    try {
-      const res = await apiFetch('/api/current-level');
-      const data = await res.json();
-      setFailureCategory(data.category || 'Unknown');
-    } catch (err) {
-      setFailureCategory('Unknown');
-    }
+  const handleTimeout = () => {
+    // Stage 6 playtest fix: the overlay shows IMMEDIATELY at expiry; no
+    // fetch may sit in front of it (the old category lookup delayed the
+    // modal and FailureModal never rendered the category anyway). The
+    // backend is then told the run is dead so the session pauses even
+    // before its own auto-pause read lands.
     setFailureType('timeout');
     setShowFailureModal(true);
+    apiFetch('/api/game-timeout', { method: 'POST' }).catch(() => {});
   };
 
   const handleHardcoreFailure = (category) => {
@@ -205,34 +235,79 @@ const Dashboard = () => {
   const handleFailureRetry = async () => {
     setShowFailureModal(false);
     setFailureType(null);
-    await handleResetSimulator();
+    // Stage 6 playtest fix: Retry must land a genuinely fresh run. Start
+    // only after a confirmed reset, and re-sync the shell once the new run
+    // exists (a second resetTrigger bump) so the UI never sits on the dead
+    // run's state after the overlay closes. If the start fails, the reset
+    // already left a clean lobby with the Start control available.
+    const resetOk = await handleResetSimulator();
+    if (!resetOk) {
+      // Surface the failure with a recovery path instead of silence: the
+      // reset dialog opens showing the error and a working Reset button.
+      setShowResetModal(true);
+      return;
+    }
     try {
-      await apiFetch('/api/start-simulator', {
+      const res = await apiFetch('/api/start-simulator', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ game_mode: 'hardcore', analyst_name: analystName })
       });
+      if (!res.ok) throw new Error('start-simulator failed');
+      setGameMode('hardcore');
+      setSimActive(true);
+      setResetTrigger(prev => prev + 1);
     } catch (err) {
       console.error(err);
     }
   };
 
+  const openResetModal = () => {
+    setResetError(null);
+    setShowResetModal(true);
+  };
+
+  const dismissResetModal = () => {
+    // Always dismissible, even mid-flight: dismissing abandons the attempt
+    // (the in-flight request is aborted). The playtest hang was a stalled
+    // reset POST holding the dialog on "Resetting..." with every exit gated
+    // behind the busy flag.
+    resetAbortRef.current?.abort();
+    setResetError(null);
+    setShowResetModal(false);
+  };
+
   const handleResetSimulator = async () => {
     setIsResetting(true);
+    setResetError(null);
+    const controller = new AbortController();
+    resetAbortRef.current = controller;
+    const timer = setTimeout(() => controller.abort(), RESET_TIMEOUT_MS);
     try {
-      await apiFetch('/api/reset-simulator', {
+      const res = await apiFetch('/api/reset-simulator', {
         method: 'POST',
+        signal: controller.signal,
       });
+      if (!res.ok) throw new Error('reset-simulator failed');
       // A reset destroys the session's incidents; no case survives it, so
       // the pinned case clears here (explicit destructive act, not an
-      // implicit case change). The classification selections die with it.
+      // implicit case change). The classification selections, the context
+      // pill summary, and any pending Learning Review preselect die with it.
       setActiveIncidentId(null);
+      setActiveIncident(null);
+      setReviewRequest(null);
       setChosen({});
       setResetTrigger(prev => prev + 1);
       setShowResetModal(false);
+      setResetError(null);
+      return true;
     } catch (err) {
       console.error(err);
+      setResetError('The reset did not complete. Check that the backend is reachable and try again.');
+      return false;
     } finally {
+      clearTimeout(timer);
+      resetAbortRef.current = null;
       setIsResetting(false);
     }
   };
@@ -276,12 +351,23 @@ const Dashboard = () => {
     // that cited that retired workflow.
   ];
 
-  return (
-    <div className="min-h-screen flex bg-[#f6f8fa] text-[#1a2332]">
-      {/* Navy nav rail */}
-      {/* VC4: the rail widens (w-24 collapsed / w-72 expanded) so the
-          full-size ghost never clips the lockup (68px since VD6) */}
-      <aside className="sticky top-0 self-start h-screen w-24 lg:w-72 shrink-0 bg-[#101218] text-gray-300 flex flex-col z-30">
+  // Stage 6 playtest fix 8: the Guided hint pill docks bottom-right; while
+  // it is active the content area gains bottom clearance and the toast
+  // stack lifts above it. ONE allow-list source (hintsAllowed), never a
+  // duplicated mode check.
+  const hintActive = simActive && hintsAllowed(gameMode);
+
+  // Stage 6 playtest fix (rail): ONE source for the rail content, rendered
+  // twice -- the md+ sidebar (icons centered below lg, labels expand at lg;
+  // previously px-3 left-aligned icons hugged the left of the 96px column)
+  // and the mobile off-canvas drawer (always expanded). A plain render
+  // function, never a nested component, so children keep their identity
+  // across Dashboard renders.
+  const renderRail = (expanded, close = () => {}) => {
+    const align = expanded ? 'justify-start' : 'justify-center lg:justify-start';
+    const label = expanded ? '' : 'hidden lg:inline';
+    return (
+      <>
         {/* VC3 (final lockup correction, cumulative over VC1-VC2) + VD6:
             the brand cell of the unified 68px shell row renders the ONE
             shared BrandLockup (68px ghost + 30px wordmark; sizing and
@@ -297,9 +383,9 @@ const Dashboard = () => {
         <Link
           to="/"
           title="Back to home"
-          className="flex items-center justify-center lg:justify-start h-[68px] px-2 lg:px-3 border-b border-white/10 hover:bg-white/5 transition-colors"
+          className={`flex items-center ${align} h-[68px] px-2 lg:px-3 border-b border-white/10 hover:bg-white/5 transition-colors`}
         >
-          <BrandLockup wordmarkClass="hidden lg:inline" />
+          <BrandLockup wordmarkClass={label} />
           <span className="sr-only">SPECTR home</span>
         </Link>
 
@@ -310,17 +396,17 @@ const Dashboard = () => {
             return (
               <button
                 key={t.key}
-                onClick={() => { setView(t.key); if (t.key === 'incidents') setIncidentBadge(0); }}
+                onClick={() => { setView(t.key); if (t.key === 'incidents') setIncidentBadge(0); close(); }}
                 title={t.label}
-                className={`group relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
+                className={`group relative flex items-center ${align} gap-3 rounded-md px-2 lg:px-3 py-2.5 text-sm font-medium transition-colors ${
                   active ? 'bg-white/10 text-white' : 'text-gray-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
                 {active && <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-white" />}
                 <Icon size={19} strokeWidth={NAV_STROKE} aria-hidden="true" className="shrink-0" />
-                <span className="hidden lg:inline flex-1 text-left">{t.label}</span>
-                {t.count > 0 && <span className="hidden lg:inline text-xs text-gray-400">{t.count}</span>}
-                {t.count > 0 && <span className="lg:hidden absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-white/70" />}
+                <span className={`${label} flex-1 text-left`}>{t.label}</span>
+                {t.count > 0 && <span className={`${label} text-xs text-gray-400`}>{t.count}</span>}
+                {t.count > 0 && !expanded && <span className="lg:hidden absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-white/70" />}
               </button>
             );
           })}
@@ -330,42 +416,72 @@ const Dashboard = () => {
           <Link
             to="/docs"
             title="Documentation"
-            className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-gray-400 hover:bg-white/5 hover:text-white transition-colors"
+            className={`flex items-center ${align} gap-3 rounded-md px-2 lg:px-3 py-2.5 text-sm font-medium text-gray-400 hover:bg-white/5 hover:text-white transition-colors`}
           >
             <ChromeIcons.BookOpen size={19} strokeWidth={NAV_STROKE} aria-hidden="true" className="shrink-0" />
-            <span className="hidden lg:inline">Docs</span>
+            <span className={label}>Docs</span>
           </Link>
         </div>
 
         <div className="mt-auto p-2 lg:p-3 border-t border-white/10 flex flex-col gap-2">
-          <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />
+          {/* The desktop timer instance; on mobile the ONE instance lives in
+              the header slot so it stays visible with the drawer closed. */}
+          {!expanded && !isMobileViewport && (
+            <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />
+          )}
           {simActive ? (
             /* VE5 (owner mid-run instruction): the rail Reset wears the
                same pill treatment as the shared Start control (one
                exported class list, so the geometry cannot drift). It is
                NOT a StartButton -- Reset is not a product-entry action. */
             <button
-              onClick={() => setShowResetModal(true)}
+              onClick={() => { close(); openResetModal(); }}
               title="Reset Simulation"
               aria-label="Reset Simulation"
               className={`${CTA_PILL} w-full`}
             >
               <ChromeIcons.RotateCcw size={18} strokeWidth={NAV_STROKE} aria-hidden="true" className="shrink-0" />
-              <span className="hidden lg:inline">Reset</span>
+              <span className={label}>Reset</span>
             </button>
           ) : (
             /* Final polish (section 4): the rail's inactive-session slot
                is the shared product-entry StartButton (label collapses
                below lg exactly like the lockup wordmark). */
             <StartButton
-              onClick={handleSimulateEvents}
+              onClick={() => { close(); handleSimulateEvents(); }}
               title="Start"
               className="w-full"
-              labelClass="hidden lg:inline"
+              labelClass={label}
             />
           )}
         </div>
+      </>
+    );
+  };
+
+  return (
+    <div className="min-h-screen flex bg-[#f6f8fa] text-[#1a2332]">
+      {/* Navy nav rail */}
+      {/* VC4: the rail widens (w-24 collapsed / w-72 expanded) so the
+          full-size ghost never clips the lockup (68px since VD6).
+          Stage 6 playtest fix: hidden below md -- a permanent 96px column
+          ate a quarter of a 390px viewport; the drawer below replaces it. */}
+      <aside className="sticky top-0 self-start h-screen w-24 lg:w-72 shrink-0 bg-[#101218] text-gray-300 hidden md:flex flex-col z-30">
+        {renderRail(false)}
       </aside>
+
+      {/* Mobile off-canvas drawer (below md), opened by the header hamburger */}
+      {mobileNavOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setMobileNavOpen(false)} />
+          <aside
+            aria-label="Navigation"
+            className="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-[#101218] text-gray-300 flex flex-col shadow-2xl animate-drawerIn"
+          >
+            {renderRail(true, () => setMobileNavOpen(false))}
+          </aside>
+        </div>
+      )}
 
       {/* Light content */}
       <main className="flex-1 min-w-0 overflow-x-hidden">
@@ -383,9 +499,17 @@ const Dashboard = () => {
           gameMode={gameMode}
           analystName={analystName}
           simActive={simActive}
-          onReset={() => setShowResetModal(true)}
+          onReset={openResetModal}
+          onOpenNav={() => setMobileNavOpen(true)}
+          timerSlot={isMobileViewport
+            ? <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />
+            : null}
         />
-        <div className="p-4 sm:p-6">
+        {/* Stage 6 playtest fix 8: while the Guided hint pill floats bottom
+            right, the content area carries bottom clearance so the last rows
+            of any column (SIEM facets, Response tables, Metrics cards) can
+            scroll clear of it instead of sitting underneath. */}
+        <div className={`p-4 sm:p-6 ${hintActive ? 'pb-20 sm:pb-20' : ''}`}>
         {/* Stage 5 Phase 1 (Amendment 1 Delta A): the global focus banner is
             REPLACED by the per-surface pinned case header ("Investigating
             INC-####" / "All activity") on Detections, Endpoints, and the
@@ -408,7 +532,7 @@ const Dashboard = () => {
             isVisible={view === "incidents"}
             resetTrigger={resetTrigger}
             onHardcoreFailure={handleHardcoreFailure}
-            onReset={() => setShowResetModal(true)}
+            onReset={openResetModal}
             gameMode={gameMode}
             activeIncidentId={activeIncidentId}
             onSelectIncident={setActiveIncidentId}
@@ -450,12 +574,12 @@ const Dashboard = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
             className="absolute inset-0 bg-black/70"
-            onClick={() => !isResetting && setShowResetModal(false)}
+            onClick={dismissResetModal}
           />
           <div className="relative bg-white border border-[#e2e6ea] rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl animate-modalIn">
             <button
               type="button"
-              onClick={() => !isResetting && setShowResetModal(false)}
+              onClick={dismissResetModal}
               aria-label="Close"
               className="absolute top-3 right-3 p-1 text-[#57606a] hover:text-[#1a2332] transition-colors"
             >
@@ -467,11 +591,15 @@ const Dashboard = () => {
             <p className="text-[#57606a] mb-6">
               This will clear all events and incidents. Your progress will be reset. This action cannot be undone.
             </p>
+            {resetError && (
+              <p role="alert" className="text-sm text-[#a40e26] mb-4">
+                {resetError}
+              </p>
+            )}
             <div className="flex justify-end gap-2">
               <button
-                onClick={() => setShowResetModal(false)}
-                disabled={isResetting}
-                className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-white hover:bg-[#eef1f4] text-[#57606a] border-[#d0d7de] focus:outline-none focus:ring-2 focus:ring-[#8b949e] disabled:opacity-50"
+                onClick={dismissResetModal}
+                className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-white hover:bg-[#eef1f4] text-[#57606a] border-[#d0d7de] focus:outline-none focus:ring-2 focus:ring-[#8b949e]"
               >
                 Cancel
               </button>
@@ -555,9 +683,12 @@ const Dashboard = () => {
       {/* Live Progress and Reinforcement toasts (Phase 2 commit 2.4,
           A1-B.3.1): factual confirmations only, announced politely
           (role=status), never stealing focus. */}
+      {/* Stage 6 playtest fix 8: with the hint pill docked bottom-right,
+          the transient toast stack lifts above it so the two never collide;
+          other modes keep the default corner. */}
       <ToastContainer position="bottom-right" autoClose={4000} newestOnTop
         closeOnClick pauseOnFocusLoss={false} limit={4} role="status"
-        theme="light" />
+        theme="light" style={hintActive ? { bottom: '4.5rem' } : undefined} />
 
       {/* Phase 6 commit 6.2 (A1-B.5.2): the Guided-only hint flow. The
           component itself enforces the HINT_MODES allow-list (renders

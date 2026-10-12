@@ -16,9 +16,13 @@ const HintPanel = ({ gameMode, surface }) => {
   if (!hintsAllowed(gameMode)) return null;
 
   return (
-    // VE5 (owner mid-run instruction): the floating control clears the
-    // nav rail (w-24 below lg, w-72 at lg) instead of clipping into it.
-    <div className="fixed bottom-5 left-28 lg:left-[19rem] z-40" data-testid="hint-panel">
+    // Stage 6 playtest fix 8 (supersedes the VE5 left-offset placement,
+    // keeping its never-clip intent): the control docks bottom-RIGHT. The
+    // old left offset sat exactly over the SIEM facet column and, with the
+    // rail hidden below md (fix 6), floated over content for no reason.
+    // The shell adds bottom clearance to the content area while this pill
+    // is active, so bottom rows can always scroll clear of it.
+    <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end" data-testid="hint-panel">
       {open && (
         <div className="mb-2 w-80 max-w-[85vw] bg-white border border-[#e2e6ea] rounded-xl shadow-xl overflow-hidden">
           <div className="p-4">

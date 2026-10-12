@@ -130,7 +130,9 @@ test('VD5: technical identifiers wear the token on every workspace; chrome and p
   expect(comp('LearningReview.jsx')).toMatch(/log-mono[^>]*>\{triage\.mitre\.id\}/);
   expect(comp('TriageFeedback.jsx')).toMatch(/log-mono[^>]*>\{review\.mitre\.id\}/);
   // related hosts/accounts identifiers are mono in the incident detail
-  expect(comp('Incidents.jsx')).toMatch(/log-mono">\{scope\.hosts\.join/);
+  // (fix 7 moved the panel onto the shared useIncidentScope state; the
+  // identifiers still wear the token)
+  expect(comp('Incidents.jsx')).toMatch(/log-mono">\{scope\.data\.hostList\.join/);
   // navigation, buttons, and headings never wear the token (Inter chrome)
   const dash = fs.readFileSync(path.join(__dirname, '..', 'pages', 'Dashboard.jsx'), 'utf8');
   const navBlock = dash.match(/<nav[\s\S]*?<\/nav>/)[0];

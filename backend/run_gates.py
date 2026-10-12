@@ -49,6 +49,7 @@ BACKEND_SUITES = [
     "test_detection_indistinguishability.py",
     "test_rank_uniformity.py",
     "test_attack_coverage.py",
+    "test_hardcore_timer.py",
     "test_solver_gates.py",
     "parity_check.py",
     "parity_check_v2.py",

@@ -66,6 +66,13 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
                 initialQueryMode = 'simple' }) => {
   const [org, setOrg] = useState({});
   const [view, setView] = useState('cards');
+  // Stage 6 playtest fix 9: below lg the results column stacks, and the
+  // ~60-group field panel buried the events under a full-width scroll. The
+  // panel collapses behind a disclosure there (default closed, so events
+  // render first); at lg+ it stays the always-visible side column. A value
+  // click closes the disclosure so the refined events are immediately
+  // visible (no-op at lg+, where the open flag is ignored).
+  const [fieldsOpen, setFieldsOpen] = useState(false);
   // Amendment 3 F7 (ratified A3-OD-4): Simple search is the DEFAULT in
   // every play mode; Advanced LCQL is one toggle away. Session-local
   // memory only -- no localStorage, no server persistence (B-OD-4).
@@ -484,6 +491,31 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
   // rows display exactly as served, like any executed search; the Table
   // view's own column sorting remains the ordering control.)
 
+  // Stage 6 playtest fix 9: the ONE fields column, shared by the 0-events
+  // and results layouts. Below lg it sits behind the disclosure (default
+  // closed so events render first); at lg+ the disclosure is hidden and
+  // the panel is always visible, exactly as before.
+  const fieldsColumn = (
+    <div className="w-full lg:w-56 shrink-0">
+      <button
+        type="button"
+        onClick={() => setFieldsOpen((o) => !o)}
+        aria-expanded={fieldsOpen}
+        className="lg:hidden w-full flex items-center justify-between px-3 py-2 text-sm rounded-md border border-[#d0d7de] bg-white text-[#57606a] hover:bg-[#eef1f4]"
+      >
+        <span>Fields</span>
+        <span className="text-xs text-[#8b949e]">{fieldsOpen ? 'Hide' : 'Show'}</span>
+      </button>
+      <div className={`${fieldsOpen ? 'mt-2' : 'hidden'} lg:mt-0 lg:block`}>
+        <FieldSidebar
+          snapshot={snapshot}
+          running={running}
+          onValueClick={(f, op, v) => { setFieldsOpen(false); refineAndRun(f, op, v); }}
+        />
+      </div>
+    </div>
+  );
+
   return (
     <div>
       {/* VA1: functional subtitle + the ONE incident pill; the large
@@ -841,7 +873,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
         </div>
       ) : snapshot.count === 0 ? (
         <div className="flex flex-col lg:flex-row gap-4">
-          <FieldSidebar snapshot={snapshot} running={running} onValueClick={refineAndRun} />
+          {fieldsColumn}
           <div
             className="flex-1 min-w-0 p-6 rounded-xl flex flex-col items-center justify-center py-14"
             style={CARD_STYLE}
@@ -852,7 +884,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
         </div>
       ) : (
         <div className="flex flex-col lg:flex-row gap-4">
-          <FieldSidebar snapshot={snapshot} running={running} onValueClick={refineAndRun} />
+          {fieldsColumn}
           <div data-testid="workbench-results" className="flex-1 min-w-0">
             {/* VA1: the Cards/Table control belongs with the RESULTS, not
                 the page identity area. */}

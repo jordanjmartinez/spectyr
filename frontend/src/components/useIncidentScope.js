@@ -37,6 +37,11 @@ export default function useIncidentScope(activeIncidentId, resetTrigger) {
             hosts: new Set(sc.hosts || []),
             detectionIds: new Set(sc.detection_ids || []),
             sealed: !!sc.sealed,
+            // Stage 6 playtest fix 7: the Incidents detail panel is the
+            // fourth consumer; it renders the scope (ordered lists) rather
+            // than filtering by it, so the raw arrays ride along.
+            hostList: sc.hosts || [],
+            accounts: sc.accounts || [],
           },
           forId: id,
         });

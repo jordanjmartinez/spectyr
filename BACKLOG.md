@@ -189,3 +189,20 @@ content were deliberately deferred rather than fixed blind:
 7. **`playable` catalog flag** rides next to the `difficulty: null` field in
    the picker payload (same additive-catalog-field class as the deferred
    difficulty rubric above).
+
+## Stage 6 playtest round 2 deferrals (owner-ruled 2026-10-12)
+
+**Target: unscheduled; each needs its own pickup decision.**
+
+1. **Shared-detection transparency note.** Shared dispositions are CONFIRMED
+   intended (one detection, one call; the pre-Stage-5 hotfix shared-host
+   semantics stand). Optional affordance only: a detection sitting in more
+   than one incident roster could carry an observable-only "also in case
+   INC-X" note (rosters are already served per incident via /scope, so no
+   new disclosure). Low priority, cosmetic.
+2. **Hardcore failure debrief (mini-spec required).** Failure stays the
+   clean arcade end (forced Retry/Exit at 0:00 or wrong-submit, no lingering
+   state -- ruled 2026-10-12). A post-failure read-only debrief has teaching
+   value but crosses the 3.9A temporal disclosure boundary: unsubmitted
+   incidents must stay ungraded and unrevealed, so what a dead run may show
+   is a genuine design question. Do not build without a reviewed mini-spec.

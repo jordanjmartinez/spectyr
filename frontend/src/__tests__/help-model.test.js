@@ -132,8 +132,12 @@ test('6.2: Promote, Dismiss, and Reopen carry their tooltip lines (all modes: th
   await renderDetections();
   await screen.findByText('Rule Open');
   const byTitle = (t) => document.querySelectorAll(`[title="${t}"]`);
-  expect(byTitle(TOOLTIPS.promote).length).toBeGreaterThanOrEqual(2);
-  expect(byTitle(TOOLTIPS.dismiss).length).toBeGreaterThanOrEqual(2);
+  // Stage 6 playtest fix 13 amendment: an open row carries Promote +
+  // Dismiss; a reviewed row carries a state chip + Reopen only (the
+  // three-verb cluster is gone), so each tooltip rides exactly the
+  // controls that exist.
+  expect(byTitle(TOOLTIPS.promote).length).toBeGreaterThanOrEqual(1);
+  expect(byTitle(TOOLTIPS.dismiss).length).toBeGreaterThanOrEqual(1);
   expect(byTitle(TOOLTIPS.reopen).length).toBeGreaterThanOrEqual(1); // the triaged row
   // keyboard-reachable: the same line rides data-help on the help-tip class
   for (const el of byTitle(TOOLTIPS.promote)) {

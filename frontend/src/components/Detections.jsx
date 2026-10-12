@@ -4,6 +4,7 @@ import DetectionDetail from './DetectionDetail';
 import useIncidentScope from './useIncidentScope';
 import {
   detectionsReviewed, detectionsRemaining, FEED_SUBCOPY, OPEN_IN_RESPONSE,
+  PROMOTED_LABEL, DISMISSED_LABEL,
 } from './uiCopy';
 import { TOOLTIPS } from './helpContent';
 import { toastDisposition } from './uiToasts';
@@ -24,6 +25,19 @@ import { SeverityBadge, PageIntro, ErrorState } from './ui';
 export const RuleTypeChip = ({ type }) => (
   <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs border border-[#d0d7de] text-[#57606a] whitespace-nowrap">
     {type === 'yara' ? 'YARA' : 'Sigma'}
+  </span>
+);
+
+// Stage 6 playtest fix 13: a reviewed detection's disposition renders as a
+// STATE chip (the same colors the old active buttons wore), never as one of
+// three sibling verbs. Shared by the feed rows and the detail card.
+export const DispositionChip = ({ action, size = 'xs' }) => (
+  <span
+    className={`inline-flex items-center font-medium rounded-md border border-transparent text-white ${
+      action === 'promoted' ? 'bg-[#101218]' : 'bg-[#57606a]'
+    } ${size === 'sm' ? 'px-3 py-1.5 text-sm' : 'px-2.5 py-1 text-xs'}`}
+  >
+    {action === 'promoted' ? PROMOTED_LABEL : DISMISSED_LABEL}
   </span>
 );
 
@@ -90,7 +104,13 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
     fetchFeed();
   }, [resetTrigger, fetchFeed]);
 
+  // Stage 6 playtest fixes 14+15: one in-flight disposition per detection
+  // (a rapid double-click can no longer double-submit and double-toast).
+  const actingRef = useRef(new Set());
+
   const act = (id, action) => {
+    if (actingRef.current.has(id)) return;
+    actingRef.current.add(id);
     apiFetch(`/api/detections/${encodeURIComponent(id)}/disposition`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -110,9 +130,26 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
           remaining = openOthers + (view.player_action === 'open' ? 1 : 0);
         }
         toastDisposition(view.player_action, remaining);
+        // Stage 6 playtest fixes 14+15: apply the AUTHORITATIVE response to
+        // the row and the counts in the same frame as the toast. The header
+        // ("Detections reviewed: X of N" / open-promoted-dismissed) no
+        // longer trails the toast by a refetch round-trip, and the
+        // just-clicked, still-hovered button unmounts immediately so its
+        // CSS tooltip line cannot linger beside the row as a doubled label.
+        // The refetch below still reconciles against the server.
+        const before = feed.find(d => d.id === id)?.player_action;
+        const after = view.player_action;
+        if (before && before !== after) {
+          setCounts(c => ({
+            ...c,
+            [before]: Math.max(0, (c[before] || 0) - 1),
+            [after]: (c[after] || 0) + 1,
+          }));
+          setFeed(prev => prev.map(d => (d.id === id ? { ...d, player_action: after } : d)));
+        }
       }
       fetchFeed();
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => actingRef.current.delete(id));
   };
 
   if (selected) {
@@ -226,10 +263,21 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
                   <td className="px-3 sm:px-4 py-3 log-mono whitespace-nowrap text-[#57606a]">{shortTime(d.time)}</td>
                   <td className="px-3 sm:px-4 py-3">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <ActionButton onClick={() => act(d.id, 'promote')} active={d.player_action === 'promoted'} activeClass="bg-[#101218] text-white border-transparent" help={TOOLTIPS.promote}>Promote</ActionButton>
-                      <ActionButton onClick={() => act(d.id, 'dismiss')} active={d.player_action === 'dismissed'} activeClass="bg-[#57606a] text-white border-transparent" help={TOOLTIPS.dismiss}>Dismiss</ActionButton>
-                      {d.player_action !== 'open' && (
-                        <ActionButton onClick={() => act(d.id, 'open')} active={false} help={TOOLTIPS.reopen}>Reopen</ActionButton>
+                      {/* Stage 6 playtest fix 13: an open row offers the two
+                          decisions; a reviewed row reads STATE + the one way
+                          back, never "Promote Dismiss Reopen" side by side.
+                          Changing a reviewed call is deliberately two-step:
+                          Reopen, then decide again (the API is unchanged). */}
+                      {d.player_action === 'open' ? (
+                        <>
+                          <ActionButton onClick={() => act(d.id, 'promote')} active={false} help={TOOLTIPS.promote}>Promote</ActionButton>
+                          <ActionButton onClick={() => act(d.id, 'dismiss')} active={false} help={TOOLTIPS.dismiss}>Dismiss</ActionButton>
+                        </>
+                      ) : (
+                        <>
+                          <DispositionChip action={d.player_action} />
+                          <ActionButton onClick={() => act(d.id, 'open')} active={false} help={TOOLTIPS.reopen}>Reopen</ActionButton>
+                        </>
                       )}
                       {/* III.0.1 item 5: neutral navigation only -- selects
                           the relevant target in Response, executes nothing,

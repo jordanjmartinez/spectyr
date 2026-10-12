@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>SPECTR</title>
+    <script>
+      // SPA deep-link fallback (Stage 6 playtest fix): static hosts serve
+      // this page for client-side routes like /sim (direct load or reload).
+      // Remember the requested path and bounce to the app shell;
+      // src/spaFallback.js restores it before React mounts, so the router
+      // lands on the intended route. The preferred permanent fix is a host
+      // rewrite rule (/* to /index.html, see docs/deployment-notes.md);
+      // with that rule in place this page never serves.
+      try {
+        sessionStorage.setItem(
+          'spectyr_deep_link',
+          location.pathname + location.search + location.hash
+        );
+      } catch (e) { /* storage unavailable: plain bounce to the shell */ }
+      location.replace('/');
+    </script>
+    <style>html { background: #0d1117; }</style>
+  </head>
+  <body></body>
+</html>

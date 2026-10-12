@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { apiFetch } from './api';
 
 import Navbar from './components/Navbar';
@@ -106,6 +106,9 @@ function AppContent() {
         <Route path="/docs" element={<Docs />} />
         <Route path="/sim" element={<BackendGate><Dashboard /></BackendGate>} />
         <Route path="/analytics" element={<BackendGate><Analytics /></BackendGate>} />
+        {/* Stage 6 playtest fix: unknown in-app paths land on the home page
+            instead of an empty shell (pairs with the 404 deep-link shim). */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
       {!hideChrome && (

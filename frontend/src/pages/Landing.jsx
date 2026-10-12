@@ -148,10 +148,13 @@ const Landing = () => {
                 subheading beneath it. Both are single text nodes (no
                 per-line block spans, so narrow widths can never strand a
                 duplicate or clipped line); the headline wraps balanced.
-                The subheading deliberately carries NO blur entrance
-                animation: the owner reported it stuck blurry on mobile
-                (the blurFadeUp filter animation frozen mid-state), so it
-                renders statically and is always legible. */}
+                The subheading keeps the standing owner ruling of NO blur
+                entrance (blurFadeUp froze mid-blur on mobile and left it
+                illegible) -- Stage 6 playtest fix 12 restores its entrance
+                via the blur-less animate-fade-up variant (opacity +
+                position only), slotted at 350ms between the h1 (300ms)
+                and the Start control (400ms). A stalled animation can
+                never leave the text blurred. */}
             <h1
               className="animate-blur-fade-up text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold leading-[1.1] mb-4 md:mb-6 max-w-5xl"
               style={{ animationDelay: '300ms', fontFamily: "'IBM Plex Sans', sans-serif", letterSpacing: '-0.02em', textWrap: 'balance' }}
@@ -159,7 +162,10 @@ const Landing = () => {
               Learn SOC Analysis Through Realistic Incidents.
             </h1>
 
-            <p className="text-base sm:text-lg md:text-xl text-gray-400 mb-6 md:mb-10 max-w-2xl">
+            <p
+              className="animate-fade-up text-base sm:text-lg md:text-xl text-gray-400 mb-6 md:mb-10 max-w-2xl"
+              style={{ animationDelay: '350ms' }}
+            >
               Investigate alerts, follow the evidence, take response actions, and learn from
               every decision.
             </p>

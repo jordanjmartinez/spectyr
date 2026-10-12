@@ -25,7 +25,8 @@ import { ChromeIcons, NAV_STROKE } from './icons';
 // Documentation, and Back to home. No invented account, email,
 // subscription, profile settings, logout, or cloud identity.
 
-const AppHeader = ({ title, subtitle, gameMode, analystName, simActive, onReset }) => {
+const AppHeader = ({ title, subtitle, gameMode, analystName, simActive, onReset,
+                     onOpenNav, timerSlot }) => {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
 
@@ -59,12 +60,32 @@ const AppHeader = ({ title, subtitle, gameMode, analystName, simActive, onReset 
       {/* VC5 (owner instruction): the page's functional summary reads on
           the next line directly under the section header -- one stack,
           globally, fed by the shared PAGE_SUBTITLE copy. */}
-      <div className="min-w-0">
-        <h1 className="t-page">{title}</h1>
-        {subtitle && <p className="t-body text-[#57606a] mt-0.5 truncate">{subtitle}</p>}
+      <div className="min-w-0 flex items-center gap-3">
+        {/* Stage 6 playtest fix (mobile rail): below md the nav rail is an
+            off-canvas drawer; this hamburger is its trigger. Icon from the
+            one icon system (lucide Menu via ChromeIcons). */}
+        {onOpenNav && (
+          <button
+            type="button"
+            onClick={onOpenNav}
+            aria-label="Open navigation"
+            className="md:hidden shrink-0 flex items-center justify-center w-8 h-8 rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#f6f8fa] hover:text-[#1a2332] transition-colors"
+          >
+            <ChromeIcons.Menu size={18} strokeWidth={NAV_STROKE} aria-hidden="true" />
+          </button>
+        )}
+        <div className="min-w-0">
+          <h1 className="t-page">{title}</h1>
+          {subtitle && <p className="t-body text-[#57606a] mt-0.5 truncate">{subtitle}</p>}
+        </div>
       </div>
 
-      <div ref={rootRef} className="relative shrink-0">
+      <div className="flex items-center gap-2 shrink-0">
+        {/* Stage 6 playtest fix: the mobile GameTimer slot -- with the rail
+            hidden below md, the Hardcore countdown stays visible here. */}
+        {timerSlot && <div className="md:hidden">{timerSlot}</div>}
+
+        <div ref={rootRef} className="relative shrink-0">
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
@@ -110,6 +131,7 @@ const AppHeader = ({ title, subtitle, gameMode, analystName, simActive, onReset 
             </Link>
           </div>
         )}
+        </div>
       </div>
     </header>
   );

@@ -284,6 +284,26 @@ code {
   opacity: 0;
 }
 
+/* Stage 6 playtest fix 12: the hero tagline's entrance. A blur-less variant
+   of blurFadeUp -- the standing owner ruling is that the subheading must
+   never run the FILTER animation (blurFadeUp froze mid-blur on mobile and
+   left the line illegible), so this variant animates opacity and position
+   only: a stalled animation can never leave the text blurred. */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-up {
+  animation: fadeUp 1s ease-out forwards;
+  opacity: 0;
+}
+
 
 /* ===== VP16: the ONE shared light table system =====
    Dark surfaces are reserved for primary navigation, selected segmented

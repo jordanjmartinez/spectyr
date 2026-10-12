@@ -133,6 +133,12 @@ def append_pool_event(session, log):
 
 TIMER_DURATIONS = {1: 900, 2: 900, 3: 900, 4: 900, 5: 900}
 
+# Stage 6 playtest fix (Retry): /api/game-timeout accepts a client expiry
+# report only this close to the deadline. A local countdown may fire a beat
+# early; a stale report from a previous run (hundreds of seconds early)
+# must never halt a fresh one.
+TIMEOUT_EARLY_TOLERANCE_SECONDS = 5
+
 CONCURRENT_QUEUE_CAP = 3  # Max in-flight (injected, unresolved) scenarios
 
 def get_timer_duration(level):
@@ -168,6 +174,11 @@ def create_session():
         "paused": True,
         "current_level": 0,
         "game_mode": "training",
+        # Stage 6 playtest fix (Retry): run generation counter, bumped by
+        # start_simulator. The log-writer thread survives reset/restart and
+        # drops its thread-local chain state when it sees a new generation,
+        # so a retried run can never inherit ghost events from the dead one.
+        "run_seq": 0,
         "timer_start": None,
         "analyst_name": None,
         "used_alert_ids": set(),
@@ -2639,11 +2650,24 @@ def log_writer(session, interval=1):
     attack_queue = []  # pending attack log dicts to write, interleaved with normals
     logs_since_last_attack = 0
     next_attack_gap = random.randint(2, 3)
+    my_run_seq = session.get("run_seq", 0)
 
     while True:
         if session["id"] not in sessions:
             print(f"[SESSION EXPIRED] Thread for {session['id'][:8]} exiting.", flush=True)
             return
+
+        # Stage 6 playtest fix (Retry): a restart bumps run_seq. This thread
+        # outlives reset/start, so any chain events still queued from the
+        # previous run are stale and must be dropped before the first write
+        # of the new generation -- otherwise a retried run inherits ghost
+        # events carrying the dead run's scenario and incident ids.
+        current_run_seq = session.get("run_seq", 0)
+        if current_run_seq != my_run_seq:
+            my_run_seq = current_run_seq
+            attack_queue.clear()
+            logs_since_last_attack = 0
+            next_attack_gap = random.randint(2, 3)
 
         if session["paused"]:
             time.sleep(1)
@@ -3457,23 +3481,6 @@ def _attributed_isolated_hosts(overlay, registry, incident_id):
     return {h for h in overlay.get("isolated", ()) if owner.get(h) == incident_id}
 
 
-def _entry_in_observable_scope(entry, obs_hosts, obs_account_ids, registry):
-    """Stage 5 Phase 2, D4 (ratified OD-8): does this action-log entry's
-    registry-resolved target sit in the incident's OBSERVABLE scope? A
-    presentation-only join (related-activity rows), deliberately separate
-    from grading: Stage 6 grading joins on the per-case attribution stamp,
-    never on scope membership. Reads ONLY the registry entity, the
-    observable host set, and account entity ids pre-resolved from the
-    observable account strings via the sanctioned resolver -- never grading
-    records, expected actions, or answer keys."""
-    e = registry.get(entry["target"]["id"])
-    if e is None:
-        return False
-    if e["kind"] == "account":
-        return entry["target"]["id"] in obs_account_ids
-    return e.get("hostname") in obs_hosts
-
-
 def _classification_grade(verdict, category, actual_category):
     """Unified classification correctness (matches the legacy classify rule).
     verdict false_positive maps the submitted category to 'False Positive'."""
@@ -4214,24 +4221,23 @@ def list_incidents():
                     card["triage"] = {"total": total, "triaged": triaged}
                     card["open_detections"] = total - triaged
                     card["ready"] = triaged == total
-                    # D4 (ratified OD-8): the honest related-actions COUNT --
-                    # successful log entries whose registry-resolved target is
-                    # an observable scope host/account. A count of the
-                    # player's own actions: observable by definition; no
-                    # required-total or correctness signal. Ruling A: count
-                    # only, never a list.
-                    registry = s.get("entity_index", {})
-                    obs_hosts = set(scope["hosts"])
-                    obs_account_ids = {
-                        action_overlay.resolve_account_key(a, registry)
-                        for a in scope["accounts"]}
-                    obs_account_ids.discard(None)
+                    # Stage 6 playtest fix 10 -- DEVIATION from D4 (ratified
+                    # OD-8), owner-ratified 2026-10-12: the count joins on the per-case
+                    # ATTRIBUTION STAMP (le.incident_id, required on every
+                    # action since Stage 6), no longer on observable-scope
+                    # membership. The scope join cross-charged the display on
+                    # shared hosts: another incident's actions showed in this
+                    # card's count while grading correctly ignored them (the
+                    # playtest FP card read "4" from ransomware actions).
+                    # The display now matches the grading join. Unchanged:
+                    # successful attempts only, the player's own observable
+                    # activity, never a required-total or correctness signal,
+                    # count only, never a list.
                     log = (s.get("overlay") or {}).get("log", [])
                     card["related_actions"] = sum(
                         1 for le in log
                         if le.get("outcome") == action_overlay.SUCCESS
-                        and _entry_in_observable_scope(
-                            le, obs_hosts, obs_account_ids, registry))
+                        and le.get("incident_id") == inc)
                 active.append(card)
     return jsonify({"active": active, "completed": completed,
                     "queue_length": s.get("queue_length", 0),
@@ -5148,6 +5154,16 @@ def get_game_state():
         duration = get_timer_duration(1)
         timer_remaining = max(0, duration - elapsed)
         timer_expired = timer_remaining <= 0
+        # Stage 6 playtest fix: expiry is self-enforcing. The first read past
+        # the deadline pauses the session (halting the drip) without waiting
+        # for the client to report the timeout, and freezing the clock at a
+        # post-deadline instant latches timer_expired=True for every later
+        # read -- the overlay trigger survives dropped polls, and a dead run
+        # can no longer keep running because nobody told the server.
+        if timer_expired and not s.get("paused"):
+            s["paused"] = True
+            s["timer_paused_at"] = datetime.now(timezone.utc)
+            print(f"[TIMEOUT] Hardcore timer expired; session auto-paused.", flush=True)
 
     return jsonify({
         "game_mode": s["game_mode"],
@@ -5175,8 +5191,33 @@ def handle_game_timeout():
     if s["game_mode"] != "hardcore":
         return jsonify({"error": "Not in hardcore mode"}), 400
 
+    if s.get("paused"):
+        # Already halted (auto-pause, completion, or wrong-submit): the
+        # frozen clock already tells the truth; never move it. In particular
+        # a late client timeout report must not re-stamp a completed run.
+        return jsonify({"message": "Session already halted", "reset": False})
+
+    if not s["timer_start"]:
+        return jsonify({"error": "No active run"}), 409
+
+    # Stage 6 playtest fix (Retry): verify genuine expiry. A stale client
+    # report -- e.g. an out-of-order poll response surviving from a dead run
+    # into the retried one -- must never kill a fresh run. The tolerance
+    # covers only a local countdown firing a beat before the server clock.
+    duration = get_timer_duration(1)
+    now = datetime.now(timezone.utc)
+    elapsed = (now - s["timer_start"]).total_seconds()
+    if elapsed < duration - TIMEOUT_EARLY_TOLERANCE_SECONDS:
+        return jsonify({"error": "Timer not expired"}), 409
+
     print(f"[TIMEOUT] Hardcore session timer expired.", flush=True)
     s["paused"] = True
+    # Freeze the clock no earlier than the deadline: the client's local
+    # countdown can report expiry a beat before the server clock crosses it,
+    # and the frozen elapsed must keep timer_expired latched (not pause the
+    # run with 0.4s "remaining", which would read as never-expired).
+    deadline = s["timer_start"] + timedelta(seconds=duration)
+    s["timer_paused_at"] = max(now, deadline)
 
     return jsonify({"message": "Hardcore timer expired", "reset": False})
 
@@ -5244,6 +5285,10 @@ def start_simulator():
     s["gap_rng"] = sim_epoch.gap_rng(s["id"])
     # Stage 4 P3.2: a fresh run invalidates outstanding snapshot tokens.
     s["snapshot_secret"] = os.urandom(32)
+    # Stage 6 playtest fix (Retry): new run generation. The surviving
+    # log-writer thread sees the bump and drops any chain state left over
+    # from the previous run before writing anything for this one.
+    s["run_seq"] = s.get("run_seq", 0) + 1
     s["timer_start"] = now
     s["next_drip_at"] = now  # First alert drips immediately
     s["scenario_start_time"] = time.time() * 1000

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../api';
 import { SeverityBadge } from './ui';
-import { RuleTypeChip } from './Detections';
+import { RuleTypeChip, DispositionChip } from './Detections';
 
 // Detection detail (Stage 2), the Section 8 card anatomy: lineage as
 // first-class UI. Triggering Event card plus a stacked Parent Process card.
@@ -236,29 +236,34 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
       <Card>
         <div className="p-5 flex flex-wrap items-center gap-2">
           <SectionLabel>Triage</SectionLabel>
+          {/* Stage 6 playtest fix 13: open offers the two decisions; a
+              reviewed detection reads STATE + the one way back, never the
+              contradictory three-verb cluster. */}
           <div className="ml-auto flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => doAction('promote')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md border transition ${
-                det.player_action === 'promoted' ? 'bg-[#101218] text-white border-transparent' : 'bg-white text-[#1a2332] border-[#d0d7de] hover:bg-[#eef1f4]'
-              }`}
-            >
-              Promote to Threat
-            </button>
-            <button
-              type="button"
-              onClick={() => doAction('dismiss')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md border transition ${
-                det.player_action === 'dismissed' ? 'bg-[#57606a] text-white border-transparent' : 'bg-white text-[#1a2332] border-[#d0d7de] hover:bg-[#eef1f4]'
-              }`}
-            >
-              Dismiss
-            </button>
-            {det.player_action !== 'open' && (
-              <button type="button" onClick={() => doAction('open')} className="px-3 py-1.5 text-sm font-medium rounded-md border bg-white text-[#57606a] border-[#d0d7de] hover:bg-[#eef1f4] transition">
-                Reopen
-              </button>
+            {det.player_action === 'open' ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => doAction('promote')}
+                  className="px-3 py-1.5 text-sm font-medium rounded-md border transition bg-white text-[#1a2332] border-[#d0d7de] hover:bg-[#eef1f4]"
+                >
+                  Promote to Threat
+                </button>
+                <button
+                  type="button"
+                  onClick={() => doAction('dismiss')}
+                  className="px-3 py-1.5 text-sm font-medium rounded-md border transition bg-white text-[#1a2332] border-[#d0d7de] hover:bg-[#eef1f4]"
+                >
+                  Dismiss
+                </button>
+              </>
+            ) : (
+              <>
+                <DispositionChip action={det.player_action} size="sm" />
+                <button type="button" onClick={() => doAction('open')} className="px-3 py-1.5 text-sm font-medium rounded-md border bg-white text-[#57606a] border-[#d0d7de] hover:bg-[#eef1f4] transition">
+                  Reopen
+                </button>
+              </>
             )}
           </div>
         </div>

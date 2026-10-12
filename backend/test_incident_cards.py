@@ -1,15 +1,18 @@
-"""Stage 5 Phase 2, D4 (ratified OD-8): the `related_actions` observable
-count on active sealed incident cards.
+"""The `related_actions` count on active sealed incident cards.
 
 Run: python test_incident_cards.py  (or python -m pytest test_incident_cards.py -q)
 
-The count is the player's own successful action-log entries whose
-registry-resolved target sits in the incident's OBSERVABLE scope (hosts +
-accounts) -- a deliberately separate join from the grading-record join
-(scaffold ruling D). Guards, landing in the same commit as the field (R2):
-shape (int, active sealed cards only), count correctness (success only;
-off-scope, failed, and no_op excluded; account targets via the sanctioned
-resolver), and the structural no-answer-key guard: expected_actions and
+Stage 6 playtest fix 10 -- DEVIATION from the original D4 (ratified OD-8)
+observable-scope join, owner-ratified 2026-10-12: the count is the player's successful
+action-log entries ATTRIBUTED to this incident (the per-case stamp every
+action carries since Stage 6), the SAME join grading and the progress view
+use. The scope join cross-charged the display on shared hosts: another
+incident's actions showed in this card's count while grading correctly
+ignored them (the playtest FP card read "4" from ransomware actions).
+Guards: shape (int, active sealed cards only), count correctness (success
+only; other incidents' actions excluded even on this incident's own
+observable hosts; unattributed entries inert; failed and no_op excluded),
+and the structural no-answer-key guard: expected_actions and
 scenario_grading content cannot influence the count.
 """
 import os
@@ -72,41 +75,45 @@ def _fixture(s, expected_actions=None, grading=None):
                                  "username": "outsider", "scope": "domain"},
         }
         s["overlay"]["log"] = [
-            # counted: success on the observable host
+            # counted: this incident's successful host action
             {"seq": 1, "timestamp": STARTED, "action": "isolate_host",
              "target": {"id": "ent-aaaaaaaaaaaa", "kind": "host",
                         "label": "ACME-WS12"},
-             "outcome": "success", "reason": None},
-            # counted: success on a process bound to the observable host
+             "outcome": "success", "reason": None, "incident_id": INC},
+            # counted: this incident's successful process action
             {"seq": 2, "timestamp": STARTED, "action": "kill_process",
              "target": {"id": "ent-cccccccccccc", "kind": "process",
                         "label": "helper.exe (PID 500) on ACME-WS12"},
-             "outcome": "success", "reason": None},
-            # counted: success on the observable account (resolver join)
+             "outcome": "success", "reason": None, "incident_id": INC},
+            # counted: this incident's successful account action
             {"seq": 3, "timestamp": STARTED, "action": "disable_account",
              "target": {"id": "ent-dddddddddddd", "kind": "account",
                         "label": "ACME\\nkhan"},
-             "outcome": "success", "reason": None},
-            # NOT counted: success on an off-scope host
+             "outcome": "success", "reason": None, "incident_id": INC},
+            # NOT counted: ANOTHER incident's success on this incident's own
+            # observable host -- the exact reported cross-charge (the FP card
+            # showing the ransomware actions)
             {"seq": 4, "timestamp": STARTED, "action": "isolate_host",
-             "target": {"id": "ent-bbbbbbbbbbbb", "kind": "host",
-                        "label": "ACME-OFF99"},
-             "outcome": "success", "reason": None},
-            # NOT counted: success on an off-scope account
+             "target": {"id": "ent-aaaaaaaaaaaa", "kind": "host",
+                        "label": "ACME-WS12"},
+             "outcome": "success", "reason": None, "incident_id": "INC-9999"},
+            # NOT counted: an unattributed entry is inert everywhere
             {"seq": 5, "timestamp": STARTED, "action": "disable_account",
              "target": {"id": "ent-eeeeeeeeeeee", "kind": "account",
                         "label": "ACME\\outsider"},
              "outcome": "success", "reason": None},
-            # NOT counted: failed attempt on the observable host
+            # NOT counted: this incident's failed attempt
             {"seq": 6, "timestamp": STARTED, "action": "isolate_host",
              "target": {"id": "ent-aaaaaaaaaaaa", "kind": "host",
                         "label": "ACME-WS12"},
-             "outcome": "failed_precondition", "reason": "x"},
-            # NOT counted: no_op repeat on the observable host
+             "outcome": "failed_precondition", "reason": "x",
+             "incident_id": INC},
+            # NOT counted: this incident's no_op repeat
             {"seq": 7, "timestamp": STARTED, "action": "isolate_host",
              "target": {"id": "ent-aaaaaaaaaaaa", "kind": "host",
                         "label": "ACME-WS12"},
-             "outcome": "no_op", "reason": "Host is already isolated."},
+             "outcome": "no_op", "reason": "Host is already isolated.",
+             "incident_id": INC},
         ]
         s["overlay"]["seq"] = 7
         s["expected_actions"] = list(expected_actions or [])
@@ -119,13 +126,15 @@ def _card(client, sid):
     return body["active"][0]
 
 
-def test_related_actions_counts_observable_scope_successes_only():
+def test_related_actions_counts_attributed_successes_only():
     client, sid, s = _api_session()
     try:
         _fixture(s)
         card = _card(client, sid)
         assert card["sealed"] is True
-        # 3 successes in observable scope; off-scope + failed + no_op excluded
+        # 3 attributed successes; the cross-charged other-incident success
+        # (same observable host), the unattributed entry, the failed attempt,
+        # and the no_op are all excluded
         assert card["related_actions"] == 3
         assert isinstance(card["related_actions"], int)
     finally:

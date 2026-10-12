@@ -11,6 +11,7 @@ import {
 } from './uiCopy';
 import { submissionReady, validClassification } from './submissionReady';
 import { toastReady } from './uiToasts';
+import useIncidentScope from './useIncidentScope';
 import { deriveAchievements } from './achievements';
 import {
   gradeColor, CARD_STYLE, PageIntro, SegmentedToggle, IncidentIdBadge, SeverityBadge,
@@ -84,10 +85,22 @@ const Incidents = ({
   const [data, setData] = useState({ active: [], completed: [], queue_length: 0, resolved_count: 0 });
   const [view, setView] = useState('active');    // 'active' | 'ready' | 'completed'
   const [search, setSearch] = useState('');
-  const [scope, setScope] = useState(null);       // selected incident /scope
 
   const [pendingSubmit, setPendingSubmit] = useState(null);  // {..., action: 'submit'}
-  useEffect(() => { prevReadyRef.current = {}; }, [resetTrigger]);
+  // Stage 6 playtest fix: a reset destroys the run, so every piece of
+  // run-scoped local state dies with it -- the open debrief (Case Closed
+  // modal), pending confirmations, cached per-incident views, and the list
+  // filter. Previously the old run's debrief stayed on screen until a
+  // reload because only the readiness ref was cleared here.
+  useEffect(() => {
+    prevReadyRef.current = {};
+    setReview(null);
+    setPendingSubmit(null);
+    setPracticeWarn(false);
+    setStripInfo(null);
+    setNotice('');
+    setView('active');
+  }, [resetTrigger]);
   const verdictOptionId = (v) =>
     v === 'threat' ? 'true_positive' : v === 'false_positive' ? 'false_positive' : null;
   // Workspace classification handlers: local input only, no request; a
@@ -137,6 +150,10 @@ const Incidents = ({
       setData(d);
       setGroupedAlertCount?.((d.active || []).length);
     }).catch(() => {});
+    // The scope read joins this existing 3s poll while an incident is
+    // selected (the Detections pattern), so a pre-seal roster cannot go
+    // stale; no extra interval exists for the scope.
+    if (scopeModeRef.current === 'incident') scopeRefetchRef.current();
   }, [setGroupedAlertCount]);
 
   useEffect(() => { fetchList(); const iv = setInterval(fetchList, 3000); return () => clearInterval(iv); }, [fetchList]);
@@ -144,13 +161,17 @@ const Incidents = ({
   // Selected incident scope (Related hosts/accounts + descent inputs). The
   // fuzzy related-activity label join is DELETED (scaffold ruling A): the
   // honest count is the server's D4 related_actions card field.
-  const fetchScope = useCallback(() => {
-    if (!selectedId) { setScope(null); return; }
-    apiFetch(`/api/incidents/${selectedId}/scope`).then(r => r.json())
-      .then(setScope).catch(() => {});
-  }, [selectedId]);
-
-  useEffect(() => { fetchScope(); const iv = setInterval(fetchScope, 3000); return () => clearInterval(iv); }, [fetchScope]);
+  // Stage 6 playtest fix 7: the ad-hoc fetch is replaced by the ONE shared
+  // scope state (useIncidentScope, the same machinery behind Detections /
+  // Endpoints / Response). It drops data the moment the incident changes and
+  // discards superseded responses, so the panel can never flash the previous
+  // incident's hosts and accounts. Freshness joins the existing 3s list poll
+  // below (the Detections pattern): no extra interval for the scope.
+  const scope = useIncidentScope(selectedId, resetTrigger);
+  const scopeRefetchRef = useRef(scope.refetch);
+  scopeRefetchRef.current = scope.refetch;
+  const scopeModeRef = useRef(scope.mode);
+  scopeModeRef.current = scope.mode;
 
   // 2.3 completed strip (contract 10.4, scaffold decision D3): the total is
   // the score view's frozen detection.total -- frontend-only source, no
@@ -364,11 +385,17 @@ const Incidents = ({
                 </div>
               )}
 
-              {/* Related hosts / accounts (observable scope) */}
-              {scope && (scope.hosts?.length || scope.accounts?.length) ? (
+              {/* Related hosts / accounts (observable scope). Stage 6
+                  playtest fix 7: the block renders ONLY the current
+                  incident's loaded scope -- while a switch is in flight it
+                  shows the loading line, never the previous incident's
+                  hosts (an analyst could act against the wrong host). */}
+              {scope.rowPolicy === 'loading' ? (
+                <p className="text-xs text-[#8b949e]">Loading incident scope</p>
+              ) : scope.data && (scope.data.hostList.length || scope.data.accounts.length) ? (
                 <div className="text-xs text-[#57606a] space-y-1">
-                  {scope.hosts?.length ? <p><span className="text-[#8b949e]">Related hosts:</span> <span className="log-mono">{scope.hosts.join(', ')}</span></p> : null}
-                  {scope.accounts?.length ? <p><span className="text-[#8b949e]">Related accounts:</span> <span className="log-mono">{scope.accounts.join(', ')}</span></p> : null}
+                  {scope.data.hostList.length ? <p><span className="text-[#8b949e]">Related hosts:</span> <span className="log-mono">{scope.data.hostList.join(', ')}</span></p> : null}
+                  {scope.data.accounts.length ? <p><span className="text-[#8b949e]">Related accounts:</span> <span className="log-mono">{scope.data.accounts.join(', ')}</span></p> : null}
                 </div>
               ) : null}
 
@@ -377,12 +404,15 @@ const Incidents = ({
                   the existing SIEM search from ONLY the observable
                   participant scope; the SIEM shell generates the query.
                   Evidence stays reviewable after submission. */}
-              {scope && scope.incident_id === selected.incident_id && onEvidenceDescent && (
+              {/* The hook guarantees scope.data belongs to the CURRENT
+                  incident (forId guard), replacing the old render-side
+                  incident_id check. */}
+              {scope.data && onEvidenceDescent && (
                 <div>
                   <button
                     type="button"
                     onClick={() => onEvidenceDescent({
-                      hosts: scope.hosts || [],
+                      hosts: scope.data.hostList,
                       account: null,
                       scopeIncidentId: selected.incident_id,
                     })}

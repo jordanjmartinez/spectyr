@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   LayoutDashboard, AlertTriangle, ScanSearch, Crosshair, Monitor, ShieldCheck,
-  LineChart, BookOpen, RotateCcw, Play, Server, Laptop, Apple, Ghost,
+  LineChart, BookOpen, RotateCcw, Play, Server, Laptop, Apple, Ghost, Menu,
 } from 'lucide-react';
 
 // ============================================================================
@@ -41,8 +41,8 @@ export const NAV_ICONS = {
   analytics: LineChart,         // Metrics / Learning Review
 };
 
-// Chrome-level icons (rail footer + utility region).
-export const ChromeIcons = { BookOpen, RotateCcw, Play, Ghost };
+// Chrome-level icons (rail footer + utility region + the mobile nav trigger).
+export const ChromeIcons = { BookOpen, RotateCcw, Play, Ghost, Menu };
 
 // One nav/page glyph: uniform size + stroke, decorative by default.
 export const NavGlyph = ({ view, size = 19, className = '', ...rest }) => {

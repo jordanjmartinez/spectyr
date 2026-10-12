@@ -3,6 +3,12 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { restoreDeepLink } from './spaFallback';
+
+// Stage 6 playtest fix: if the static host's 404 shim (public/404.html)
+// bounced a deep link like /sim to the shell, restore it before the router
+// mounts so direct loads and reloads land on the intended route.
+restoreDeepLink();
 
 // Click-and-drag horizontal scrolling for .mobile-scroll-wrapper tables.
 // Delegated at the document level so it picks up dynamically rendered tables.

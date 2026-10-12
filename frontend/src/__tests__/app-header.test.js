@@ -50,10 +50,15 @@ test('the header reads [current workspace title] + [avatar]; never mode or analy
   expect(h1.textContent).toBe('Dashboard');
   // the shell never renders the analyst name or mode outside the menu
   expect(header.textContent).toBe('Dashboard');
-  // and no invented utility controls exist beside the avatar
+  // and no invented utility controls exist beside the REAL ones: the
+  // below-md nav trigger (Stage 6 mobile drawer; md:hidden keeps the
+  // desktop header avatar-only) and the avatar menu. Anything else is
+  // still a violation.
   const buttons = within(header).getAllByRole('button');
-  expect(buttons).toHaveLength(1);
-  expect(buttons[0]).toHaveAccessibleName('Analyst menu');
+  expect(buttons).toHaveLength(2);
+  expect(buttons[0]).toHaveAccessibleName('Open navigation');
+  expect(buttons[0].className).toMatch(/md:hidden/);
+  expect(buttons[1]).toHaveAccessibleName('Analyst menu');
 });
 
 test('the title follows the active workspace, with the functional summary on the next line (VC5)', async () => {
