@@ -9,13 +9,13 @@ const ConfirmDialog = ({ open, title, body, confirmLabel = 'Confirm', onConfirm,
       <div className="bg-white rounded-xl border border-[#e2e6ea] shadow-xl w-full max-w-sm overflow-hidden">
         <div className="p-5">
           <h3 className="text-base font-semibold text-[#1a2332]">{title}</h3>
-          <p className="mt-2 text-sm text-[#57606a]">{body}</p>
+          <p className="mt-2 text-sm text-muted">{body}</p>
           <div className="mt-5 flex justify-end gap-2">
             <button
               type="button"
               onClick={onCancel}
               disabled={busy}
-              className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4] disabled:opacity-60"
+              className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-muted hover:bg-[#eef1f4] disabled:opacity-60"
             >
               Cancel
             </button>

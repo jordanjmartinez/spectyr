@@ -36,14 +36,11 @@ import { descentSessionAll } from './lcqlPivots';
 // pre-submission correctness.
 // ============================================================================
 
-const gradeAccuracy = (g) =>
-  g && g.accuracy != null ? `${g.accuracy}%` : '-';
-
 const Metric = ({ label, value, accent, sub }) => (
   <div className="rounded-xl p-4" style={CARD_STYLE}>
     <p className="t-kpi" style={accent ? { color: accent } : undefined}>{value}</p>
-    <p className="t-meta text-[#6e7781] mt-0.5">{label}</p>
-    {sub && <p className="text-[11px] text-[#8b949e] mt-0.5">{sub}</p>}
+    <p className="t-meta text-muted mt-0.5">{label}</p>
+    {sub && <p className="text-[11px] text-muted mt-0.5">{sub}</p>}
   </div>
 );
 
@@ -289,9 +286,9 @@ const IncidentDashboard = ({
       <div className="grid grid-cols-1 xl:grid-cols-[19rem_minmax(0,1fr)_minmax(280px,30%)] gap-4 items-stretch">
           {/* A. Active Investigation (observable fields only; Resume navigates) */}
           <div className="rounded-xl p-4 xl:col-start-1 xl:row-start-2" style={CARD_STYLE} data-testid="active-investigation">
-            <WidgetLabel>Active investigation</WidgetLabel>
+            <WidgetLabel>Active Investigation</WidgetLabel>
             {!focus ? (
-              <p className="text-sm text-[#8b949e]">No active investigations.</p>
+              <p className="text-sm text-muted">No active investigations.</p>
             ) : (
               <div className="space-y-2">
                 {/* VD2 + VD8 (identity correction): the canonical wrapping
@@ -323,17 +320,17 @@ const IncidentDashboard = ({
                     />
                   </div>
                 )}
-                <div className="text-xs text-[#57606a] space-y-0.5">
+                <div className="text-xs text-muted space-y-0.5">
                   <p>{focus.sealed ? detectionsReviewed(triage.triaged, triage.total) : TELEMETRY_LOADING}</p>
                   <p>{validClassification(focusChosen)
                     ? classificationSelected(focusChosen.category)
                     : CLASSIFICATION_NOT_SELECTED}</p>
                   <p>{responseActionsTaken(focus.related_actions ?? 0)}</p>
-                  <p className="text-[#8b949e]">{focus.sealed && focusReady ? READY_TO_SUBMIT : readinessChip(focus)}</p>
+                  <p className="text-muted">{focus.sealed && focusReady ? READY_TO_SUBMIT : readinessChip(focus)}</p>
                   {/* VH: the queue count is one compact line, never a
                       full-width banner (Guided has no queue). */}
                   {!isGuided && queueLength > 0 && (
-                    <p className="text-[#8b949e]">{data.resolved_count} of {queueLength} resolved</p>
+                    <p className="text-muted">{data.resolved_count} of {queueLength} Resolved</p>
                   )}
                 </div>
                 <button
@@ -351,9 +348,9 @@ const IncidentDashboard = ({
                         <span className="min-w-0 flex items-center gap-1.5">
                           <IncidentIdBadge id={c.incident_id} />
                           <SeverityBadge severity={c.severity} />
-                          <span className="text-[#57606a] truncate">{c.title}</span>
+                          <span className="text-muted truncate">{c.title}</span>
                         </span>
-                        <span className="text-[#8b949e] shrink-0">{readinessChip(c)}</span>
+                        <span className="text-muted shrink-0">{readinessChip(c)}</span>
                       </button>
                     ))}
                   </div>
@@ -365,14 +362,16 @@ const IncidentDashboard = ({
           {/* C. KPI stat tiles (moved into the one grid): real session
               observables only -- no trends, deltas, or sparklines. */}
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 xl:col-start-1 xl:col-span-3 xl:row-start-1" data-testid="kpi-row">
-            <Metric label="Detections reviewed" value={(detCounts.promoted ?? 0) + (detCounts.dismissed ?? 0)} />
-            <Metric label="Response actions executed" value={actionSuccesses} />
-            <Metric label="Incidents completed" value={data.completed.length} />
+            <Metric label="Detections Reviewed" value={(detCounts.promoted ?? 0) + (detCounts.dismissed ?? 0)} />
+            <Metric label="Response Actions Executed" value={actionSuccesses} />
+            <Metric label="Incidents Completed" value={data.completed.length} />
+            {/* Owner UI pass (2026-10-12): the grade tiles drop their sub
+                lines -- title + value only, uniform with the other KPI
+                tiles; accuracy detail lives in Metrics. */}
             <Metric
-              label="Latest incident grade"
+              label="Latest Incident Grade"
               value={latest?.incident_grade?.grade || '-'}
               accent={latest ? gradeColor(latest.incident_grade?.grade) : undefined}
-              sub={latest ? gradeAccuracy(latest.incident_grade) : 'No submissions yet'}
             />
             {/* VH: Session performance is a dashboard metric, distinct
                 from the per-incident grade. */}
@@ -380,7 +379,6 @@ const IncidentDashboard = ({
               label={SESSION_PERFORMANCE_LABEL}
               value={sessionGrade?.grade || '-'}
               accent={sessionGrade ? gradeColor(sessionGrade.grade) : undefined}
-              sub={sessionGrade?.accuracy != null ? `${sessionGrade.accuracy}%` : 'Across submitted incidents'}
             />
           </div>
 
@@ -403,15 +401,16 @@ const IncidentDashboard = ({
               displayed count (no percentage implied), label + count text
               beside every bar (never color alone). */}
           <div className="rounded-xl p-4 xl:col-start-1 xl:row-start-3" style={CARD_STYLE} data-testid="severity-distribution">
-            <WidgetLabel>Severity distribution</WidgetLabel>
-            <p className="text-xs text-[#8b949e] mb-2">Active incident</p>
+            {/* Owner UI pass (2026-10-12): title + content only, no card
+                subtitle (matching Environment status). */}
+            <WidgetLabel>Severity Distribution</WidgetLabel>
             {sevMax === 0 ? (
-              <p className="text-sm text-[#57606a]">No detections observed yet.</p>
+              <p className="text-sm text-muted">No detections observed yet.</p>
             ) : (
               <div className="space-y-1.5">
                 {sevRows.map(r => (
                   <div key={r.key} className="flex items-center gap-2 text-sm">
-                    <span className="w-16 shrink-0 text-[#57606a]">{r.label}</span>
+                    <span className="w-16 shrink-0 text-muted">{r.label}</span>
                     <span className="flex-1 h-2 rounded-full bg-[#eef1f4] overflow-hidden" aria-hidden="true">
                       <span
                         className="block h-full rounded-full"
@@ -428,21 +427,21 @@ const IncidentDashboard = ({
           {/* Environment status (VS owner correction): current observable
               state only -- no gauges, no history, no uptime claims. */}
           <div className="rounded-xl p-4 xl:col-start-1 xl:row-start-4" style={CARD_STYLE} data-testid="environment-status">
-            <WidgetLabel>Environment status</WidgetLabel>
+            <WidgetLabel>Environment Status</WidgetLabel>
             {managed === 0 ? (
-              <p className="text-sm text-[#57606a]">No managed hosts available.</p>
+              <p className="text-sm text-muted">No managed hosts available.</p>
             ) : (
               <div className="space-y-2">
-                <p className="t-kpi">{managed}<span className="ml-1.5 text-sm font-normal text-[#57606a]">managed host{managed === 1 ? '' : 's'}</span></p>
-                <p className="text-sm text-[#57606a] flex items-center gap-1.5">
+                <p className="t-kpi">{managed}<span className="ml-1.5 text-sm font-normal text-muted">managed host{managed === 1 ? '' : 's'}</span></p>
+                <p className="text-sm text-muted flex items-center gap-1.5">
                   <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full" style={{ background: '#6fa868' }} />
-                  <span><span className="font-medium text-[#1a2332]">{online}</span> online</span>
+                  <span><span className="font-medium text-[#1a2332]">{online}</span> Online</span>
                   <span className="text-[#d0d7de]">·</span>
                   <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full" style={{ background: '#b45858' }} />
-                  <span><span className="font-medium text-[#1a2332]">{offline}</span> offline</span>
+                  <span><span className="font-medium text-[#1a2332]">{offline}</span> Offline</span>
                 </p>
                 <div>
-                  <p className="text-xs text-[#6e7781] mb-1">Availability</p>
+                  <p className="text-xs text-muted mb-1">Availability</p>
                   <div className="flex items-center gap-2">
                     <span className="flex-1 h-1.5 rounded-full bg-[#eef1f4] overflow-hidden" aria-hidden="true">
                       <span className="block h-full rounded-full bg-[#6fa868]" style={{ width: `${availabilityPct}%` }} />
@@ -452,7 +451,7 @@ const IncidentDashboard = ({
                   <p className="sr-only">{online} of {managed} managed hosts online ({availabilityPct}% availability).</p>
                 </div>
                 {Object.keys(platformGroups).length > 0 && (
-                  <p className="text-xs text-[#57606a]">
+                  <p className="text-xs text-muted">
                     {Object.entries(platformGroups).map(([label, n], i) => (
                       <span key={label}>{i > 0 && <span className="text-[#d0d7de]"> · </span>}{label} {n}</span>
                     ))}
@@ -487,12 +486,13 @@ const IncidentDashboard = ({
               first; grades/categories are the frozen post-submission
               record. Rows navigate to the incident. */}
           <div className="rounded-xl min-w-0 xl:col-start-2 xl:col-span-2 xl:row-start-3 xl:row-span-2" style={CARD_STYLE} data-testid="recent-results">
-            <div className="px-4 pt-4 pb-2 flex items-baseline gap-2">
-              <p className="t-subsection">Recent results</p>
-              <span className="text-xs text-[#6e7781]">&middot; This session</span>
+            {/* Owner UI pass (2026-10-12): title + content only, no card
+                subtitle (matching Environment status). */}
+            <div className="px-4 pt-4 pb-2">
+              <p className="t-subsection">Recent Results</p>
             </div>
             {completedSorted.length === 0 ? (
-              <p className="px-4 pb-4 text-sm text-[#8b949e]">No incidents submitted yet this session. Results appear here when you submit an incident.</p>
+              <p className="px-4 pb-4 text-sm text-muted">No incidents submitted yet this session. Results appear here when you submit an incident.</p>
             ) : (
               <div className="overflow-x-auto pb-1">
                 <table className="w-full text-left text-sm">
@@ -517,10 +517,10 @@ const IncidentDashboard = ({
                               className="hover:opacity-75" title={`Open ${c.incident_id}`}>
                               <IncidentIdBadge id={c.incident_id} />
                             </button>
-                            <span className="block text-xs text-[#57606a] truncate max-w-[14rem] mt-0.5" title={c.title}>{c.title}</span>
+                            <span className="block text-xs text-muted truncate max-w-[14rem] mt-0.5" title={c.title}>{c.title}</span>
                           </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-[#57606a]">{g?.classification?.category ?? '-'}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-[#57606a]">{MODE_LABEL[gameMode] || gameMode}</td>
+                          <td className="px-3 py-2 whitespace-nowrap text-muted">{g?.classification?.category ?? '-'}</td>
+                          <td className="px-3 py-2 whitespace-nowrap text-muted">{MODE_LABEL[gameMode] || gameMode}</td>
                           <td className="px-3 py-2 whitespace-nowrap font-medium" style={{ color: gradeColor(g?.classification?.grade) }}>{g?.classification?.grade ?? '-'}</td>
                           <td className="px-3 py-2 whitespace-nowrap font-medium" style={{ color: gradeColor(g?.detection?.grade) }}>{g?.detection?.grade ?? '-'}</td>
                           <td className="px-3 py-2 whitespace-nowrap font-medium" style={{ color: gradeColor(g?.response?.grade) }}>{g?.response?.grade ?? '-'}</td>

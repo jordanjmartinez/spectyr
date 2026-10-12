@@ -42,9 +42,9 @@ const AnalystReportCard = ({ report }) => {
         <tbody className="text-[#1a2332]">
           {rows.map(([label, comp], i) => (
             <tr key={label} className={i > 0 ? 'border-t border-[#e2e6ea]' : ''}>
-              <td className="py-3 text-[#57606a]">
+              <td className="py-3 text-muted">
                 {label}
-                <span className="ml-2 text-[11px] text-[#8b949e]">{comp?.weight ?? ''}%</span>
+                <span className="ml-2 text-[11px] text-muted">{comp?.weight ?? ''}%</span>
               </td>
               <td className="py-3 text-center">
                 <span className="text-[#1a2332] font-semibold">{cellGrade(comp)}</span>
@@ -52,7 +52,7 @@ const AnalystReportCard = ({ report }) => {
             </tr>
           ))}
           <tr className="border-t border-[#e2e6ea]">
-            <td className="py-3 text-[#57606a]">Mean Time to Resolve</td>
+            <td className="py-3 text-muted">Mean Time to Resolve</td>
             <td className="py-3 text-center">
               <span className="text-[#1a2332] font-semibold">
                 {formatDuration(report?.avg_time_to_resolve_seconds ?? 0)}

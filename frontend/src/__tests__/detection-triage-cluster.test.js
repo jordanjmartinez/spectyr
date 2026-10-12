@@ -91,7 +91,7 @@ test('the row and header counts flip with the toast, before any refetch lands (f
   });
   const { container } = render(<Detections isVisible resetTrigger={0} activeIncidentId={null} />);
   await screen.findByText('Rule Open');
-  expect(container.textContent).toContain('1 open');
+  expect(container.textContent).toContain('1 Open');
 
   await act(async () => {
     within(rowOf('Rule Open')).getByRole('button', { name: 'Dismiss' }).click();
@@ -101,8 +101,8 @@ test('the row and header counts flip with the toast, before any refetch lands (f
   expect(row.queryByRole('button', { name: 'Dismiss' })).toBeNull(); // tooltip host unmounted
   expect(row.getByText('Dismissed').tagName).toBe('SPAN');
   expect(row.getByRole('button', { name: 'Reopen' })).toBeInTheDocument();
-  expect(container.textContent).toContain('0 open');
-  expect(container.textContent).toContain('2 dismissed');
+  expect(container.textContent).toContain('0 Open');
+  expect(container.textContent).toContain('2 Dismissed');
 });
 
 test('a rapid double-click submits exactly one disposition', async () => {

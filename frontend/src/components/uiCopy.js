@@ -20,14 +20,10 @@ export const ALL_ACTIVITY = 'All activity';
 // The functional page subtitles (amendment section 2): what the page is
 // FOR. Decorative organization branding never appears here -- org names
 // belong to evidence, entities, and scenario content.
-export const PAGE_SUBTITLE = {
-  incidents: 'Select and manage an investigation.',
-  siem: 'Search and inspect event data.',
-  detections: 'Review detections and decide what is actionable.',
-  endpoints: 'Inspect hosts, users, processes, and system activity.',
-  response: 'Contain and remediate incident targets.',
-  analytics: 'Review performance and learn from the investigation.',
-};
+// (Owner UI pass 2026-10-12: PAGE_SUBTITLE retired -- the per-tab
+// functional summary line under the header title is removed everywhere;
+// the title stands alone. page-intro.test.js keeps the retired strings
+// as negative probes so no page resurrects them.)
 
 // (Final pass III.0 item 2: the SIEM state pair and the expanded-search
 // block copy -- caseEvidenceLabel, SEARCH_ALL_EVIDENCE,
@@ -46,8 +42,8 @@ export const PAGE_SUBTITLE = {
 // sentences verbatim.
 export const resultsFor = (readable) => `Results for: ${readable}`;
 export const ALL_EVENTS_LABEL = 'all events';
-export const INITIAL_INCIDENT_EVIDENCE = 'Initial incident evidence';
-export const INITIAL_EVIDENCE = 'Initial evidence';
+export const INITIAL_INCIDENT_EVIDENCE = 'Initial Incident Evidence';
+export const INITIAL_EVIDENCE = 'Initial Evidence';
 export const EDITED_NOTE =
   'Search edited but not run. Showing results from the previous search.';
 export const STALE_RESULTS_NOTE =
@@ -60,8 +56,8 @@ export const SELECTED_EVENT_HIDDEN =
 // count line and the action render together only while it reports new
 // events; the snapshot stays stable until the action is invoked.
 export const newEventsAvailable = (n) =>
-  `${n} new event${n === 1 ? '' : 's'} available`;
-export const LOAD_NEW_EVENTS = 'Load new events';
+  `${n} New Event${n === 1 ? '' : 's'} Available`;
+export const LOAD_NEW_EVENTS = 'Load New Events';
 
 // === Phase 2 commit 2.1: the complete Section 10.1 canonical vocabulary ===
 // (locked contract 10.1/10.2; consolidated scaffold). Observable-only; the
@@ -75,22 +71,22 @@ export const MODE_LABEL = { training: 'Guided', guided: 'Guided', analyst: 'SOC 
 
 export const TELEMETRY_LOADING = 'Incident telemetry is still loading.';
 export const detectionsReviewed = (triaged, total) =>
-  `Detections reviewed: ${triaged} of ${total}`;
+  `Detections Reviewed: ${triaged} of ${total}`;
 export const detectionsRemaining = (n) =>
   `${n} detection${n === 1 ? '' : 's'} still need Promote or Dismiss`;
 export const PROMOTED_LABEL = 'Promoted';
 export const DISMISSED_LABEL = 'Dismissed';
 export const REOPENED_LABEL = 'Reopened (needs review again)';
-export const responseActionsTaken = (n) => `Response actions taken: ${n}`;
-export const READY_TO_SUBMIT = 'Ready to submit';
+export const responseActionsTaken = (n) => `Response Actions Taken: ${n}`;
+export const READY_TO_SUBMIT = 'Ready to Submit';
 export const SUBMITTED_GRADE_LOCKED = 'Submitted. Grade locked.';
 export const completedStrip = (total) =>
   `Reviewed ${total} of ${total} · Submitted`;
-export const toReview = (n) => `${n} to review`;
+export const toReview = (n) => `${n} to Review`;
 
-// Feed/Threats explanatory subcopy (ratified OD-9), one line each.
-export const FEED_SUBCOPY = 'Feed: every detection, including reviewed';
-export const THREATS_SUBCOPY = 'Threats: detections you promoted';
+// (Owner UI pass 2026-10-12: the OD-9 Feed/Threats explanatory subcopy
+// pair is retired -- the Feed line was removed from Detections and the
+// Threats line had no remaining render site.)
 
 // --- Section 8.2 canonical clue forms (the 8.4 one-vocabulary rule; the
 // ONE notice line announces refines and pivots alike, III.0 item 2) ---------
@@ -129,12 +125,12 @@ export const allReviewedReady = (incidentId) =>
 // Checklist lines (A1-B.3.2). The consider-prompt is the ONE static prompt,
 // byte-identical for every incident; it renders in Guided only (ruled
 // B-OD-5) and never varies with hidden expectations.
-export const CLASSIFICATION_NOT_SELECTED = 'Classification: not selected';
+export const CLASSIFICATION_NOT_SELECTED = 'Classification: Not Selected';
 export const classificationSelected = (category) =>
   `Classification: ${category}`;
 export const CONSIDER_PROMPT =
   'Consider whether containment or remediation is needed.';
-export const SUBMIT_PENDING = 'Submit pending';
+export const SUBMIT_PENDING = 'Submit Pending';
 
 // === Merged Phase 3/4 commit 3.2: query clarity (Amendment 2, A2-R.1) ======
 // The ruled canonical finals: the four permanent tooltip sentences, the
@@ -150,11 +146,11 @@ export const TOOLTIP_PIVOT = 'Follow this clue across the evidence you are searc
 export const NO_QUERY_ENTERED = 'No query entered.';
 export const PRESERVED_RESULTS_LABEL = 'Results below are from the last run.';
 export const SEARCH_NOT_RUN = 'This search was not run.';
-export const QUERY_SECTION_NAMES = ['Time', 'Source', 'Event type', 'Filters'];
+export const QUERY_SECTION_NAMES = ['Time', 'Source', 'Event Type', 'Filters'];
 export const sectionCouldNotBeRead = (section) =>
   `The ${section} section could not be read.`;
 export const STRUCTURE_LINE = 'The query needs four sections separated by |.';
-export const RESTORE_LAST_QUERY = 'Restore last working query';
+export const RESTORE_LAST_QUERY = 'Restore Last Working Query';
 
 // (The reversible-surrounding-events block copy was removed with the
 // control by Amendment 3 F3; the F2 model B hold-and-restore mechanic that
@@ -168,12 +164,12 @@ export const RESTORE_LAST_QUERY = 'Restore last working query';
 // Performance stay distinctly labelled per 3.9B), the review section
 // headers (7.5 framing), and the 7.1 loading/error strings.
 export const caseClosed = (incidentId) => `Case Closed: ${incidentId}`;
-export const REVIEW_WHAT_YOU_LEARNED = 'Review what you learned';
+export const REVIEW_WHAT_YOU_LEARNED = 'Review What You Learned';
 export const LEARNING_REVIEW_TITLE = 'Learning Review';
 export const INCIDENT_GRADE_LABEL = 'Incident Grade';
 // VT (owner correction): sentence case for visible section labels; the
 // Incident Grade vs Session performance DISTINCTION is unchanged.
-export const SESSION_PERFORMANCE_LABEL = 'Session performance';
+export const SESSION_PERFORMANCE_LABEL = 'Session Performance';
 export const ACHIEVEMENT_LABELS = {
   case_closed: 'Case Closed',
   clean_triage: 'Clean Triage',
@@ -190,16 +186,16 @@ export const allDetectionsReviewed = (total) =>
 // carries BOTH ratified A1-B.4.1 item 3 halves (completed required actions
 // AND correct dispositions), so its heading names both.
 export const REVIEW_SECTION_CORRECT =
-  'Correct detection calls and completed response actions';
-export const REVIEW_SECTION_MISSED = 'Required response actions missed';
-export const REVIEW_SECTION_COLLATERAL = 'Unnecessary or harmful actions';
-export const REVIEW_SECTION_ACCEPTABLE = 'Additional defensible actions taken';
-export const REVIEW_SECTION_ATTEMPTS = 'Attempt history';
-export const REVIEW_SECTION_DETECTIONS = 'Detection calls';
-export const REVIEW_SECTION_PLAYBOOK = 'Response playbook';
-export const REVIEW_SECTION_TAKEAWAY = 'Key takeaway';
+  'Correct Detection Calls and Completed Response Actions';
+export const REVIEW_SECTION_MISSED = 'Required Response Actions Missed';
+export const REVIEW_SECTION_COLLATERAL = 'Unnecessary or Harmful Actions';
+export const REVIEW_SECTION_ACCEPTABLE = 'Additional Defensible Actions Taken';
+export const REVIEW_SECTION_ATTEMPTS = 'Attempt History';
+export const REVIEW_SECTION_DETECTIONS = 'Detection Calls';
+export const REVIEW_SECTION_PLAYBOOK = 'Response Playbook';
+export const REVIEW_SECTION_TAKEAWAY = 'Key Takeaway';
 export const correctDetectionCalls = (n, total) =>
-  `Detection calls: ${n} of ${total} correct`;
+  `Detection Calls: ${n} of ${total} Correct`;
 export const NO_CORRECT_CALLS = 'No detection calls were correct.';
 export const NO_COMPLETED_REQUIRED =
   'No required response actions were completed.';
@@ -208,12 +204,12 @@ export const REVIEW_EMPTY_COLLATERAL =
   'No unnecessary or harmful actions were taken.';
 export const REVIEW_EMPTY_DETECTIONS = 'No detection calls to review.';
 // Stage 6 (A4): the post-submit expected-response disclosure.
-export const REVIEW_SECTION_EXPECTED = 'Expected response actions';
+export const REVIEW_SECTION_EXPECTED = 'Expected Response Actions';
 export const REVIEW_EMPTY_EXPECTED =
   'No response actions were expected for this incident.';
 export const EXPECTED_REQUIRED_LABEL = 'Required';
 export const EXPECTED_ACCEPTABLE_LABEL = 'Acceptable';
-export const INACTION_ZERO_HEADING = 'Why the Response score is zero';
+export const INACTION_ZERO_HEADING = 'Why the Response Score Is Zero';
 export const BREAKDOWN_LOAD_ERROR = 'The detailed breakdown could not be loaded';
 export const SELECT_REVIEW_INCIDENT = 'Select a submitted incident to review.';
 export const NO_SUBMITTED_INCIDENTS =
@@ -233,12 +229,12 @@ export const CLASSIFY_TO_SUBMIT = 'Select a classification to submit.';
 export const SIMPLE_PLACEHOLDER = 'Example: source_ip == "10.0.1.32"';
 export const SIMPLE_HELP =
   'Enter a filter expression. Timeframe, source, and event type are controlled above.';
-export const SIMPLE_TOGGLE = 'Simple search';
+export const SIMPLE_TOGGLE = 'Simple Search';
 export const ADVANCED_TOGGLE = 'Advanced LCQL';
 export const SOURCE_LABEL = 'Source';
-export const EVENT_TYPE_LABEL = 'Event type';
-export const ALL_SOURCES = 'All sources';
-export const ALL_EVENT_TYPES = 'All event types';
+export const EVENT_TYPE_LABEL = 'Event Type';
+export const ALL_SOURCES = 'All Sources';
+export const ALL_EVENT_TYPES = 'All Event Types';
 
 // === Final pass (Part III.0.1): the Response workspace ====================
 // The ruled state copy (never revealing whether inaction is correct) and
@@ -251,5 +247,5 @@ export const RESPONSE_NO_PROMOTED_SUB =
 export const RESPONSE_NO_TARGETS = 'No response targets are currently available.';
 export const RESPONSE_NO_ACTIONS = 'No response actions taken.';
 export const OPEN_IN_RESPONSE = 'Open in Response';
-export const RESPOND_TO_HOST = 'Respond to this host';
+export const RESPOND_TO_HOST = 'Respond to This Host';
 export const RESPOND_ROW = 'Respond';

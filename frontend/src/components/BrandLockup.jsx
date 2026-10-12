@@ -1,36 +1,36 @@
 import React from 'react';
 
 // VC3 + VC4 (final lockup correction + owner size instruction): the ONE
-// shared SPECTR brand lockup, rendered identically by every shell (the
-// sim sidebar brand cell and both Docs shells). VC4 doubled the ghost
-// mark to 80px per the owner's 2026-07-26 instruction ("at least double
-// its size"); VC6 trims it to 72px per the follow-up ("a little too
-// big now, maybe just a tad bit smaller"). VD6 (visual correction
-// section 6): the shared shell row is now ruled 68px, superseding the
-// earlier 72-76px target. The cell's vertical padding is already zero,
-// so per the instruction's own priority (reduce padding BEFORE
-// shrinking the brand) the ghost takes the minimal trim 72px -> 68px to
-// sit in the fixed cell unclipped -- FLAGGED as the sanctioned
-// brand-shrink fallback, recorded in the correction appendix. The 30px
-// wordmark ruling is unchanged. Both are px-FIXED
-// and shrink-0, so the designed proportion never drifts with the
-// viewer's rem scale, a parent flex squeeze, or a navigation-label size
-// token; no transform scaling, no max-height, no clipping (max-w-none
-// defuses the preflight img max-width). The wordmark face, weight,
-// tracking, and line-height live on the shared .brand-wordmark token --
-// the display-face selection and licensing note sit on that rule in
-// index.css. White ink is baked in: every shell lockup sits on the dark
-// #101218 rail. Visible branding only; the asset filename and all
-// internal identifiers stay unrenamed.
-const BrandLockup = ({ wordmarkClass = '' }) => (
-  <span className="flex items-center gap-2.5">
+// shared SPECTR brand lockup, rendered by every shell. VC4 doubled the
+// ghost mark to 80px per the owner's 2026-07-26 instruction; VC6 trimmed
+// it to 72px; VD6 trimmed to 68px to sit in the ruled 68px shell row
+// unclipped (the sanctioned brand-shrink fallback, recorded in the
+// correction appendix), with the 30px wordmark ruling unchanged. Those
+// sizes remain the DEFAULT ('md': the Docs shells and any full-bleed
+// surface). Owner sidebar redesign follow-up (2026-10-12): the sim rail's
+// floating panel wears the compact 'sm' variant (40px ghost + text-lg
+// wordmark) so the brand row stops crowding the collapse/pin control --
+// an owner-directed size instruction in the same series as VC4/VC6/VD6.
+// Both variants are px-fixed and shrink-0 so the designed proportion
+// never drifts with rem scale or a flex squeeze; no transform scaling,
+// no max-height, no clipping (max-w-none defuses the preflight img
+// max-width). The wordmark face/weight/tracking live on the shared
+// .brand-wordmark token (face selection + licensing note in index.css).
+// White ink is baked in: every shell lockup sits on the dark #101218
+// surface. Visible branding only; internal identifiers stay unrenamed.
+const GAP = { md: 'gap-2.5', sm: 'gap-2' };
+const IMG_SIZE = { md: 'h-[68px] w-[68px]', sm: 'h-10 w-10' };
+const WORD_SIZE = { md: 'text-[30px]', sm: 'text-lg' };
+
+const BrandLockup = ({ wordmarkClass = '', size = 'md' }) => (
+  <span className={`flex items-center ${GAP[size] || GAP.md}`}>
     <img
       src="/spectyr_logo.png"
       alt=""
       aria-hidden="true"
-      className="h-[68px] w-[68px] max-w-none object-contain shrink-0"
+      className={`${IMG_SIZE[size] || IMG_SIZE.md} max-w-none object-contain shrink-0`}
     />
-    <span className={`brand-wordmark text-[30px] text-white whitespace-nowrap shrink-0 ${wordmarkClass}`.trim()}>
+    <span className={`brand-wordmark ${WORD_SIZE[size] || WORD_SIZE.md} text-white whitespace-nowrap shrink-0 ${wordmarkClass}`.trim()}>
       SPECTR
     </span>
   </span>

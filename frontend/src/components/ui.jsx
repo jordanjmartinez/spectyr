@@ -103,7 +103,7 @@ export const SeverityBadge = ({ severity }) => {
     <span
       data-testid="severity-badge"
       className={`${BADGE_BASE} px-2.5 gap-1.5 border ${
-        SEVERITY_PILL[k] || 'border-[#d0d7de] text-[#57606a]'}`}
+        SEVERITY_PILL[k] || 'border-[#d0d7de] text-muted'}`}
     >
       <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: severityDot(k) }} />
       {k ? k.charAt(0).toUpperCase() + k.slice(1) : ''}
@@ -114,7 +114,7 @@ export const SeverityBadge = ({ severity }) => {
 export const ModeBadge = ({ mode }) => (
   <span
     data-testid="mode-badge"
-    className={`${BADGE_BASE} px-2.5 bg-[#eef1f4] text-[#57606a] border border-transparent`}
+    className={`${BADGE_BASE} px-2.5 bg-[#eef1f4] text-muted border border-transparent`}
   >
     {MODE_LABEL[mode] || mode}
   </span>
@@ -168,7 +168,7 @@ export const PageHeader = ({ icon, title, count = null, subtitle, right = null }
       )}
       <div className="min-w-0 flex items-center gap-2">
         {count !== null && <CountPill>{count}</CountPill>}
-        {subtitle && <p className="text-sm text-[#57606a] truncate">{subtitle}</p>}
+        {subtitle && <p className="text-sm text-muted truncate">{subtitle}</p>}
       </div>
       {right && <div className="ml-auto flex flex-wrap items-center gap-2">{right}</div>}
     </div>
@@ -196,7 +196,7 @@ export const PageIntro = ({ incident = null, right = null }) => (
 // ---- small identity pieces --------------------------------------------------
 
 export const CountPill = ({ children }) => (
-  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-[#57606a]">{children}</span>
+  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-muted">{children}</span>
 );
 
 export const SectionLabel = ({ className = '', children }) => (
@@ -211,7 +211,7 @@ export const SeverityDotMark = ({ severity }) => <Dot color={severityDot(severit
 
 // Neutral state chip (factual observable state on targets/rows).
 export const StateChip = ({ children }) => (
-  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#eef1f4] text-[#57606a]">{children}</span>
+  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#eef1f4] text-muted">{children}</span>
 );
 
 // ---- controls ---------------------------------------------------------------
@@ -226,7 +226,7 @@ export const SegmentedToggle = ({ options, value, onChange, ariaLabel }) => (
         type="button"
         onClick={() => onChange(key)}
         className={`px-3 py-1.5 text-xs font-medium transition ${
-          value === key ? 'bg-[#101218] text-white' : 'bg-white text-[#57606a] hover:bg-[#eef1f4]'
+          value === key ? 'bg-[#101218] text-white' : 'bg-white text-muted hover:bg-[#eef1f4]'
         }`}
       >
         {label}
@@ -240,7 +240,7 @@ export const SegmentedToggle = ({ options, value, onChange, ariaLabel }) => (
 // workspace (never executes anything).
 const BTN_VARIANTS = {
   primary: 'bg-[#101218] text-white border-transparent hover:bg-[#1e2330]',
-  secondary: 'bg-white text-[#57606a] border-[#d0d7de] hover:bg-[#eef1f4]',
+  secondary: 'bg-white text-muted border-[#d0d7de] hover:bg-[#eef1f4]',
   accent: 'bg-transparent text-[#16436b] border-[#16436b]/40 hover:bg-[#16436b]/5',
 };
 export const Btn = ({ variant = 'secondary', className = '', type = 'button', children, ...rest }) => (
@@ -256,11 +256,11 @@ export const Btn = ({ variant = 'secondary', className = '', type = 'button', ch
 // ---- shared page states -----------------------------------------------------
 
 export const EmptyState = ({ children }) => (
-  <p className="p-4 py-8 text-sm text-[#8b949e] text-center">{children}</p>
+  <p className="p-4 py-8 text-sm text-muted text-center">{children}</p>
 );
 
 export const LoadingState = ({ children = 'Loading' }) => (
-  <p className="p-4 py-8 text-sm text-[#8b949e] text-center">{children}</p>
+  <p className="p-4 py-8 text-sm text-muted text-center">{children}</p>
 );
 
 export const ErrorState = ({ children, onRetry = null }) => (

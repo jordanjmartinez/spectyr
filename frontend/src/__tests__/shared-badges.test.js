@@ -150,7 +150,7 @@ test('severity dots without a label survive ONLY as chart fills, never as the so
   expect(dash).toMatch(/severityDot\(r\.key\)/);
 });
 
-// ---- the Active investigation card (canonical structure + fit) --------------
+// ---- the Active Investigation card (canonical structure + fit) --------------
 
 const CARD_INCIDENT = {
   incident_id: 'INC-1598', title: 'Suspicious Sign-in Burst From Unfamiliar Network Range',
@@ -179,7 +179,7 @@ const mockDashboard = () => {
   });
 };
 
-test('Active investigation: canonical structure with the shared badges, content intact, no clipping', async () => {
+test('Active Investigation: canonical structure with the shared badges, content intact, no clipping', async () => {
   mockDashboard();
   await act(async () => { render(<IncidentDashboard gameMode="guided" />); });
   const card = await screen.findByTestId('active-investigation');
@@ -197,8 +197,8 @@ test('Active investigation: canonical structure with the shared badges, content 
   // the incident facts remain: progress, triage line, classification
   // state, response actions, readiness, Resume
   expect(within(card).getByRole('progressbar')).toBeInTheDocument();
-  expect(within(card).getByText('Detections reviewed: 2 of 4')).toBeInTheDocument();
-  expect(within(card).getByText('Classification: not selected')).toBeInTheDocument();
-  expect(within(card).getByText('Response actions taken: 1')).toBeInTheDocument();
+  expect(within(card).getByText('Detections Reviewed: 2 of 4')).toBeInTheDocument();
+  expect(within(card).getByText('Classification: Not Selected')).toBeInTheDocument();
+  expect(within(card).getByText('Response Actions Taken: 1')).toBeInTheDocument();
   expect(within(card).getByRole('button', { name: 'Resume investigation' })).toBeInTheDocument();
 });

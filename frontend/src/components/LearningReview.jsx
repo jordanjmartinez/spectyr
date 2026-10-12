@@ -31,10 +31,10 @@ const EntryRow = ({ e }) => (
     {e.action ? (
       <p className="text-[#1a2332]">
         <span className="font-medium">{ACTION_LABELS[e.action] || e.action}</span>
-        {e.target_label ? <span className="log-mono text-[#57606a]"> {e.target_label}</span> : null}
+        {e.target_label ? <span className="log-mono text-muted"> {e.target_label}</span> : null}
       </p>
     ) : null}
-    <p className="text-[#57606a]">{e.why}</p>
+    <p className="text-muted">{e.why}</p>
   </li>
 );
 
@@ -42,7 +42,7 @@ const Section = ({ title, entries, emptyLine }) => (
   <div className="pt-3 border-t border-[#eef1f4]">
     <p className="t-subsection mb-1.5">{title}</p>
     {entries.length === 0 ? (
-      <p className="text-sm text-[#8b949e]">{emptyLine}</p>
+      <p className="text-sm text-muted">{emptyLine}</p>
     ) : (
       <ul className="space-y-2">{entries.map((e, i) => <EntryRow key={i} e={e} />)}</ul>
     )}
@@ -54,7 +54,7 @@ const AchievementChips = ({ items }) => (
     {items.map(a => (
       <span key={a.key} className="inline-flex items-baseline gap-1 px-2 py-0.5 rounded-full text-xs bg-[#eef1f4] text-[#1a2332] border border-[#d0d7de]">
         <span className="font-medium">{a.label}</span>
-        {a.subtitle && <span className="text-[#6e7781]">{a.subtitle}</span>}
+        {a.subtitle && <span className="text-muted">{a.subtitle}</span>}
       </span>
     ))}
   </div>
@@ -123,7 +123,7 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
       </div>
       <div>
         {completed.length === 0 ? (
-          <p className="text-sm text-[#57606a]">{NO_SUBMITTED_INCIDENTS}</p>
+          <p className="text-sm text-muted">{NO_SUBMITTED_INCIDENTS}</p>
         ) : (
           <div className="space-y-4">
             {/* Per-incident selector (submitted incidents only) */}
@@ -133,7 +133,7 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                   onClick={() => setSelectedId(c.incident_id)}
                   className={`px-2.5 py-1 rounded-md text-xs border transition ${c.incident_id === selectedId
                     ? 'bg-[#101218] text-white border-transparent'
-                    : 'bg-white text-[#57606a] border-[#d0d7de] hover:bg-[#eef1f4]'}`}>
+                    : 'bg-white text-muted border-[#d0d7de] hover:bg-[#eef1f4]'}`}>
                   {/* VD8: incident ids read in Inter inside identity
                       controls, matching the badge system */}
                   <span>{c.incident_id}</span>
@@ -143,14 +143,14 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
             </div>
 
             {!selectedId ? (
-              <p className="text-sm text-[#8b949e]">{SELECT_REVIEW_INCIDENT}</p>
+              <p className="text-sm text-muted">{SELECT_REVIEW_INCIDENT}</p>
             ) : loadError || (scoreView && !review) ? (
               // 7.1 loading/error state (also the degraded-render guard when
               // a served grading lacks the breakdown): grade rows if we have
               // them, the one-line error, and a retry.
               <div className="space-y-3">
                 {grading && (
-                  <div className="text-sm text-[#57606a]">
+                  <div className="text-sm text-muted">
                     {INCIDENT_GRADE_LABEL}: <span className="font-semibold" style={{ color: gradeColor(grading.composite?.grade) }}>{grading.composite?.grade || '-'} · {grading.composite?.accuracy ?? '-'}%</span>
                   </div>
                 )}
@@ -159,7 +159,7 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                   className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#1a2332] hover:bg-[#eef1f4]">Retry</button>
               </div>
             ) : !scoreView ? (
-              <p className="text-sm text-[#8b949e]">{SELECT_REVIEW_INCIDENT}</p>
+              <p className="text-sm text-muted">{SELECT_REVIEW_INCIDENT}</p>
             ) : (
               <div className="space-y-4" data-testid="learning-review-detail">
                 {/* Header: incident + Assisted + achievements */}
@@ -172,7 +172,7 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                     </h3>
                   </div>
                   {scoreView.assisted && (
-                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#eef1f4] text-[#57606a] border border-[#d0d7de]">Assisted</span>
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#eef1f4] text-muted border border-[#d0d7de]">Assisted</span>
                   )}
                 </div>
                 <AchievementChips items={achievements} />
@@ -181,7 +181,7 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                 <div className="space-y-1.5 text-sm">
                   {[['Classification', grading.classification], ['Detection dispositions', grading.detection], ['Response actions', grading.response]].map(([label, comp]) => (
                     <div key={label} className="flex items-center justify-between border-t border-[#eef1f4] pt-1.5">
-                      <span className="text-[#57606a]">{label}</span>
+                      <span className="text-muted">{label}</span>
                       <span className="font-medium text-[#1a2332]">{comp?.grade || '-'} · {comp?.accuracy ?? '-'}%</span>
                     </div>
                   ))}
@@ -203,10 +203,10 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                     {correctCallCount > 0 ? (
                       <p className="text-sm text-[#1a2332]">{correctDetectionCalls(correctCallCount, detectionCalls.length)}</p>
                     ) : (
-                      <p className="text-sm text-[#8b949e]">{NO_CORRECT_CALLS}</p>
+                      <p className="text-sm text-muted">{NO_CORRECT_CALLS}</p>
                     )}
                     {correctEntries.length === 0 ? (
-                      <p className="text-sm text-[#8b949e]">{NO_COMPLETED_REQUIRED}</p>
+                      <p className="text-sm text-muted">{NO_COMPLETED_REQUIRED}</p>
                     ) : (
                       <ul className="space-y-2">{correctEntries.map((e, i) => <EntryRow key={i} e={e} />)}</ul>
                     )}
@@ -221,9 +221,9 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                     <p className="text-sm font-medium text-[#b45858]">{INACTION_ZERO_HEADING}</p>
                     <p className="text-sm text-[#1a2332] mt-0.5">
                       <span className="font-medium">{ACTION_LABELS[review.inaction_zero.action] || review.inaction_zero.action}</span>
-                      {review.inaction_zero.target_label ? <span className="log-mono text-[#57606a]"> {review.inaction_zero.target_label}</span> : null}
+                      {review.inaction_zero.target_label ? <span className="log-mono text-muted"> {review.inaction_zero.target_label}</span> : null}
                     </p>
-                    <p className="text-sm text-[#57606a] mt-0.5">{review.inaction_zero.why}</p>
+                    <p className="text-sm text-muted mt-0.5">{review.inaction_zero.why}</p>
                   </div>
                 )}
                 {acceptableEntries.length > 0 && (
@@ -237,19 +237,19 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                   <div className="pt-3 border-t border-[#eef1f4]" data-testid="expected-actions">
                     <p className="t-overline mb-1.5">{REVIEW_SECTION_EXPECTED}</p>
                     {review.expected_actions.length === 0 ? (
-                      <p className="text-sm text-[#8b949e]">{REVIEW_EMPTY_EXPECTED}</p>
+                      <p className="text-sm text-muted">{REVIEW_EMPTY_EXPECTED}</p>
                     ) : (
                       <ul className="space-y-1">
                         {review.expected_actions.map((x, i) => (
                           <li key={i} className="text-sm flex items-center gap-2">
                             <span className={`shrink-0 text-[11px] font-medium px-1.5 py-0.5 rounded border ${x.status === 'required'
                               ? 'bg-[#eef1f4] text-[#1a2332] border-[#d0d7de]'
-                              : 'bg-white text-[#57606a] border-[#e2e6ea]'}`}>
+                              : 'bg-white text-muted border-[#e2e6ea]'}`}>
                               {x.status === 'required' ? EXPECTED_REQUIRED_LABEL : EXPECTED_ACCEPTABLE_LABEL}
                             </span>
                             <span className="min-w-0 text-[#1a2332]">
                               <span className="font-medium">{ACTION_LABELS[x.action] || x.action}</span>
-                              {x.target_label ? <span className="log-mono text-[#57606a]"> {x.target_label}</span> : null}
+                              {x.target_label ? <span className="log-mono text-muted"> {x.target_label}</span> : null}
                             </span>
                           </li>
                         ))}
@@ -265,10 +265,10 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                     <p className="t-overline mb-1.5">{REVIEW_SECTION_ATTEMPTS}</p>
                     <ul className="space-y-1">
                       {review.attempt_history.map(h => (
-                        <li key={h.seq} className="text-sm text-[#57606a]">
+                        <li key={h.seq} className="text-sm text-muted">
                           <span className="text-[#1a2332]">{ACTION_LABELS[h.action] || h.action}</span>
                           {h.target_label ? <span className="log-mono"> {h.target_label}</span> : null}
-                          {' '}<span className="text-[#8b949e]">({h.outcome === 'no_op' ? 'no effect, already in state' : 'did not execute'})</span>
+                          {' '}<span className="text-muted">({h.outcome === 'no_op' ? 'no effect, already in state' : 'did not execute'})</span>
                         </li>
                       ))}
                     </ul>
@@ -279,16 +279,16 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                 <div className="pt-3 border-t border-[#eef1f4]">
                   <p className="t-overline mb-1.5">{REVIEW_SECTION_DETECTIONS}</p>
                   {(review.detections || []).length === 0 ? (
-                    <p className="text-sm text-[#8b949e]">{REVIEW_EMPTY_DETECTIONS}</p>
+                    <p className="text-sm text-muted">{REVIEW_EMPTY_DETECTIONS}</p>
                   ) : (
                     <ul className="space-y-1">
                       {review.detections.map((d, i) => (
                         <li key={i} className="text-sm flex items-center justify-between gap-2">
                           <span className="min-w-0 truncate text-[#1a2332]">{d.rule_name}
-                            {d.entity_label ? <span className="text-[#8b949e]"> · {d.entity_label}</span> : null}
+                            {d.entity_label ? <span className="text-muted"> · {d.entity_label}</span> : null}
                           </span>
                           <span className="shrink-0 text-xs">
-                            <span className="text-[#57606a]">{d.your_call}</span>
+                            <span className="text-muted">{d.your_call}</span>
                             {' '}<span style={{ color: d.correct ? '#6fa868' : '#b45858' }}>{d.correct ? CALL_CORRECT : CALL_WRONG}</span>
                           </span>
                         </li>
@@ -302,7 +302,7 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                   <div className="pt-3 border-t border-[#eef1f4]">
                     {triage.mitre && <p className="text-xs text-[#16436b] font-medium mb-1"><span className="log-mono">{triage.mitre.id}</span> · {triage.mitre.name}</p>}
                     <p className="text-sm font-medium text-[#1a2332]">{triage.what_is_it.title}</p>
-                    <p className="text-sm text-[#57606a] mt-1 break-words">{triage.what_is_it.description}</p>
+                    <p className="text-sm text-muted mt-1 break-words">{triage.what_is_it.description}</p>
                   </div>
                 )}
                 {(triage?.response_actions || []).length > 0 && (
@@ -310,7 +310,7 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                     <p className="t-overline mb-1.5">{REVIEW_SECTION_PLAYBOOK}</p>
                     <ol className="list-decimal ml-5 space-y-1">
                       {triage.response_actions.map((step, i) => (
-                        <li key={i} className="text-sm text-[#57606a]">{step}</li>
+                        <li key={i} className="text-sm text-muted">{step}</li>
                       ))}
                     </ol>
                   </div>
@@ -321,7 +321,7 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
                 {review.scenario_rationale && (
                   <div className="pt-3 border-t border-[#eef1f4]">
                     <p className="t-overline mb-1.5">{REVIEW_SECTION_TAKEAWAY}</p>
-                    <p className="text-sm text-[#57606a]">{review.scenario_rationale}</p>
+                    <p className="text-sm text-muted">{review.scenario_rationale}</p>
                   </div>
                 )}
               </div>

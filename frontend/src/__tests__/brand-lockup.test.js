@@ -92,8 +92,15 @@ test('ONE shared lockup at the ruled size: 68px ghost + 30px wordmark, shrink-pr
   // trimmed to 72px; VD6's 68px shell row takes the ghost to 68px --
   // padding was already zero, so the sanctioned brand-shrink fallback
   // applies): never rem/nav-label derived
-  expect(c).toMatch(/h-\[68px\] w-\[68px\][^"]*object-contain[^"]*shrink-0/);
-  expect(c).toMatch(/brand-wordmark text-\[30px\][^"]*shrink-0/);
+  // Owner shrink instruction (2026-10-12): the sizes live in the IMG_SIZE /
+  // WORD_SIZE maps -- the ruled VD6 defaults stay the 'md' entries (Docs
+  // shells unchanged) and the sim rail wears the compact 'sm' variant. The
+  // img treatment (object-contain, px-fixed, shrink-0) is shared by both.
+  expect(c).toMatch(/md: 'h-\[68px\] w-\[68px\]'/);
+  expect(c).toMatch(/sm: 'h-10 w-10'/);
+  expect(c).toMatch(/max-w-none object-contain shrink-0/);
+  expect(c).toMatch(/md: 'text-\[30px\]'/);
+  expect(c).toMatch(/brand-wordmark[^"]*shrink-0/);
   // no transform-based scaling, no max-height shrinking, no clipping --
   // judged on the rendered class strings, not prose comments
   const classes = [...c.matchAll(/className=\{?["'`]([^"'`]+)["'`]/g)].map((m) => m[1]).join(' ');
@@ -110,15 +117,20 @@ test('the sidebar lockup is a real destination with an accessible name, never a 
   expect(rail).toMatch(/SPECTR home/);
   // it keeps the app's existing home navigation (not a new behavior)
   expect(rail).toMatch(/<Link\s+to="\/"/);
-  // the branded top area is the sidebar cell of the unified shell row
-  // (VC1; 68px since VD6), divider retained
-  expect(rail).toMatch(/h-\[68px\][^"]*border-b border-white\/10/);
+  // owner sidebar redesign + shrink (2026-10-12): the floating panel's
+  // brand row is the compact 56px cell with the divider retained
+  // (supersedes the VC1 unified 68px shell-row reading for the sim rail)
+  expect(rail).toMatch(/h-14 shrink-0 border-b border-white\/10/);
+  expect(rail).toMatch(/<BrandLockup size="sm"/);
 });
 
 test('VD6: ONE 68px shell row height in the app AND Docs; the lockup fits it unclipped', () => {
-  // the ruled shared height, superseding the earlier 72-76px target
+  // the ruled shared height, superseding the earlier 72-76px target.
+  // Owner sidebar redesign (2026-10-12): the sim rail left the unified
+  // shell row (floating panel, compact h-14 brand cell), so the 68px rule
+  // now binds the app header and the Docs shells.
   expect(read('components/AppHeader.jsx')).toMatch(/<header\s+className="h-\[68px\]/);
-  expect(read('pages/Dashboard.jsx')).toMatch(/h-\[68px\][^"]*border-b border-white\/10/);
+  expect(read('pages/Dashboard.jsx')).toMatch(/h-14 shrink-0 border-b border-white\/10/);
   const docs = read('pages/Docs.jsx');
   // Docs desktop brand cell and mobile bar carry the same fixed height
   expect((docs.match(/h-\[68px\]/g) || []).length).toBe(2);

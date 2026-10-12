@@ -25,7 +25,7 @@ import { ChromeIcons, NAV_STROKE } from './icons';
 // Documentation, and Back to home. No invented account, email,
 // subscription, profile settings, logout, or cloud identity.
 
-const AppHeader = ({ title, subtitle, gameMode, analystName, simActive, onReset,
+const AppHeader = ({ title, gameMode, analystName, simActive, onReset,
                      onOpenNav, timerSlot }) => {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
@@ -44,7 +44,7 @@ const AppHeader = ({ title, subtitle, gameMode, analystName, simActive, onReset,
     };
   }, [open]);
 
-  const itemCls = 'w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-[#57606a] hover:bg-[#f6f8fa] hover:text-[#1a2332]';
+  const itemCls = 'w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-muted hover:bg-[#f6f8fa] hover:text-[#1a2332]';
 
   return (
     // VC1 + VC3 + VD6: an inline row cell -- fixed 68px height matching
@@ -57,9 +57,8 @@ const AppHeader = ({ title, subtitle, gameMode, analystName, simActive, onReset,
       className="h-[68px] px-4 sm:px-6 flex items-center justify-between gap-4 bg-white border-b border-[#e2e6ea]"
       data-testid="app-header"
     >
-      {/* VC5 (owner instruction): the page's functional summary reads on
-          the next line directly under the section header -- one stack,
-          globally, fed by the shared PAGE_SUBTITLE copy. */}
+      {/* Owner UI pass (2026-10-12): the VC5 functional-summary subtitle
+          is retired under every tab; the workspace title stands alone. */}
       <div className="min-w-0 flex items-center gap-3">
         {/* Stage 6 playtest fix (mobile rail): below md the nav rail is an
             off-canvas drawer; this hamburger is its trigger. Icon from the
@@ -69,14 +68,13 @@ const AppHeader = ({ title, subtitle, gameMode, analystName, simActive, onReset,
             type="button"
             onClick={onOpenNav}
             aria-label="Open navigation"
-            className="md:hidden shrink-0 flex items-center justify-center w-8 h-8 rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#f6f8fa] hover:text-[#1a2332] transition-colors"
+            className="md:hidden shrink-0 flex items-center justify-center w-8 h-8 rounded-md border border-[#d0d7de] text-muted hover:bg-[#f6f8fa] hover:text-[#1a2332] transition-colors"
           >
             <ChromeIcons.Menu size={18} strokeWidth={NAV_STROKE} aria-hidden="true" />
           </button>
         )}
         <div className="min-w-0">
           <h1 className="t-page">{title}</h1>
-          {subtitle && <p className="t-body text-[#57606a] mt-0.5 truncate">{subtitle}</p>}
         </div>
       </div>
 
@@ -104,10 +102,10 @@ const AppHeader = ({ title, subtitle, gameMode, analystName, simActive, onReset,
             className="absolute right-0 top-10 z-50 w-56 bg-white border border-[#e2e6ea] rounded-lg shadow-xl overflow-hidden"
           >
             <div className="px-3 py-2.5 border-b border-[#eef1f4]">
-              <p className="t-overline">Local analyst</p>
+              <p className="t-overline">Local Analyst</p>
               <p className="text-sm font-medium text-[#1a2332] truncate">{simActive && analystName ? analystName : 'No active session'}</p>
               {simActive && (
-                <p className="text-xs text-[#57606a]">{MODE_LABEL[gameMode] || gameMode} mode</p>
+                <p className="text-xs text-muted">{MODE_LABEL[gameMode] || gameMode} Mode</p>
               )}
             </div>
             {simActive && onReset && (
@@ -127,7 +125,7 @@ const AppHeader = ({ title, subtitle, gameMode, analystName, simActive, onReset,
             </Link>
             <Link to="/" role="menuitem" className={itemCls} onClick={() => setOpen(false)}>
               <ChromeIcons.Ghost size={15} strokeWidth={NAV_STROKE} aria-hidden="true" />
-              Back to home
+              Back to Home
             </Link>
           </div>
         )}

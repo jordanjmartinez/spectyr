@@ -61,19 +61,18 @@ test('the header reads [current workspace title] + [avatar]; never mode or analy
   expect(buttons[1]).toHaveAccessibleName('Analyst menu');
 });
 
-test('the title follows the active workspace, with the functional summary on the next line (VC5)', async () => {
+test('the title follows the active workspace and stands alone (owner UI pass: VC5 subtitle retired)', async () => {
   await renderDashboard('Jordan');
   fireEvent.click(screen.getByTitle('Detections'));
   const header = await screen.findByTestId('app-header');
   expect(header.querySelector('h1').textContent).toBe('Detections');
-  // the page summary reads directly underneath the section header --
-  // the h1's next sibling inside the same stack, never beside controls
-  const sub = header.querySelector('h1 + p');
-  expect(sub.textContent).toBe('Review detections and decide what is actionable.');
+  // owner UI pass (2026-10-12): the per-tab functional summary line is
+  // removed under every tab -- no subtitle renders beneath the title
+  expect(header.querySelector('h1 + p')).toBeNull();
+  expect(header.textContent).not.toMatch(/Review detections and decide/);
   fireEvent.click(screen.getByTitle('Metrics'));
   expect(screen.getByTestId('app-header').querySelector('h1').textContent).toBe('Metrics');
-  expect(screen.getByTestId('app-header').querySelector('h1 + p').textContent)
-    .toBe('Review performance and learn from the investigation.');
+  expect(screen.getByTestId('app-header').querySelector('h1 + p')).toBeNull();
 });
 
 test('the avatar opens a menu of existing real controls; Reset routes to the existing confirm modal', async () => {
@@ -82,11 +81,11 @@ test('the avatar opens a menu of existing real controls; Reset routes to the exi
   expect(avatar.className).toMatch(/w-8 h-8 rounded-full/);   // ~32px circular
   fireEvent.click(avatar);
   const menu = screen.getByRole('menu', { name: 'Analyst menu' });
-  expect(within(menu).getByText('Local analyst')).toBeInTheDocument();
+  expect(within(menu).getByText('Local Analyst')).toBeInTheDocument();
   await waitFor(() => expect(within(menu).getByText('Jordan')).toBeInTheDocument());
-  expect(within(menu).getByText('Guided mode')).toBeInTheDocument();
+  expect(within(menu).getByText('Guided Mode')).toBeInTheDocument();
   expect(within(menu).getByText('Documentation')).toBeInTheDocument();
-  expect(within(menu).getByText('Back to home')).toBeInTheDocument();
+  expect(within(menu).getByText('Back to Home')).toBeInTheDocument();
   FORBIDDEN_IDENTITY.forEach((re) => expect(menu.textContent).not.toMatch(re));
   fireEvent.click(within(menu).getByRole('menuitem', { name: /Reset Simulation/ }));
   expect(await screen.findByText(/clear all events and incidents/)).toBeInTheDocument();

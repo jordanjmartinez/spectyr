@@ -55,7 +55,7 @@ const TriageFeedback = ({ result, onClose }) => {
             <h2 className="text-lg sm:text-xl font-semibold text-[#1a2332]">
               {correct ? 'Correct classification' : 'Not quite'}
             </h2>
-            <p className="text-sm text-[#57606a] mt-0.5">
+            <p className="text-sm text-muted mt-0.5">
               You classified as <span className="text-[#1a2332] font-medium">{selected_category}</span>
               {!correct && correct_category && (
                 <> · Actual: <span style={{ color: accent }} className="font-medium">{correct_category}</span></>
@@ -68,7 +68,7 @@ const TriageFeedback = ({ result, onClose }) => {
         {/* Triage review */}
         <div className="px-6 py-5">
           {loading ? (
-            <p className="text-sm text-[#57606a]">Loading triage review…</p>
+            <p className="text-sm text-muted">Loading triage review…</p>
           ) : review ? (
             <>
               {review.mitre && (

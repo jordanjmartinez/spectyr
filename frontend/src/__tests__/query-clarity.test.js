@@ -6,7 +6,7 @@
  *   "This search was not run." / "The {Section} section could not be
  *   read." (structure line when the text does not split into four) / the
  *   locked 11.3 stale statement exactly when prior results are preserved.
- * - Restore last working query (19.22): request-free, bar back to the
+ * - Restore Last Working Query (19.22): request-free, bar back to the
  *   executed canonical.
  * - The ruled permanent tooltips (19.26 at 3.2: title-attribute layer).
  * - The generated-forms corpus, frontend half (19.24): generator calls
@@ -152,7 +152,7 @@ test('sectionIndexAtPosition maps positions to sections, quote-aware', () => {
 
 // --- 19.22 restore --------------------------------------------------------
 
-test('Restore last working query returns the bar to the canonical and clears the error, request-free', async () => {
+test('Restore Last Working Query returns the bar to the canonical and clears the error, request-free', async () => {
   renderShell();
   await run('all | * | * | *');
   queryResponses.push(Promise.resolve({

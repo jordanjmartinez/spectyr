@@ -5,11 +5,11 @@
  *   the three acceptance-question sections with the frozen whys, the
  *   acceptable section (only when taken), the separately labeled attempt
  *   history, per-detection verdicts with correctness, the playbook, the
- *   MITRE/what-is-it education, and Key takeaway (ruling H: null omits).
+ *   MITRE/what-is-it education, and Key Takeaway (ruling H: null omits).
  * - Achievements + Case Closed + all teaching derive from the SERVED frozen
  *   record only (acceptance 19: deterministic; reads only, no writes).
  * - ONE venue (19.19): the in-workspace Case Closed modal never renders
- *   teaching content; "Review what you learned" is the path to Metrics.
+ *   teaching content; "Review What You Learned" is the path to Metrics.
  * - 7.1 error state: failed fetch renders the one-line error + Retry.
  */
 import React from 'react';
@@ -131,7 +131,7 @@ test('renders the full frozen teaching content with bucket routing, whys, verdic
   expect(d.getByText('Wrong')).toBeInTheDocument();
   // C1 (F5a): the well bucket also reads the correct dispositions
   expect(d.getByText(correctDetectionCalls(1, 2))).toBeInTheDocument();
-  // educational content + playbook (moved venue) + Key takeaway
+  // educational content + playbook (moved venue) + Key Takeaway
   expect(d.getByText('USB-Based Malware')).toBeInTheDocument();
   expect(d.getByText('Playbook step one')).toBeInTheDocument();
   expect(d.getByText(REVIEW_SECTION_TAKEAWAY)).toBeInTheDocument();
@@ -177,7 +177,7 @@ test('Stage 6: an empty expected list renders its named empty line; the inaction
   expect(z.getByText('WHY-ZERO')).toBeInTheDocument();
 });
 
-test('ruling H: a null scenario_rationale omits the Key takeaway section', async () => {
+test('ruling H: a null scenario_rationale omits the Key Takeaway section', async () => {
   const grading = { ...GRADING, response_review: { ...REVIEW, scenario_rationale: null } };
   await renderReview({ ...SCORE_VIEW, grading });
   await screen.findByTestId('learning-review-detail');
@@ -304,7 +304,7 @@ test('19.19 one venue: the Case Closed modal after submit carries the moment + a
     'ACME\\UNEXECUTED-ACCEPTABLE']) {
     expect(m.queryByText(marker)).toBeNull();
   }
-  fireEvent.click(m.getByRole('button', { name: 'Review what you learned' }));
+  fireEvent.click(m.getByRole('button', { name: 'Review What You Learned' }));
   expect(onOpenLearningReview).toHaveBeenCalledWith('INC-4000');
   expect(screen.queryByTestId('case-closed-modal')).toBeNull(); // closes to the venue
 });

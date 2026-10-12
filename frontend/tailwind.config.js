@@ -25,6 +25,13 @@ module.exports = {
         ok: '#6fa868',
         warn: '#c08a3e',
         danger: '#b45858',
+        // Owner UI pass (2026-10-12): the ONE muted text token. Every
+        // light-surface secondary text wears text-muted; the former
+        // three-gray spread (#57606a / #6e7781 / #8b949e) collapsed to
+        // the majority value (AA 5.6:1 on white, matching the t-token
+        // ink in index.css). Non-text uses of those hexes (chip
+        // backgrounds, chart strokes, borders) are deliberate and stay.
+        muted: '#57606a',
       },
       fontFamily: {
         mono: ['"JetBrains Mono"', 'sans-serif'],

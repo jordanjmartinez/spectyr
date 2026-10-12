@@ -68,13 +68,13 @@ const ProfileTooltip = ({ active, payload }) => {
   return (
     <div className="rounded-md border border-[#e2e6ea] bg-white px-2.5 py-1.5 text-xs shadow-md max-w-xs">
       <p className="font-medium text-[#1a2332]">{d.tactic}</p>
-      <p className="text-[#57606a]">{d.count} technique{d.count === 1 ? '' : 's'}</p>
+      <p className="text-muted">{d.count} technique{d.count === 1 ? '' : 's'}</p>
       {d.techniques.map((t) => (
-        <p key={t.id} className="text-[#57606a]">
+        <p key={t.id} className="text-muted">
           <span className="log-mono">{t.id}</span> {t.name}
         </p>
       ))}
-      <p className="text-[#57606a]">Relative incident profile: {d.pct}%</p>
+      <p className="text-muted">Relative incident profile: {d.pct}%</p>
     </div>
   );
 };
@@ -99,16 +99,17 @@ const AttackRadar = ({
 
   const Frame = ({ children }) => (
     <div className="rounded-xl min-w-0" style={CARD_STYLE} data-testid="attack-radar">
+      {/* Owner UI pass (2026-10-12): title + content only, no card
+          subtitle (matching Environment status). */}
       <div className="px-4 pt-4">
-        <SectionLabel className="t-subsection">Incident ATT&amp;CK profile</SectionLabel>
-        <p className="t-meta text-[#6e7781]">Tactics represented in this investigation</p>
+        <SectionLabel className="t-subsection">Incident ATT&amp;CK Profile</SectionLabel>
       </div>
       {children}
     </div>
   );
 
   if (!incidentId) {
-    return <Frame><p className="px-4 py-8 text-sm text-[#57606a]">{NO_INCIDENT}</p></Frame>;
+    return <Frame><p className="px-4 py-8 text-sm text-muted">{NO_INCIDENT}</p></Frame>;
   }
   // VD3: the temporal boundary. Before submission NOTHING derived from
   // the incident renders here -- mappings are ignored even if supplied.
@@ -117,7 +118,7 @@ const AttackRadar = ({
       <Frame>
         <div className="px-4 py-8" data-testid="attack-radar-locked">
           <p className="text-sm font-medium text-[#1a2332]">{LOCKED}</p>
-          <p className="text-sm text-[#57606a] mt-1">{LOCKED_SUB}</p>
+          <p className="text-sm text-muted mt-1">{LOCKED_SUB}</p>
         </div>
       </Frame>
     );
@@ -130,7 +131,7 @@ const AttackRadar = ({
   const profile = incidentProfile(mappings);
   // truthful states: never a meaningless zero polygon
   if (profile.max === 0) {
-    return <Frame><p className="px-4 py-8 text-sm text-[#57606a]">{NO_MAPPINGS}</p></Frame>;
+    return <Frame><p className="px-4 py-8 text-sm text-muted">{NO_MAPPINGS}</p></Frame>;
   }
 
   return (
@@ -179,7 +180,7 @@ const AttackRadar = ({
           shown relative to the strongest tactic in this incident.
         </caption>
         <thead>
-          <tr><th>Tactic</th><th>Techniques</th><th>Mapped techniques</th><th>Relative incident profile</th></tr>
+          <tr><th>Tactic</th><th>Techniques</th><th>Mapped Techniques</th><th>Relative Incident Profile</th></tr>
         </thead>
         <tbody>
           {profile.rows.map((r) => (
@@ -193,7 +194,7 @@ const AttackRadar = ({
         </tbody>
       </table>
 
-      <div className="px-4 pb-3 text-[11px] text-[#8b949e]">
+      <div className="px-4 pb-3 text-[11px] text-muted">
         Relative to the strongest tactic in this incident.
       </div>
     </Frame>

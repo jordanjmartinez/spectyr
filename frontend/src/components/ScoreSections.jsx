@@ -19,7 +19,7 @@ import { Card, gradeColor } from './ui';
 // Visual pass VG: the card surface comes from the shared module.
 
 const StatRow = ({ items }) => (
-  <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-[#57606a]">
+  <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
     {items.map(([label, value]) => (
       <span key={label}>
         <span className="font-medium text-[#1a2332]">{value}</span> {label}
@@ -42,7 +42,7 @@ const ScoreSections = ({ isVisible = true, report = null }) => {
       <p className="t-overline mb-2">{title}</p>
       <ul className="space-y-1.5">
         {entries.map(e => (
-          <li key={e.seq} className="text-sm text-[#57606a]">
+          <li key={e.seq} className="text-sm text-muted">
             <span className="text-[#1a2332]">{ACTION_LABELS[e.action] || e.action}</span>
             {' '}<span className="log-mono">{e.target?.label}</span>
             {e.reason ? `: ${e.reason}` : ''}
@@ -99,7 +99,7 @@ const ScoreSections = ({ isVisible = true, report = null }) => {
   // historical series exists.
   return (
     <div>
-      <h2 className="t-section mb-4">Score summary</h2>
+      <h2 className="t-section mb-4">Score Summary</h2>
       <div className="space-y-3">
         {/* the Overall grade, exactly once */}
         <Card>
@@ -107,7 +107,7 @@ const ScoreSections = ({ isVisible = true, report = null }) => {
             <p className="text-sm font-medium text-[#1a2332]">Overall grade</p>
             <p className="text-right">
               <span className="text-3xl font-semibold leading-none" style={{ color: gradeColor(composite?.grade) }}>{composite?.grade || '-'}</span>
-              <span className="ml-2 text-xs text-[#6e7781]">
+              <span className="ml-2 text-xs text-muted">
                 {composite?.accuracy != null ? `${composite.accuracy}% accuracy` : 'Not graded yet'}
               </span>
             </p>
@@ -123,7 +123,7 @@ const ScoreSections = ({ isVisible = true, report = null }) => {
                   <p className="text-sm font-semibold text-[#1a2332]">{col.name}</p>
                   <p className="text-right shrink-0">
                     <span className="text-2xl font-semibold text-[#1a2332] leading-none">{col.grade || '-'}</span>
-                    <span className="ml-1.5 text-xs text-[#6e7781]">
+                    <span className="ml-1.5 text-xs text-muted">
                       {col.graded > 0 ? `${col.accuracy}% accuracy` : 'Not graded yet'}
                     </span>
                   </p>
@@ -136,7 +136,7 @@ const ScoreSections = ({ isVisible = true, report = null }) => {
                     }} />
                   </div>
                 )}
-                <p className="text-xs text-[#6e7781]">{col.desc}</p>
+                <p className="text-xs text-muted">{col.desc}</p>
                 <StatRow items={col.items} />
               </div>
             </Card>

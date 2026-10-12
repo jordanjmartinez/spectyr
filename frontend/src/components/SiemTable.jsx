@@ -61,19 +61,19 @@ const SiemTable = ({ alerts, resetTrigger, selectedId, onSelect }) => {
     const end = Math.min(totalPages - 1, currentPage + 2);
     const buttonClass = (isActive) =>
       `w-7 h-7 flex items-center justify-center rounded-md text-xs font-medium transition border border-[#d0d7de] ${
-        isActive ? 'text-[#1a2332]' : 'bg-white text-[#57606a] hover:bg-[#eef1f4] hover:text-[#1a2332]'
+        isActive ? 'text-[#1a2332]' : 'bg-white text-muted hover:bg-[#eef1f4] hover:text-[#1a2332]'
       }`;
     const activePageStyle = { backgroundColor: 'rgba(0,0,0,0.06)' };
     buttons.push(
       <button key={1} onClick={() => changePage(1)} className={buttonClass(currentPage === 1)} style={currentPage === 1 ? activePageStyle : undefined}>1</button>
     );
-    if (start > 2) buttons.push(<span key="s" className="px-1 text-[#8b949e]">...</span>);
+    if (start > 2) buttons.push(<span key="s" className="px-1 text-muted">...</span>);
     for (let i = start; i <= end; i++) {
       buttons.push(
         <button key={i} onClick={() => changePage(i)} className={buttonClass(currentPage === i)} style={currentPage === i ? activePageStyle : undefined}>{i}</button>
       );
     }
-    if (end < totalPages - 1) buttons.push(<span key="e" className="px-1 text-[#8b949e]">...</span>);
+    if (end < totalPages - 1) buttons.push(<span key="e" className="px-1 text-muted">...</span>);
     if (totalPages > 1) {
       buttons.push(
         <button key={totalPages} onClick={() => changePage(totalPages)} className={buttonClass(currentPage === totalPages)} style={currentPage === totalPages ? activePageStyle : undefined}>{totalPages}</button>
@@ -108,7 +108,7 @@ const SiemTable = ({ alerts, resetTrigger, selectedId, onSelect }) => {
                       setCurrentPage(1);
                       setPageSizeOpen(false);
                     }}
-                    className="flex items-center gap-2 text-left px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs hover:bg-[#eef1f4] transition text-[#57606a]"
+                    className="flex items-center gap-2 text-left px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs hover:bg-[#eef1f4] transition text-muted"
                   >
                     <span className={`w-2.5 h-2.5 rounded border ${alertsPerPage === size ? 'bg-[#101218] border-[#101218]' : 'border-[#d0d7de]'}`} />
                     {size} Per Page
@@ -127,7 +127,7 @@ const SiemTable = ({ alerts, resetTrigger, selectedId, onSelect }) => {
             Prev
           </button>
           <div className="hidden sm:flex items-center gap-1 mx-1">{renderPaginationButtons()}</div>
-          <span className="flex sm:hidden px-1.5 text-xs text-[#57606a]">{currentPage} / {totalPages}</span>
+          <span className="flex sm:hidden px-1.5 text-xs text-muted">{currentPage} / {totalPages}</span>
           <button
             onClick={() => changePage(currentPage + 1)}
             disabled={currentPage === totalPages}
@@ -144,10 +144,10 @@ const SiemTable = ({ alerts, resetTrigger, selectedId, onSelect }) => {
       >
         {sorted.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12">
-            <svg className="w-12 h-12 text-[#6e7781] mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg className="w-12 h-12 text-muted mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
             </svg>
-            <p className="text-sm text-[#6e7781]">No events match the current filters.</p>
+            <p className="text-sm text-muted">No events match the current filters.</p>
           </div>
         ) : (
           <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper" style={{ minHeight: `${(alertsPerPage * 49) + 48}px` }}>

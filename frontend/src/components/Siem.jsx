@@ -501,10 +501,10 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
         type="button"
         onClick={() => setFieldsOpen((o) => !o)}
         aria-expanded={fieldsOpen}
-        className="lg:hidden w-full flex items-center justify-between px-3 py-2 text-sm rounded-md border border-[#d0d7de] bg-white text-[#57606a] hover:bg-[#eef1f4]"
+        className="lg:hidden w-full flex items-center justify-between px-3 py-2 text-sm rounded-md border border-[#d0d7de] bg-white text-muted hover:bg-[#eef1f4]"
       >
         <span>Fields</span>
-        <span className="text-xs text-[#8b949e]">{fieldsOpen ? 'Hide' : 'Show'}</span>
+        <span className="text-xs text-muted">{fieldsOpen ? 'Hide' : 'Show'}</span>
       </button>
       <div className={`${fieldsOpen ? 'mt-2' : 'hidden'} lg:mt-0 lg:block`}>
         <FieldSidebar
@@ -532,7 +532,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
           control here can change the case (OD-15). */}
       <div className="mb-3 flex flex-col gap-2">
         {activeIncidentId && scope.kind === 'incident' && scope.status === 'loading' && (
-          <span className="text-xs text-[#6e7781]">Loading incident scope</span>
+          <span className="text-xs text-muted">Loading incident scope</span>
         )}
         <div className="flex flex-wrap items-center gap-2 text-xs">
           {/* A3.5 (F7): the simple-mode Source / Event type selects own
@@ -540,7 +540,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
               a hostname sensor included), edits recompose through the
               chokepoint. Advanced mode hides them (the bar holds all). */}
           {queryMode === 'simple' && (
-            <label className="flex items-center gap-1.5 text-[#6e7781] ml-auto">
+            <label className="flex items-center gap-1.5 text-muted ml-auto">
               {SOURCE_LABEL}
               <select
                 value={simpleParts.sensor}
@@ -555,7 +555,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
             </label>
           )}
           {queryMode === 'simple' && (
-            <label className="flex items-center gap-1.5 text-[#6e7781]">
+            <label className="flex items-center gap-1.5 text-muted">
               {EVENT_TYPE_LABEL}
               <select
                 value={simpleParts.et}
@@ -569,7 +569,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
               </select>
             </label>
           )}
-          <label className={`flex items-center gap-1.5 text-[#6e7781] ${queryMode === 'simple' ? '' : 'ml-auto'}`}>
+          <label className={`flex items-center gap-1.5 text-muted ${queryMode === 'simple' ? '' : 'ml-auto'}`}>
             Timeframe
             <select
               value={tfValue}
@@ -590,7 +590,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
             onClick={() => setQueryMode((m) => (m === 'simple' ? 'advanced' : 'simple'))}
             disabled={queryMode === 'advanced' && !simpleProjectable}
             title={queryMode === 'advanced' && !simpleProjectable ? STRUCTURE_LINE : undefined}
-            className="px-2 py-1 rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4] disabled:opacity-50"
+            className="px-2 py-1 rounded-md border border-[#d0d7de] text-muted hover:bg-[#eef1f4] disabled:opacity-50"
           >
             {queryMode === 'simple' ? ADVANCED_TOGGLE : SIMPLE_TOGGLE}
           </button>
@@ -609,7 +609,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
           </div>
         )}
         {scope.kind === 'incident' && scope.status === 'ready' && scope.sealed === false && (
-          <div className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a]">
+          <div className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-muted">
             Incident telemetry is still loading.
           </div>
         )}
@@ -661,9 +661,9 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
                   : sectionCouldNotBeRead(QUERY_SECTION_NAMES[idx]);
               })()}
             </span>
-            <span className="block mt-1 text-[#57606a]">
+            <span className="block mt-1 text-muted">
               {error.reason}{' '}
-              <span className="text-[#8b949e]">
+              <span className="text-muted">
                 {(() => {
                   // A3.6 (F7, the projection boundary): in simple mode a
                   // position inside the FILTERS section remaps to the
@@ -684,7 +684,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
               )}
             </span>
             {snapshot && (
-              <span className="block mt-1 text-[#57606a]">{STALE_RESULTS_NOTE}</span>
+              <span className="block mt-1 text-muted">{STALE_RESULTS_NOTE}</span>
             )}
             {snapshot && (
               <button
@@ -701,7 +701,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
           // A2 3.2 (advanced only; simple mode has no empty state, A3-5.3):
           // the truly-empty bar is guidance, not an error; the preserved
           // results stay labeled.
-          <div role="status" data-testid="empty-note" className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a] flex items-center gap-2">
+          <div role="status" data-testid="empty-note" className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-muted flex items-center gap-2">
             <span>{NO_QUERY_ENTERED} {PRESERVED_RESULTS_LABEL}</span>
             <button
               type="button"
@@ -715,7 +715,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
         {snapshot && !error && queryText.trim() !== '' && queryText !== snapshot.identity.canonical_query && (
           // 11.3 edited-query honesty: the bar no longer matches the
           // executed snapshot; the results below belong to the last run.
-          <div role="status" data-testid="edited-note" className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a] flex items-center gap-2">
+          <div role="status" data-testid="edited-note" className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-muted flex items-center gap-2">
             <span>{EDITED_NOTE}</span>
             <button
               type="button"
@@ -741,7 +741,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
                   data-testid="custom-filters-chip"
                   onClick={() => queryInputRef.current?.focus()}
                   title={splitSegments(snapshot.identity.canonical_query)[3] || ''}
-                  className="inline-flex items-center px-2 py-1 rounded-full border border-[#d0d7de] bg-[#eef1f4] text-[#57606a] hover:bg-white"
+                  className="inline-flex items-center px-2 py-1 rounded-full border border-[#d0d7de] bg-[#eef1f4] text-muted hover:bg-white"
                 >
                   Custom filters
                 </button>
@@ -762,7 +762,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
                     aria-label={`Remove filter: ${c.split(' ')[0]}`}
                     onClick={() => removeChip(i)}
                     disabled={running || scopeBlocked}
-                    className="text-[#6e7781] hover:text-[#1a2332] disabled:opacity-50"
+                    className="text-muted hover:text-[#1a2332] disabled:opacity-50"
                   >
                     x
                   </button>
@@ -786,7 +786,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
               ? INITIAL_EVIDENCE : INITIAL_INCIDENT_EVIDENCE)
             : resultsFor(readable);
           return (
-          <div className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a] flex flex-wrap items-center gap-x-3 gap-y-1">
+          <div className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-muted flex flex-wrap items-center gap-x-3 gap-y-1">
             <span data-testid="results-label" className="font-medium text-[#1a2332]">{stateLabel}</span>
             <span>
               Snapshot: <span className="font-medium text-[#1a2332]">{snapshot.count} events</span>
@@ -794,7 +794,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
             <span>as of seq #{snapshot.identity.cutoff_seq}</span>
             <span>{simTime(snapshot.identity.resolved_range.end)} sim</span>
             <span className="log-mono">{snapshot.identity.canonical_query}</span>
-            <span className="log-mono text-[#8b949e]">scope={snapshot.identity.scope}</span>
+            <span className="log-mono text-muted">scope={snapshot.identity.scope}</span>
             {newCount > 0 && (
               <span
                 data-testid="new-events-indicator"
@@ -804,7 +804,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
               </span>
             )}
             {poolGrowth > 0 && (
-              <span data-testid="pool-growth" className="text-[#8b949e]">
+              <span data-testid="pool-growth" className="text-muted">
                 pool: +{poolGrowth}
               </span>
             )}
@@ -824,12 +824,12 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
         })()}
 
         {selectionNotice && (
-          <div role="status" className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a]">
+          <div role="status" className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-muted">
             {selectionNotice}
           </div>
         )}
         {queryNotice && (
-          <div role="status" data-testid="query-notice" className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-[#57606a]">
+          <div role="status" data-testid="query-notice" className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-muted">
             {queryNotice}
           </div>
         )}
@@ -845,7 +845,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
           {/* A3.5 (F7): mode-scoped guidance. Simple mode teaches the
               filter expression (the ruled help sentence); advanced keeps
               the four-segment teaching. Example buttons stay edit-only. */}
-          <p className="text-xs text-[#57606a] mb-3">
+          <p className="text-xs text-muted mb-3">
             {queryMode === 'simple'
               ? SIMPLE_HELP
               : 'LCQL has four segments: TIMEFRAME | SENSOR | EVENT TYPE | FILTERS. Try one of these:'}
@@ -864,7 +864,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
               </button>
             ))}
           </div>
-          <p className="text-xs text-[#6e7781]">
+          <p className="text-xs text-muted">
             Values containing spaces or any of{' '}
             <span className="log-mono">&quot; &#39; = ! | *</span> must be quoted, and the bare
             words and, or, not, contains must be quoted to match literally. Double-quoted and
@@ -879,7 +879,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
             style={CARD_STYLE}
           >
             <p className="text-sm text-[#1a2332] mb-1">0 events match</p>
-            <p className="text-xs text-[#6e7781] log-mono">{snapshot.identity.canonical_query}</p>
+            <p className="text-xs text-muted log-mono">{snapshot.identity.canonical_query}</p>
           </div>
         </div>
       ) : (
@@ -889,7 +889,7 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
             {/* VA1: the Cards/Table control belongs with the RESULTS, not
                 the page identity area. */}
             <div className="mb-2 flex items-center justify-between gap-2">
-              <span className="t-meta text-[#6e7781]">{snapshot.count} events</span>
+              <span className="t-meta text-muted">{snapshot.count} events</span>
               <SegmentedToggle
                 ariaLabel="View"
                 value={view}

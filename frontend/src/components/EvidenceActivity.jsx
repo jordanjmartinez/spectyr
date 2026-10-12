@@ -44,9 +44,10 @@ export const NO_EVENTS = 'No evidence observed yet.';
 
 const Frame = ({ children }) => (
   <div className="rounded-xl min-w-0 h-full flex flex-col" style={CARD_STYLE} data-testid="evidence-activity">
+    {/* Owner UI pass (2026-10-12): title + content only, no card
+        subtitle (matching Environment status). */}
     <div className="px-4 pt-4">
-      <p className="t-subsection">Evidence activity</p>
-      <p className="t-meta text-[#6e7781]">Event volume during this investigation</p>
+      <p className="t-subsection">Evidence Activity</p>
     </div>
     {children}
   </div>
@@ -60,22 +61,22 @@ const EvidenceActivity = ({
   onLoadNewEvents = null,
 }) => {
   if (!incidentId) {
-    return <Frame><p className="px-4 py-10 text-sm text-[#57606a]">{NO_INCIDENT}</p></Frame>;
+    return <Frame><p className="px-4 py-10 text-sm text-muted">{NO_INCIDENT}</p></Frame>;
   }
   // never flash a false zero-event chart before the first read lands
   if (loading || !snapshot) {
-    return <Frame><p className="px-4 py-10 text-sm text-[#8b949e] italic">{TELEMETRY_LOADING}</p></Frame>;
+    return <Frame><p className="px-4 py-10 text-sm text-muted italic">{TELEMETRY_LOADING}</p></Frame>;
   }
 
   const model = rollingDensity(snapshot.rows);
   if (model.total === 0) {
-    return <Frame><p className="px-4 py-10 text-sm text-[#57606a]">{NO_EVENTS}</p></Frame>;
+    return <Frame><p className="px-4 py-10 text-sm text-muted">{NO_EVENTS}</p></Frame>;
   }
 
   const summaryRow = (
     <div className="px-4 pt-3 pb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
       <span className="text-sm font-medium text-[#1a2332]">{evidenceSummary(model)}</span>
-      {!model.sparse && <span className="text-sm text-[#57606a]">{evidencePeak(model)}</span>}
+      {!model.sparse && <span className="text-sm text-muted">{evidencePeak(model)}</span>}
       {newCount > 0 && (
         <span className="ml-auto flex items-center gap-2">
           <span
@@ -126,7 +127,7 @@ const EvidenceActivity = ({
             <div className="absolute inset-x-0 bottom-0 border-t border-[#e2e6ea]" />
           </div>
         </div>
-        <p className="px-4 pb-3 text-sm text-[#57606a]">{SPARSE_MESSAGE}</p>
+        <p className="px-4 pb-3 text-sm text-muted">{SPARSE_MESSAGE}</p>
         <div className="sr-only">
           Evidence activity for {incidentId}: {model.total} events observed at{' '}
           {model.ticks.map((tk) => new Date(tk.t).toISOString()).join(', ')}. {SPARSE_MESSAGE}
@@ -229,7 +230,7 @@ const EvidenceActivity = ({
         </div>
         {/* the three-label axis: start / midpoint / end, in normal flow so
             nothing can clip, ellipsize, or overlap */}
-        <div className="flex items-baseline justify-between mt-1 text-[10px] text-[#8b949e]">
+        <div className="flex items-baseline justify-between mt-1 text-[10px] text-muted">
           <span>{axisStart}</span>
           <span>{axisMid}</span>
           <span>{axisEnd}</span>
@@ -253,7 +254,7 @@ const EvidenceActivity = ({
           {snapshot.identity ? snapshot.identity.cutoff_seq : 'unknown'}
           {newCount > 0 ? `; ${newCount} later events are waiting to be loaded.` : '.'}
         </caption>
-        <thead><tr><th>Sample time</th><th>Events in window</th><th>Peak</th></tr></thead>
+        <thead><tr><th>Sample Time</th><th>Events in Window</th><th>Peak</th></tr></thead>
         <tbody>
           {model.samples.map((s) => (
             <tr key={s.t}>
@@ -264,7 +265,7 @@ const EvidenceActivity = ({
       </table>
       </div>
 
-      <div className="px-4 pb-3 text-[11px] text-[#8b949e]">
+      <div className="px-4 pb-3 text-[11px] text-muted">
         Rolling density: events in the preceding {model.windowSeconds}s at each sample.
         Ticks mark exact event times.
         {newCount > 0 && ' Later evidence stays out of this view until you load it.'}

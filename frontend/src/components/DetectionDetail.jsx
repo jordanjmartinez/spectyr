@@ -30,7 +30,7 @@ const SignatureBadge = ({ signer }) => (
 
 const KvRow = ({ label, children, mono }) => (
   <div className="flex justify-between gap-3 py-2 border-b border-[#eef1f4] text-sm last:border-b-0">
-    <span className="text-[#6e7781] shrink-0">{label}</span>
+    <span className="text-muted shrink-0">{label}</span>
     <span className={`text-[#1a2332] text-right break-all ${mono ? 'log-mono' : ''}`}>{children}</span>
   </div>
 );
@@ -100,7 +100,7 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
     return (
       <div>
         <button type="button" onClick={onBack} className="text-sm text-[#16436b] hover:underline mb-4">&larr; All detections</button>
-        <Card><div className="p-6 text-[#57606a]">This detection is no longer available.</div></Card>
+        <Card><div className="p-6 text-muted">This detection is no longer available.</div></Card>
       </div>
     );
   }
@@ -108,7 +108,7 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
     return (
       <div>
         <button type="button" onClick={onBack} className="text-sm text-[#16436b] hover:underline mb-4">&larr; All detections</button>
-        <p className="text-[#8b949e] text-sm">Loading detection...</p>
+        <p className="text-muted text-sm">Loading detection...</p>
       </div>
     );
   }
@@ -130,7 +130,7 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
             <SeverityBadge severity={det.severity} />
             <RuleTypeChip type={det.rule_type} />
             {det.yara_rule_name && (
-              <span className="log-mono text-xs text-[#57606a]">{det.yara_rule_name}</span>
+              <span className="log-mono text-xs text-muted">{det.yara_rule_name}</span>
             )}
           </div>
           <h2 className="mt-2 text-xl sm:text-2xl font-semibold text-[#1a2332]">{det.rule_name}</h2>
@@ -158,7 +158,7 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
               </button>
             </div>
           )}
-          <p className="mt-1 text-sm text-[#57606a] log-mono">
+          <p className="mt-1 text-sm text-muted log-mono">
             {det.time ? det.time.slice(0, 19).replace('T', ' ') : '-'}
             {' '}&middot;{' '}
             {det.entity?.host ? (
@@ -166,10 +166,10 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
                 {det.entity.host}
               </button>
             ) : det.entity?.account ? (
-              <span className="text-[#57606a]" title="Identity entity (no endpoint)">{det.entity.account}</span>
+              <span className="text-muted" title="Identity entity (no endpoint)">{det.entity.account}</span>
             ) : '-'}
             {' '}&middot;{' '}
-            <span className="text-[#8b949e]">{det.id}</span>
+            <span className="text-muted">{det.id}</span>
           </p>
         </div>
       </Card>
@@ -188,8 +188,8 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
           <div className="p-5">
             <SectionLabel>MITRE ATT&amp;CK</SectionLabel>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs border border-[#d0d7de] text-[#57606a]">{det.mitre.tactic}</span>
-              <span className="log-mono text-xs text-[#57606a]">{det.mitre.id}</span>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs border border-[#d0d7de] text-muted">{det.mitre.tactic}</span>
+              <span className="log-mono text-xs text-muted">{det.mitre.id}</span>
             </div>
           </div>
         </Card>
@@ -209,7 +209,7 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
       {!isProcess && (
         <Card>
           <div className="p-5">
-            <SectionLabel>Triggering event</SectionLabel>
+            <SectionLabel>Triggering Event</SectionLabel>
             <div className="mt-2">
               <KvRow label="Event type" mono>{dash(ev.event_type)}</KvRow>
               <KvRow label="Source" mono>{dash(ev.source_type)}</KvRow>
@@ -222,7 +222,7 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
       )}
       {hasParent && (
         <ProcessCard
-          title="Parent process"
+          title="Parent Process"
           name={basename(kvp.parent_image)}
           cmdline={kvp.parent_command_line}
           path={kvp.parent_image}
@@ -260,7 +260,7 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
             ) : (
               <>
                 <DispositionChip action={det.player_action} size="sm" />
-                <button type="button" onClick={() => doAction('open')} className="px-3 py-1.5 text-sm font-medium rounded-md border bg-white text-[#57606a] border-[#d0d7de] hover:bg-[#eef1f4] transition">
+                <button type="button" onClick={() => doAction('open')} className="px-3 py-1.5 text-sm font-medium rounded-md border bg-white text-muted border-[#d0d7de] hover:bg-[#eef1f4] transition">
                   Reopen
                 </button>
               </>

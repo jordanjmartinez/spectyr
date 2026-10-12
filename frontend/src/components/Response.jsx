@@ -52,12 +52,12 @@ const shortTime = (iso) =>
 
 const OUTCOME_CHIP = {
   success: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  no_op: 'border-[#d0d7de] text-[#57606a]',
+  no_op: 'border-[#d0d7de] text-muted',
   failed_precondition: 'bg-red-50 text-red-700 border-red-200',
 };
 const OUTCOME_LABEL = { success: 'Success', no_op: 'No effect', failed_precondition: 'Failed' };
 const OutcomeChip = ({ outcome }) => (
-  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${OUTCOME_CHIP[outcome] || 'border-[#d0d7de] text-[#57606a]'}`}>
+  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${OUTCOME_CHIP[outcome] || 'border-[#d0d7de] text-muted'}`}>
     {OUTCOME_LABEL[outcome] || outcome}
   </span>
 );
@@ -69,7 +69,7 @@ const VerbButton = ({ onClick, disabled, dark, children }) => (
     onClick={onClick}
     className={`px-2.5 py-1 text-xs font-medium rounded-md border transition disabled:opacity-50 disabled:cursor-default ${
       dark ? 'bg-[#101218] text-white border-transparent hover:bg-[#1a2332]'
-           : 'bg-white text-[#57606a] border-[#d0d7de] hover:bg-[#eef1f4]'}`}
+           : 'bg-white text-muted border-[#d0d7de] hover:bg-[#eef1f4]'}`}
   >
     {children}
   </button>
@@ -259,7 +259,7 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
             ariaLabel="Response view"
             value={view}
             onChange={setView}
-            options={[['actions', 'Actions'], ['log', 'Response log']]}
+            options={[['actions', 'Actions'], ['log', 'Response Log']]}
           />
         )}
       />
@@ -271,10 +271,10 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
             minimal table boundary (no decorative card around it). VC5:
             the descriptive line stays with the list it describes. */}
         <div className="mb-2 flex items-center gap-2">
-          <h3 className="t-subsection">Response log</h3>
+          <h3 className="t-subsection">Response Log</h3>
           <CountPill>{logNewestFirst.length}</CountPill>
         </div>
-        <p className="t-body text-[#57606a] mb-2">Every response action this session, in order.</p>
+        <p className="t-body text-muted mb-2">Every response action this session, in order.</p>
         <TableSurface>
           <table className="w-full text-left text-sm">
             <thead className="data-thead">
@@ -289,18 +289,18 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
             </thead>
             <tbody>
               {logNewestFirst.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-[#8b949e]">{RESPONSE_NO_ACTIONS}</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted">{RESPONSE_NO_ACTIONS}</td></tr>
               )}
               {logNewestFirst.map(e => (
                 <tr key={e.seq} className="border-b border-[#eef1f4] last:border-b-0">
-                  <td className="px-3 sm:px-4 py-3 log-mono whitespace-nowrap text-[#57606a]">{shortTime(e.timestamp)}</td>
+                  <td className="px-3 sm:px-4 py-3 log-mono whitespace-nowrap text-muted">{shortTime(e.timestamp)}</td>
                   <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
-                    {e.incident_id ? <IncidentIdBadge id={e.incident_id} /> : <span className="text-[#57606a]">-</span>}
+                    {e.incident_id ? <IncidentIdBadge id={e.incident_id} /> : <span className="text-muted">-</span>}
                   </td>
                   <td className="px-3 sm:px-4 py-3 whitespace-nowrap">{ACTION_LABELS[e.action] || e.action}</td>
                   <td className="px-3 sm:px-4 py-3 log-mono break-all">{e.target?.label || '-'}</td>
                   <td className="px-3 sm:px-4 py-3"><OutcomeChip outcome={e.outcome} /></td>
-                  <td className="px-3 sm:px-4 py-3 text-[#57606a]">{e.reason || '-'}</td>
+                  <td className="px-3 sm:px-4 py-3 text-muted">{e.reason || '-'}</td>
                 </tr>
               ))}
             </tbody>
@@ -308,7 +308,7 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
         </TableSurface>
         </div>
       ) : !activeIncidentId ? (
-        <div className="rounded-xl p-8 text-center text-sm text-[#57606a]" style={CARD_STYLE}>
+        <div className="rounded-xl p-8 text-center text-sm text-muted" style={CARD_STYLE}>
           {RESPONSE_SELECT_INCIDENT}
         </div>
       ) : (
@@ -316,12 +316,12 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
           {promoted.length === 0 && (
             <div className="rounded-xl px-4 py-3 text-sm" style={CARD_STYLE}>
               <span className="text-[#1a2332]">{RESPONSE_NO_PROMOTED}</span>{' '}
-              <span className="text-[#57606a]">{RESPONSE_NO_PROMOTED_SUB}</span>
+              <span className="text-muted">{RESPONSE_NO_PROMOTED_SUB}</span>
             </div>
           )}
 
           {!anyTargets ? (
-            <div className="rounded-xl p-8 text-center text-sm text-[#57606a]" style={CARD_STYLE}>
+            <div className="rounded-xl p-8 text-center text-sm text-muted" style={CARD_STYLE}>
               {RESPONSE_NO_TARGETS}
             </div>
           ) : (
@@ -343,12 +343,12 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                         <tr key={h.hostname} {...focusProps('host', h)}>
                           <td className="px-3 py-2.5">
                             <span className="inline-flex items-center gap-1.5">
-                              <DeviceGlyph deviceKind={h.ident?.deviceKind} size={15} className="text-[#57606a]" />
+                              <DeviceGlyph deviceKind={h.ident?.deviceKind} size={15} className="text-muted" />
                               <button type="button" onClick={() => onHostPivot?.(h.hostname)}
                                 className="log-mono text-[#16436b] hover:underline" title={`Open ${h.hostname} in Endpoints`}>
                                 {h.hostname}
                               </button>
-                              <PlatformBadge platformKey={h.ident?.platformKey} size={12} className="text-[#57606a]" />
+                              <PlatformBadge platformKey={h.ident?.platformKey} size={12} className="text-muted" />
                             </span>
                             <PromotedChips rules={h.promotedRules} />
                           </td>
@@ -387,7 +387,7 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                         <tr key={a.entityId} {...focusProps('account', a)}>
                           <td className="px-3 py-2.5">
                             <span className="log-mono text-[#1a2332]">{a.account}</span>
-                            {a.host && <span className="block text-xs text-[#8b949e] log-mono">{a.host}</span>}
+                            {a.host && <span className="block text-xs text-muted log-mono">{a.host}</span>}
                             <PromotedChips rules={a.promotedRules} />
                           </td>
                           <td className="px-3 py-2.5">
@@ -434,7 +434,7 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                       <tbody>
                         {procFiltered.map(p => (
                           <tr key={`${p.hostname}-${p.pid}`} {...focusProps('process', p)}>
-                            <td className="px-3 py-2 log-mono whitespace-nowrap text-[#57606a]">{p.hostname}</td>
+                            <td className="px-3 py-2 log-mono whitespace-nowrap text-muted">{p.hostname}</td>
                             <td className="px-3 py-2 log-mono whitespace-nowrap">{p.pid}</td>
                             <td className="px-3 py-2 log-mono break-all min-w-[12rem]">
                               {p.name}
@@ -465,10 +465,10 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                     <tbody>
                       {fileRows.map(a => (
                         <tr key={`f-${a.hostname}-${a.file_entity_id}`} {...focusProps('autorun', { ...a, persistence_entity_id: null })}>
-                          <td className="px-3 py-2.5 log-mono whitespace-nowrap text-[#57606a]">{a.hostname}</td>
+                          <td className="px-3 py-2.5 log-mono whitespace-nowrap text-muted">{a.hostname}</td>
                           <td className="px-3 py-2.5 log-mono break-all min-w-[14rem]">
                             {a.name}
-                            <span className="block text-xs text-[#8b949e]">{a.command}</span>
+                            <span className="block text-xs text-muted">{a.command}</span>
                           </td>
                           <td className="px-3 py-2.5">
                             <StateChip>{a.file_state === 'present' ? 'File present' : 'File deleted'}</StateChip>
@@ -500,11 +500,11 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
                     <tbody>
                       {persistRows.map(a => (
                         <tr key={`p-${a.hostname}-${a.persistence_entity_id}`} {...focusProps('autorun', { ...a, file_entity_id: null })}>
-                          <td className="px-3 py-2.5 log-mono whitespace-nowrap text-[#57606a]">{a.hostname}</td>
+                          <td className="px-3 py-2.5 log-mono whitespace-nowrap text-muted">{a.hostname}</td>
                           <td className="px-3 py-2.5 whitespace-nowrap">{PERSIST_LABEL[a.persist_type] || 'Autorun'}</td>
                           <td className="px-3 py-2.5 log-mono break-all min-w-[14rem]">
                             {a.name}
-                            <span className="block text-xs text-[#8b949e]">{a.location}</span>
+                            <span className="block text-xs text-muted">{a.location}</span>
                           </td>
                           <td className="px-3 py-2.5">
                             <StateChip>{a.registration === 'removed' ? 'Registration removed' : 'Registered'}</StateChip>

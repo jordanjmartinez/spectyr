@@ -41,7 +41,7 @@ const fmtTime = (iso) => { try { return new Date(iso).toLocaleTimeString([], { h
 // (ruled B-OD-5); it never carries a target count.
 export const PhaseStrip = ({ sealed, triage, related, ready, classification,
                              showPrompt }) => {
-  if (!sealed) return <p className="text-xs text-[#8b949e] italic">{TELEMETRY_LOADING}</p>;
+  if (!sealed) return <p className="text-xs text-muted italic">{TELEMETRY_LOADING}</p>;
   const t = triage || { total: 0, triaged: 0 };
   const lines = [
     ['triage', detectionsReviewed(t.triaged, t.total),
@@ -58,9 +58,9 @@ export const PhaseStrip = ({ sealed, triage, related, ready, classification,
         <div key={key} className="flex items-center gap-1.5">
           <span aria-hidden="true"
             className={`w-1.5 h-1.5 rounded-full shrink-0 ${done === null ? 'bg-[#d0d7de]' : done ? 'bg-[#6fa868]' : 'border border-[#8b949e]'}`} />
-          <span className={done ? 'text-[#57606a]' : 'text-[#57606a]'}>{text}</span>
+          <span className={done ? 'text-muted' : 'text-muted'}>{text}</span>
           {key === 'response' && showPrompt && (
-            <span className="text-[#8b949e]">{CONSIDER_PROMPT}</span>
+            <span className="text-muted">{CONSIDER_PROMPT}</span>
           )}
         </div>
       ))}
@@ -296,7 +296,7 @@ const Incidents = ({
         {/* Incident rows (stable) */}
         <div className="lg:col-span-2 rounded-xl divide-y divide-[#eef1f4]" style={CARD_STYLE}>
           {rows.length === 0 ? (
-            <p className="p-4 text-sm text-[#8b949e] text-center">No incidents in this view.</p>
+            <p className="p-4 text-sm text-muted text-center">No incidents in this view.</p>
           ) : rows.map(c => (
             <button key={c.incident_id} onClick={() => onSelectIncident?.(c.incident_id)}
               className={`w-full text-left p-3 flex items-center justify-between gap-2 ${c.incident_id === selectedId ? 'bg-[#16436b]/5' : 'hover:bg-[#f6f8fa]'}`}>
@@ -319,7 +319,7 @@ const Incidents = ({
         {/* Selected incident detail (the workspace) */}
         <div className="lg:col-span-3 rounded-xl p-4 sm:p-5" style={CARD_STYLE}>
           {!selected ? (
-            <p className="text-sm text-[#8b949e] text-center py-8">Select an incident to work it.</p>
+            <p className="text-sm text-muted text-center py-8">Select an incident to work it.</p>
           ) : (
             <div className="space-y-4">
               <div className="flex items-start justify-between gap-3">
@@ -329,10 +329,10 @@ const Incidents = ({
                     <SeverityBadge severity={selected.severity} />
                     <span className="text-base font-semibold text-[#1a2332]">{selected.title}</span>
                     {selected.state === 'submitted' && selected.assisted && (
-                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#eef1f4] text-[#57606a] border border-[#d0d7de]">Assisted</span>
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#eef1f4] text-muted border border-[#d0d7de]">Assisted</span>
                     )}
                   </div>
-                  {selected.briefing && <p className="mt-1 text-sm text-[#57606a] break-words">{selected.briefing}</p>}
+                  {selected.briefing && <p className="mt-1 text-sm text-muted break-words">{selected.briefing}</p>}
                 </div>
                 {/* The ONE explicit case exit (Amendment 1 Delta A): the case
                     changes only by selection in the list or this control.
@@ -341,7 +341,7 @@ const Incidents = ({
                   type="button"
                   onClick={() => onSelectIncident?.(null)}
                   aria-label="Clear selected incident"
-                  className="shrink-0 text-xs px-2 py-1 rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4]"
+                  className="shrink-0 text-xs px-2 py-1 rounded-md border border-[#d0d7de] text-muted hover:bg-[#eef1f4]"
                 >
                   Clear selection
                 </button>
@@ -352,7 +352,7 @@ const Incidents = ({
                     submitted incident renders the completed vocabulary --
                     the 0-of-0 contradiction is structurally impossible. */}
                 {selected.state === 'submitted' ? (
-                  <p className="text-xs text-[#57606a]">
+                  <p className="text-xs text-muted">
                     {stripInfo?.id === selected.incident_id
                       ? completedStrip(stripInfo.total)
                       : SUBMITTED_GRADE_LOCKED}
@@ -391,11 +391,11 @@ const Incidents = ({
                   shows the loading line, never the previous incident's
                   hosts (an analyst could act against the wrong host). */}
               {scope.rowPolicy === 'loading' ? (
-                <p className="text-xs text-[#8b949e]">Loading incident scope</p>
+                <p className="text-xs text-muted">Loading incident scope</p>
               ) : scope.data && (scope.data.hostList.length || scope.data.accounts.length) ? (
-                <div className="text-xs text-[#57606a] space-y-1">
-                  {scope.data.hostList.length ? <p><span className="text-[#8b949e]">Related hosts:</span> <span className="log-mono">{scope.data.hostList.join(', ')}</span></p> : null}
-                  {scope.data.accounts.length ? <p><span className="text-[#8b949e]">Related accounts:</span> <span className="log-mono">{scope.data.accounts.join(', ')}</span></p> : null}
+                <div className="text-xs text-muted space-y-1">
+                  {scope.data.hostList.length ? <p><span className="text-muted">Related Hosts:</span> <span className="log-mono">{scope.data.hostList.join(', ')}</span></p> : null}
+                  {scope.data.accounts.length ? <p><span className="text-muted">Related Accounts:</span> <span className="log-mono">{scope.data.accounts.join(', ')}</span></p> : null}
                 </div>
               ) : null}
 
@@ -438,11 +438,11 @@ const Incidents = ({
                           {deriveAchievements(stripInfo.view).map(a => (
                             <span key={a.key} className="inline-flex items-baseline gap-1 px-2 py-0.5 rounded-full text-xs bg-[#eef1f4] text-[#1a2332] border border-[#d0d7de]">
                               <span className="font-medium">{a.label}</span>
-                              {a.subtitle && <span className="text-[#6e7781]">{a.subtitle}</span>}
+                              {a.subtitle && <span className="text-muted">{a.subtitle}</span>}
                             </span>
                           ))}
                         </div>
-                        <p className="text-sm text-[#57606a]">Incident Grade:{' '}
+                        <p className="text-sm text-muted">Incident Grade:{' '}
                           <span className="font-semibold" style={{ color: gradeColor(stripInfo.view.grading?.composite?.grade) }}>
                             {stripInfo.view.grading?.composite?.grade || '-'} · {stripInfo.view.grading?.composite?.accuracy ?? '-'}%
                           </span>
@@ -470,14 +470,14 @@ const Incidents = ({
                           disabled={!submissionReady(selected, chosen)}
                           className="px-3 py-1.5 text-sm rounded-md bg-[#101218] text-white hover:bg-[#1e2330] disabled:opacity-50">Submit</button>
                         {!validClassification(chosen[selected.incident_id]) && (
-                          <span className="text-xs text-[#8b949e]">{CLASSIFY_TO_SUBMIT}</span>
+                          <span className="text-xs text-muted">{CLASSIFY_TO_SUBMIT}</span>
                         )}
                       </>
                     ) : (
                       <>
                         <button onClick={() => { onSelectIncident?.(selected.incident_id); onNavigate?.('detections'); }}
                           className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#1a2332] hover:bg-[#eef1f4]">Triage detections</button>
-                        <span className="text-xs text-[#8b949e]">
+                        <span className="text-xs text-muted">
                           {!selected.sealed ? TELEMETRY_LOADING : detectionsRemaining(selected.open_detections ?? 0)}
                         </span>
                       </>
@@ -500,13 +500,13 @@ const Incidents = ({
           <div className="bg-white rounded-xl border border-[#e2e6ea] shadow-xl w-full max-w-md overflow-hidden">
             <div className="p-5">
               <h3 className="text-base font-semibold text-[#1a2332]">Submit incident {pendingSubmit.incident_id}</h3>
-              <p className="mt-2 text-sm text-[#57606a]">Filing as <span className="font-medium text-[#1a2332]">{pendingSubmit.category}</span>. This locks your classification for this incident and reveals how it scored. You cannot change it afterward.</p>
+              <p className="mt-2 text-sm text-muted">Filing as <span className="font-medium text-[#1a2332]">{pendingSubmit.category}</span>. This locks your classification for this incident and reveals how it scored. You cannot change it afterward.</p>
               {gameMode === 'hardcore' && (
                 <p className="mt-2 text-sm font-medium text-[#b26666]">Hardcore: one wrong call ends the run.</p>
               )}
               <div className="mt-5 flex justify-end gap-2">
                 <button type="button" onClick={() => setPendingSubmit(null)} disabled={submitBusy}
-                  className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4] disabled:opacity-60">Cancel</button>
+                  className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-muted hover:bg-[#eef1f4] disabled:opacity-60">Cancel</button>
                 <button type="button" onClick={doSubmit} disabled={submitBusy}
                   className="px-3 py-1.5 text-sm rounded-md bg-[#101218] text-white hover:bg-[#1a2332] disabled:opacity-60">{submitBusy ? 'Submitting…' : 'Submit Incident'}</button>
               </div>
@@ -528,20 +528,20 @@ const Incidents = ({
             <div className="flex items-center justify-between">
               <div><p className="t-overline">Incident Grade</p>
                 <h2 className="text-lg font-semibold text-[#1a2332]">{caseClosed(review.incidentId)}</h2></div>
-              {review.assisted && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#eef1f4] text-[#57606a] border border-[#d0d7de]">Assisted</span>}
+              {review.assisted && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#eef1f4] text-muted border border-[#d0d7de]">Assisted</span>}
             </div>
             <div className="mt-3 flex flex-wrap gap-1.5">
               {deriveAchievements(review.view).map(a => (
                 <span key={a.key} className="inline-flex items-baseline gap-1 px-2 py-0.5 rounded-full text-xs bg-[#eef1f4] text-[#1a2332] border border-[#d0d7de]">
                   <span className="font-medium">{a.label}</span>
-                  {a.subtitle && <span className="text-[#6e7781]">{a.subtitle}</span>}
+                  {a.subtitle && <span className="text-muted">{a.subtitle}</span>}
                 </span>
               ))}
             </div>
             <div className="mt-4 space-y-2 text-sm">
               {[['Classification', review.grading.classification], ['Detection dispositions', review.grading.detection], ['Response actions', review.grading.response]].map(([label, comp]) => (
                 <div key={label} className="flex items-center justify-between border-t border-[#eef1f4] pt-2">
-                  <span className="text-[#57606a]">{label}</span>
+                  <span className="text-muted">{label}</span>
                   <span className="font-medium text-[#1a2332]">{comp?.grade || '-'} · {comp?.accuracy ?? '-'}%</span>
                 </div>
               ))}
@@ -569,12 +569,12 @@ const Incidents = ({
           <div className="bg-white rounded-xl border border-[#e2e6ea] shadow-xl w-full max-w-md overflow-hidden">
             <div className="p-5">
               <h3 className="text-base font-semibold text-[#1a2332]">Practice another scenario?</h3>
-              <p className="mt-2 text-sm text-[#57606a]">This clears the current Guided run: its submitted incident record, your Session performance, and this Post-Incident Review. The simulation resets and returns to the scenario picker.</p>
+              <p className="mt-2 text-sm text-muted">This clears the current Guided run: its submitted incident record, your Session performance, and this Post-Incident Review. The simulation resets and returns to the scenario picker.</p>
               <div className="mt-5 flex justify-end gap-2">
                 <button type="button" onClick={() => setPracticeWarn(false)}
-                  className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#57606a] hover:bg-[#eef1f4]">Cancel</button>
+                  className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-muted hover:bg-[#eef1f4]">Cancel</button>
                 <button type="button" onClick={() => { setPracticeWarn(false); setReview(null); onPracticeAnother?.(); }}
-                  className="px-3 py-1.5 text-sm rounded-md bg-[#101218] text-white hover:bg-[#1e2330]">Clear and pick another</button>
+                  className="px-3 py-1.5 text-sm rounded-md bg-[#101218] text-white hover:bg-[#1e2330]">Clear and Pick Another</button>
               </div>
             </div>
           </div>

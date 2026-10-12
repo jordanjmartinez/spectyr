@@ -109,7 +109,7 @@ test('feed renders detections and triages them', async () => {
     <Detections isVisible resetTrigger={0} onHostPivot={() => {}} />
   );
   expect(await screen.findByText('LSASS Process Memory Access')).toBeInTheDocument();
-  expect(screen.getByText('2 open · 2 promoted · 0 dismissed')).toBeInTheDocument();
+  expect(screen.getByText('2 Open · 2 Promoted · 0 Dismissed')).toBeInTheDocument();
   expect(screen.getAllByText('Critical').length).toBeGreaterThanOrEqual(1);
   assertClean(container);
   // promote the first detection
@@ -127,7 +127,7 @@ test('Final pass III.0.1: Detections is triage-only -- no Threats or Response Lo
   await screen.findByText('LSASS Process Memory Access');
   // the retired views and execution controls are structurally gone
   expect(screen.queryByRole('button', { name: /Threats/ })).toBeNull();
-  expect(screen.queryByRole('button', { name: 'Response log' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Response Log' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Disable' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Revoke' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Reset PW' })).toBeNull();
@@ -156,7 +156,7 @@ test('detail shows triggering event and parent process lineage', async () => {
   expect(screen.getAllByText('setup.exe').length).toBeGreaterThanOrEqual(1); // heading + file-name row
   expect(screen.getByText('E:\\setup.exe')).toBeInTheDocument();
   // parent process card
-  expect(screen.getByText('Parent process')).toBeInTheDocument();
+  expect(screen.getByText('Parent Process')).toBeInTheDocument();
   expect(screen.getAllByText('explorer.exe').length).toBeGreaterThanOrEqual(1);
   // SHA256 present, copy button present, NO VirusTotal
   expect(screen.getAllByText('Copy').length).toBeGreaterThanOrEqual(1);

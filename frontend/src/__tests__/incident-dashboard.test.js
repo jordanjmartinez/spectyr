@@ -2,7 +2,7 @@
  * Stage 3.9B Dashboard, redesigned by Visual pass V5: the analytic
  * overview grid (session band; supporting column = Active Investigation +
  * Investigation Progress + Severity + Environment; main region = KPI stat
- * tiles + ATT&CK Coverage Matrix + Recent results). Invariants kept from
+ * tiles + ATT&CK Coverage Matrix + Recent Results). Invariants kept from
  * 3.9B: navigation-level actions only (never a graded Submit), no POST on
  * render, severity from /api/incidents stats (grouped-alerts never
  * called), the band's mode language, and Incident Grade vs Session
@@ -73,8 +73,8 @@ test('renders the overview grid in reading order: A, B, then the main region', a
   const { container } = render(<IncidentDashboard gameMode="hardcore" analystName="A" />);
   await screen.findByText('INC-2000');
   // VB1 (amendment section 1): the ruled narrow stack order --
-  // Active investigation, KPI summary, Evidence activity, Severity,
-  // Environment, ATT&CK profile, Recent results. Evidence activity is
+  // Active Investigation, KPI summary, Evidence Activity, Severity,
+  // Environment, ATT&CK profile, Recent Results. Evidence Activity is
   // the primary visualization; the ATT&CK profile stays secondary.
   const order = ['active-investigation', 'kpi-row', 'evidence-activity',
                  'severity-distribution', 'environment-status',
@@ -96,9 +96,9 @@ test('A: the Active Investigation card shows observable fields only and Resume n
   expect(within(card).getByText('INC-2000')).toBeInTheDocument();
   expect(within(card).getByText('Ready Incident')).toBeInTheDocument();
   expect(within(card).getByText('Critical')).toBeInTheDocument();
-  expect(within(card).getByText('Detections reviewed: 3 of 3')).toBeInTheDocument();
-  expect(within(card).getByText('Classification: not selected')).toBeInTheDocument();
-  expect(within(card).getByText('Response actions taken: 2')).toBeInTheDocument();
+  expect(within(card).getByText('Detections Reviewed: 3 of 3')).toBeInTheDocument();
+  expect(within(card).getByText('Classification: Not Selected')).toBeInTheDocument();
+  expect(within(card).getByText('Response Actions Taken: 2')).toBeInTheDocument();
   // never pre-submission correctness; never a graded Submit control
   expect(within(card).queryByText(/correct/i)).toBeNull();
   expect(screen.queryByRole('button', { name: /^Submit/ })).toBeNull();
@@ -115,9 +115,9 @@ test('VS: progress is folded INTO Active Investigation (accessible bar + exact t
   const bar = within(card).getByRole('progressbar');
   expect(bar).toHaveAttribute('aria-valuenow', '3');
   expect(bar).toHaveAttribute('aria-valuemax', '3');
-  expect(within(card).getByText('Detections reviewed: 3 of 3')).toBeInTheDocument();
+  expect(within(card).getByText('Detections Reviewed: 3 of 3')).toBeInTheDocument();
   expect(within(card).getByText('Classification: False Positive')).toBeInTheDocument();
-  expect(within(card).getByText('Ready to submit')).toBeInTheDocument();
+  expect(within(card).getByText('Ready to Submit')).toBeInTheDocument();
   // the fragmenting card is gone
   expect(screen.queryByTestId('investigation-progress')).toBeNull();
   expect(screen.queryByText('Investigation Progress')).toBeNull();
@@ -132,7 +132,9 @@ test('VS: severity bars show the active incident detections in order with exact 
   expect(rows).toEqual(['Critical', 'High', 'Medium', 'Low']);
   const counts = Array.from(card.querySelectorAll('.tabular-nums')).map(el => el.textContent);
   expect(counts).toEqual(['1', '2', '0', '0']);
-  expect(within(card).getByText('Active incident')).toBeInTheDocument();
+  // owner UI pass (2026-10-12): card subtitles are stripped -- title +
+  // content only, like Environment status
+  expect(within(card).queryByText('Active incident')).toBeNull();
   // no percentages implied, no correctness/hidden-answer vocabulary
   expect(card.textContent).not.toMatch(/%/);
   expect(card.textContent).not.toMatch(/correct|expected|true.positive|disposition/i);
@@ -186,20 +188,21 @@ test('C: KPI tiles carry real session values only (no trends, deltas, or sparkli
   render(<IncidentDashboard gameMode="hardcore" />);
   const row = await screen.findByTestId('kpi-row');
   await waitFor(() => expect(within(row).getByText('5')).toBeInTheDocument());   // 2 promoted + 3 dismissed
-  expect(within(row).getByText('Detections reviewed')).toBeInTheDocument();
+  expect(within(row).getByText('Detections Reviewed')).toBeInTheDocument();
   expect(within(row).getByText('2')).toBeInTheDocument();                        // successes only
-  expect(within(row).getByText('Response actions executed')).toBeInTheDocument();
-  expect(within(row).getByText('Incidents completed')).toBeInTheDocument();
-  expect(within(row).getByText('Latest incident grade')).toBeInTheDocument();
+  expect(within(row).getByText('Response Actions Executed')).toBeInTheDocument();
+  expect(within(row).getByText('Incidents Completed')).toBeInTheDocument();
+  expect(within(row).getByText('Latest Incident Grade')).toBeInTheDocument();
   expect(within(row).getByText('B')).toBeInTheDocument();
   expect(row.textContent).not.toMatch(/vs last|trend|%\s*change|[+-]\d+%/i);
 });
 
-test('E: Recent results is honestly labeled, newest first, from the frozen records', async () => {
+test('E: Recent Results is honestly labeled, newest first, from the frozen records', async () => {
   render(<IncidentDashboard gameMode="hardcore" />);
   const card = await screen.findByTestId('recent-results');
-  expect(within(card).getByText('Recent results')).toBeInTheDocument();
-  expect(within(card).getByText(/This session/)).toBeInTheDocument();
+  expect(within(card).getByText('Recent Results')).toBeInTheDocument();
+  // owner UI pass (2026-10-12): the "This session" subtitle is stripped
+  expect(within(card).queryByText(/This session/)).toBeNull();
   // grades + submitted category come from the served post-submission record
   await waitFor(() => expect(within(card).getByText('Malware')).toBeInTheDocument());
   expect(within(card).getByText('Hardcore')).toBeInTheDocument();
@@ -227,7 +230,7 @@ test('V6-R: the coverage radar carries no session/player overlay; grading is fet
   expect(within(radar).queryByText('This session')).toBeNull();
   expect(within(radar).queryByText('Catalog coverage')).toBeNull();
   expect(radar.textContent).not.toMatch(/Incident Grade|submitted/i);
-  // the frozen records feed Recent results alone; grading/triage endpoints
+  // the frozen records feed Recent Results alone; grading/triage endpoints
   // were touched ONLY for the submitted id (active ids never graded)
   await waitFor(() => expect(screen.getByText('Malware')).toBeInTheDocument());
   const graded = apiFetch.mock.calls
@@ -237,12 +240,15 @@ test('V6-R: the coverage radar carries no session/player overlay; grading is fet
   graded.forEach(p => expect(p).toContain('INC-3000'));
 });
 
-test('VH: Session performance is a KPI tile, distinct from the per-incident grade', async () => {
+test('VH: Session Performance is a KPI tile, distinct from the per-incident grade', async () => {
   render(<IncidentDashboard gameMode="hardcore" />);
   await screen.findByText('INC-3000');
   const kpi = screen.getByTestId('kpi-row');
-  expect(within(kpi).getByText('Session performance')).toBeInTheDocument();
-  await waitFor(() => expect(within(kpi).getByText('71%')).toBeInTheDocument());  // session C 71%
+  expect(within(kpi).getByText('Session Performance')).toBeInTheDocument();
+  // owner UI pass (2026-10-12): the tile is grade-only (sub line stripped);
+  // accuracy detail lives in Metrics
+  await waitFor(() => expect(within(kpi).getByText('C')).toBeInTheDocument()); // session grade
+  expect(within(kpi).queryByText('71%')).toBeNull();
   expect(screen.getByText(/B · 84%/)).toBeInTheDocument();               // incident grade row
   // the retired full-width banner is gone
   expect(screen.queryByText('Run completed')).toBeNull();
@@ -267,15 +273,15 @@ test('severity reads the observable scope + feed; grouped-alerts is never called
   expect(apiFetch.mock.calls.some(([p]) => p === '/api/grouped-alerts')).toBe(false);
 });
 
-test('VH: the queue count is one compact line inside Active investigation (Hardcore), with the mode badge', async () => {
+test('VH: the queue count is one compact line inside Active Investigation (Hardcore), with the mode badge', async () => {
   render(<IncidentDashboard gameMode="hardcore" activeIncidentId="INC-2000" />);
   const card = await screen.findByTestId('active-investigation');
-  await waitFor(() => expect(within(card).getByText('1 of 10 resolved')).toBeInTheDocument());
+  await waitFor(() => expect(within(card).getByText('1 of 10 Resolved')).toBeInTheDocument());
   expect(within(card).getByText('Hardcore')).toBeInTheDocument();   // compact badge beside identity
 });
 
 test('VH: Guided carries no queue denominator anywhere', async () => {
   render(<IncidentDashboard gameMode="guided" activeIncidentId="INC-2000" />);
   await screen.findByTestId('active-investigation');
-  expect(screen.queryByText(/of 10 resolved/)).toBeNull();
+  expect(screen.queryByText(/of 10 Resolved/)).toBeNull();
 });

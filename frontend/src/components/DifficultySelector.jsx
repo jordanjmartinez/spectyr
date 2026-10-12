@@ -60,14 +60,14 @@ const DifficultySelector = ({ onSelect, onCancel, initialName = '', initialStep 
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={step === 'mode' ? 'Choose your experience' : 'Choose a scenario'}
+        aria-label={step === 'mode' ? 'Choose Your Experience' : 'Choose a Scenario'}
         className="relative bg-white border border-[#e2e6ea] rounded-xl p-6 w-full max-w-lg mx-4 shadow-2xl animate-modalIn max-h-[90vh] overflow-y-auto"
       >
         <button
           type="button"
           onClick={onCancel}
           aria-label="Close"
-          className="absolute top-3 right-3 p-1 text-[#57606a] hover:text-[#1a2332] transition-colors"
+          className="absolute top-3 right-3 p-1 text-muted hover:text-[#1a2332] transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -76,10 +76,9 @@ const DifficultySelector = ({ onSelect, onCancel, initialName = '', initialStep 
 
         {step === 'mode' ? (
           <>
-            <h3 className="t-section pr-8">Choose your experience</h3>
-            <p className="t-body text-[#57606a] mt-1 mb-4">
-              Select how much guidance you want during the investigation.
-            </p>
+            {/* Owner UI pass (2026-10-12): subtitle removed -- title +
+                the two mode rows (which carry their own descriptions). */}
+            <h3 className="t-section pr-8 mb-4">Choose Your Experience</h3>
 
             <div role="radiogroup" aria-label="Experience" className="space-y-2">
               {MODES.map((m) => {
@@ -106,11 +105,11 @@ const DifficultySelector = ({ onSelect, onCancel, initialName = '', initialStep 
                     />
                     <span className="min-w-0">
                       <span className="flex items-center gap-1.5">
-                        <Icon size={15} strokeWidth={NAV_STROKE} aria-hidden="true" className="text-[#57606a]" />
+                        <Icon size={15} strokeWidth={NAV_STROKE} aria-hidden="true" className="text-muted" />
                         <span className="t-subsection">{m.label}</span>
                       </span>
                       {m.lines.map((l) => (
-                        <span key={l} className="block text-sm text-[#57606a]">{l}</span>
+                        <span key={l} className="block text-sm text-muted">{l}</span>
                       ))}
                     </span>
                   </button>
@@ -132,7 +131,7 @@ const DifficultySelector = ({ onSelect, onCancel, initialName = '', initialStep 
           <>
             <div className="flex items-center gap-3 mb-4 pr-8">
               <button type="button" onClick={() => setStep('mode')} className="text-sm text-[#16436b] hover:underline">Back</button>
-              <h3 className="t-section">Choose a scenario</h3>
+              <h3 className="t-section">Choose a Scenario</h3>
             </div>
 
             <button
@@ -140,19 +139,19 @@ const DifficultySelector = ({ onSelect, onCancel, initialName = '', initialStep 
               onClick={() => pickScenario('random')}
               className="w-full text-left p-3 mb-3 rounded-lg border border-[#d0d7de] hover:bg-[#f6f8fa] transition-colors"
             >
-              <span className="t-subsection block">Random scenario</span>
-              <span className="text-xs text-[#57606a] block mt-0.5">Start a randomly chosen incident from the catalog.</span>
+              <span className="t-subsection block">Random Scenario</span>
+              <span className="text-xs text-muted block mt-0.5">Start a randomly chosen incident from the catalog.</span>
             </button>
 
             {catalog === null ? (
-              <p className="text-sm text-[#8b949e] text-center py-6">Loading scenarios...</p>
+              <p className="text-sm text-muted text-center py-6">Loading scenarios...</p>
             ) : catalog.length === 0 ? (
-              <p className="text-sm text-[#8b949e] text-center py-6">No scenarios available.</p>
+              <p className="text-sm text-muted text-center py-6">No scenarios available.</p>
             ) : (
               <div className="space-y-2">
                 {/* Stage 6 catalog cut: a missing playable flag means
-                    playable (backward-compatible); locked entries render
-                    as a non-interactive coming-soon list below. */}
+                    playable (backward-compatible); shelved entries are
+                    summarized by the coming-soon line below. */}
                 {catalog.filter((e) => e.playable !== false).map((e) => (
                   <button
                     key={e.catalog_id}
@@ -164,24 +163,15 @@ const DifficultySelector = ({ onSelect, onCancel, initialName = '', initialStep 
                       <span className="t-subsection">{e.title}</span>
                       <SeverityBadge severity={e.severity} />
                     </span>
-                    <span className="text-xs text-[#57606a] block mt-1">{e.description}</span>
+                    <span className="text-xs text-muted block mt-1">{e.description}</span>
                   </button>
                 ))}
+                {/* Owner UI pass (2026-10-12): the greyed-out shelved rows
+                    are deleted; the coming-soon line stays alone, in the
+                    title font, as the honest forward signal. */}
                 {catalog.some((e) => e.playable === false) && (
                   <div className="pt-3 mt-3 border-t border-[#eef1f4]" data-testid="coming-soon">
-                    <p className="t-overline mb-2">More scenarios coming soon</p>
-                    <div className="space-y-1">
-                      {catalog.filter((e) => e.playable === false).map((e) => (
-                        <div key={e.catalog_id}
-                          className="w-full text-left px-3 py-2 rounded-lg border border-[#eef1f4] bg-[#fafbfc]"
-                          aria-disabled="true">
-                          <span className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm text-[#8b949e]">{e.title}</span>
-                            <SeverityBadge severity={e.severity} />
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                    <p className="t-subsection">More Scenarios Coming Soon</p>
                   </div>
                 )}
               </div>

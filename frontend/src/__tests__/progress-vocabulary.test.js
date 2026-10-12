@@ -18,7 +18,7 @@ import {
   STALE_RESULTS_NOTE, TELEMETRY_LOADING, detectionsReviewed,
   detectionsRemaining, PROMOTED_LABEL, DISMISSED_LABEL, REOPENED_LABEL,
   responseActionsTaken, READY_TO_SUBMIT, SUBMITTED_GRADE_LOCKED,
-  completedStrip, toReview, FEED_SUBCOPY, THREATS_SUBCOPY, filterAdded,
+  completedStrip, toReview, filterAdded,
   excludedFilter, CLASSIFY_TO_SUBMIT,
   SIMPLE_PLACEHOLDER, SIMPLE_HELP, SIMPLE_TOGGLE, ADVANCED_TOGGLE,
   SOURCE_LABEL, EVENT_TYPE_LABEL, ALL_SOURCES, ALL_EVENT_TYPES,
@@ -31,19 +31,23 @@ const { apiFetch } = require('../api');
 
 test('the Section 10.1 canonical vocabulary is byte-exact', () => {
   expect(TELEMETRY_LOADING).toBe('Incident telemetry is still loading.');
-  expect(detectionsReviewed(4, 5)).toBe('Detections reviewed: 4 of 5');
+  expect(detectionsReviewed(4, 5)).toBe('Detections Reviewed: 4 of 5');
   expect(detectionsRemaining(1)).toBe('1 detection still need Promote or Dismiss');
   expect(detectionsRemaining(3)).toBe('3 detections still need Promote or Dismiss');
   expect(PROMOTED_LABEL).toBe('Promoted');
   expect(DISMISSED_LABEL).toBe('Dismissed');
   expect(REOPENED_LABEL).toBe('Reopened (needs review again)');
-  expect(responseActionsTaken(6)).toBe('Response actions taken: 6');
-  expect(READY_TO_SUBMIT).toBe('Ready to submit');
+  expect(responseActionsTaken(6)).toBe('Response Actions Taken: 6');
+  expect(READY_TO_SUBMIT).toBe('Ready to Submit');
   expect(SUBMITTED_GRADE_LOCKED).toBe('Submitted. Grade locked.');
   expect(completedStrip(5)).toBe('Reviewed 5 of 5 · Submitted');
-  expect(toReview(2)).toBe('2 to review');
-  expect(FEED_SUBCOPY).toBe('Feed: every detection, including reviewed');
-  expect(THREATS_SUBCOPY).toBe('Threats: detections you promoted');
+  expect(toReview(2)).toBe('2 to Review');
+  // owner UI pass (2026-10-12): the OD-9 Feed/Threats subcopy pair is
+  // retired from the shared copy (the Feed line removed from Detections;
+  // the Threats line had no remaining render site)
+  const copy = require('fs').readFileSync(
+    require('path').join(__dirname, '..', 'components', 'uiCopy.js'), 'utf8');
+  expect(copy).not.toMatch(/FEED_SUBCOPY =|THREATS_SUBCOPY =/);
 });
 
 test('the case-constant terms are the ratified A-OD-1 finals, byte-exact (the expanded-search family retired, III.0 item 2)', () => {
@@ -56,12 +60,12 @@ test('the Amendment 3 ratified finals are byte-exact (A3-R.1 + standing drafted 
   expect(SIMPLE_PLACEHOLDER).toBe('Example: source_ip == "10.0.1.32"');
   expect(SIMPLE_HELP).toBe(
     'Enter a filter expression. Timeframe, source, and event type are controlled above.');
-  expect(SIMPLE_TOGGLE).toBe('Simple search');
+  expect(SIMPLE_TOGGLE).toBe('Simple Search');
   expect(ADVANCED_TOGGLE).toBe('Advanced LCQL');
   expect(SOURCE_LABEL).toBe('Source');
-  expect(EVENT_TYPE_LABEL).toBe('Event type');
-  expect(ALL_SOURCES).toBe('All sources');
-  expect(ALL_EVENT_TYPES).toBe('All event types');
+  expect(EVENT_TYPE_LABEL).toBe('Event Type');
+  expect(ALL_SOURCES).toBe('All Sources');
+  expect(ALL_EVENT_TYPES).toBe('All Event Types');
 });
 
 test('the Section 8.2 clue-naming forms are byte-exact', () => {
@@ -109,8 +113,6 @@ const PRE_SUBMISSION_STRINGS = [
   ['SUBMITTED_GRADE_LOCKED', SUBMITTED_GRADE_LOCKED],
   ['completedStrip', completedStrip(4)],
   ['toReview', toReview(2)],
-  ['FEED_SUBCOPY', FEED_SUBCOPY],
-  ['THREATS_SUBCOPY', THREATS_SUBCOPY],
   ['filterAdded', filterAdded('a', 'b')],
   ['excludedFilter', excludedFilter('a', 'b')],
   // Amendment 3 (A3.1) pre-submission additions; RETURN_SUBCOPY retired
@@ -161,9 +163,9 @@ test('the phase strip renders the canonical vocabulary from card observables, D4
     <Incidents gameMode="soc_queue" activeIncidentId="INC-1"
       onSelectIncident={() => {}} />
   );
-  expect(await screen.findByText('Detections reviewed: 4 of 5')).toBeInTheDocument();
-  expect(screen.getByText('Response actions taken: 6')).toBeInTheDocument();
-  expect(screen.getByText('1 to review')).toBeInTheDocument();
+  expect(await screen.findByText('Detections Reviewed: 4 of 5')).toBeInTheDocument();
+  expect(screen.getByText('Response Actions Taken: 6')).toBeInTheDocument();
+  expect(screen.getByText('1 to Review')).toBeInTheDocument();
   expect(screen.getByText(/1 detection still need Promote or Dismiss/)).toBeInTheDocument();
   // ruling A: the fuzzy related-activity LIST is gone; no such block renders
   expect(screen.queryByText(/Related response activity/)).toBeNull();
@@ -195,7 +197,7 @@ test('a completed incident renders the completed strip, never the active strip (
   );
   expect(await screen.findByText('Reviewed 5 of 5 · Submitted')).toBeInTheDocument();
   // the active strip's vocabulary never renders for a submitted incident
-  expect(screen.queryByText(/Detections reviewed: 0 of 0/)).toBeNull();
+  expect(screen.queryByText(/Detections Reviewed: 0 of 0/)).toBeNull();
   expect(screen.queryByText('pending')).toBeNull();
   expect(screen.queryByText('Incident telemetry is still loading.')).toBeNull();
 });

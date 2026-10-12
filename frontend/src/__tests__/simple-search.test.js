@@ -67,7 +67,7 @@ test('A3-OD-4: Simple search is the default; the ruled placeholder and help rend
   expect(screen.getByText(SIMPLE_HELP)).toBeInTheDocument();
   expect(screen.getByTestId('query-mode-toggle').textContent).toBe(ADVANCED_TOGGLE);
   expect(screen.getByLabelText('Source')).toBeInTheDocument();
-  expect(screen.getByLabelText('Event type')).toBeInTheDocument();
+  expect(screen.getByLabelText('Event Type')).toBeInTheDocument();
 });
 
 test('an untouched simple state runs the compiled default (empty FILTERS is match-all; never "No query entered.")', async () => {
@@ -149,7 +149,7 @@ test('A3.6: a FILTERS parse error renders the ruled form naming the Filters sect
   expect(screen.getByText(/position 12 in Filters/)).toBeInTheDocument();
 });
 
-test('A3.6: Restore last working query is request-free in simple mode and re-projects the canonical', async () => {
+test('A3.6: Restore Last Working Query is request-free in simple mode and re-projects the canonical', async () => {
   queryResponses.push(ok(snapWithQ('1h | Sysmon | * | source_ip == "10.0.1.32"')));
   renderSimple();
   fireEvent.change(screen.getByLabelText('Filters'), { target: { value: 'source_ip == "10.0.1.32"' } });
@@ -161,7 +161,7 @@ test('A3.6: Restore last working query is request-free in simple mode and re-pro
   fireEvent.change(screen.getByLabelText('Filters'), { target: { value: 'broken ==' } });
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Run Query/ })); });
   const before = queryCalls().length;
-  fireEvent.click(screen.getByRole('button', { name: 'Restore last working query' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Restore Last Working Query' }));
   expect(queryCalls().length).toBe(before);
   expect(screen.getByLabelText('Filters')).toHaveValue('source_ip == "10.0.1.32"');
   expect(screen.getByLabelText('Source')).toHaveValue('Sysmon');

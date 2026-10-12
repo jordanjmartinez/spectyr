@@ -218,7 +218,7 @@ test('identity actions execute on the roster account and disabled flags read the
 test('the Response Log is the single chronological history with outcomes and detail', async () => {
   mockApi();
   await renderResponse();
-  fireEvent.click(await screen.findByRole('button', { name: 'Response log' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Response Log' }));
   expect(await screen.findByText('ACME-SVR02')).toBeInTheDocument();
   expect(screen.getAllByText('Isolate Host').length).toBeGreaterThanOrEqual(2);
   expect(screen.getByText('Success')).toBeInTheDocument();
@@ -256,7 +256,7 @@ test('no actionable targets and no actions taken states render the ruled lines',
   });
   await renderResponse();
   expect(await screen.findByText(RESPONSE_NO_TARGETS)).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Response log' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Response Log' }));
   expect(await screen.findByText(RESPONSE_NO_ACTIONS)).toBeInTheDocument();
 });
 
@@ -348,10 +348,10 @@ test('VD4: target categories are flat sections -- no rounded card wraps a catego
 test('VD4: the Response log is one flat chronological table, never a decorative card stack', async () => {
   mockApi();
   await renderResponse();
-  fireEvent.click(await screen.findByRole('button', { name: 'Response log' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Response Log' }));
   expect(await screen.findByText('ACME-SVR02')).toBeInTheDocument();
   // heading + count on the surface, then the single table
-  const heading = screen.getByRole('heading', { name: 'Response log' });
+  const heading = screen.getByRole('heading', { name: 'Response Log' });
   expect(heading.className).toMatch(/t-subsection/);
   const tables = screen.getAllByRole('table');
   expect(tables).toHaveLength(1);

@@ -220,7 +220,7 @@ describe('sidebar pinned to the displayed snapshot (fake timers)', () => {
     await act(async () => { jest.advanceTimersByTime(3000); });
     await act(async () => {});
 
-    expect(screen.getByTestId('new-events-indicator')).toHaveTextContent('7 new');
+    expect(screen.getByTestId('new-events-indicator')).toHaveTextContent('7 New');
     expect(screen.getByTestId('field-sidebar').innerHTML).toBe(before);
   });
 });

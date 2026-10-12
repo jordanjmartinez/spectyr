@@ -27,7 +27,7 @@ const FieldSidebar = ({ snapshot, running, onValueClick }) => {
 
   if (snapshot.count === 0) {
     return (
-      <div className="w-full lg:w-56 shrink-0 text-xs text-[#6e7781] p-3">
+      <div className="w-full lg:w-56 shrink-0 text-xs text-muted p-3">
         No fields to summarize.
       </div>
     );
@@ -40,7 +40,7 @@ const FieldSidebar = ({ snapshot, running, onValueClick }) => {
       {summary.map(({ field, addr, topValues }) => (
         <div key={`${addr}:${field}`}>
           <div className="text-xs font-medium text-[#1a2332] mb-1">
-            {field} <span className="text-[#8b949e] font-normal">({topValues.length})</span>
+            {field} <span className="text-muted font-normal">({topValues.length})</span>
           </div>
           <ul className="space-y-0.5">
             {topValues.map(({ value, count }) => (
@@ -50,10 +50,10 @@ const FieldSidebar = ({ snapshot, running, onValueClick }) => {
                   onClick={() => onValueClick(field, '==', value)}
                   title={`${TOOLTIP_EQ} (${field} == "${value}")`}
                   data-help={`${TOOLTIP_EQ} (${field} == "${value}")`}
-                  className="help-tip w-full flex items-center justify-between gap-2 text-xs text-[#57606a] hover:bg-[#eef1f4] px-1.5 py-0.5 rounded"
+                  className="help-tip w-full flex items-center justify-between gap-2 text-xs text-muted hover:bg-[#eef1f4] px-1.5 py-0.5 rounded"
                 >
                   <span className="truncate">{renderFieldValue(field, value)}</span>
-                  <span className="text-[#8b949e] shrink-0">{count}</span>
+                  <span className="text-muted shrink-0">{count}</span>
                 </button>
               </li>
             ))}

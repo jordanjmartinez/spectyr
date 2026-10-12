@@ -160,16 +160,19 @@ const SNAP = {
 
 test('renders the factual summary, the peak, and the accessible rolling-window equivalent', () => {
   render(<EvidenceActivity incidentId="INC-8340" snapshot={SNAP} />);
-  expect(screen.getByText('Evidence activity')).toBeInTheDocument();
-  expect(screen.getByText('Event volume during this investigation')).toBeInTheDocument();
-  expect(screen.getByText('6 events observed')).toBeInTheDocument();
+  expect(screen.getByText('Evidence Activity')).toBeInTheDocument();
+  // owner UI pass (2026-10-12): card subtitles are stripped
+  expect(screen.queryByText('Event volume during this investigation')).toBeNull();
+  expect(screen.getByText('6 Events Observed')).toBeInTheDocument();
   // the ruled summary form; the peak count is the rolling-window count
-  expect(screen.getByText(/Peak: \d\d:\d\d:\d\d · 4 events/)).toBeInTheDocument();
+  expect(screen.getByText(/Peak: \d\d:\d\d:\d\d · 4 Events/)).toBeInTheDocument();
   // the textual equivalent names the rolling window explicitly, carries
   // every sample, the peak, the axis, and the snapshot boundary
   const table = screen.getByRole('table');
   expect(within(table).getAllByRole('row').length).toBe(SAMPLE_POINTS + 1);
   const caption = table.querySelector('caption').textContent;
+  // the caption is accessible PROSE: sentence case stays (the owner
+  // capitalization pass Title-Cases labels/count chips, not sentences)
   expect(caption).toMatch(/6 events observed/);
   expect(caption).toMatch(/30-second rolling window/);
   expect(caption).toMatch(/Peak \d\d:\d\d:\d\d with 4 events/);
@@ -243,7 +246,7 @@ test('the axis carries exactly start / midpoint / end in normal flow -- nothing 
 test('the sparse state renders exact ticks, the activity line, the total, and the honest message', () => {
   const sparseSnap = { count: 2, rows: rows(at('11:00'), at('11:03')), identity: { cutoff_seq: 7 } };
   const { container } = render(<EvidenceActivity incidentId="INC-1" snapshot={sparseSnap} />);
-  expect(screen.getByText('2 events observed')).toBeInTheDocument();
+  expect(screen.getByText('2 Events Observed')).toBeInTheDocument();
   expect(screen.getByText(SPARSE_MESSAGE)).toBeInTheDocument();
   expect(screen.getByTestId('evidence-sparse')).toBeInTheDocument();
   expect(screen.getAllByTestId('evidence-tick')).toHaveLength(2);
@@ -263,15 +266,15 @@ test('later evidence is announced but never merged until the player loads it', a
   const { rerender } = render(
     <EvidenceActivity incidentId="INC-8340" snapshot={SNAP} newCount={5} onLoadNewEvents={onLoad} />,
   );
-  expect(screen.getByTestId('evidence-new-count').textContent).toBe('5 new events available');
+  expect(screen.getByTestId('evidence-new-count').textContent).toBe('5 New Events Available');
   // the frozen chart still shows only the snapshot's six events
-  expect(screen.getByText('6 events observed')).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Load new events' }));
+  expect(screen.getByText('6 Events Observed')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Load New Events' }));
   expect(onLoad).toHaveBeenCalledTimes(1);
   // an atomic replacement swaps the whole model at once
   const bigger = { ...SNAP, count: 8, rows: [...SNAP.rows, ...rows(at('19:49'), at('19:49', 30))] };
   rerender(<EvidenceActivity incidentId="INC-8340" snapshot={bigger} newCount={0} />);
-  expect(screen.getByText('8 events observed')).toBeInTheDocument();
+  expect(screen.getByText('8 Events Observed')).toBeInTheDocument();
   expect(screen.queryByTestId('evidence-new-count')).toBeNull();
 });
 
@@ -281,7 +284,7 @@ test('honest loading and empty states; no false zero-event chart', () => {
   a.unmount();
   const b = render(<EvidenceActivity incidentId="INC-1" loading snapshot={null} />);
   expect(screen.getByText('Incident telemetry is still loading.')).toBeInTheDocument();
-  expect(screen.queryByText(/events observed/)).toBeNull();   // never a false zero
+  expect(screen.queryByText(/events observed/i)).toBeNull();   // never a false zero
   b.unmount();
   render(<EvidenceActivity incidentId="INC-1" snapshot={{ count: 0, rows: [], identity: { cutoff_seq: 1 } }} />);
   expect(screen.getByText(NO_EVENTS)).toBeInTheDocument();
@@ -315,7 +318,7 @@ test('the dashboard scopes the evidence read to the ACTIVE incident and never po
     return ok({});
   });
   await act(async () => { render(<IncidentDashboard gameMode="guided" />); });
-  await waitFor(() => expect(screen.getByText('6 events observed')).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByText('6 Events Observed')).toBeInTheDocument());
   const queries = calls.filter((c) => c.startsWith('/api/events/query?'));
   // exactly ONE frozen read for the incident -- scoped to it, never polled
   expect(queries).toHaveLength(1);

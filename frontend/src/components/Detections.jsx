@@ -3,7 +3,7 @@ import { apiFetch } from '../api';
 import DetectionDetail from './DetectionDetail';
 import useIncidentScope from './useIncidentScope';
 import {
-  detectionsReviewed, detectionsRemaining, FEED_SUBCOPY, OPEN_IN_RESPONSE,
+  detectionsReviewed, detectionsRemaining, OPEN_IN_RESPONSE,
   PROMOTED_LABEL, DISMISSED_LABEL,
 } from './uiCopy';
 import { TOOLTIPS } from './helpContent';
@@ -23,7 +23,7 @@ import { SeverityBadge, PageIntro, ErrorState } from './ui';
 // consumes it.
 
 export const RuleTypeChip = ({ type }) => (
-  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs border border-[#d0d7de] text-[#57606a] whitespace-nowrap">
+  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs border border-[#d0d7de] text-muted whitespace-nowrap">
     {type === 'yara' ? 'YARA' : 'Sigma'}
   </span>
 );
@@ -49,7 +49,7 @@ const ActionButton = ({ onClick, active, activeClass, disabled, children, help }
     title={help}
     data-help={help}
     className={`${help ? 'help-tip ' : ''}px-2.5 py-1 text-xs font-medium rounded-md border transition disabled:opacity-50 disabled:cursor-default ${
-      active ? activeClass : 'bg-white text-[#57606a] border-[#d0d7de] hover:bg-[#eef1f4]'
+      active ? activeClass : 'bg-white text-muted border-[#d0d7de] hover:bg-[#eef1f4]'
     }`}
   >
     {children}
@@ -194,7 +194,7 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
           <ErrorState onRetry={scope.refetch}>
             Incident scope could not be loaded.
             {scope.data && (
-              <span className="text-[#57606a]"> Displayed rows are from the last successful scope read.</span>
+              <span className="text-muted"> Displayed rows are from the last successful scope read.</span>
             )}
           </ErrorState>
         </div>
@@ -205,8 +205,10 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
           rows (the same roster the strip and readiness read), so the line
           and the rows can never disagree; All activity keeps the session
           counts. */}
-      <p className="text-sm text-[#57606a] mb-2">
-        <span className="text-[#8b949e]">{FEED_SUBCOPY}.</span>{' '}
+      {/* Owner UI pass (2026-10-12): the "Feed:" explanatory subcopy is
+          removed; the line keeps ONLY the live triage counts (the fix-14
+          same-frame progress surface). */}
+      <p className="text-sm text-muted mb-2">
         {activeIncidentId && scope.rowPolicy === 'scoped' ? (
           <>
             {detectionsReviewed(
@@ -216,7 +218,7 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
             )}
           </>
         ) : (
-          <>{counts.open} open &middot; {counts.promoted} promoted &middot; {counts.dismissed} dismissed</>
+          <>{counts.open} Open &middot; {counts.promoted} Promoted &middot; {counts.dismissed} Dismissed</>
         )}
       </p>
 
@@ -235,7 +237,7 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
             </thead>
             <tbody>
               {rows.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-[#8b949e]">
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted">
                   {scope.rowPolicy === 'loading' ? 'Loading incident scope'
                     : scope.rowPolicy === 'error' ? 'Incident scope could not be loaded.'
                       : 'No detections yet. They fire as scenarios reach the queue.'}
@@ -257,10 +259,10 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
                   <td className="px-3 sm:px-4 py-3 log-mono whitespace-nowrap text-[#1a2332]">
                     {d.entity?.host || d.entity?.account || '-'}
                     {d.entity?.host && d.entity?.account && (
-                      <span className="block text-xs text-[#8b949e]">{d.entity.account}</span>
+                      <span className="block text-xs text-muted">{d.entity.account}</span>
                     )}
                   </td>
-                  <td className="px-3 sm:px-4 py-3 log-mono whitespace-nowrap text-[#57606a]">{shortTime(d.time)}</td>
+                  <td className="px-3 sm:px-4 py-3 log-mono whitespace-nowrap text-muted">{shortTime(d.time)}</td>
                   <td className="px-3 sm:px-4 py-3">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {/* Stage 6 playtest fix 13: an open row offers the two

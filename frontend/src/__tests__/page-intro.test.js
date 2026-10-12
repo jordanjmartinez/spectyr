@@ -16,7 +16,20 @@ import Detections from '../components/Detections';
 import Endpoints from '../components/Endpoints';
 import Response from '../components/Response';
 import { PageIntro } from '../components/ui';
-import { PAGE_SUBTITLE, RESPONSE_SELECT_INCIDENT } from '../components/uiCopy';
+import { RESPONSE_SELECT_INCIDENT } from '../components/uiCopy';
+
+// Owner UI pass (2026-10-12): PAGE_SUBTITLE is retired -- the per-tab
+// functional summary line is removed everywhere (see app-header.test.js).
+// The former strings stay here as NEGATIVE probes so no page resurrects
+// them.
+const RETIRED_SUBTITLES = {
+  incidents: 'Select and manage an investigation.',
+  siem: 'Search and inspect event data.',
+  detections: 'Review detections and decide what is actionable.',
+  endpoints: 'Inspect hosts, users, processes, and system activity.',
+  response: 'Contain and remediate incident targets.',
+  analytics: 'Review performance and learn from the investigation.',
+};
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
 jest.mock('react-toastify', () => ({ toast: jest.fn(), ToastContainer: () => null }));
@@ -38,15 +51,9 @@ const INCIDENT = { incidentId: 'INC-8340', title: 'Event Logs Cleared on Worksta
 
 const src = (f) => fs.readFileSync(path.join(__dirname, '..', 'components', f), 'utf8');
 
-test('the ruled functional subtitles are the shared constants (no org branding)', () => {
-  expect(PAGE_SUBTITLE).toEqual({
-    incidents: 'Select and manage an investigation.',
-    siem: 'Search and inspect event data.',
-    detections: 'Review detections and decide what is actionable.',
-    endpoints: 'Inspect hosts, users, processes, and system activity.',
-    response: 'Contain and remediate incident targets.',
-    analytics: 'Review performance and learn from the investigation.',
-  });
+test('the subtitle copy is retired from uiCopy, and no org branding returned', () => {
+  const copy = fs.readFileSync(path.join(__dirname, '..', 'components', 'uiCopy.js'), 'utf8');
+  expect(copy).not.toMatch(/PAGE_SUBTITLE =/);
   // decorative "ACME Corp:" page branding is gone from every workspace
   for (const f of ['Siem.jsx', 'Endpoints.jsx', 'Detections.jsx', 'Response.jsx',
                    'Incidents.jsx', 'Analytics.jsx']) {
@@ -79,10 +86,10 @@ test('the pill renders the incident context ONCE, with id, title, and severity',
 });
 
 test.each([
-  ['Detections', (p) => <Detections isVisible resetTrigger={0} onHostPivot={() => {}} {...p} />, PAGE_SUBTITLE.detections],
-  ['Endpoints', (p) => <Endpoints isVisible resetTrigger={0} pivotHost={null} {...p} />, PAGE_SUBTITLE.endpoints],
-  ['Response', (p) => <Response isVisible resetTrigger={0} {...p} />, PAGE_SUBTITLE.response],
-])('%s: exactly one pill with a case; the page itself no longer renders the subtitle (VC5: it lives in the header)', async (name, mk, subtitle) => {
+  ['Detections', (p) => <Detections isVisible resetTrigger={0} onHostPivot={() => {}} {...p} />, RETIRED_SUBTITLES.detections],
+  ['Endpoints', (p) => <Endpoints isVisible resetTrigger={0} pivotHost={null} {...p} />, RETIRED_SUBTITLES.endpoints],
+  ['Response', (p) => <Response isVisible resetTrigger={0} {...p} />, RETIRED_SUBTITLES.response],
+])('%s: exactly one pill with a case; the retired subtitle renders nowhere', async (name, mk, subtitle) => {
   const withCase = render(mk({ activeIncidentId: 'INC-8340', activeIncident: INCIDENT }));
   expect(await screen.findAllByTestId('incident-pill')).toHaveLength(1);
   expect(screen.queryByText(subtitle)).toBeNull();

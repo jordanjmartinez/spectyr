@@ -246,7 +246,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
     <div className="flex flex-col gap-3 mb-6">
       <div className="flex flex-row items-center justify-between gap-2 sm:gap-3">
         <h2 className="text-xl sm:text-2xl font-semibold text-[#1a2332] whitespace-nowrap">
-          Reports <span className={`font-normal ml-1 ${filteredReports.length > 0 ? "text-[#6e7781]" : "invisible"}`}>{filteredReports.length || "0"}</span>
+          Reports <span className={`font-normal ml-1 ${filteredReports.length > 0 ? "text-muted" : "invisible"}`}>{filteredReports.length || "0"}</span>
         </h2>
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="relative">
@@ -271,7 +271,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
                       e.stopPropagation();
                       setFilterOpen(!filterOpen);
                     }}
-                    className="flex items-center gap-2 text-left px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm hover:bg-[#eef1f4] transition text-[#57606a]"
+                    className="flex items-center gap-2 text-left px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm hover:bg-[#eef1f4] transition text-muted"
                   >
                     <span className={`w-3 h-3 sm:w-3.5 sm:h-3.5 rounded border ${filterOpen ? 'bg-[#101218] border-[#101218]' : 'border-[#d0d7de]'}`} />
                     Open
@@ -281,7 +281,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
                       e.stopPropagation();
                       setFilterClosed(!filterClosed);
                     }}
-                    className="flex items-center gap-2 text-left px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm hover:bg-[#eef1f4] transition text-[#57606a]"
+                    className="flex items-center gap-2 text-left px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm hover:bg-[#eef1f4] transition text-muted"
                   >
                     <span className={`w-3 h-3 sm:w-3.5 sm:h-3.5 rounded border ${filterClosed ? 'bg-[#101218] border-[#101218]' : 'border-[#d0d7de]'}`} />
                     Closed
@@ -302,14 +302,14 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
             className="w-full pl-4 pr-10 py-2 rounded-md bg-white border border-[#e2e6ea] text-[#1a2332] text-sm placeholder-[#8b949e] focus:border-[#8b949e] focus:outline-none transition-colors"
           />
           {!searchTerm && (
-            <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6e7781]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           )}
           {searchTerm && (
             <button
               onClick={() => setSearchTerm('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6e7781] hover:text-[#1a2332]"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-[#1a2332]"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -335,19 +335,19 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
           }}
         >
           <div className="flex flex-col items-center justify-center py-8 flex-1">
-            <svg className="w-8 h-8 text-[#8b949e] mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg className="w-8 h-8 text-muted mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             {/* C1 checkpoint fix (F6): the old line cited the retired Alerts
                 report workflow; this surface is unmounted until a working
                 workflow exists, and its empty state must stay truthful. */}
-            <p className="text-sm text-[#6e7781]">No reports have been filed in this session.</p>
+            <p className="text-sm text-muted">No reports have been filed in this session.</p>
           </div>
         </div>
       ) : filteredReports.length === 0 && searchTerm ? (
         <div className="flex flex-col items-center justify-center py-12">
           <svg
-            className="w-12 h-12 sm:w-16 sm:h-16 text-[#6e7781] mb-3"
+            className="w-12 h-12 sm:w-16 sm:h-16 text-muted mb-3"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -355,7 +355,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
           </svg>
-          <p className="text-sm text-[#6e7781]">No matching reports for "{searchTerm}"</p>
+          <p className="text-sm text-muted">No matching reports for "{searchTerm}"</p>
         </div>
       ) : (
       <div
@@ -386,7 +386,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
                   >
                     <td className="px-2 sm:px-4 py-4">
                       <svg
-                        className={`w-5 h-5 text-[#6e7781] hover:text-[#1a2332] transition-transform duration-300 ease-in-out ${
+                        className={`w-5 h-5 text-muted hover:text-[#1a2332] transition-transform duration-300 ease-in-out ${
                           expandedIndex === index ? 'rotate-180' : 'rotate-0'
                         }`}
                         fill="none" stroke="currentColor" viewBox="0 0 24 24"
@@ -396,7 +396,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
                     </td>
                     <td className="px-2 sm:px-4 py-4">
                       <p className="text-sm sm:text-base font-medium text-[#1a2332] whitespace-nowrap">{report.title || 'Untitled Report'}</p>
-                      <p className="text-xs sm:text-sm text-[#57606a] mt-0.5"><span className="log-mono text-[#8b949e] font-medium">{report.alert_id || `INC-${getReportNumber(report.id)}`}</span> · {getRelativeTime(report.timestamp)}</p>
+                      <p className="text-xs sm:text-sm text-muted mt-0.5"><span className="log-mono text-muted font-medium">{report.alert_id || `INC-${getReportNumber(report.id)}`}</span> · {getRelativeTime(report.timestamp)}</p>
                     </td>
                     <td className="px-2 sm:px-4 py-4 whitespace-nowrap text-center">
                       <SeverityPill level={report.severity} />
@@ -479,7 +479,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
               type="button"
               onClick={() => setDeleteConfirmId(null)}
               aria-label="Close"
-              className="absolute top-3 right-3 p-1 text-[#57606a] hover:text-[#1a2332] transition-colors"
+              className="absolute top-3 right-3 p-1 text-muted hover:text-[#1a2332] transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -487,7 +487,7 @@ const Reports = ({ setReportCount, reportCount, analystName, resetTrigger }) => 
             </button>
             <h3 className="text-lg font-semibold text-[#1a2332] mb-4">Delete Report</h3>
             <div className="mb-5" style={{ height: '1px', background: 'linear-gradient(to right, rgba(0,0,0,0.08), transparent)' }} />
-            <p className="text-[#57606a] mb-6">
+            <p className="text-muted mb-6">
               Are you sure you want to delete this report? This action cannot be undone.
             </p>
             <div className="flex justify-end gap-2">

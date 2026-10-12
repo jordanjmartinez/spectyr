@@ -146,7 +146,7 @@ const EventInspector = ({ event, onFilter, onHostPivot, onPivot }) => {
   const Row = ({ field, value, valueNode }) => (
     <div className="flex items-center justify-between gap-2 py-1 border-b border-[#eef1f4] text-xs">
       <div className="min-w-0 flex-1">
-        <span className="text-[#8b949e] mr-2">{field}</span>
+        <span className="text-muted mr-2">{field}</span>
         <span className="text-[#1a2332] break-all">{valueNode ?? renderFieldValue(field, value)}</span>
       </div>
       <Actions field={field} value={value} />
@@ -178,7 +178,7 @@ const EventInspector = ({ event, onFilter, onHostPivot, onPivot }) => {
       <Row field="timestamp" value={view.timestamp} />
       <Row field="id" value={view.id} />
       <div className="flex items-center justify-between py-1 border-b border-[#eef1f4] text-xs">
-        <span className="text-[#8b949e]">arrived as event #{view.eventSeq}</span>
+        <span className="text-muted">arrived as event #{view.eventSeq}</span>
       </div>
 
       <SectionLabel>Classification</SectionLabel>
@@ -192,7 +192,7 @@ const EventInspector = ({ event, onFilter, onHostPivot, onPivot }) => {
       <Row field="source_type" value={view.sourceType} />
       <Row field="event_type" value={view.eventType} />
 
-      <SectionLabel>Canonical commons</SectionLabel>
+      <SectionLabel>Canonical Commons</SectionLabel>
       {view.commons.map(([field, value]) => (
         <Row
           key={field}
@@ -213,7 +213,7 @@ const EventInspector = ({ event, onFilter, onHostPivot, onPivot }) => {
 
       {view.kvpEntries.length > 0 && (
         <>
-          <SectionLabel>Family fields</SectionLabel>
+          <SectionLabel>Family Fields</SectionLabel>
           {view.kvpEntries.map(([field, value]) => (
             <Row key={field} field={field} value={value} />
           ))}

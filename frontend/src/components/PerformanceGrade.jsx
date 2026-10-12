@@ -118,12 +118,12 @@ export const GradeCard = ({ report }) => {
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <span className="text-6xl sm:text-8xl font-bold text-[#1a2332]">{grade}</span>
-              {graded && <span className="mt-1 text-sm text-[#6e7781]">{acc}%</span>}
+              {graded && <span className="mt-1 text-sm text-muted">{acc}%</span>}
             </div>
           </div>
         </div>
-        <p className="t-overline text-center">Composite grade · 40 / 30 / 30</p>
-        <p className="text-sm text-[#57606a] text-center min-h-[1.25rem]">{GRADE_MESSAGES[grade] || ' '}</p>
+        <p className="t-overline text-center">Composite Grade · 40 / 30 / 30</p>
+        <p className="text-sm text-muted text-center min-h-[1.25rem]">{GRADE_MESSAGES[grade] || ' '}</p>
       </div>
     </div>
   );

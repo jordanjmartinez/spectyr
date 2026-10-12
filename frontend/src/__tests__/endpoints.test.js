@@ -134,7 +134,7 @@ test('endpoints list renders fixture rows with clean copy', async () => {
     <Endpoints isVisible resetTrigger={0} pivotHost={null} />
   );
   expect(await screen.findByText('ACME-WS12')).toBeInTheDocument();
-  expect(screen.getByText('1 online · 1 offline')).toBeInTheDocument();
+  expect(screen.getByText('1 Online · 1 Offline')).toBeInTheDocument();
   expect(screen.getByText('just now')).toBeInTheDocument();          // online host
   expect(screen.getAllByText('Not Isolated')).toHaveLength(2);
   // empty Tags cells render exactly "-"
@@ -155,7 +155,7 @@ test('endpoint detail renders all tabs with clean copy and Respond navigation on
   // carries the neutral navigation only
   expect(screen.queryByRole('button', { name: 'Isolate Host' })).toBeNull();
   expect(screen.queryByRole('button', { name: /release/i })).toBeNull();
-  expect(screen.getByRole('button', { name: 'Respond to this host' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Respond to This Host' })).toBeInTheDocument();
   expect(screen.getByText('00:50:56:1A:2B:3C')).toBeInTheDocument();
   assertCleanCopy(container);
 
@@ -203,7 +203,7 @@ test('III.0.1: Respond controls navigate with the target selected and never exec
   mockApi();
   render(<EndpointDetail hostname="ACME-WS12" org={{ name: 'ACME Corp' }} onBack={() => {}}
     onOpenResponse={onOpenResponse} />);
-  fireEvent.click(await screen.findByRole('button', { name: 'Respond to this host' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Respond to This Host' }));
   expect(onOpenResponse).toHaveBeenCalledWith({ kind: 'host', hostname: 'ACME-WS12' });
 
   fireEvent.click(screen.getByRole('button', { name: 'Processes' }));

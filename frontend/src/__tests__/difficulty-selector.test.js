@@ -30,8 +30,10 @@ beforeEach(() => {
 
 test('offers exactly two experiences with the ruled copy; no SOC Queue, no name field', () => {
   const { container } = render(<DifficultySelector onSelect={jest.fn()} onCancel={jest.fn()} />);
-  expect(screen.getByText('Choose your experience')).toBeInTheDocument();
-  expect(screen.getByText('Select how much guidance you want during the investigation.')).toBeInTheDocument();
+  expect(screen.getByText('Choose Your Experience')).toBeInTheDocument();
+  // owner UI pass (2026-10-12): the modal subtitle is removed -- title +
+  // the two mode rows with their descriptions only
+  expect(screen.queryByText('Select how much guidance you want during the investigation.')).toBeNull();
   const options = screen.getAllByRole('radio');
   expect(options).toHaveLength(2);
   expect(options.map(o => o.textContent.startsWith('Guided') || o.textContent.startsWith('Hardcore')))
@@ -76,7 +78,7 @@ test('Guided opens the catalog picker and selects a scenario by opaque id', asyn
   render(<DifficultySelector onSelect={onSelect} onCancel={jest.fn()} />);
   fireEvent.click(screen.getByRole('button', { name: 'Continue' }));   // Guided is default
   expect(await screen.findByText('Event Logs Cleared on Workstation')).toBeInTheDocument();
-  expect(screen.getByText('Random scenario')).toBeInTheDocument();
+  expect(screen.getByText('Random Scenario')).toBeInTheDocument();
   fireEvent.click(screen.getByText('Unusual HTTPS Traffic'));
   expect(onSelect).toHaveBeenCalledWith('guided', ANALYST_LABEL, 'cat-bbbbbbbbbbbb');
 });
@@ -85,8 +87,8 @@ test('Guided Random selects the random sentinel', async () => {
   const onSelect = jest.fn();
   render(<DifficultySelector onSelect={onSelect} onCancel={jest.fn()} />);
   fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-  await screen.findByText('Random scenario');
-  fireEvent.click(screen.getByText('Random scenario'));
+  await screen.findByText('Random Scenario');
+  fireEvent.click(screen.getByText('Random Scenario'));
   expect(onSelect).toHaveBeenCalledWith('guided', ANALYST_LABEL, 'random');
 });
 
@@ -112,13 +114,14 @@ test('Stage 6 catalog cut: locked entries render as a non-interactive coming-soo
   }));
   render(<DifficultySelector onSelect={onSelect} onCancel={jest.fn()} initialStep="catalog" />);
   expect(await screen.findByText('Playable One')).toBeInTheDocument();
-  // the playable entry is a button; the shelved one is not interactive
   expect(screen.getByRole('button', { name: /Playable One/ })).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: /Shelved One/ })).toBeNull();
+  // owner UI pass (2026-10-12): the greyed-out shelved rows are deleted --
+  // shelved titles render NOWHERE; the coming-soon line stands alone in
+  // the title font as the honest forward signal
+  expect(screen.queryByText('Shelved One')).toBeNull();
   const soon = screen.getByTestId('coming-soon');
-  expect(soon).toHaveTextContent('More scenarios coming soon');
-  expect(soon).toHaveTextContent('Shelved One');
-  fireEvent.click(screen.getByText('Shelved One'));
+  expect(soon).toHaveTextContent('More Scenarios Coming Soon');
+  expect(soon.querySelector('.t-subsection')).not.toBeNull();
   expect(onSelect).not.toHaveBeenCalled();
 });
 

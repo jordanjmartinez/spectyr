@@ -3,7 +3,7 @@
  * the Final-pass Load-new-events action (III.0 item 4).
  *
  * 5.1: deterministic mocked assertions for byte-stable rows and order,
- * atomic replacement, Load new events bound to the executed identity
+ * atomic replacement, Load New Events bound to the executed identity
  * (never the bar text) and existing ONLY beside a nonzero authoritative
  * count, selection persistence by id, and the ruled hidden-selection
  * notice. 5.2 extends this file with the new-events indicator battery.
@@ -126,10 +126,10 @@ const tickPoll = async (ms = 3000) => {
 const countCalls = () => apiFetch.mock.calls.map(c => c[0])
   .filter(p => p.startsWith('/api/events/query/new-count'));
 
-// --- the Load new events action (III.0 item 4): it exists only beside the
+// --- the Load New Events action (III.0 item 4): it exists only beside the
 // authoritative nonzero count, so this battery runs under fake timers ------
 
-describe('Load new events (fake timers)', () => {
+describe('Load New Events (fake timers)', () => {
   beforeEach(() => { jest.useFakeTimers(); });
   afterEach(() => { jest.useRealTimers(); });
 
@@ -138,7 +138,7 @@ describe('Load new events (fake timers)', () => {
     await tickPoll();
   };
 
-  test('Load new events re-executes the executed identity, never the edited bar text', async () => {
+  test('Load New Events re-executes the executed identity, never the edited bar text', async () => {
     renderShell();
     await run('all | * | * | *');
     await arrangeCount();
@@ -146,7 +146,7 @@ describe('Load new events (fake timers)', () => {
       target: { value: 'this is not even lcql' } });
     queryResponses.push(ok(snap([R2, R1], { token: 'tok.two', cutoff: 9 })));
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Load new events' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Load New Events' }));
     });
     const calls = apiFetch.mock.calls.map(c => c[0])
       .filter(p => p.startsWith('/api/events/query?'));
@@ -163,18 +163,18 @@ describe('Load new events (fake timers)', () => {
     expect(screen.queryByRole('button', { name: 'Refresh' })).toBeNull();
     await arrangeCount(3);
     expect(screen.getByTestId('new-events-indicator').textContent)
-      .toBe('3 new events available');
+      .toBe('3 New Events Available');
     // loading lands a fresh snapshot: count and action leave together
     queryResponses.push(ok(snap([R3, R2, R1], { token: 'tok.two', cutoff: 12 })));
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Load new events' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Load New Events' }));
     });
     expect(screen.queryByTestId('new-events-indicator')).toBeNull();
     expect(screen.queryByTestId('load-new-events')).toBeNull();
     expect(screen.getByText(/as of seq #12/)).toBeInTheDocument();
   });
 
-  test('selection persists across Load new events when the inspected id survives', async () => {
+  test('selection persists across Load New Events when the inspected id survives', async () => {
     renderShell();
     await run('all | * | * | *');
     fireEvent.click(results().getByText(/alpha event one/));
@@ -182,7 +182,7 @@ describe('Load new events (fake timers)', () => {
     await arrangeCount();
     queryResponses.push(ok(snap([R3, R2, R1], { token: 'tok.two' })));
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Load new events' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Load New Events' }));
     });
     expect(document.querySelector('pre')).not.toBeNull();   // still open on e1
     expect(screen.queryByText(SELECTED_EVENT_HIDDEN)).toBeNull();
@@ -196,7 +196,7 @@ describe('Load new events (fake timers)', () => {
     await arrangeCount();
     queryResponses.push(ok(snap([R3], { token: 'tok.two' })));
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Load new events' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Load New Events' }));
     });
     // the pane cannot render a hidden event, but the selection is NOT
     // silently dropped and no filter is altered on the player's behalf:
@@ -208,7 +208,7 @@ describe('Load new events (fake timers)', () => {
     await arrangeCount();
     queryResponses.push(ok(snap([R3, R2, R1], { token: 'tok.three' })));
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Load new events' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Load New Events' }));
     });
     expect(document.querySelector('pre')).not.toBeNull();
     expect(screen.queryByText(SELECTED_EVENT_HIDDEN)).toBeNull();
@@ -216,7 +216,7 @@ describe('Load new events (fake timers)', () => {
     await arrangeCount();
     queryResponses.push(ok(snap([R3], { token: 'tok.four' })));
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Load new events' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Load New Events' }));
     });
     expect(screen.getByText(SELECTED_EVENT_HIDDEN)).toBeInTheDocument();
     fireEvent.click(results().getByText(/charlie event three/));
@@ -239,7 +239,7 @@ describe('indicator (fake timers)', () => {
     await tickPoll();
     expect(resultsHtml()).toBe(before);   // zero automatic row movement
     expect(screen.getByTestId('new-events-indicator').textContent)
-      .toBe('6 new events available');
+      .toBe('6 New Events Available');
     expect(screen.getByTestId('pool-growth').textContent).toBe('pool: +9');
   });
 
@@ -259,13 +259,13 @@ describe('indicator (fake timers)', () => {
     await tickPoll();
     const badge = screen.getByTestId('new-events-indicator');
     expect(badge.className).not.toMatch(/opacity-50/);
-    expect(badge.textContent).toBe('4 new events available');
+    expect(badge.textContent).toBe('4 New Events Available');
     // the bar was synced to the canonical text on run; an edit diverges it
     fireEvent.change(screen.getByLabelText('LCQL query'),
       { target: { value: 'all | * | * | * draft' } });
     const stale = screen.getByTestId('new-events-indicator');
     expect(stale.className).toMatch(/opacity-50/);
-    expect(stale.textContent).toBe('4 new events available (last run)');
+    expect(stale.textContent).toBe('4 New Events Available (last run)');
   });
 
   // (The Expanded-search scope-divergence case retired with the state
@@ -273,16 +273,16 @@ describe('indicator (fake timers)', () => {
   // executed scope away from the displayed snapshot's. The text-divergence
   // de-emphasis above remains the honest edited-bar behavior.)
 
-  test('the indicator resets after a deliberate Load new events', async () => {
+  test('the indicator resets after a deliberate Load New Events', async () => {
     renderShell();
     await run('all | * | * | *');
     countResponse = () => ok({ new_count: 5, pool_growth: 8 });
     await tickPoll();
     expect(screen.getByTestId('new-events-indicator').textContent)
-      .toBe('5 new events available');
+      .toBe('5 New Events Available');
     queryResponses.push(ok(snap([R3, R2, R1], { token: 'tok.two', cutoff: 12 })));
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Load new events' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Load New Events' }));
     });
     expect(screen.queryByTestId('new-events-indicator')).toBeNull();
     expect(screen.getByText(/as of seq #12/)).toBeInTheDocument();

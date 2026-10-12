@@ -96,13 +96,13 @@ const Analytics = ({ analystName, setAnalyticsCount, isVisible = true,
         {progress ? (
           <div className="rounded-xl p-4 sm:p-6" style={CARD_STYLE}>
             <h2 className="t-section mb-3">{SESSION_PERFORMANCE_LABEL}</h2>
-            <p className="text-sm text-[#57606a]">
+            <p className="text-sm text-muted">
               Grading appears once you submit an incident. Investigate the queue, triage detections, take response actions, then submit each incident to lock in your call and see how it scored.
             </p>
-            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#57606a]">
-              <span><span className="font-medium text-[#1a2332]">{progress.submitted ?? 0}</span> submitted</span>
-              <span><span className="font-medium text-[#1a2332]">{progress.detections_triaged ?? 0}</span> detections triaged</span>
-              <span><span className="font-medium text-[#1a2332]">{progress.actions_executed ?? 0}</span> actions taken</span>
+            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
+              <span><span className="font-medium text-[#1a2332]">{progress.submitted ?? 0}</span> Submitted</span>
+              <span><span className="font-medium text-[#1a2332]">{progress.detections_triaged ?? 0}</span> Detections Triaged</span>
+              <span><span className="font-medium text-[#1a2332]">{progress.actions_executed ?? 0}</span> Actions Taken</span>
             </div>
           </div>
         ) : (

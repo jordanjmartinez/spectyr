@@ -27,12 +27,12 @@ export const IsolationBadge = ({ isolation }) => (
   isolation === 'isolated' ? (
     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-600 text-white">Isolated</span>
   ) : (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border border-[#d0d7de] text-[#57606a]">Not Isolated</span>
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border border-[#d0d7de] text-muted">Not Isolated</span>
   )
 );
 
 export const OsChip = ({ os }) => (
-  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs border border-[#d0d7de] text-[#57606a] whitespace-nowrap">{os}</span>
+  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs border border-[#d0d7de] text-muted whitespace-nowrap">{os}</span>
 );
 
 // Visual pass V2b/V7: the Windows glyph moved into the one icon system
@@ -162,13 +162,13 @@ const Endpoints = ({ isVisible, resetTrigger, pivotHost,
           <ErrorState onRetry={scope.refetch}>
             Incident scope could not be loaded.
             {scope.data && (
-              <span className="text-[#57606a]"> Displayed rows are from the last successful scope read.</span>
+              <span className="text-muted"> Displayed rows are from the last successful scope read.</span>
             )}
           </ErrorState>
         </div>
       )}
 
-      <p className="text-sm text-[#57606a] mb-2">{online} online &middot; {filtered.length - online} offline</p>
+      <p className="text-sm text-muted mb-2">{online} Online &middot; {filtered.length - online} Offline</p>
 
       <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-x-auto">
         <table className="w-full text-left text-sm">
@@ -188,7 +188,7 @@ const Endpoints = ({ isVisible, resetTrigger, pivotHost,
           </thead>
           <tbody>
             {sorted.length === 0 && (
-              <tr><td colSpan={COLUMNS.length} className="px-4 py-8 text-center text-[#8b949e]">
+              <tr><td colSpan={COLUMNS.length} className="px-4 py-8 text-center text-muted">
                 {scope.rowPolicy === 'loading' ? 'Loading incident scope'
                   : scope.rowPolicy === 'error' ? 'Incident scope could not be loaded.'
                     : rows.length === 0 ? 'No endpoints yet. Hosts appear as scenarios reach the queue.' : 'No endpoints match the search.'}
@@ -204,12 +204,12 @@ const Endpoints = ({ isVisible, resetTrigger, pivotHost,
                     onClick={() => setSelected(r.hostname)}
                     className="inline-flex items-center gap-2 log-mono text-[#16436b] hover:underline"
                   >
-                    <DeviceGlyph deviceKind={ident.deviceKind} size={16} className="text-[#57606a]" />
+                    <DeviceGlyph deviceKind={ident.deviceKind} size={16} className="text-muted" />
                     {r.hostname}
                   </button>
                 </td>
                 <td className="px-3 sm:px-4 py-3">
-                  <span className="inline-flex items-center gap-1.5 text-[#57606a]">
+                  <span className="inline-flex items-center gap-1.5 text-muted">
                     <PlatformBadge platformKey={ident.platformKey} />
                     <span className="text-xs">{DEVICE_LABELS[ident.deviceKind]}</span>
                   </span>
@@ -217,9 +217,9 @@ const Endpoints = ({ isVisible, resetTrigger, pivotHost,
                 <td className="px-3 sm:px-4 py-3"><OsChip os={r.os} /></td>
                 <td className="px-3 sm:px-4 py-3 log-mono whitespace-nowrap">{r.ip}</td>
                 <td className="px-3 sm:px-4 py-3 log-mono whitespace-nowrap">{r.external_ip}</td>
-                <td className="px-3 sm:px-4 py-3 text-[#8b949e]">-</td>
-                <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-[#57606a]">{shortDate(r.first_seen)}</td>
-                <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-[#57606a]">{r.status === 'online' ? 'just now' : shortDate(r.last_seen)}</td>
+                <td className="px-3 sm:px-4 py-3 text-muted">-</td>
+                <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-muted">{shortDate(r.first_seen)}</td>
+                <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-muted">{r.status === 'online' ? 'just now' : shortDate(r.last_seen)}</td>
                 <td className="px-3 sm:px-4 py-3"><StatusBadge status={r.status} /></td>
                 <td className="px-3 sm:px-4 py-3"><IsolationBadge isolation={r.isolation} /></td>
               </tr>

@@ -152,7 +152,7 @@ export const clampPct = (pct, lo = 6, hi = 94) => Math.min(hi, Math.max(lo, pct)
 
 // The factual one-line summary (never a verdict on the activity).
 export const evidenceSummary = (model) =>
-  `${model.total} event${model.total === 1 ? '' : 's'} observed`;
+  `${model.total} Event${model.total === 1 ? '' : 's'} Observed`;
 
 export const evidencePeak = (model) =>
-  (model.peak ? `Peak: ${model.peak.label} · ${model.peak.count} event${model.peak.count === 1 ? '' : 's'}` : '');
+  (model.peak ? `Peak: ${model.peak.label} · ${model.peak.count} Event${model.peak.count === 1 ? '' : 's'}` : '');

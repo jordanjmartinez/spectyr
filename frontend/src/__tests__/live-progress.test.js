@@ -158,7 +158,7 @@ test('the checklist renders the identical line set and copy for different incide
     related={0} ready classification="False Positive" showPrompt />);
   const norm = (lines) => lines.map(l => l.replace(/\d+/g, 'N')
     .replace(/Classification: .*$/, 'Classification: X')
-    .replace('Ready to submit', 'READY').replace('Submit pending', 'READY'));
+    .replace('Ready to Submit', 'READY').replace('Submit Pending', 'READY'));
   const la = stripLines(a.container);
   const lb = stripLines(b.container);
   expect(la).toHaveLength(4);

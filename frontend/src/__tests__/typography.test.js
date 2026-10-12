@@ -141,19 +141,21 @@ test('VD5: technical identifiers wear the token on every workspace; chrome and p
   expect(css.match(/\.t-nav\s*{[^}]*}/)[0]).not.toMatch(/JetBrains/);
 });
 
-test('ruled section labels are sentence case; technical identifiers stay technical', () => {
-  // the ruled label set
-  expect(SESSION_PERFORMANCE_LABEL).toBe('Session performance');
+test('ruled section labels are Title Case (owner capitalization pass); technical identifiers stay technical', () => {
+  // Owner capitalization pass (2026-10-12), superseding the earlier VT
+  // sentence-case ruling: labels, headings, table headers, buttons, and
+  // count labels are Title Case; full sentences stay sentence case.
+  expect(SESSION_PERFORMANCE_LABEL).toBe('Session Performance');
   const dash = fs.readFileSync(path.join(__dirname, '..', 'components', 'IncidentDashboard.jsx'), 'utf8');
-  expect(dash).toContain('Active investigation');
-  expect(dash).not.toContain('>Active Investigation<');
-  expect(dash).toContain('Severity distribution');
-  expect(dash).toContain('Environment status');
-  expect(dash).toContain('Recent results');
+  expect(dash).toContain('Active Investigation');
+  expect(dash).not.toContain('>Active investigation<');
+  expect(dash).toContain('Severity Distribution');
+  expect(dash).toContain('Environment Status');
+  expect(dash).toContain('Recent Results');
   const radar = fs.readFileSync(path.join(__dirname, '..', 'components', 'AttackRadar.jsx'), 'utf8');
-  expect(radar).toContain('Incident ATT&amp;CK profile');   // VA3 card title
+  expect(radar).toContain('Incident ATT&amp;CK Profile');   // VA3 card title
   const scores = fs.readFileSync(path.join(__dirname, '..', 'components', 'ScoreSections.jsx'), 'utf8');
-  expect(scores).toContain('Score summary');
+  expect(scores).toContain('Score Summary');
   // technical identifiers are never humanized; incident ids render
   // verbatim through the shared Inter badge (VD8 identity ruling), and
   // technique ids stay mono elsewhere (see the VD5 spot contract)

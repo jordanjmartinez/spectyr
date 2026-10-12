@@ -107,7 +107,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
 
   const inputClass = "w-full bg-white text-xs sm:text-sm text-[#1a2332] placeholder-gray-600 border border-[#e2e6ea] focus:border-[#8b949e] rounded-md px-3 py-2 outline-none transition-colors";
   const requiredMark = (fieldName) => (
-    <span className={errors[fieldName] ? 'text-red-400' : 'text-[#6e7781]'}> *</span>
+    <span className={errors[fieldName] ? 'text-red-400' : 'text-muted'}> *</span>
   );
 
   return (
@@ -119,7 +119,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
           type="button"
           onClick={onCancel}
           aria-label="Close"
-          className="absolute top-0 right-0 -mt-1 -mr-1 p-1 text-[#57606a] hover:text-[#1a2332] transition-colors"
+          className="absolute top-0 right-0 -mt-1 -mr-1 p-1 text-muted hover:text-[#1a2332] transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -207,7 +207,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
             >
               <div className="flex flex-nowrap items-center gap-1.5 flex-1 overflow-hidden">
                 {mitreTacticsSelected.length === 0 ? (
-                  <span className="text-[#8b949e]">Select tactics...</span>
+                  <span className="text-muted">Select tactics...</span>
                 ) : (
                   <>
                     {mitreTacticsSelected.slice(0, VISIBLE_MITRE_CHIPS).map(tactic => (
@@ -221,7 +221,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
                             e.stopPropagation();
                             setMitreTacticsSelected(prev => prev.filter(t => t !== tactic));
                           }}
-                          className="text-[#57606a] hover:text-[#1a2332] cursor-pointer flex-shrink-0"
+                          className="text-muted hover:text-[#1a2332] cursor-pointer flex-shrink-0"
                           aria-label={`Remove ${tactic}`}
                         >
                           ×
@@ -229,7 +229,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
                       </span>
                     ))}
                     {mitreTacticsSelected.length > VISIBLE_MITRE_CHIPS && (
-                      <span className="text-[11px] text-[#57606a] flex-shrink-0">
+                      <span className="text-[11px] text-muted flex-shrink-0">
                         +{mitreTacticsSelected.length - VISIBLE_MITRE_CHIPS} more
                       </span>
                     )}
@@ -237,7 +237,7 @@ const IncidentReportForm = ({ initialData = {}, onSubmit, onCancel, submitting, 
                 )}
               </div>
               <svg
-                className={`w-4 h-4 text-[#57606a] flex-shrink-0 transition-transform ${mitreDropdownOpen ? 'rotate-180' : ''}`}
+                className={`w-4 h-4 text-muted flex-shrink-0 transition-transform ${mitreDropdownOpen ? 'rotate-180' : ''}`}
                 fill="none" stroke="currentColor" viewBox="0 0 24 24"
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

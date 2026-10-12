@@ -65,10 +65,10 @@ const ActionHistory = ({ history: rawHistory }) => {
         <h2 className="t-section mb-4">Post-Incident Review</h2>
         <div>
           <div className="flex flex-col items-center justify-center py-8 min-h-[320px]">
-            <svg className="w-8 h-8 text-[#8b949e] mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg className="w-8 h-8 text-muted mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
             </svg>
-            <p className="text-sm text-[#6e7781]">Your post-incident review will appear after your first triage.</p>
+            <p className="text-sm text-muted">Your post-incident review will appear after your first triage.</p>
           </div>
         </div>
       </div>
@@ -108,7 +108,7 @@ const ActionHistory = ({ history: rawHistory }) => {
                   >
                     <td className="w-10 pl-0 pr-1 sm:pr-2 py-4">
                       <svg
-                        className={`w-5 h-5 text-[#6e7781] hover:text-[#1a2332] transition-transform duration-300 ease-in-out ${
+                        className={`w-5 h-5 text-muted hover:text-[#1a2332] transition-transform duration-300 ease-in-out ${
                           isExpanded ? 'rotate-180' : 'rotate-0'
                         }`}
                         fill="none" stroke="currentColor" viewBox="0 0 24 24"
@@ -136,7 +136,7 @@ const ActionHistory = ({ history: rawHistory }) => {
                         {review?.what_is_it?.title || item.true_category || 'Unknown'}
                       </p>
                       {formatDuration(item.time_to_resolve_seconds) && (
-                        <p className="text-xs sm:text-sm text-[#57606a] mt-0.5">
+                        <p className="text-xs sm:text-sm text-muted mt-0.5">
                           Resolved in {formatDuration(item.time_to_resolve_seconds)}
                         </p>
                       )}
@@ -216,7 +216,7 @@ const ActionHistory = ({ history: rawHistory }) => {
                                       {review.indicators.map((ind, i) => (
                                         <p key={i} className="text-sm sm:text-base text-[#1a2332]">
                                           <span className="text-[#1a2332] font-medium">{ind.indicator}</span>
-                                          <span className="text-[#6e7781] mx-1">&middot;</span>
+                                          <span className="text-muted mx-1">&middot;</span>
                                           {ind.explanation}
                                         </p>
                                       ))}

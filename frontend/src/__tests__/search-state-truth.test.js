@@ -3,7 +3,7 @@
  *
  * The five distinguishable states, each labeled with its ruled sentence:
  *  - initial evidence (a prepared entry the player never wrote) is NEVER
- *    labeled a player query: "Initial incident evidence" (case-scoped) /
+ *    labeled a player query: "Initial Incident Evidence" (case-scoped) /
  *    "Initial evidence" (the caseless prepared entry, flagged variant)
  *  - an executed search is identified by its READABLE filter expression
  *    ("Results for: X"; a match-all filter reads "all events") with the
@@ -91,7 +91,7 @@ test('a match-all player search reads "Results for: all events", never a bare st
     .toBe(resultsFor(ALL_EVENTS_LABEL));
 });
 
-test('a prepared incident entry is labeled "Initial incident evidence", never a player query; loading new events preserves it; a player run replaces it', async () => {
+test('a prepared incident entry is labeled "Initial Incident Evidence", never a player query; loading new events preserves it; a player run replaces it', async () => {
   jest.useFakeTimers();
   try {
     await act(async () => {
@@ -103,12 +103,12 @@ test('a prepared incident entry is labeled "Initial incident evidence", never a 
     expect(queryCalls().pop()).toBe('/api/events/query?q=all | ACME-WS10 | * | *&scope=INC-9368');
     expect(screen.getByTestId('results-label').textContent).toBe(INITIAL_INCIDENT_EVIDENCE);
     expect(screen.getByTestId('results-label').textContent).not.toContain('Results for');
-    // Load new events re-executes the displayed identity: still initial evidence
+    // Load New Events re-executes the displayed identity: still initial evidence
     countResponse = () => ok({ new_count: 2, pool_growth: 2 });
     await act(async () => { jest.advanceTimersByTime(3000); });
     await act(async () => {});
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Load new events' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Load New Events' }));
     });
     expect(screen.getByTestId('results-label').textContent).toBe(INITIAL_INCIDENT_EVIDENCE);
     // the player authors a run: the label becomes an executed search

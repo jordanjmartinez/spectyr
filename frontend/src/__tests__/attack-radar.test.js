@@ -126,8 +126,9 @@ test('after submission the profile renders with markers, rings, and the exact to
 
 test('card copy is the incident profile, never a framework-coverage claim', () => {
   const { container } = render(<AttackRadar incidentId="INC-8340" submitted mappings={EXAMPLE} />);
-  expect(screen.getByText('Incident ATT&CK profile')).toBeInTheDocument();
-  expect(screen.getByText('Tactics represented in this investigation')).toBeInTheDocument();
+  expect(screen.getByText('Incident ATT&CK Profile')).toBeInTheDocument();
+  // owner UI pass (2026-10-12): card subtitles are stripped
+  expect(screen.queryByText('Tactics represented in this investigation')).toBeNull();
   expect(container.textContent).toMatch(/Relative to the strongest tactic in this incident\./);
   expect(container.textContent).not.toMatch(/catalog|coverage of|Enterprise ATT&CK v|represented \/ total/i);
   expect(container.textContent).not.toMatch(/mastery|session performance|adversar/i);

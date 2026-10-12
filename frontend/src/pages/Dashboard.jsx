@@ -18,12 +18,15 @@ import { NAV_ICONS, NAV_STROKE, ChromeIcons } from '../components/icons';
 import AppHeader from '../components/AppHeader';
 import BrandLockup from '../components/BrandLockup';
 import StartButton, { CTA_PILL } from '../components/StartButton';
-import { PAGE_SUBTITLE } from '../components/uiCopy';
 
 // Stage 6 playtest fix: the reset POST is bounded. A stalled request aborts
 // after this long and surfaces an error in the dialog instead of holding it
 // on "Resetting..." forever.
 const RESET_TIMEOUT_MS = 10000;
+
+// Owner sidebar redesign (2026-10-12): the pin preference persists per
+// browser. Chrome preference only -- never session or grading state.
+const RAIL_PIN_KEY = 'spectyr_rail_pinned';
 
 const Dashboard = () => {
   const [groupedAlertCount, setGroupedAlertCount] = useState(0);
@@ -73,6 +76,30 @@ const Dashboard = () => {
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
   }, []);
+
+  // Owner sidebar redesign (2026-10-12): the lg-and-up watcher (pinning
+  // applies only where the expanded panel fits in flow) plus the pin/hover
+  // state pair behind the floating-panel rail.
+  const [isLgUp, setIsLgUp] = useState(() =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(min-width: 1024px)').matches
+      : true
+  );
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return undefined;
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const onChange = (e) => setIsLgUp(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  const [railPinned, setRailPinnedState] = useState(() => {
+    try { return window.localStorage.getItem(RAIL_PIN_KEY) !== '0'; } catch (e) { return true; }
+  });
+  const setRailPinned = (v) => {
+    setRailPinnedState(v);
+    try { window.localStorage.setItem(RAIL_PIN_KEY, v ? '1' : '0'); } catch (e) { /* storage unavailable */ }
+  };
+  const [railHover, setRailHover] = useState(false);
   const [showDifficultyModal, setShowDifficultyModal] = useState(false);
   const [practiceAnother, setPracticeAnother] = useState(false); // opens picker at the Guided catalog
   const [showFailureModal, setShowFailureModal] = useState(false);
@@ -357,39 +384,71 @@ const Dashboard = () => {
   // duplicated mode check.
   const hintActive = simActive && hintsAllowed(gameMode);
 
-  // Stage 6 playtest fix (rail): ONE source for the rail content, rendered
-  // twice -- the md+ sidebar (icons centered below lg, labels expand at lg;
-  // previously px-3 left-aligned icons hugged the left of the 96px column)
-  // and the mobile off-canvas drawer (always expanded). A plain render
+  // Owner sidebar redesign (2026-10-12): the desktop rail is a floating
+  // panel with pin + hover semantics.
+  //   pinned (lg+ default)  expanded in flow, stays open
+  //   unpinned              icon-only rail; hover (or keyboard focus)
+  //                         expands it OVER the content; leaving collapses
+  //   below lg              always the icon rail with hover expansion (a
+  //                         pinned 288px column would crush the content)
+  //   below md              the drawer replaces the rail entirely
+  const pinnedExpanded = isLgUp && railPinned;
+  const railExpanded = pinnedExpanded || railHover;
+  const railControl = !isLgUp ? null : pinnedExpanded ? (
+    <button
+      type="button"
+      onClick={() => { setRailPinned(false); setRailHover(false); }}
+      aria-label="Collapse sidebar"
+      title="Collapse sidebar"
+      className="shrink-0 flex items-center justify-center w-8 h-8 rounded-md text-gray-400 hover:bg-white/5 hover:text-white transition-colors"
+    >
+      <ChromeIcons.PanelLeftClose size={18} strokeWidth={NAV_STROKE} aria-hidden="true" />
+    </button>
+  ) : (
+    <button
+      type="button"
+      onClick={() => setRailPinned(true)}
+      aria-label="Pin sidebar open"
+      title="Pin sidebar open"
+      className="shrink-0 flex items-center justify-center w-8 h-8 rounded-md text-gray-400 hover:bg-white/5 hover:text-white transition-colors"
+    >
+      <ChromeIcons.Pin size={18} strokeWidth={NAV_STROKE} aria-hidden="true" />
+    </button>
+  );
+
+  // ONE source for the rail content, rendered by the desktop floating
+  // panel (expansion driven by the pin/hover state above, never a
+  // breakpoint) and the below-md drawer (always expanded). A plain render
   // function, never a nested component, so children keep their identity
-  // across Dashboard renders.
-  const renderRail = (expanded, close = () => {}) => {
-    const align = expanded ? 'justify-start' : 'justify-center lg:justify-start';
-    const label = expanded ? '' : 'hidden lg:inline';
+  // across renders. opts.control is the collapse/pin slot (desktop only);
+  // opts.timer mounts the ONE desktop GameTimer (the drawer never does).
+  const renderRail = (expanded, close = () => {}, { control = null, timer = false } = {}) => {
+    const align = expanded ? 'justify-start' : 'justify-center';
+    const label = expanded ? '' : 'hidden';
+    const pad = expanded ? 'px-3' : 'px-2';
     return (
       <>
-        {/* VC3 (final lockup correction, cumulative over VC1-VC2) + VD6:
-            the brand cell of the unified 68px shell row renders the ONE
-            shared BrandLockup (68px ghost + 30px wordmark; sizing and
-            face live on the component and its shared brand token).
-            Vertical cell padding is zero so the full-size lockup fits
-            the fixed row without clipping. VISIBLE branding only: no
-            glow, bevel, gradient, animation, or copied shapes; the
-            lockup keeps the app's existing home navigation, so it is
-            not a dead control. No account, status, notification, or
-            profile information is added. Internal identifiers (asset
-            filenames, storage keys, API paths, package names) are
-            untouched. */}
-        <Link
-          to="/"
-          title="Back to home"
-          className={`flex items-center ${align} h-[68px] px-2 lg:px-3 border-b border-white/10 hover:bg-white/5 transition-colors`}
-        >
-          <BrandLockup wordmarkClass={label} />
-          <span className="sr-only">SPECTR home</span>
-        </Link>
+        {/* Brand row. Owner redesign + shrink instruction (2026-10-12):
+            the floating panel wears the COMPACT lockup (40px ghost,
+            text-lg wordmark) in a 56px row -- the 68px/30px lockup was
+            sized for the retired full-bleed shell row and crowded the
+            collapse/pin control. The brand link is CONTENT-WIDTH so the
+            control sits beside the title; divider and real home
+            navigation stay. Docs shells keep the ruled VD6 sizes via the
+            lockup's default variant. */}
+        <div className={`flex items-center h-14 shrink-0 border-b border-white/10 ${expanded ? `${pad} justify-between gap-2` : `${pad} justify-center`}`}>
+          <Link
+            to="/"
+            title="Back to Home"
+            className="flex items-center shrink-0 rounded-md hover:bg-white/5 transition-colors"
+          >
+            <BrandLockup size="sm" wordmarkClass={label} />
+            <span className="sr-only">SPECTR home</span>
+          </Link>
+          {expanded && control}
+        </div>
 
-        <nav className="flex-1 py-3 px-2 lg:px-3 flex flex-col gap-1">
+        <nav className={`flex-1 py-3 ${pad} flex flex-col gap-1 min-h-0`}>
           {tabs.map(t => {
             const active = view === t.key;
             const Icon = NAV_ICONS[t.key];
@@ -398,35 +457,37 @@ const Dashboard = () => {
                 key={t.key}
                 onClick={() => { setView(t.key); if (t.key === 'incidents') setIncidentBadge(0); close(); }}
                 title={t.label}
-                className={`group relative flex items-center ${align} gap-3 rounded-md px-2 lg:px-3 py-2.5 text-sm font-medium transition-colors ${
+                className={`group relative flex items-center ${align} gap-3 rounded-md ${pad} py-2.5 text-sm font-medium transition-colors ${
                   active ? 'bg-white/10 text-white' : 'text-gray-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
                 {active && <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-white" />}
                 <Icon size={19} strokeWidth={NAV_STROKE} aria-hidden="true" className="shrink-0" />
-                <span className={`${label} flex-1 text-left`}>{t.label}</span>
+                <span className={`${label} flex-1 text-left whitespace-nowrap`}>{t.label}</span>
                 {t.count > 0 && <span className={`${label} text-xs text-gray-400`}>{t.count}</span>}
-                {t.count > 0 && !expanded && <span className="lg:hidden absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-white/70" />}
+                {t.count > 0 && !expanded && <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-white/70" />}
               </button>
             );
           })}
         </nav>
 
-        <div className="px-2 lg:px-3 mb-1">
+        <div className={`${pad} mb-1`}>
           <Link
             to="/docs"
             title="Documentation"
-            className={`flex items-center ${align} gap-3 rounded-md px-2 lg:px-3 py-2.5 text-sm font-medium text-gray-400 hover:bg-white/5 hover:text-white transition-colors`}
+            className={`flex items-center ${align} gap-3 rounded-md ${pad} py-2.5 text-sm font-medium text-gray-400 hover:bg-white/5 hover:text-white transition-colors`}
           >
             <ChromeIcons.BookOpen size={19} strokeWidth={NAV_STROKE} aria-hidden="true" className="shrink-0" />
-            <span className={label}>Docs</span>
+            <span className={`${label} whitespace-nowrap`}>Docs</span>
           </Link>
         </div>
 
-        <div className="mt-auto p-2 lg:p-3 border-t border-white/10 flex flex-col gap-2">
-          {/* The desktop timer instance; on mobile the ONE instance lives in
-              the header slot so it stays visible with the drawer closed. */}
-          {!expanded && !isMobileViewport && (
+        <div className={`mt-auto ${expanded ? 'p-3' : 'p-2'} border-t border-white/10 flex flex-col gap-2`}>
+          {/* The ONE desktop timer instance (opts.timer; the drawer never
+              carries it; on mobile it lives in the header slot). Mounted
+              independent of `expanded` so pin/hover toggles never reset
+              its polling. */}
+          {timer && (
             <GameTimer onTimeout={handleTimeout} disabled={showFailureModal} />
           )}
           {simActive ? (
@@ -461,14 +522,26 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen flex bg-[#f6f8fa] text-[#1a2332]">
-      {/* Navy nav rail */}
-      {/* VC4: the rail widens (w-24 collapsed / w-72 expanded) so the
-          full-size ghost never clips the lockup (68px since VD6).
-          Stage 6 playtest fix: hidden below md -- a permanent 96px column
-          ate a quarter of a 390px viewport; the drawer below replaces it. */}
-      <aside className="sticky top-0 self-start h-screen w-24 lg:w-72 shrink-0 bg-[#101218] text-gray-300 hidden md:flex flex-col z-30">
-        {renderRail(false)}
-      </aside>
+      {/* Desktop floating sidebar (owner redesign 2026-10-12): a rounded
+          panel inset from the viewport edges, never edge-to-edge. The
+          outer div holds FLOW width (content never sits under the pinned
+          panel); the fixed inner panel animates its own width, so an
+          unpinned hover expansion overlays the content instead of
+          reflowing it. Widths: w-24 icon rail / w-60 expanded (slimmed
+          with the compact lockup per the owner's follow-up; the 40px
+          ghost never clips). Below md the drawer replaces the rail
+          (Stage 6 playtest fix 6). */}
+      <div className={`hidden md:block shrink-0 transition-[width] duration-200 ${pinnedExpanded ? 'w-[16.5rem]' : 'w-[7.5rem]'}`}>
+        <aside
+          onMouseEnter={() => setRailHover(true)}
+          onMouseLeave={() => setRailHover(false)}
+          onFocus={() => setRailHover(true)}
+          onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setRailHover(false); }}
+          className={`fixed left-3 top-3 bottom-3 z-30 rounded-2xl bg-[#101218] text-gray-300 flex flex-col shadow-xl transition-[width] duration-200 ${railExpanded ? 'w-60' : 'w-24'}`}
+        >
+          {renderRail(railExpanded, () => {}, { control: railControl, timer: !isMobileViewport })}
+        </aside>
+      </div>
 
       {/* Mobile off-canvas drawer (below md), opened by the header hamburger */}
       {mobileNavOpen && (
@@ -476,7 +549,7 @@ const Dashboard = () => {
           <div className="absolute inset-0 bg-black/70" onClick={() => setMobileNavOpen(false)} />
           <aside
             aria-label="Navigation"
-            className="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-[#101218] text-gray-300 flex flex-col shadow-2xl animate-drawerIn"
+            className="absolute inset-y-0 left-0 w-60 max-w-[85vw] rounded-r-2xl bg-[#101218] text-gray-300 flex flex-col shadow-2xl animate-drawerIn"
           >
             {renderRail(true, () => setMobileNavOpen(false))}
           </aside>
@@ -493,9 +566,10 @@ const Dashboard = () => {
             workspace title + the ghost avatar with its real-controls
             menu. No mode or analyst name in the shell; no case context
             here (the pinned case line lives on the working surfaces). */}
+        {/* Owner UI pass (2026-10-12): the per-tab subtitle line is
+            retired; the workspace title stands alone. */}
         <AppHeader
           title={(tabs.find(t => t.key === view) || {}).label || 'Dashboard'}
-          subtitle={PAGE_SUBTITLE[view]}
           gameMode={gameMode}
           analystName={analystName}
           simActive={simActive}
@@ -581,14 +655,14 @@ const Dashboard = () => {
               type="button"
               onClick={dismissResetModal}
               aria-label="Close"
-              className="absolute top-3 right-3 p-1 text-[#57606a] hover:text-[#1a2332] transition-colors"
+              className="absolute top-3 right-3 p-1 text-muted hover:text-[#1a2332] transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
             <h3 className="text-lg font-semibold text-[#1a2332] mb-4">Reset Simulation</h3>
-            <p className="text-[#57606a] mb-6">
+            <p className="text-muted mb-6">
               This will clear all events and incidents. Your progress will be reset. This action cannot be undone.
             </p>
             {resetError && (
@@ -599,7 +673,7 @@ const Dashboard = () => {
             <div className="flex justify-end gap-2">
               <button
                 onClick={dismissResetModal}
-                className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-white hover:bg-[#eef1f4] text-[#57606a] border-[#d0d7de] focus:outline-none focus:ring-2 focus:ring-[#8b949e]"
+                className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-white hover:bg-[#eef1f4] text-muted border-[#d0d7de] focus:outline-none focus:ring-2 focus:ring-[#8b949e]"
               >
                 Cancel
               </button>
@@ -637,7 +711,7 @@ const Dashboard = () => {
               type="button"
               onClick={() => setShowSimulateModal(false)}
               aria-label="Close"
-              className="absolute top-3 right-3 p-1 text-[#57606a] hover:text-[#1a2332] transition-colors"
+              className="absolute top-3 right-3 p-1 text-muted hover:text-[#1a2332] transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -645,13 +719,13 @@ const Dashboard = () => {
             </button>
             <h3 className="text-lg font-semibold text-[#1a2332] mb-4">Simulation Active</h3>
             <div className="mb-5" style={{ height: '1px', background: 'linear-gradient(to right, rgba(0,0,0,0.08), transparent)' }} />
-            <p className="text-[#57606a] mb-6">
+            <p className="text-muted mb-6">
               A simulation session is already active. Use <span className="text-[#1a2332] font-medium">Reset Simulation</span> to start fresh.
             </p>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowSimulateModal(false)}
-                className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-white hover:bg-[#eef1f4] text-[#57606a] border-[#d0d7de] focus:outline-none focus:ring-2 focus:ring-[#8b949e]"
+                className="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium rounded-md border transition bg-white hover:bg-[#eef1f4] text-muted border-[#d0d7de] focus:outline-none focus:ring-2 focus:ring-[#8b949e]"
               >
                 Cancel
               </button>

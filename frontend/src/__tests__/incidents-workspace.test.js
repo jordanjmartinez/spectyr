@@ -59,7 +59,7 @@ test('renders the workspace: Active/Ready/Completed views + search + rows', asyn
 test('selecting a ready incident shows briefing + the gated Submit control (graded control home)', async () => {
   render(<Incidents gameMode="training" activeIncidentId="INC-4000" />);
   expect(await screen.findByText('brief D')).toBeInTheDocument();          // detail-only content
-  expect(screen.getByText('Detections reviewed: 3 of 3')).toBeInTheDocument();
+  expect(screen.getByText('Detections Reviewed: 3 of 3')).toBeInTheDocument();
   // A3.4 (F4b): Submit renders once triage is complete but stays disabled
   // until a classification is selected; the observable line names the step.
   expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled();
@@ -77,7 +77,7 @@ test('an open (not-ready) incident shows the observable readiness message', asyn
   expect(await screen.findByText(/2 detections still need Promote or Dismiss/)).toBeInTheDocument();
 });
 
-test('a submitted incident renders the Case Closed summary with the Review what you learned path', async () => {
+test('a submitted incident renders the Case Closed summary with the Review What You Learned path', async () => {
   // 5.4 translation of the retired "View Post-Incident Review" control: the
   // completed pane now renders the Case Closed summary inline (moment +
   // grade + achievements) and the path into the Metrics Learning Review.
@@ -85,7 +85,7 @@ test('a submitted incident renders the Case Closed summary with the Review what 
   render(<Incidents gameMode="training" activeIncidentId="INC-3000"
     onOpenLearningReview={onOpenLearningReview} />);
   expect(await screen.findByText('Case Closed: INC-3000')).toBeInTheDocument();
-  const btn = await screen.findByRole('button', { name: 'Review what you learned' });
+  const btn = await screen.findByRole('button', { name: 'Review What You Learned' });
   fireEvent.click(btn);
   expect(onOpenLearningReview).toHaveBeenCalledWith('INC-3000');
 });
@@ -122,11 +122,11 @@ test('issues no state-changing (POST) call on render', async () => {
 test('A1-B.3.2 (C1): the workspace selector drives the checklist Classification line before Submit', async () => {
   render(<Host gameMode="soc_queue" activeIncidentId="INC-2000" />);
   await screen.findByText('brief B');
-  expect(screen.getByText('Classification: not selected')).toBeInTheDocument();
+  expect(screen.getByText('Classification: Not Selected')).toBeInTheDocument();
   const ws = screen.getByTestId('workspace-classification');
   fireEvent.click(within(ws).getByText('False Positive'));
   expect(screen.getByText('Classification: False Positive')).toBeInTheDocument();
-  expect(screen.queryByText('Classification: not selected')).toBeNull();
+  expect(screen.queryByText('Classification: Not Selected')).toBeNull();
   // local input only: no state-changing call fired
   const posts = apiFetch.mock.calls.filter(([, o]) => o && o.method && o.method !== 'GET');
   expect(posts).toHaveLength(0);
@@ -138,7 +138,7 @@ test('C1 (F4a): the workspace threat path reveals the inline category step and c
   const ws = screen.getByTestId('workspace-classification');
   fireEvent.click(within(ws).getByText('True Positive'));
   // a threat verdict without a category is not yet a valid classification
-  expect(screen.getByText('Classification: not selected')).toBeInTheDocument();
+  expect(screen.getByText('Classification: Not Selected')).toBeInTheDocument();
   fireEvent.click(within(ws).getByText('Malware'));
   expect(screen.getByText('Classification: Malware')).toBeInTheDocument();
 });
@@ -148,9 +148,9 @@ test('A3.4 (F4b): Submit opens the bare confirmation from the workspace selectio
   await screen.findByText('brief D');
   const checklist = () => within(screen.getByTestId('incident-checklist'));
   expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled();
-  expect(checklist().getByText('Submit pending')).toBeInTheDocument();
+  expect(checklist().getByText('Submit Pending')).toBeInTheDocument();
   fireEvent.click(within(screen.getByTestId('workspace-classification')).getByText('False Positive'));
-  expect(checklist().getByText('Ready to submit')).toBeInTheDocument();
+  expect(checklist().getByText('Ready to Submit')).toBeInTheDocument();
   const submit = screen.getByRole('button', { name: 'Submit' });
   expect(submit).not.toBeDisabled();
   fireEvent.click(submit);
@@ -166,11 +166,11 @@ test('A3.4 (A3-OD-3): every Ready surface derives from the one state (view count
   expect(screen.getByText(/Ready 0/)).toBeInTheDocument();
   // the id renders in the list row AND the detail header; [0] is the row
   const row = screen.getAllByText('INC-4000')[0].closest('button');
-  expect(row.textContent.endsWith('Submit pending')).toBe(true);
+  expect(row.textContent.endsWith('Submit Pending')).toBe(true);
   fireEvent.click(within(screen.getByTestId('workspace-classification')).getByText('False Positive'));
   expect(screen.getByText(/Ready 1/)).toBeInTheDocument();
   expect(row.textContent.endsWith('Ready')).toBe(true);
-  expect(within(screen.getByTestId('incident-checklist')).getByText('Ready to submit')).toBeInTheDocument();
+  expect(within(screen.getByTestId('incident-checklist')).getByText('Ready to Submit')).toBeInTheDocument();
 });
 
 test('C1 (F4a): no workspace selector before the roster seals', async () => {
@@ -190,7 +190,7 @@ test('Practice Another (Guided) warns, cancels back, and calls back on confirm',
   expect(screen.queryByText(/clears the current Guided run/)).toBeNull();
   expect(onPracticeAnother).not.toHaveBeenCalled();
   fireEvent.click(screen.getByText('Practice Another'));
-  fireEvent.click(screen.getByText('Clear and pick another'));       // confirm
+  fireEvent.click(screen.getByText('Clear and Pick Another'));       // confirm
   expect(onPracticeAnother).toHaveBeenCalled();
 });
 
