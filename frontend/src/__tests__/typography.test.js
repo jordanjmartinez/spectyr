@@ -152,8 +152,8 @@ test('ruled section labels are Title Case (owner capitalization pass); technical
   expect(dash).toContain('Severity Distribution');
   expect(dash).toContain('Environment Status');
   expect(dash).toContain('Recent Results');
-  const radar = fs.readFileSync(path.join(__dirname, '..', 'components', 'AttackRadar.jsx'), 'utf8');
-  expect(radar).toContain('Incident ATT&amp;CK Profile');   // VA3 card title
+  const matrix = fs.readFileSync(path.join(__dirname, '..', 'components', 'AttackMatrix.jsx'), 'utf8');
+  expect(matrix).toContain('ATT&amp;CK Matrix');   // owner matrix redesign card title
   const scores = fs.readFileSync(path.join(__dirname, '..', 'components', 'ScoreSections.jsx'), 'utf8');
   expect(scores).toContain('Score Summary');
   // technical identifiers are never humanized; incident ids render

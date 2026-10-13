@@ -1,16 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch } from '../api';
 import {
-  toReview, SUBMIT_PENDING, MODE_LABEL, TELEMETRY_LOADING,
-  detectionsReviewed, responseActionsTaken, CLASSIFICATION_NOT_SELECTED,
-  classificationSelected, READY_TO_SUBMIT, SESSION_PERFORMANCE_LABEL,
+  toReview, SUBMIT_PENDING, MODE_LABEL,
+  detectionsReviewed, SESSION_PERFORMANCE_LABEL,
 } from './uiCopy';
-import { submissionReady, validClassification } from './submissionReady';
+import { submissionReady } from './submissionReady';
 import {
   severityDot, gradeColor, CARD_STYLE, IncidentIdBadge, SeverityBadge, ModeBadge,
 } from './ui';
 import { platformFor, PLATFORM_LABELS, DEVICE_LABELS } from './icons';
-import AttackRadar from './AttackRadar';
+import AttackMatrix from './AttackMatrix';
 import EvidenceActivity from './EvidenceActivity';
 import { descentSessionAll } from './lcqlPivots';
 
@@ -143,8 +142,6 @@ const IncidentDashboard = ({
   }, [completedKey]);
 
   const sessionGrade = session?.state === 'submitted' ? session.grading?.composite : null;
-  const queueLength = data.queue_length || 0;
-  const isGuided = gameMode === 'guided' || gameMode === 'training';
   const online = (env || []).filter(e => e.status === 'online').length;
   const offline = (env || []).length - online;
 
@@ -247,26 +244,22 @@ const IncidentDashboard = ({
     .sort((a, b) => String(b.submitted_at || '').localeCompare(String(a.submitted_at || '')));
   const latest = completedSorted[0] || null;
 
-  // VD3 (visual correction section 4): the ATT&CK profile is disclosed
-  // only across the submission boundary. An ACTIVE focus incident locks
-  // the card (no mappings are derived for it at all); with no active
-  // focus, the latest SUBMITTED incident's profile renders from its
-  // frozen record (the sealed roster ids fetched once per submitted id,
-  // joined to the sanitized feed's mitre tags -- both immutable for the
-  // session, never the answer key).
-  const profileIncidentId = focus ? focusId : (latest?.incident_id || null);
-  const profileSubmitted = !focus && !!latest;
-  const profileRecord = profileSubmitted ? records[latest.incident_id] : null;
-  const profileMappings = profileSubmitted
-    ? (profileRecord
-      ? feed.filter(d => profileRecord.rosterIds.has(d.id) && d.mitre && d.mitre.id)
-          .map(d => ({ id: d.mitre.id, tactic: d.mitre.tactic, name: d.mitre.name }))
-      : null)   // frozen record still arriving -> the card's loading line
-    : null;
+  // Owner matrix redesign (2026-10-12), SUPERSEDING the VD3 submission
+  // lock: the ATT&CK Matrix renders the full corpus grid at all times and
+  // highlights the CURRENT investigation's observable technique tags (the
+  // focus incident's scope detections' sanitized mitre ids -- each already
+  // visible on the Detections surface in every mode). With no active
+  // focus, the latest submitted incident's frozen roster highlights. The
+  // answer key never feeds this card in any state.
+  const matrixIncidentId = focus ? focusId : (latest?.incident_id || null);
+  const tagRows = (ids) => feed
+    .filter(d => ids.has(d.id) && d.mitre && d.mitre.id)
+    .map(d => ({ id: d.mitre.id, tactic: d.mitre.tactic, name: d.mitre.name }));
+  const matrixMappings = focus
+    ? (focusScope.forId === focusId && focusScope.ids ? tagRows(focusScope.ids) : [])
+    : (latest && records[latest.incident_id] ? tagRows(records[latest.incident_id].rosterIds) : []);
 
   const triage = focus?.triage || { total: 0, triaged: 0 };
-  const focusChosen = focus ? chosen[focus.incident_id] : null;
-  const focusReady = focus ? submissionReady(focus, chosen) : false;
 
   return (
     <div className="space-y-4">
@@ -320,19 +313,14 @@ const IncidentDashboard = ({
                     />
                   </div>
                 )}
-                <div className="text-xs text-muted space-y-0.5">
-                  <p>{focus.sealed ? detectionsReviewed(triage.triaged, triage.total) : TELEMETRY_LOADING}</p>
-                  <p>{validClassification(focusChosen)
-                    ? classificationSelected(focusChosen.category)
-                    : CLASSIFICATION_NOT_SELECTED}</p>
-                  <p>{responseActionsTaken(focus.related_actions ?? 0)}</p>
-                  <p className="text-muted">{focus.sealed && focusReady ? READY_TO_SUBMIT : readinessChip(focus)}</p>
-                  {/* VH: the queue count is one compact line, never a
-                      full-width banner (Guided has no queue). */}
-                  {!isGuided && queueLength > 0 && (
-                    <p className="text-muted">{data.resolved_count} of {queueLength} Resolved</p>
-                  )}
-                </div>
+                {/* Owner UI pass (2026-10-12): the detail lines are
+                    removed -- Detections Reviewed, Classification,
+                    Response Actions Taken, and the readiness chip are
+                    redundant with the KPI strip above (and the workspace
+                    owns them); the VH queue-count line goes with them.
+                    The card keeps identity + title + Resume. The progress
+                    bar stays as the one glanceable visual; its accessible
+                    label still carries the exact reviewed count. */}
                 <button
                   type="button"
                   onClick={() => openInIncidents(focus.incident_id)}
@@ -468,17 +456,14 @@ const IncidentDashboard = ({
             )}
           </div>
 
-          {/* D. The incident ATT&CK profile (VA3 + VD3): the smaller
-              near-square SECONDARY card on the right, top-aligned with
-              Evidence activity. Locked while the profiled incident is
-              pre-submission; the polygon renders only from a frozen
-              submitted record. */}
+          {/* D. The ATT&CK Matrix (owner redesign 2026-10-12, superseding
+              the VA3/VD3 radar + its lock): the SECONDARY card on the
+              right, top-aligned with Evidence Activity. Full grid always;
+              highlights from observable tags only. */}
           <div className="xl:col-start-3 xl:row-start-2 min-w-0">
-            <AttackRadar
-              isVisible={isVisible}
-              incidentId={profileIncidentId}
-              submitted={profileSubmitted}
-              mappings={profileMappings}
+            <AttackMatrix
+              incidentId={matrixIncidentId}
+              mappings={matrixMappings}
             />
           </div>
 

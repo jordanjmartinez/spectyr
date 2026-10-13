@@ -3,12 +3,11 @@ import { apiFetch } from '../api';
 import DetectionDetail from './DetectionDetail';
 import useIncidentScope from './useIncidentScope';
 import {
-  detectionsReviewed, detectionsRemaining, OPEN_IN_RESPONSE,
-  PROMOTED_LABEL, DISMISSED_LABEL,
+  OPEN_IN_RESPONSE, PROMOTED_LABEL, DISMISSED_LABEL,
 } from './uiCopy';
 import { TOOLTIPS } from './helpContent';
 import { toastDisposition } from './uiToasts';
-import { SeverityBadge, PageIntro, ErrorState } from './ui';
+import { SeverityBadge, PageIntro, ErrorState, SegmentedToggle, ToolbarSearch } from './ui';
 
 // Detections tab (Stage 2; Final pass Part III.0.1): TRIAGE ONLY --
 // promote / dismiss / reopen. All dispositions are scored server-side;
@@ -65,6 +64,12 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
   const [feed, setFeed] = useState([]);
   const [counts, setCounts] = useState({ open: 0, promoted: 0, dismissed: 0 });
   const [selected, setSelected] = useState(null);
+  // Owner list-page uniformity (2026-10-12): the shared toolbar pattern --
+  // disposition tabs with counts plus the search bar (rule, entity, type,
+  // severity). The passive count lines are retired; the tab counts carry
+  // the same truth over the SAME scoped rows.
+  const [dispoView, setDispoView] = useState('open');  // 'open'|'promoted'|'dismissed'
+  const [search, setSearch] = useState('');
   // Case-constant scope (Amendment 1 Delta A over the M1 foundation): ONE
   // scope state drives the pinned header, the honesty notices, and the row
   // filter. A selected case is ALWAYS case-scoped here (no toggle, no
@@ -101,6 +106,8 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
 
   useEffect(() => {
     setSelected(null);
+    setDispoView('open');
+    setSearch('');
     fetchFeed();
   }, [resetTrigger, fetchFeed]);
 
@@ -174,7 +181,21 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
   const rows = scope.rowPolicy === 'all' ? feed
     : scope.rowPolicy === 'scoped' ? feed.filter(d => scope.data.detectionIds.has(d.id))
       : [];
-  const headerCount = rows.length;
+  // Toolbar derivations: tab counts over the scoped rows (pre-search), so
+  // the tabs and the rows can never disagree with the scope context.
+  const dispoCounts = {
+    open: rows.filter(d => d.player_action === 'open').length,
+    promoted: rows.filter(d => d.player_action === 'promoted').length,
+    dismissed: rows.filter(d => d.player_action === 'dismissed').length,
+  };
+  const q = search.trim().toLowerCase();
+  const matchesSearch = (d) => !q
+    || (d.rule_name || '').toLowerCase().includes(q)
+    || (d.entity?.host || '').toLowerCase().includes(q)
+    || (d.entity?.account || '').toLowerCase().includes(q)
+    || (d.rule_type === 'yara' ? 'yara' : 'sigma').includes(q)
+    || (d.severity || '').toLowerCase().includes(q);
+  const visibleRows = rows.filter(d => d.player_action === dispoView && matchesSearch(d));
 
   // III.0.1 item 5: the neutral navigation target for a promoted
   // detection -- the account entity when one is resolved, else the host.
@@ -188,7 +209,24 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
           retired All-activity bar and the identity card are gone. The
           scope-failure notice stays as an inline alert (never a
           full-width status bar) so scope truth is preserved. */}
-      <PageIntro incident={activeIncident} />
+      <PageIntro
+        incident={activeIncident}
+        right={(
+          <>
+            <SegmentedToggle
+              ariaLabel="Detection view"
+              value={dispoView}
+              onChange={setDispoView}
+              options={[
+                ['open', `Open ${dispoCounts.open}`],
+                ['promoted', `Promoted ${dispoCounts.promoted}`],
+                ['dismissed', `Dismissed ${dispoCounts.dismissed}`],
+              ]}
+            />
+            <ToolbarSearch value={search} onChange={setSearch} placeholder="Search detections..." />
+          </>
+        )}
+      />
       {activeIncidentId && scope.status === 'error' && (
         <div className="mb-3 rounded-lg border border-[#e2e6ea] bg-[#faf6f0]">
           <ErrorState onRetry={scope.refetch}>
@@ -200,28 +238,10 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
         </div>
       )}
 
-      {/* OD-9 explanatory subcopy, one line each; counters use the 10.1
-          vocabulary. With a case selected the counts are the CASE-SCOPED
-          rows (the same roster the strip and readiness read), so the line
-          and the rows can never disagree; All activity keeps the session
-          counts. */}
-      {/* Owner UI pass (2026-10-12): the "Feed:" explanatory subcopy is
-          removed; the line keeps ONLY the live triage counts (the fix-14
-          same-frame progress surface). */}
-      <p className="text-sm text-muted mb-2">
-        {activeIncidentId && scope.rowPolicy === 'scoped' ? (
-          <>
-            {detectionsReviewed(
-              rows.filter(d => d.player_action !== 'open').length, rows.length)}
-            {rows.some(d => d.player_action === 'open') && (
-              <> &middot; {detectionsRemaining(rows.filter(d => d.player_action === 'open').length)}</>
-            )}
-          </>
-        ) : (
-          <>{counts.open} Open &middot; {counts.promoted} Promoted &middot; {counts.dismissed} Dismissed</>
-        )}
-      </p>
-
+      {/* Owner list-page uniformity (2026-10-12): the passive count lines
+          are retired -- the toolbar tabs carry the same counts over the
+          same scoped rows (incl. the former scoped reviewed/remaining
+          line; the T1 remaining-count toast is untouched). */}
       {(
         <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -236,14 +256,15 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted">
+              {visibleRows.length === 0 && (
+                <tr><td colSpan={6} className="px-4 py-4 text-left text-muted">
                   {scope.rowPolicy === 'loading' ? 'Loading incident scope'
                     : scope.rowPolicy === 'error' ? 'Incident scope could not be loaded.'
-                      : 'No detections yet. They fire as scenarios reach the queue.'}
+                      : rows.length === 0 ? 'No detections yet. They fire as scenarios reach the queue.'
+                        : 'No detections in this view.'}
                 </td></tr>
               )}
-              {rows.map(d => (
+              {visibleRows.map(d => (
                 <tr
                   key={d.id}
                   className="border-b border-[#eef1f4] last:border-b-0 hover:bg-[#f6f8fa] cursor-pointer"

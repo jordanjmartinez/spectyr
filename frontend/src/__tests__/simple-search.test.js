@@ -17,7 +17,7 @@ import React from 'react';
 import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import Siem from '../components/Siem';
 import {
-  SIMPLE_PLACEHOLDER, SIMPLE_HELP, SIMPLE_TOGGLE, ADVANCED_TOGGLE,
+  SIMPLE_PLACEHOLDER, SIMPLE_TOGGLE, ADVANCED_TOGGLE,
   NO_QUERY_ENTERED,
 } from '../components/uiCopy';
 
@@ -60,11 +60,13 @@ const queryCalls = () =>
   apiFetch.mock.calls.map((c) => c[0]).filter((p) => p.startsWith('/api/events/query?'))
     .map(decodeURIComponent);
 
-test('A3-OD-4: Simple search is the default; the ruled placeholder and help render; Advanced is one toggle away', () => {
+test('A3-OD-4: Simple search is the default; the ruled placeholder renders; Advanced is one toggle away', () => {
   renderSimple();
   const bar = screen.getByLabelText('Filters');
   expect(bar.getAttribute('placeholder')).toBe(SIMPLE_PLACEHOLDER);
-  expect(screen.getByText(SIMPLE_HELP)).toBeInTheDocument();
+  // owner SIEM declutter (2026-10-12): the helper sentence is deleted;
+  // the placeholder carries the hint
+  expect(screen.queryByText('Enter a filter expression. Timeframe, source, and event type are controlled above.')).toBeNull();
   expect(screen.getByTestId('query-mode-toggle').textContent).toBe(ADVANCED_TOGGLE);
   expect(screen.getByLabelText('Source')).toBeInTheDocument();
   expect(screen.getByLabelText('Event Type')).toBeInTheDocument();

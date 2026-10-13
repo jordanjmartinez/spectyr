@@ -117,9 +117,11 @@ const LearningReview = ({ reviewRequest, isVisible = true }) => {
     // Incident Grade label live INSIDE the bordered container, above the
     // locked-state message / picker / review content. One flat card.
     <div className="rounded-xl p-4 sm:p-6" style={CARD_STYLE}>
-      <div className="flex items-baseline gap-2 mb-4">
+      {/* Owner UI pass (2026-10-12): the Incident Grade tag beside the
+          section title is removed; the 3.9B labeling distinction stays
+          carried by the detail overline and the Composite row below. */}
+      <div className="mb-4">
         <h2 className="t-section">{LEARNING_REVIEW_TITLE}</h2>
-        <span className="t-overline">{INCIDENT_GRADE_LABEL}</span>
       </div>
       <div>
         {completed.length === 0 ? (

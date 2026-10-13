@@ -20,7 +20,7 @@ import {
   EDITED_NOTE, STALE_RESULTS_NOTE, filterAdded, excludedFilter,
   NO_QUERY_ENTERED, PRESERVED_RESULTS_LABEL, SEARCH_NOT_RUN,
   QUERY_SECTION_NAMES, sectionCouldNotBeRead, STRUCTURE_LINE,
-  RESTORE_LAST_QUERY, SIMPLE_PLACEHOLDER, SIMPLE_HELP, SIMPLE_TOGGLE,
+  RESTORE_LAST_QUERY, SIMPLE_PLACEHOLDER, SIMPLE_TOGGLE,
   ADVANCED_TOGGLE, SOURCE_LABEL, EVENT_TYPE_LABEL, ALL_SOURCES,
   ALL_EVENT_TYPES,
 } from './uiCopy';
@@ -73,6 +73,9 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
   // click closes the disclosure so the refined events are immediately
   // visible (no-op at lg+, where the open flag is ignored).
   const [fieldsOpen, setFieldsOpen] = useState(false);
+  // Owner SIEM declutter (2026-10-12): the GD-5a quoting rules sit behind
+  // this disclosure instead of printing on every empty state.
+  const [syntaxOpen, setSyntaxOpen] = useState(false);
   // Amendment 3 F7 (ratified A3-OD-4): Simple search is the DEFAULT in
   // every play mode; Advanced LCQL is one toggle away. Session-local
   // memory only -- no localStorage, no server persistence (B-OD-4).
@@ -842,14 +845,15 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
           style={CARD_STYLE}
         >
           <p className="text-sm font-medium text-[#1a2332] mb-1">Run a query to begin.</p>
-          {/* A3.5 (F7): mode-scoped guidance. Simple mode teaches the
-              filter expression (the ruled help sentence); advanced keeps
-              the four-segment teaching. Example buttons stay edit-only. */}
-          <p className="text-xs text-muted mb-3">
-            {queryMode === 'simple'
-              ? SIMPLE_HELP
-              : 'LCQL has four segments: TIMEFRAME | SENSOR | EVENT TYPE | FILTERS. Try one of these:'}
-          </p>
+          {/* A3.5 (F7) + owner SIEM declutter (2026-10-12): the simple-mode
+              helper sentence is deleted (the placeholder carries the hint);
+              advanced keeps the four-segment teaching line. Example
+              buttons stay edit-only. */}
+          {queryMode === 'advanced' && (
+            <p className="text-xs text-muted mb-3">
+              LCQL has four segments: TIMEFRAME | SENSOR | EVENT TYPE | FILTERS. Try one of these:
+            </p>
+          )}
           <div className="flex flex-col gap-1.5 mb-4">
             {(queryMode === 'simple' ? SIMPLE_HELP_EXAMPLES : QUERY_HELP_EXAMPLES).map((ex) => (
               <button
@@ -864,20 +868,31 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
               </button>
             ))}
           </div>
-          <p className="text-xs text-muted">
-            Values containing spaces or any of{' '}
-            <span className="log-mono">&quot; &#39; = ! | *</span> must be quoted, and the bare
-            words and, or, not, contains must be quoted to match literally. Double-quoted and
-            unquoted values match case-insensitively; single quotes match exactly.
-          </p>
+          {/* Owner SIEM declutter (2026-10-12): the quoting rules live
+              behind this disclosure; the GD-5a content is unchanged. */}
+          <button
+            type="button"
+            onClick={() => setSyntaxOpen((o) => !o)}
+            aria-expanded={syntaxOpen}
+            className="text-xs font-medium text-muted hover:text-[#1a2332] underline decoration-dotted underline-offset-2"
+          >
+            Query Syntax
+          </button>
+          {syntaxOpen && (
+            <p className="text-xs text-muted mt-2">
+              Values containing spaces or any of{' '}
+              <span className="log-mono">&quot; &#39; = ! | *</span> must be quoted, and the bare
+              words and, or, not, contains must be quoted to match literally. Double-quoted and
+              unquoted values match case-insensitively; single quotes match exactly.
+            </p>
+          )}
         </div>
       ) : snapshot.count === 0 ? (
         <div className="flex flex-col lg:flex-row gap-4">
           {fieldsColumn}
-          <div
-            className="flex-1 min-w-0 p-6 rounded-xl flex flex-col items-center justify-center py-14"
-            style={CARD_STYLE}
-          >
+          {/* Owner empty-state convention (2026-10-12): top-left at the
+              panel's content origin; no vertical centering. */}
+          <div className="flex-1 min-w-0 p-4 rounded-xl" style={CARD_STYLE}>
             <p className="text-sm text-[#1a2332] mb-1">0 events match</p>
             <p className="text-xs text-muted log-mono">{snapshot.identity.canonical_query}</p>
           </div>

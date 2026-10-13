@@ -78,7 +78,7 @@ test('renders the overview grid in reading order: A, B, then the main region', a
   // the primary visualization; the ATT&CK profile stays secondary.
   const order = ['active-investigation', 'kpi-row', 'evidence-activity',
                  'severity-distribution', 'environment-status',
-                 'attack-radar', 'recent-results'];
+                 'attack-matrix', 'recent-results'];
   const nodes = order.map(id => container.querySelector(`[data-testid="${id}"]`));
   nodes.forEach(n => expect(n).not.toBeNull());
   for (let i = 0; i < nodes.length - 1; i += 1) {
@@ -96,9 +96,12 @@ test('A: the Active Investigation card shows observable fields only and Resume n
   expect(within(card).getByText('INC-2000')).toBeInTheDocument();
   expect(within(card).getByText('Ready Incident')).toBeInTheDocument();
   expect(within(card).getByText('Critical')).toBeInTheDocument();
-  expect(within(card).getByText('Detections Reviewed: 3 of 3')).toBeInTheDocument();
-  expect(within(card).getByText('Classification: Not Selected')).toBeInTheDocument();
-  expect(within(card).getByText('Response Actions Taken: 2')).toBeInTheDocument();
+  // owner UI pass (2026-10-12): the detail lines are removed -- identity,
+  // title, and Resume only (the KPI strip and the workspace own the rest)
+  expect(within(card).queryByText(/Detections Reviewed:/)).toBeNull();
+  expect(within(card).queryByText(/Classification:/)).toBeNull();
+  expect(within(card).queryByText(/Response Actions Taken:/)).toBeNull();
+  expect(within(card).queryByText(/to Review$/)).toBeNull();
   // never pre-submission correctness; never a graded Submit control
   expect(within(card).queryByText(/correct/i)).toBeNull();
   expect(screen.queryByRole('button', { name: /^Submit/ })).toBeNull();
@@ -109,15 +112,19 @@ test('A: the Active Investigation card shows observable fields only and Resume n
   expect(within(card).getByText('INC-1000')).toBeInTheDocument();
 });
 
-test('VS: progress is folded INTO Active Investigation (accessible bar + exact text, no separate card)', async () => {
+test('VS: progress is folded INTO Active Investigation (accessible bar, no separate card)', async () => {
   render(<IncidentDashboard gameMode="hardcore" activeIncidentId="INC-2000" chosen={{ 'INC-2000': { verdict: 'false_positive', category: 'False Positive' } }} />);
   const card = await screen.findByTestId('active-investigation');
   const bar = within(card).getByRole('progressbar');
   expect(bar).toHaveAttribute('aria-valuenow', '3');
   expect(bar).toHaveAttribute('aria-valuemax', '3');
-  expect(within(card).getByText('Detections Reviewed: 3 of 3')).toBeInTheDocument();
-  expect(within(card).getByText('Classification: False Positive')).toBeInTheDocument();
-  expect(within(card).getByText('Ready to Submit')).toBeInTheDocument();
+  // owner UI pass (2026-10-12): the visible detail lines are removed; the
+  // bar stays as the one glanceable visual and its ACCESSIBLE LABEL still
+  // carries the exact reviewed count
+  expect(bar).toHaveAttribute('aria-label', 'Detections Reviewed: 3 of 3');
+  expect(within(card).queryByText('Detections Reviewed: 3 of 3')).toBeNull();
+  expect(within(card).queryByText('Classification: False Positive')).toBeNull();
+  expect(within(card).queryByText('Ready to Submit')).toBeNull();
   // the fragmenting card is gone
   expect(screen.queryByTestId('investigation-progress')).toBeNull();
   expect(screen.queryByText('Investigation Progress')).toBeNull();
@@ -223,9 +230,9 @@ test('empty states are honest before any activity', async () => {
   expect(screen.getByText(/No incidents submitted yet this session/)).toBeInTheDocument();
 });
 
-test('V6-R: the coverage radar carries no session/player overlay; grading is fetched ONLY for submitted ids', async () => {
+test('the ATT&CK Matrix carries no session/player overlay; grading is fetched ONLY for submitted ids', async () => {
   render(<IncidentDashboard gameMode="hardcore" />);
-  const radar = await screen.findByTestId('attack-radar');
+  const radar = await screen.findByTestId('attack-matrix');
   // catalog-coverage only: no tabs, no player-performance vocabulary
   expect(within(radar).queryByText('This session')).toBeNull();
   expect(within(radar).queryByText('Catalog coverage')).toBeNull();
@@ -273,11 +280,14 @@ test('severity reads the observable scope + feed; grouped-alerts is never called
   expect(apiFetch.mock.calls.some(([p]) => p === '/api/grouped-alerts')).toBe(false);
 });
 
-test('VH: the queue count is one compact line inside Active Investigation (Hardcore), with the mode badge', async () => {
+test('the mode badge rides the identity row; the queue-count line is retired (owner UI pass)', async () => {
   render(<IncidentDashboard gameMode="hardcore" activeIncidentId="INC-2000" />);
   const card = await screen.findByTestId('active-investigation');
-  await waitFor(() => expect(within(card).getByText('1 of 10 Resolved')).toBeInTheDocument());
-  expect(within(card).getByText('Hardcore')).toBeInTheDocument();   // compact badge beside identity
+  // compact badge beside identity, once the incident list lands
+  await waitFor(() => expect(within(card).getByText('Hardcore')).toBeInTheDocument());
+  // owner UI pass (2026-10-12): the VH queue-count line went with the
+  // other detail lines; the queue denominator lives in the KPI strip
+  expect(within(card).queryByText(/of 10 Resolved/)).toBeNull();
 });
 
 test('VH: Guided carries no queue denominator anywhere', async () => {

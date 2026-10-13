@@ -54,18 +54,24 @@ beforeEach(() => {
 const rowOf = (rule) => screen.getByText(rule).closest('tr');
 
 test('feed rows: open offers the two decisions; reviewed shows the state chip + Reopen only', async () => {
-  await act(async () => {
-    render(<Detections isVisible resetTrigger={0} activeIncidentId={null} />);
-  });
+  const { container } = render(<Detections isVisible resetTrigger={0} activeIncidentId={null} />);
   await screen.findByText('Rule Open');
 
+  // the uniform toolbar (owner list-page pass): reviewed rows live behind
+  // their disposition tabs; the default Open tab shows only open rows
   const open = within(rowOf('Rule Open'));
   expect(open.getByRole('button', { name: 'Promote' })).toBeInTheDocument();
   expect(open.getByRole('button', { name: 'Dismiss' })).toBeInTheDocument();
   expect(open.queryByText('Reopen')).toBeNull();
-  expect(open.queryByText('Promoted')).toBeNull();
+  expect(container.textContent).not.toContain('Rule Promoted');
 
-  for (const [rule, chip] of [['Rule Promoted', 'Promoted'], ['Rule Dismissed', 'Dismissed']]) {
+  for (const [tab, rule, chip] of [
+    ['Promoted 1', 'Rule Promoted', 'Promoted'],
+    ['Dismissed 1', 'Rule Dismissed', 'Dismissed'],
+  ]) {
+    await act(async () => {
+      screen.getByRole('button', { name: tab }).click();
+    });
     const row = within(rowOf(rule));
     expect(row.queryByRole('button', { name: 'Promote' })).toBeNull();
     expect(row.queryByRole('button', { name: 'Dismiss' })).toBeNull();
@@ -91,18 +97,25 @@ test('the row and header counts flip with the toast, before any refetch lands (f
   });
   const { container } = render(<Detections isVisible resetTrigger={0} activeIncidentId={null} />);
   await screen.findByText('Rule Open');
-  expect(container.textContent).toContain('1 Open');
+  expect(screen.getByRole('button', { name: 'Open 1' })).toBeInTheDocument();
 
   await act(async () => {
     within(rowOf('Rule Open')).getByRole('button', { name: 'Dismiss' }).click();
   });
-  // the refetch is still hanging: everything below is the same-frame update
+  // the refetch is still hanging: everything below is the same-frame
+  // update. Under the uniform toolbar the dismissed row LEAVES the Open
+  // tab (the clicked, still-hovered button unmounts with it -- the
+  // doubled-tooltip class stays impossible) and the tab counts flip with
+  // the toast.
+  expect(container.textContent).not.toContain('Rule Open');
+  expect(screen.getByRole('button', { name: 'Open 0' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Dismissed 2' })).toBeInTheDocument();
+  await act(async () => {
+    screen.getByRole('button', { name: 'Dismissed 2' }).click();
+  });
   const row = within(rowOf('Rule Open'));
-  expect(row.queryByRole('button', { name: 'Dismiss' })).toBeNull(); // tooltip host unmounted
   expect(row.getByText('Dismissed').tagName).toBe('SPAN');
   expect(row.getByRole('button', { name: 'Reopen' })).toBeInTheDocument();
-  expect(container.textContent).toContain('0 Open');
-  expect(container.textContent).toContain('2 Dismissed');
 });
 
 test('a rapid double-click submits exactly one disposition', async () => {

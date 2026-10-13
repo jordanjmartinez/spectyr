@@ -193,6 +193,20 @@ export const PageIntro = ({ incident = null, right = null }) => (
   ) : null
 );
 
+// Owner list-page uniformity (2026-10-12): the ONE toolbar search input
+// shared by the list pages (Incidents, Detections, Endpoints) -- the
+// toolbar pattern is status tabs with counts (SegmentedToggle) plus this
+// search, in the PageIntro right slot.
+export const ToolbarSearch = ({ value, onChange, placeholder }) => (
+  <input
+    type="text"
+    value={value}
+    onChange={(e) => onChange(e.target.value)}
+    placeholder={placeholder}
+    className="w-full sm:w-56 px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] bg-white text-[#1a2332] placeholder-[#8b949e] focus:outline-none focus:ring-2 focus:ring-[#101218]/20"
+  />
+);
+
 // ---- small identity pieces --------------------------------------------------
 
 export const CountPill = ({ children }) => (

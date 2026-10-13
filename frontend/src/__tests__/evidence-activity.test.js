@@ -1,23 +1,21 @@
 /**
- * VB1 (amendment section 2) + VD7 (owner mid-run instruction): Evidence
- * activity as the compact ROLLING EVENT-DENSITY chart. Deterministic,
- * exact rolling-window counts over the ACTIVE incident's observable
- * event timestamps at evenly spaced sample points; exact event-time
- * ticks; the honest sparse state below three distinct event times;
+ * VB1 (amendment section 2) + owner simplification (2026-10-12,
+ * superseding the VD7/VE4 rolling-density composition): Evidence Activity
+ * as a PLAIN EVENTS-PER-MINUTE BAR CHART over the ACTIVE incident's
+ * observable event timestamps. Exact per-minute counts (gaps
+ * zero-filled), the busiest minute as the single accent peak,
  * frozen-snapshot honesty (later evidence is announced, never merged
- * automatically); truthful loading and empty states; and a complete
- * textual equivalent. Volume only -- never suspiciousness, correctness,
- * or answer-key data.
+ * automatically), truthful loading/empty states with the zeroed plane,
+ * and a complete textual equivalent. The "Rolling density..." caption is
+ * retired. Volume only -- never suspiciousness, correctness, or
+ * answer-key data.
  */
 import React from 'react';
 import fs from 'fs';
 import path from 'path';
 import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import EvidenceActivity, { NO_INCIDENT, NO_EVENTS } from '../components/EvidenceActivity';
-import {
-  rollingDensity, chooseWindowSeconds, steppedPath, tickColumnPct, clampPct,
-  timeLabel, SAMPLE_POINTS, SPARSE_MESSAGE,
-} from '../components/evidenceDensity';
+import { minuteBuckets, minuteLabel } from '../components/evidenceDensity';
 import IncidentDashboard from '../components/IncidentDashboard';
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
@@ -26,128 +24,51 @@ const { apiFetch } = require('../api');
 const at = (isoMinute, seconds = 0) => `2026-07-26T${isoMinute}:${String(seconds).padStart(2, '0')}Z`;
 const rows = (...stamps) => stamps.map((t, i) => ({ id: `e${i}`, timestamp: t }));
 
-// the worked example: 6 events across 175s (05, 40, 61, 62, 63, 180
-// seconds after 19:45:00), so the 30s short-investigation window applies
+// the worked example: 6 events -- 2 in 19:45, 3 in 19:46, none in 19:47,
+// 1 in 19:48 -> four buckets, peak 19:46 with 3
 const SIX = rows(at('19:45', 5), at('19:45', 40), at('19:46', 1), at('19:46', 2),
                  at('19:46', 3), at('19:48', 0));
 
-// ---- the rolling window ----------------------------------------------------
+// ---- the per-minute model ---------------------------------------------------
 
-test('the rolling window is deterministic: 30s short, 60s ordinary, ladder beyond', () => {
-  expect(chooseWindowSeconds(0)).toBe(30);
-  expect(chooseWindowSeconds(175)).toBe(30);         // a typical chain span
-  expect(chooseWindowSeconds(300)).toBe(30);
-  expect(chooseWindowSeconds(301)).toBe(60);
-  expect(chooseWindowSeconds(1800)).toBe(60);
-  // longer investigations step a fixed ladder keyed to sample spacing
-  expect(chooseWindowSeconds(1801)).toBe(120);
-  expect(chooseWindowSeconds(3600)).toBe(300);
-  expect(chooseWindowSeconds(7200)).toBe(600);
-  expect(chooseWindowSeconds(10 * 3600)).toBe(3600);
-  expect(chooseWindowSeconds(24 * 3600)).toBe(2 * 3600);  // still deterministic past the ladder
-  // pure function: identical input, identical output
-  expect(chooseWindowSeconds(1234)).toBe(chooseWindowSeconds(1234));
-});
-
-test('rolling-window counts are EXACT over real events; nothing fabricated or redistributed', () => {
-  const m = rollingDensity(SIX);
-  expect(m.sparse).toBe(false);
+test('per-minute counts are EXACT over real events; gaps are zero-filled, nothing fabricated', () => {
+  const m = minuteBuckets(SIX);
   expect(m.total).toBe(6);
-  expect(m.windowSeconds).toBe(30);
-  expect(m.samples).toHaveLength(SAMPLE_POINTS);
-  // every sample count equals the definition: events in (t - W, t]
-  const stamps = SIX.map((r) => Date.parse(r.timestamp));
-  for (const s of m.samples) {
-    const brute = stamps.filter((x) => x > s.t - 30000 && x <= s.t).length;
-    expect(s.count).toBe(brute);
+  expect(m.buckets).toHaveLength(4);                       // 19:45 .. 19:48 inclusive
+  expect(m.buckets.map((b) => b.count)).toEqual([2, 3, 0, 1]);
+  // bucket starts are consecutive whole minutes
+  for (let i = 1; i < m.buckets.length; i += 1) {
+    expect(m.buckets[i].t - m.buckets[i - 1].t).toBe(60000);
   }
-  // hand-checked values (independent of the implementation)
-  expect(m.samples[0].count).toBe(1);     // (…, first]: the first event alone
-  expect(m.samples[7].count).toBe(4);     // covers 40 + the 61/62/63 burst
-  expect(m.samples[19].count).toBe(1);    // (150s, 180s]: the last event alone
-  // the peak is exact and single
-  expect(m.peak.count).toBe(4);
-  expect(m.samples.filter((s) => s.isPeak)).toHaveLength(1);
-  expect(m.samples[m.peak.index].count).toBe(4);
-});
-
-test('sampling points are deterministic and evenly spaced across the visible range', () => {
-  const m = rollingDensity(SIX);
-  const first = Date.parse(SIX[0].timestamp);
-  const last = Date.parse(SIX[5].timestamp);
-  const span = last - first;
-  m.samples.forEach((s, i) => {
-    expect(s.t).toBe(first + (i * span) / (SAMPLE_POINTS - 1));
-  });
-  expect(m.samples[0].t).toBe(first);
-  expect(m.samples[SAMPLE_POINTS - 1].t).toBe(last);
+  expect(m.buckets[0].t % 60000).toBe(0);
+  // the peak is the busiest minute
+  expect(m.peak.count).toBe(3);
+  expect(m.peak.index).toBe(1);
+  expect(m.peak.label).toBe(minuteLabel(m.buckets[1].t));
   // identical rows give byte-identical models (frozen-snapshot stability)
-  expect(rollingDensity(SIX)).toEqual(m);
+  expect(minuteBuckets(SIX)).toEqual(m);
 });
 
-test('peak ties resolve to the EARLIEST sample (deterministic)', () => {
-  // two symmetric bursts of equal density
-  const m = rollingDensity(rows(
-    at('10:00', 0), at('10:00', 1), at('10:00', 2),
-    at('10:04', 0), at('10:04', 1), at('10:04', 2),
+test('peak ties resolve to the EARLIEST minute (deterministic)', () => {
+  const m = minuteBuckets(rows(
+    at('10:00', 0), at('10:00', 1), at('10:02', 0), at('10:02', 1),
   ));
-  expect(m.samples.filter((s) => s.isPeak)).toHaveLength(1);
-  const firstMax = m.samples.findIndex((s) => s.count === m.peak.count);
-  expect(m.peak.index).toBe(firstMax);
-});
-
-test('event ticks match the source timestamps exactly (nothing invented, moved, or dropped)', () => {
-  const m = rollingDensity(SIX);
-  const stamps = SIX.map((r) => Date.parse(r.timestamp)).sort((a, b) => a - b);
-  expect(m.ticks.map((tk) => tk.t)).toEqual(stamps);
-  const first = stamps[0];
-  const span = stamps[stamps.length - 1] - first;
-  m.ticks.forEach((tk) => expect(tk.x).toBe((tk.t - first) / span));
+  expect(m.buckets.map((b) => b.count)).toEqual([2, 0, 2]);
+  expect(m.peak.index).toBe(0);
 });
 
 test('malformed or missing timestamps are ignored, never invented', () => {
-  const m = rollingDensity([
+  const m = minuteBuckets([
     { id: 'a', timestamp: at('08:00') },
     { id: 'b' },
     { id: 'c', timestamp: 'not-a-time' },
     { id: 'd', timestamp: null },
   ]);
   expect(m.total).toBe(1);
-  expect(m.sparse).toBe(true);            // one distinct time cannot shape density
-  expect(rollingDensity([]).total).toBe(0);
-  expect(rollingDensity(null).samples).toEqual([]);
-});
-
-test('the sparse fallback engages below three DISTINCT event times', () => {
-  // two events -> sparse
-  expect(rollingDensity(rows(at('09:00'), at('09:05'))).sparse).toBe(true);
-  // three events at only two distinct times -> still sparse
-  const twoDistinct = rollingDensity(rows(at('09:00'), at('09:00'), at('09:05')));
-  expect(twoDistinct.sparse).toBe(true);
-  expect(twoDistinct.total).toBe(3);
-  expect(twoDistinct.ticks).toHaveLength(3);
-  // three distinct times -> a real density shape
-  expect(rollingDensity(rows(at('09:00'), at('09:02'), at('09:05'))).sparse).toBe(false);
-});
-
-// ---- the stepped outline ----------------------------------------------------
-
-test('the stepped outline is exact per sample: no curves, no interpolation, zeros on the baseline', () => {
-  const m = rollingDensity(SIX);
-  const { tops, outline, area } = steppedPath(m.samples);
-  expect(tops).toHaveLength(m.samples.length);
-  const max = Math.max(...m.samples.map((s) => s.count));
-  m.samples.forEach((s, i) => {
-    expect([tops[i].x0, tops[i].x1]).toEqual([i, i + 1]);
-    expect(tops[i].y).toBe(100 - (s.count / max) * 100);
-    if (s.count === 0) expect(tops[i].y).toBe(100);
-  });
-  expect(outline).toMatch(/^M [\d. ]+(?: [HV] [\d.]+)+$/);
-  expect(outline).not.toMatch(/[CQSTAcqsta]/);
-  expect(area).toBe(`${outline} V 100 H 0 Z`);
-  // degenerate inputs draw nothing rather than inventing a shape
-  expect(steppedPath([])).toEqual({ outline: '', area: '', tops: [] });
-  expect(steppedPath([{ count: 0 }])).toEqual({ outline: '', area: '', tops: [] });
+  expect(m.buckets).toHaveLength(1);
+  expect(m.buckets[0].count).toBe(1);
+  expect(minuteBuckets([]).total).toBe(0);
+  expect(minuteBuckets(null).buckets).toEqual([]);
 });
 
 // ---- the card ---------------------------------------------------------------
@@ -158,102 +79,63 @@ const SNAP = {
   rows: SIX,
 };
 
-test('renders the factual summary, the peak, and the accessible rolling-window equivalent', () => {
+test('renders the factual summary, the peak, and the accessible per-minute equivalent', () => {
   render(<EvidenceActivity incidentId="INC-8340" snapshot={SNAP} />);
   expect(screen.getByText('Evidence Activity')).toBeInTheDocument();
   // owner UI pass (2026-10-12): card subtitles are stripped
   expect(screen.queryByText('Event volume during this investigation')).toBeNull();
   expect(screen.getByText('6 Events Observed')).toBeInTheDocument();
-  // the ruled summary form; the peak count is the rolling-window count
-  expect(screen.getByText(/Peak: \d\d:\d\d:\d\d · 4 Events/)).toBeInTheDocument();
-  // the textual equivalent names the rolling window explicitly, carries
-  // every sample, the peak, the axis, and the snapshot boundary
+  // the peak chip names the busiest minute and its exact count
+  expect(screen.getByText(/Peak: \d\d:\d\d · 3 Events/)).toBeInTheDocument();
+  // the textual equivalent: one row per minute, the peak marked, the
+  // snapshot boundary named (accessible PROSE stays sentence case)
   const table = screen.getByRole('table');
-  expect(within(table).getAllByRole('row').length).toBe(SAMPLE_POINTS + 1);
+  expect(within(table).getAllByRole('row').length).toBe(4 + 1);
   const caption = table.querySelector('caption').textContent;
-  // the caption is accessible PROSE: sentence case stays (the owner
-  // capitalization pass Title-Cases labels/count chips, not sentences)
   expect(caption).toMatch(/6 events observed/);
-  expect(caption).toMatch(/30-second rolling window/);
-  expect(caption).toMatch(/Peak \d\d:\d\d:\d\d with 4 events/);
+  expect(caption).toMatch(/events per minute/);
+  expect(caption).toMatch(/Peak \d\d:\d\d with 3 events/);
   expect(caption).toMatch(/sequence 42/);
 });
 
-test('the chart is the ruled density composition: steps, lines, one accent peak, exact ticks', () => {
+test('the chart is plain per-minute bars: exact heights, one accent peak, no density furniture', () => {
   const { container } = render(<EvidenceActivity incidentId="INC-8340" snapshot={SNAP} />);
-  const m = rollingDensity(SNAP.rows);
-  // one tooltip column per sample, naming the exact window
-  const columns = container.querySelectorAll('[title*="in the preceding 30s"]');
-  expect(columns).toHaveLength(SAMPLE_POINTS);
-  m.samples.forEach((s, i) => {
-    expect(columns[i].getAttribute('title'))
-      .toBe(`${s.label} · ${s.count} event${s.count === 1 ? '' : 's'} in the preceding 30s`);
+  const m = minuteBuckets(SNAP.rows);
+  // one tooltip column per minute bucket
+  const columns = screen.getByTestId('evidence-bars').children;
+  expect(columns).toHaveLength(m.buckets.length);
+  [...columns].forEach((col, i) => {
+    expect(col.getAttribute('title'))
+      .toBe(`${m.buckets[i].label} · ${m.buckets[i].count} event${m.buckets[i].count === 1 ? '' : 's'}`);
   });
-  // ONE stepped outline over the subtle fill; no curve commands
-  const paths = container.querySelectorAll('svg path');
-  expect(paths).toHaveLength(2);
-  const { outline, area } = steppedPath(m.samples);
-  expect(paths[0].getAttribute('d')).toBe(area);
-  expect(paths[1].getAttribute('d')).toBe(outline);
-  // the single accent: peak column band + point marker + Peak label
-  expect(screen.getByTestId('evidence-peak-column')).toBeInTheDocument();
-  expect(screen.getByTestId('evidence-peak-marker')).toBeInTheDocument();
-  expect(screen.getByTestId('evidence-peak-label').textContent).toBe('Peak');
-  const accentLines = [...container.querySelectorAll('span')]
-    .filter((s) => /#16436b|rgb\(22,\s*67,\s*107\)/.test(s.getAttribute('style') || '')
-      && /height/.test(s.getAttribute('style') || ''));
-  expect(accentLines).toHaveLength(1);
-  // exact event ticks: one per source event, at the column-space position
-  const ticks = screen.getAllByTestId('evidence-tick');
-  expect(ticks).toHaveLength(6);
-  ticks.forEach((tk, i) => {
-    expect(tk.getAttribute('style')).toContain(`left: ${tickColumnPct(m.ticks[i].x)}%`);
-  });
-  // the compact ruled height band
-  const plane = screen.getByTestId('evidence-peak-column').parentElement;
+  // bars render only for nonzero minutes; exactly one wears the accent
+  expect(screen.getAllByTestId('evidence-bar')).toHaveLength(2);
+  const peak = screen.getByTestId('evidence-bar-peak');
+  expect(peak.getAttribute('style')).toContain('height: 100%');
+  // heights are proportional to exact counts
+  const first = screen.getAllByTestId('evidence-bar')[0];
+  expect(first.getAttribute('style')).toContain(`height: ${(2 / 3) * 100}%`);
+  // the retired density furniture is structurally gone
+  expect(container.querySelector('svg')).toBeNull();
+  expect(screen.queryByTestId('evidence-tick')).toBeNull();
+  expect(screen.queryByTestId('evidence-peak-marker')).toBeNull();
+  expect(screen.queryByTestId('evidence-peak-column')).toBeNull();
+  expect(container.textContent).not.toMatch(/Rolling density|preceding \d+s|Ticks mark/);
+  // the compact ruled height band stays
+  const plane = screen.getByTestId('evidence-bars').parentElement;
   expect(plane.className).toMatch(/min-h-\[180px\]/);
   expect(plane.className).toMatch(/max-h-\[220px\]/);
 });
 
-test('the axis carries exactly start / midpoint / end in normal flow -- nothing can clip or overlap', () => {
+test('the axis carries the first and last minute in normal flow', () => {
   const { container } = render(<EvidenceActivity incidentId="INC-8340" snapshot={SNAP} />);
-  const m = rollingDensity(SNAP.rows);
+  const m = minuteBuckets(SNAP.rows);
   const axisRow = [...container.querySelectorAll('div')]
-    .find((el) => el.className.includes('justify-between') && el.className.includes('text-[10px]'));
+    .find((el) => el.className.includes('justify-between') && el.className.includes('text-[10px]')
+      && !el.className.includes('opacity-60'));
   const axis = [...axisRow.children].map((el) => el.textContent);
-  // VE4: the center label prints the TRUE midpoint of the visible range
-  // (that is where the justify-between row places it); start/end stay
-  // the exact first/last sample times
-  expect(axis).toEqual([
-    m.samples[0].label,
-    timeLabel(m.first + m.span / 2, m.windowSeconds),
-    m.samples[SAMPLE_POINTS - 1].label,
-  ]);
-  // flex children in normal flow: no truncation/ellipsis classes exist
+  expect(axis).toEqual([m.buckets[0].label, m.buckets[m.buckets.length - 1].label]);
   expect(container.innerHTML).not.toMatch(/truncate|text-ellipsis/);
-  // the Peak label is clamped inside the chart bounds even at the edges
-  expect(clampPct(97.5)).toBe(94);
-  expect(clampPct(1)).toBe(6);
-  const endBurst = rows(at('12:00', 0), at('12:00', 10),
-    at('12:02', 50), at('12:02', 51), at('12:02', 52), at('12:02', 53), at('12:02', 55));
-  const b = render(<EvidenceActivity incidentId="INC-2" snapshot={{ count: 7, rows: endBurst, identity: { cutoff_seq: 9 } }} />);
-  const lbl = within(b.container).getByTestId('evidence-peak-label');
-  const left = parseFloat(lbl.getAttribute('style').match(/left:\s*([\d.]+)%/)[1]);
-  expect(left).toBeGreaterThanOrEqual(6);
-  expect(left).toBeLessThanOrEqual(94);
-});
-
-test('the sparse state renders exact ticks, the activity line, the total, and the honest message', () => {
-  const sparseSnap = { count: 2, rows: rows(at('11:00'), at('11:03')), identity: { cutoff_seq: 7 } };
-  const { container } = render(<EvidenceActivity incidentId="INC-1" snapshot={sparseSnap} />);
-  expect(screen.getByText('2 Events Observed')).toBeInTheDocument();
-  expect(screen.getByText(SPARSE_MESSAGE)).toBeInTheDocument();
-  expect(screen.getByTestId('evidence-sparse')).toBeInTheDocument();
-  expect(screen.getAllByTestId('evidence-tick')).toHaveLength(2);
-  // no density shape is forced: no samples, no peak, no stepped svg
-  expect(container.querySelector('svg path')).toBeNull();
-  expect(screen.queryByText(/Peak/)).toBeNull();
-  expect(screen.queryByTestId('evidence-peak-marker')).toBeNull();
 });
 
 test('volume is never described as suspicious, anomalous, or attack timing', () => {
@@ -281,6 +163,7 @@ test('later evidence is announced but never merged until the player loads it', a
 test('honest loading and empty states; no false zero-event chart', () => {
   const a = render(<EvidenceActivity incidentId={null} />);
   expect(screen.getByText(NO_INCIDENT)).toBeInTheDocument();
+  expect(screen.getByTestId('evidence-empty-plane')).toBeInTheDocument();
   a.unmount();
   const b = render(<EvidenceActivity incidentId="INC-1" loading snapshot={null} />);
   expect(screen.getByText('Incident telemetry is still loading.')).toBeInTheDocument();

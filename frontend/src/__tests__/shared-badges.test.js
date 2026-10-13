@@ -194,11 +194,14 @@ test('Active Investigation: canonical structure with the shared badges, content 
   // the long title renders in full -- no truncation, no compressed type
   const title = within(card).getByText(CARD_INCIDENT.title);
   expect(title.className).not.toMatch(/truncate|text-\[1?0px\]/);
-  // the incident facts remain: progress, triage line, classification
-  // state, response actions, readiness, Resume
-  expect(within(card).getByRole('progressbar')).toBeInTheDocument();
-  expect(within(card).getByText('Detections Reviewed: 2 of 4')).toBeInTheDocument();
-  expect(within(card).getByText('Classification: Not Selected')).toBeInTheDocument();
-  expect(within(card).getByText('Response Actions Taken: 1')).toBeInTheDocument();
+  // owner UI pass (2026-10-12): the card keeps identity + title + the
+  // progress visual + Resume; the detail lines (triage, classification,
+  // response actions, readiness) are removed as redundant with the KPI
+  // strip, so the accessible label carries the reviewed count
+  expect(within(card).getByRole('progressbar'))
+    .toHaveAttribute('aria-label', 'Detections Reviewed: 2 of 4');
+  expect(within(card).queryByText('Detections Reviewed: 2 of 4')).toBeNull();
+  expect(within(card).queryByText('Classification: Not Selected')).toBeNull();
+  expect(within(card).queryByText('Response Actions Taken: 1')).toBeNull();
   expect(within(card).getByRole('button', { name: 'Resume investigation' })).toBeInTheDocument();
 });

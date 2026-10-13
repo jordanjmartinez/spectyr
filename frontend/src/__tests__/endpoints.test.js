@@ -134,7 +134,11 @@ test('endpoints list renders fixture rows with clean copy', async () => {
     <Endpoints isVisible resetTrigger={0} pivotHost={null} />
   );
   expect(await screen.findByText('ACME-WS12')).toBeInTheDocument();
-  expect(screen.getByText('1 Online · 1 Offline')).toBeInTheDocument();
+  // owner list-page uniformity (2026-10-12): the passive count line is
+  // retired; the toolbar tabs carry the counts
+  expect(screen.getByRole('button', { name: 'All 2' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Online 1' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Offline 1' })).toBeInTheDocument();
   expect(screen.getByText('just now')).toBeInTheDocument();          // online host
   expect(screen.getAllByText('Not Isolated')).toHaveLength(2);
   // empty Tags cells render exactly "-"

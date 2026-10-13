@@ -289,7 +289,7 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
             </thead>
             <tbody>
               {logNewestFirst.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted">{RESPONSE_NO_ACTIONS}</td></tr>
+                <tr><td colSpan={6} className="px-4 py-4 text-left text-muted">{RESPONSE_NO_ACTIONS}</td></tr>
               )}
               {logNewestFirst.map(e => (
                 <tr key={e.seq} className="border-b border-[#eef1f4] last:border-b-0">
@@ -308,7 +308,9 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
         </TableSurface>
         </div>
       ) : !activeIncidentId ? (
-        <div className="rounded-xl p-8 text-center text-sm text-muted" style={CARD_STYLE}>
+        /* Owner empty-state convention (2026-10-12): one muted line,
+           top-left at the panel's content origin. */
+        <div className="rounded-xl p-4 text-sm text-muted" style={CARD_STYLE}>
           {RESPONSE_SELECT_INCIDENT}
         </div>
       ) : (
@@ -321,7 +323,7 @@ const Response = ({ isVisible, resetTrigger, activeIncidentId = null,
           )}
 
           {!anyTargets ? (
-            <div className="rounded-xl p-8 text-center text-sm text-muted" style={CARD_STYLE}>
+            <div className="rounded-xl p-4 text-sm text-muted" style={CARD_STYLE}>
               {RESPONSE_NO_TARGETS}
             </div>
           ) : (

@@ -85,7 +85,11 @@ test('empty state: example placeholder, two valid examples, GD-5a rules in the h
   for (const ex of QUERY_HELP_EXAMPLES) {
     expect(screen.getByText(ex)).toBeInTheDocument();
   }
-  // GD-5a player-facing help (contract post-lock amendment)
+  // GD-5a player-facing help (contract post-lock amendment). Owner SIEM
+  // declutter (2026-10-12): the rules sit behind the Query Syntax
+  // disclosure -- content unchanged, one click away, hidden by default.
+  expect(document.body.textContent).not.toMatch(/must be quoted/);
+  fireEvent.click(screen.getByRole('button', { name: 'Query Syntax' }));
   const help = document.body.textContent;
   expect(help).toMatch(/must be quoted/);
   expect(help).toMatch(/and, or, not, contains/);

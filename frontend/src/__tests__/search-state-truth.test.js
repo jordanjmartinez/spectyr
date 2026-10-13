@@ -144,9 +144,12 @@ test('pickers and typing never execute: only Run (and the ruled immediate action
   expect(queryCalls()).toHaveLength(1);
 });
 
-test('the placeholder stays unmistakably an example in both modes', async () => {
+test('the simple placeholder is the ruled hint; the advanced placeholder stays unmistakably an example', async () => {
+  // Owner SIEM declutter (2026-10-12): simple mode carries the plain
+  // "Filter events..." hint (the helper sentence is retired); the
+  // advanced LCQL placeholder keeps the A2 example form.
   render(<Siem resetTrigger={0} onHostPivot={() => {}} />);
-  expect(screen.getByLabelText('Filters').placeholder).toMatch(/^Example:/);
+  expect(screen.getByLabelText('Filters').placeholder).toBe('Filter events...');
   fireEvent.click(screen.getByTestId('query-mode-toggle'));
   expect(screen.getByLabelText('LCQL query').placeholder).toMatch(/^Example:/);
 });

@@ -143,12 +143,9 @@ const SiemTable = ({ alerts, resetTrigger, selectedId, onSelect }) => {
         style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
       >
         {sorted.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <svg className="w-12 h-12 text-muted mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-            </svg>
-            <p className="text-sm text-muted">No events match the current filters.</p>
-          </div>
+          /* Owner empty-state convention (2026-10-12): one muted line,
+             top-left; no icon, no centering. */
+          <p className="text-sm text-muted">No events match the current filters.</p>
         ) : (
           <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper" style={{ minHeight: `${(alertsPerPage * 49) + 48}px` }}>
             <table className="w-full min-w-[900px] sm:min-w-[1000px] log-text text-left text-[#1a2332] border-separate border-spacing-0">

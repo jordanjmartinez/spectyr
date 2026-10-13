@@ -144,9 +144,9 @@ const DifficultySelector = ({ onSelect, onCancel, initialName = '', initialStep 
             </button>
 
             {catalog === null ? (
-              <p className="text-sm text-muted text-center py-6">Loading scenarios...</p>
+              <p className="text-sm text-muted py-2">Loading scenarios...</p>
             ) : catalog.length === 0 ? (
-              <p className="text-sm text-muted text-center py-6">No scenarios available.</p>
+              <p className="text-sm text-muted py-2">No scenarios available.</p>
             ) : (
               <div className="space-y-2">
                 {/* Stage 6 catalog cut: a missing playable flag means

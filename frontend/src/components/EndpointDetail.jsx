@@ -94,7 +94,7 @@ const Th = ({ children, onClick, active, dir }) => (
 );
 
 const EmptyRow = ({ span, text = 'None' }) => (
-  <tr><td colSpan={span} className="px-4 py-6 text-center text-muted">{text}</td></tr>
+  <tr><td colSpan={span} className="px-4 py-4 text-left text-muted">{text}</td></tr>
 );
 
 const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {

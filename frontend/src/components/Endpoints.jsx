@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch } from '../api';
 import EndpointDetail from './EndpointDetail';
 import useIncidentScope from './useIncidentScope';
-import { PageIntro, ErrorState } from './ui';
+import { PageIntro, ErrorState, SegmentedToggle, ToolbarSearch } from './ui';
 import {
   DeviceGlyph, PlatformBadge, platformFor, DEVICE_LABELS,
 } from './icons';
@@ -61,6 +61,11 @@ const Endpoints = ({ isVisible, resetTrigger, pivotHost,
   const [rows, setRows] = useState([]);
   const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState('');
+  // Owner list-page uniformity (2026-10-12): the shared toolbar pattern --
+  // status tabs with counts plus the search bar; the passive count line
+  // is retired. (All is the default home; the owner's named Online /
+  // Offline tabs isolate each status.)
+  const [statusView, setStatusView] = useState('all'); // 'all'|'online'|'offline'
   const [sort, setSort] = useState({ key: 'hostname', dir: 'asc' });
   // Case-constant scope (Amendment 1 Delta A over the M1 foundation): ONE
   // scope state drives the pinned header, the honesty notices, and the row
@@ -102,7 +107,7 @@ const Endpoints = ({ isVisible, resetTrigger, pivotHost,
     }
   }, [pivotHost, fetchList]);
 
-  useEffect(() => { setSelected(null); }, [resetTrigger]);
+  useEffect(() => { setSelected(null); setStatusView('all'); setSearch(''); }, [resetTrigger]);
 
   // Rows derive from the ONE scope state (A1-A.3): 'loading' and 'error'
   // render zero rows; all-activity rows never render while a case is
@@ -111,11 +116,18 @@ const Endpoints = ({ isVisible, resetTrigger, pivotHost,
   const scopeRows = scope.rowPolicy === 'all' ? rows
     : scope.rowPolicy === 'scoped' ? rows.filter(r => scope.data.hosts.has(r.hostname))
       : [];
+  // Toolbar derivations: tab counts over the scoped rows (pre-search), so
+  // the tabs and the rows can never disagree with the scope context.
+  const statusCounts = {
+    all: scopeRows.length,
+    online: scopeRows.filter(r => r.status === 'online').length,
+    offline: scopeRows.filter(r => r.status !== 'online').length,
+  };
   const filtered = scopeRows.filter(r =>
-    (!q || r.hostname.toLowerCase().includes(q) || r.ip.includes(q)
+    (statusView === 'all' || (statusView === 'online' ? r.status === 'online' : r.status !== 'online'))
+    && (!q || r.hostname.toLowerCase().includes(q) || r.ip.includes(q)
       || r.external_ip.includes(q) || r.os.toLowerCase().includes(q))
   );
-  const online = filtered.filter(r => r.status === 'online').length;
 
   // Stable sort: requested key first, hostname as the constant tiebreak.
   const sorted = [...filtered].sort((a, b) => {
@@ -148,13 +160,19 @@ const Endpoints = ({ isVisible, resetTrigger, pivotHost,
       <PageIntro
         incident={activeIncident}
         right={(
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search hostname, IP, OS"
-            className="w-full sm:w-64 px-3 py-2 text-sm rounded-md border border-[#d0d7de] bg-white text-[#1a2332] placeholder-[#8b949e] focus:outline-none focus:ring-2 focus:ring-[#16436b]/30"
-          />
+          <>
+            <SegmentedToggle
+              ariaLabel="Endpoint view"
+              value={statusView}
+              onChange={setStatusView}
+              options={[
+                ['all', `All ${statusCounts.all}`],
+                ['online', `Online ${statusCounts.online}`],
+                ['offline', `Offline ${statusCounts.offline}`],
+              ]}
+            />
+            <ToolbarSearch value={search} onChange={setSearch} placeholder="Search endpoints..." />
+          </>
         )}
       />
       {activeIncidentId && scope.status === 'error' && (
@@ -168,8 +186,8 @@ const Endpoints = ({ isVisible, resetTrigger, pivotHost,
         </div>
       )}
 
-      <p className="text-sm text-muted mb-2">{online} Online &middot; {filtered.length - online} Offline</p>
-
+      {/* Owner list-page uniformity (2026-10-12): the passive count line
+          is retired -- the toolbar tabs carry the same counts. */}
       <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="data-thead">
@@ -188,10 +206,10 @@ const Endpoints = ({ isVisible, resetTrigger, pivotHost,
           </thead>
           <tbody>
             {sorted.length === 0 && (
-              <tr><td colSpan={COLUMNS.length} className="px-4 py-8 text-center text-muted">
+              <tr><td colSpan={COLUMNS.length} className="px-4 py-4 text-left text-muted">
                 {scope.rowPolicy === 'loading' ? 'Loading incident scope'
                   : scope.rowPolicy === 'error' ? 'Incident scope could not be loaded.'
-                    : rows.length === 0 ? 'No endpoints yet. Hosts appear as scenarios reach the queue.' : 'No endpoints match the search.'}
+                    : rows.length === 0 ? 'No endpoints yet. Hosts appear as scenarios reach the queue.' : 'No endpoints in this view.'}
               </td></tr>
             )}
             {sorted.map(r => {

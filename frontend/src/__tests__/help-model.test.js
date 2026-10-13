@@ -138,6 +138,9 @@ test('6.2: Promote, Dismiss, and Reopen carry their tooltip lines (all modes: th
   // controls that exist.
   expect(byTitle(TOOLTIPS.promote).length).toBeGreaterThanOrEqual(1);
   expect(byTitle(TOOLTIPS.dismiss).length).toBeGreaterThanOrEqual(1);
+  // the reopen control lives on reviewed rows -- the uniform toolbar's
+  // Dismissed tab is where the triaged fixture renders
+  fireEvent.click(screen.getByRole('button', { name: 'Dismissed 1' }));
   expect(byTitle(TOOLTIPS.reopen).length).toBeGreaterThanOrEqual(1); // the triaged row
   // keyboard-reachable: the same line rides data-help on the help-tip class
   for (const el of byTitle(TOOLTIPS.promote)) {

@@ -226,9 +226,10 @@ export const CLASSIFY_TO_SUBMIT = 'Select a classification to submit.';
 
 // F7 (A3-5, ruled + standing finals): simple search as a projection over
 // canonical LCQL. The mode toggle labels name the mode you switch TO.
-export const SIMPLE_PLACEHOLDER = 'Example: source_ip == "10.0.1.32"';
-export const SIMPLE_HELP =
-  'Enter a filter expression. Timeframe, source, and event type are controlled above.';
+// Owner SIEM declutter (2026-10-12): the placeholder is the one inline
+// hint ("Filter events...") and the SIMPLE_HELP sentence is retired (the
+// quoting rules moved behind the Query Syntax disclosure in the shell).
+export const SIMPLE_PLACEHOLDER = 'Filter events...';
 export const SIMPLE_TOGGLE = 'Simple Search';
 export const ADVANCED_TOGGLE = 'Advanced LCQL';
 export const SOURCE_LABEL = 'Source';

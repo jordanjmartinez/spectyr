@@ -20,7 +20,7 @@ import {
   responseActionsTaken, READY_TO_SUBMIT, SUBMITTED_GRADE_LOCKED,
   completedStrip, toReview, filterAdded,
   excludedFilter, CLASSIFY_TO_SUBMIT,
-  SIMPLE_PLACEHOLDER, SIMPLE_HELP, SIMPLE_TOGGLE, ADVANCED_TOGGLE,
+  SIMPLE_PLACEHOLDER, SIMPLE_TOGGLE, ADVANCED_TOGGLE,
   SOURCE_LABEL, EVENT_TYPE_LABEL, ALL_SOURCES, ALL_EVENT_TYPES,
 } from '../components/uiCopy';
 
@@ -57,9 +57,12 @@ test('the case-constant terms are the ratified A-OD-1 finals, byte-exact (the ex
 
 test('the Amendment 3 ratified finals are byte-exact (A3-R.1 + standing drafted finals; RETURN_SUBCOPY retired with the F2 mechanic, III.0 item 2)', () => {
   expect(CLASSIFY_TO_SUBMIT).toBe('Select a classification to submit.');
-  expect(SIMPLE_PLACEHOLDER).toBe('Example: source_ip == "10.0.1.32"');
-  expect(SIMPLE_HELP).toBe(
-    'Enter a filter expression. Timeframe, source, and event type are controlled above.');
+  // owner SIEM declutter (2026-10-12): the placeholder is the one inline
+  // hint and the SIMPLE_HELP sentence is retired from the shared copy
+  expect(SIMPLE_PLACEHOLDER).toBe('Filter events...');
+  expect(require('fs').readFileSync(
+    require('path').join(__dirname, '..', 'components', 'uiCopy.js'), 'utf8'))
+    .not.toMatch(/SIMPLE_HELP =/);
   expect(SIMPLE_TOGGLE).toBe('Simple Search');
   expect(ADVANCED_TOGGLE).toBe('Advanced LCQL');
   expect(SOURCE_LABEL).toBe('Source');
@@ -119,7 +122,6 @@ const PRE_SUBMISSION_STRINGS = [
   // with the expanded-search state (Final pass III.0 item 2)
   ['CLASSIFY_TO_SUBMIT', CLASSIFY_TO_SUBMIT],
   ['SIMPLE_PLACEHOLDER', SIMPLE_PLACEHOLDER],
-  ['SIMPLE_HELP', SIMPLE_HELP],
   ['SIMPLE_TOGGLE', SIMPLE_TOGGLE],
   ['ADVANCED_TOGGLE', ADVANCED_TOGGLE],
   ['SOURCE_LABEL', SOURCE_LABEL],

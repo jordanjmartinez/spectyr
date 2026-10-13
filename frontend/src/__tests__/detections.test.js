@@ -109,7 +109,11 @@ test('feed renders detections and triages them', async () => {
     <Detections isVisible resetTrigger={0} onHostPivot={() => {}} />
   );
   expect(await screen.findByText('LSASS Process Memory Access')).toBeInTheDocument();
-  expect(screen.getByText('2 Open · 2 Promoted · 0 Dismissed')).toBeInTheDocument();
+  // owner list-page uniformity (2026-10-12): the passive counts line is
+  // retired; the toolbar tabs carry the counts
+  expect(screen.getByRole('button', { name: 'Open 2' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Promoted 2' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Dismissed 0' })).toBeInTheDocument();
   expect(screen.getAllByText('Critical').length).toBeGreaterThanOrEqual(1);
   assertClean(container);
   // promote the first detection
@@ -135,7 +139,10 @@ test('Final pass III.0.1: Detections is triage-only -- no Threats or Response Lo
   expect(screen.getAllByText('Promote').length).toBeGreaterThanOrEqual(1);
   expect(screen.getAllByText('Dismiss').length).toBeGreaterThanOrEqual(1);
   // promoted rows offer ONLY the neutral navigation; clicking selects the
-  // relevant target in Response and executes nothing
+  // relevant target in Response and executes nothing (the Promoted TAB is
+  // the uniform toolbar's disposition filter, not the retired Threats
+  // execution surface)
+  fireEvent.click(screen.getByRole('button', { name: 'Promoted 2' }));
   const opens = screen.getAllByRole('button', { name: 'Open in Response' });
   expect(opens).toHaveLength(2);   // the two promoted fixtures
   fireEvent.click(opens[0]);

@@ -15,6 +15,7 @@ import useIncidentScope from './useIncidentScope';
 import { deriveAchievements } from './achievements';
 import {
   gradeColor, CARD_STYLE, PageIntro, SegmentedToggle, IncidentIdBadge, SeverityBadge,
+  ToolbarSearch,
 } from './ui';
 
 // Stage 3.9B: the Incidents operational workspace ("what do I need to work?").
@@ -286,8 +287,7 @@ const Incidents = ({
               onChange={setView}
               options={[['active', `Active ${counts.active}`], ['ready', `Ready ${counts.ready}`], ['completed', `Completed ${counts.completed}`]]}
             />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search incidents..."
-              className="w-full sm:w-56 px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#1a2332] placeholder-[#8b949e] focus:outline-none focus:ring-2 focus:ring-[#101218]/20" />
+            <ToolbarSearch value={search} onChange={setSearch} placeholder="Search incidents..." />
           </>
         )}
       />
@@ -296,7 +296,9 @@ const Incidents = ({
         {/* Incident rows (stable) */}
         <div className="lg:col-span-2 rounded-xl divide-y divide-[#eef1f4]" style={CARD_STYLE}>
           {rows.length === 0 ? (
-            <p className="p-4 text-sm text-muted text-center">No incidents in this view.</p>
+            /* Owner empty-state convention (2026-10-12): one muted line,
+               top-left at the panel's content origin -- app-wide. */
+            <p className="p-4 text-sm text-muted">No incidents in this view.</p>
           ) : rows.map(c => (
             <button key={c.incident_id} onClick={() => onSelectIncident?.(c.incident_id)}
               className={`w-full text-left p-3 flex items-center justify-between gap-2 ${c.incident_id === selectedId ? 'bg-[#16436b]/5' : 'hover:bg-[#f6f8fa]'}`}>
@@ -319,7 +321,7 @@ const Incidents = ({
         {/* Selected incident detail (the workspace) */}
         <div className="lg:col-span-3 rounded-xl p-4 sm:p-5" style={CARD_STYLE}>
           {!selected ? (
-            <p className="text-sm text-muted text-center py-8">Select an incident to work it.</p>
+            <p className="text-sm text-muted">Select an incident to work it.</p>
           ) : (
             <div className="space-y-4">
               <div className="flex items-start justify-between gap-3">
