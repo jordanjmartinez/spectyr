@@ -22,9 +22,9 @@ const Card = ({ children }) => (
 
 const SignatureBadge = ({ signer }) => (
   signer && signer !== '-' ? (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-emerald-50 text-emerald-700 border border-emerald-200" title={signer}>Signed</span>
+    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-200" title={signer}>Signed</span>
   ) : (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-red-50 text-red-700 border border-red-200">Unsigned</span>
+    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] bg-red-50 text-red-700 border border-red-200">Unsigned</span>
   )
 );
 

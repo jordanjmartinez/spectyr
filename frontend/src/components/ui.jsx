@@ -68,30 +68,33 @@ export const SEVERITY_PILL = {
 
 // ---- the shared incident identity system (VD2, reruled by VD8) --------------
 // ONE treatment per concept, defined once and consumed everywhere. The
-// three badges share ONE dimension contract (BADGE_BASE): Inter, 12px,
+// three badges share ONE dimension contract (BADGE_BASE): Inter, 11px
+// (owner sizing pass 2026-10-12: all pills slightly smaller, site-wide),
 // medium weight, identical line-height / vertical padding / min-height /
-// radius, ~22px tall, content vertically centered -- so the group
+// radius, ~20px tall, content vertically centered -- so the group
 // [INC-1598] [Medium] [Guided] reads balanced on every surface.
-//   IncidentIdBadge -- the incident identity. Neutral seam background +
-//     ctrl border, dark readable ink; INTER by ruling (the pill
-//     treatment identifies it; no mono, no severity color, no accent).
+//   IncidentIdBadge -- the incident identity. Owner card pass
+//     (2026-10-12), superseding the neutral-ink ruling: the Spectr navy
+//     fill with white ink; still INTER (no mono, no severity color).
 //   SeverityBadge -- the approved Detections treatment as the source of
 //     truth: direct label, restrained semantic tint, border + subtle
 //     background, status dot; never color alone. Case-insensitive input
 //     ('Critical' and 'critical' render identically).
-//   ModeBadge -- Guided / Hardcore, neutral and restrained, never a
-//     smaller tag (a transparent border keeps its metrics identical).
+//   ModeBadge -- identical metrics, per-mode fill (owner card pass
+//     2026-10-12): Hardcore is the black pill; Guided / SOC Queue stay
+//     the neutral light pill. Never a smaller tag (a transparent border
+//     keeps the metrics identical).
 //   IncidentIdentityRow -- the ONE canonical composition and order:
 //     [INC id] [Severity] ([Mode]) then the title, wrapping naturally
 //     (title drops to its own line when constrained; nothing shrinks or
 //     clips to force one line).
 
-export const BADGE_BASE = 'inline-flex items-center rounded-full text-xs font-medium leading-4 py-0.5 min-h-[22px] whitespace-nowrap shrink-0';
+export const BADGE_BASE = 'inline-flex items-center rounded-full text-[11px] font-medium leading-4 py-0.5 min-h-[20px] whitespace-nowrap shrink-0';
 
 export const IncidentIdBadge = ({ id }) => (
   <span
     data-testid="incident-id-badge"
-    className={`${BADGE_BASE} px-2.5 bg-[#eef1f4] text-[#1a2332] border border-[#d0d7de]`}
+    className={`${BADGE_BASE} px-2 bg-[#16436b] text-white border border-[#16436b]`}
   >
     {id}
   </span>
@@ -102,7 +105,7 @@ export const SeverityBadge = ({ severity }) => {
   return (
     <span
       data-testid="severity-badge"
-      className={`${BADGE_BASE} px-2.5 gap-1.5 border ${
+      className={`${BADGE_BASE} px-2 gap-1.5 border ${
         SEVERITY_PILL[k] || 'border-[#d0d7de] text-muted'}`}
     >
       <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: severityDot(k) }} />
@@ -111,10 +114,13 @@ export const SeverityBadge = ({ severity }) => {
   );
 };
 
+// per-mode fill only; the metrics stay BADGE_BASE for every mode
+const MODE_PILL = { hardcore: 'bg-[#101218] text-white' };
+
 export const ModeBadge = ({ mode }) => (
   <span
     data-testid="mode-badge"
-    className={`${BADGE_BASE} px-2.5 bg-[#eef1f4] text-muted border border-transparent`}
+    className={`${BADGE_BASE} px-2 border border-transparent ${MODE_PILL[mode] || 'bg-[#eef1f4] text-muted'}`}
   >
     {MODE_LABEL[mode] || mode}
   </span>
@@ -210,7 +216,7 @@ export const ToolbarSearch = ({ value, onChange, placeholder }) => (
 // ---- small identity pieces --------------------------------------------------
 
 export const CountPill = ({ children }) => (
-  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-muted">{children}</span>
+  <span className="px-1.5 py-0.5 rounded-full text-[11px] font-medium bg-[#eef1f4] text-muted">{children}</span>
 );
 
 export const SectionLabel = ({ className = '', children }) => (
@@ -226,6 +232,30 @@ export const SeverityDotMark = ({ severity }) => <Dot color={severityDot(severit
 // Neutral state chip (factual observable state on targets/rows).
 export const StateChip = ({ children }) => (
   <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#eef1f4] text-muted">{children}</span>
+);
+
+// ---- the ONE horizontal bar list ---------------------------------------------
+// Owner unification (2026-10-12): Evidence Activity and Severity
+// Distribution render the SAME row anatomy -- muted text-sm label, h-2
+// track in #eef1f4 capped at 10rem, right-aligned font-medium tabular
+// count -- differing ONLY in fill color (and the label column width, a
+// per-card layout necessity for long source names vs short severities).
+export const BarList = ({ children }) => (
+  <div className="space-y-1.5">{children}</div>
+);
+
+export const BarRow = ({ label, count, max, fill, labelWidth = 'w-32', testid = null }) => (
+  <div className="flex items-center gap-2 text-sm" data-testid={testid || undefined}>
+    <span className={`${labelWidth} shrink-0 text-muted`}>{label}</span>
+    <span className="flex-1 max-w-[10rem] h-2 rounded-full bg-[#eef1f4] overflow-hidden" aria-hidden="true">
+      <span
+        data-testid={testid ? `${testid}-bar` : undefined}
+        className="block h-full rounded-full"
+        style={{ width: `${max ? (count / max) * 100 : 0}%`, background: fill }}
+      />
+    </span>
+    <span className="w-8 shrink-0 text-right font-medium text-[#1a2332] tabular-nums">{count}</span>
+  </div>
 );
 
 // ---- controls ---------------------------------------------------------------

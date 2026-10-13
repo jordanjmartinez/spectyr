@@ -34,11 +34,11 @@ const SectionLabel = ({ children }) => (
 
 const SignerBadge = ({ signer, signed }) => (
   signed ? (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap" title={signer || 'Signed'}>
+    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap" title={signer || 'Signed'}>
       Signed
     </span>
   ) : (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-red-50 text-red-700 border border-red-200">Unsigned</span>
+    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] bg-red-50 text-red-700 border border-red-200">Unsigned</span>
   )
 );
 
@@ -47,7 +47,7 @@ const SignerBadge = ({ signer, signed }) => (
 // autorun, so every row carries its artifact type.
 
 const PersistTypeBadge = ({ type }) => (
-  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-[#eef1f4] text-muted border border-[#d0d7de] whitespace-nowrap">
+  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] bg-[#eef1f4] text-muted border border-[#d0d7de] whitespace-nowrap">
     {PERSIST_LABEL[type] || 'Autorun'}
   </span>
 );
@@ -68,7 +68,7 @@ const StateBadges = ({ row }) => {
   return (
     <span className="inline-flex flex-wrap gap-1">
       {badges.map(b => (
-        <span key={b.key} className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs border whitespace-nowrap ${b.cls}`}>{b.text}</span>
+        <span key={b.key} className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] border whitespace-nowrap ${b.cls}`}>{b.text}</span>
       ))}
     </span>
   );
@@ -234,7 +234,7 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
                   {snap.isolation === 'isolated' ? (
                     <IsolationBadge isolation="isolated" />
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-[#eef1f4] text-muted">Connected</span>
+                    <span className="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded-full text-[11px] font-medium bg-[#eef1f4] text-muted">Connected</span>
                   )}
                 </div>
                 <div className="mt-5 grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -257,11 +257,11 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
                 <div className="mt-2 flex items-center justify-between gap-4">
                   <p className="text-sm text-muted">Isolation cuts the host off from the network while the agent channel stays up.</p>
                   {snap.isolation === 'isolated' ? (
-                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-red-600 text-white whitespace-nowrap">
+                    <span className="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded-full text-[11px] font-medium bg-red-600 text-white whitespace-nowrap">
                       <span className="w-1.5 h-1.5 rounded-full bg-white" />Isolated
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
+                    <span className="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Connected
                     </span>
                   )}
@@ -420,7 +420,7 @@ const EndpointDetail = ({ hostname, org, onBack, onOpenResponse }) => {
                       <td className="px-3 py-2 log-mono whitespace-nowrap">{svc.name}</td>
                       <td className="px-3 py-2">{svc.display_name}</td>
                       <td className="px-3 py-2">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] ${
                           svc.status === 'Running'
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                             : 'border border-[#d0d7de] text-muted'

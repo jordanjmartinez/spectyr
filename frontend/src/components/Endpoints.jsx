@@ -13,11 +13,11 @@ import {
 
 export const StatusBadge = ({ status }) => (
   status === 'online' ? (
-    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+    <span className="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Online
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
+    <span className="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-700 border border-red-200">
       <span className="w-1.5 h-1.5 rounded-full bg-red-500" />Offline
     </span>
   )
@@ -25,9 +25,9 @@ export const StatusBadge = ({ status }) => (
 
 export const IsolationBadge = ({ isolation }) => (
   isolation === 'isolated' ? (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-600 text-white">Isolated</span>
+    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-medium bg-red-600 text-white">Isolated</span>
   ) : (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border border-[#d0d7de] text-muted">Not Isolated</span>
+    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-medium border border-[#d0d7de] text-muted">Not Isolated</span>
   )
 );
 

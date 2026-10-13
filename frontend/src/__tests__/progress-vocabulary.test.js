@@ -146,7 +146,7 @@ test('no canonical string contains an em dash', () => {
 
 // --- 2.2: surfaces render the constants (canonical-copy per surface) -------
 
-test('the phase strip renders the canonical vocabulary from card observables, D4 count included', async () => {
+test('the decluttered panel: the row chip speaks the vocabulary; the strip lines no longer render (owner 2026-10-12)', async () => {
   apiFetch.mockImplementation((path) => Promise.resolve({
     ok: true,
     json: () => Promise.resolve(
@@ -165,10 +165,13 @@ test('the phase strip renders the canonical vocabulary from card observables, D4
     <Incidents gameMode="soc_queue" activeIncidentId="INC-1"
       onSelectIncident={() => {}} />
   );
-  expect(await screen.findByText('Detections Reviewed: 4 of 5')).toBeInTheDocument();
-  expect(screen.getByText('Response Actions Taken: 6')).toBeInTheDocument();
-  expect(screen.getByText('1 to Review')).toBeInTheDocument();
-  expect(screen.getByText(/1 detection still need Promote or Dismiss/)).toBeInTheDocument();
+  // the list row chip still speaks the canonical vocabulary
+  expect(await screen.findByText('1 to Review')).toBeInTheDocument();
+  // owner declutter (2026-10-12): the checklist lines and the remaining-
+  // count text no longer render in the panel
+  expect(screen.queryByText('Detections Reviewed: 4 of 5')).toBeNull();
+  expect(screen.queryByText('Response Actions Taken: 6')).toBeNull();
+  expect(screen.queryByText(/1 detection still need Promote or Dismiss/)).toBeNull();
   // ruling A: the fuzzy related-activity LIST is gone; no such block renders
   expect(screen.queryByText(/Related response activity/)).toBeNull();
 });

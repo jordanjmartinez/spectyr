@@ -61,9 +61,10 @@ test('no classification correctness is shown before submission', async () => {
   const { container } = render(<Host gameMode="guided" activeIncidentId="INC-4000" />);
   await screen.findByText('brief D');
   classify();
-  // The workspace reflects the SELECTION (observable) but never a verdict
-  // on it: none of the removed reveal vocabulary may render pre-submit.
-  expect(screen.getByText('Classification: False Positive')).toBeInTheDocument();
+  // The selection is pure local input (the checklist display left with the
+  // owner declutter 2026-10-12); never a verdict on it -- none of the
+  // removed reveal vocabulary may render pre-submit.
+  expect(screen.queryByText('Classification: False Positive')).toBeNull();
   expect(container.textContent).not.toMatch(/classification correct/i);
   expect(container.textContent).not.toMatch(/not the right classification/i);
   expect(container.textContent).not.toMatch(/now marked/i);
@@ -89,13 +90,21 @@ test.each([['guided'], ['hardcore']])(
   },
 );
 
-test('classification selection still gates Submit exactly as before', async () => {
+test('classification selection still gates submission (enabled Submit, inline error until selected)', async () => {
+  // owner panel pass (2026-10-12): Submit stays ENABLED; the gate moved to
+  // the incomplete-click inline error. Correctness disclosure is unchanged:
+  // nothing is revealed until the confirmation flow completes.
   render(<Host gameMode="guided" activeIncidentId="INC-4000" />);
   await screen.findByText('brief D');
-  expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled();
-  expect(screen.getByText('Select a classification to submit.')).toBeInTheDocument();
+  const submit = screen.getByRole('button', { name: 'Submit' });
+  expect(submit).not.toBeDisabled();
+  fireEvent.click(submit);
+  expect(screen.getByRole('alert').textContent).toBe('Select a classification to submit.');
+  expect(screen.queryByText(/Filing as/)).toBeNull();
   classify();
-  expect(screen.getByRole('button', { name: 'Submit' })).not.toBeDisabled();
+  expect(screen.queryByRole('alert')).toBeNull();
+  fireEvent.click(submit);
+  expect(await screen.findByText(/Filing as/)).toBeInTheDocument();
 });
 
 test('no player-facing source references the Check Answer workflow', () => {

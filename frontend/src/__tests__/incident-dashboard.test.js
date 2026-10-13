@@ -60,7 +60,6 @@ const routeJson = (path) => {
   if (path === '/api/detections') return FEED;
   if (path === '/api/actions') return { actions: [{ outcome: 'success' }, { outcome: 'no_op' }, { outcome: 'success' }, { outcome: 'failed_precondition' }] };
   if (path === '/api/incidents/INC-3000/score') return SCORE_3000;
-  if (path === '/api/incidents/INC-3000/triage-review') return { mitre: { id: 'T1486', name: 'Data Encrypted for Impact', tactic: 'Impact' } };
   if (path.endsWith('/scope')) return { incident_id: path.split('/')[3], sealed: true, hosts: [], accounts: [], detection_ids: ['da', 'db', 'dc'] };
   return {};
 };
@@ -78,7 +77,7 @@ test('renders the overview grid in reading order: A, B, then the main region', a
   // the primary visualization; the ATT&CK profile stays secondary.
   const order = ['active-investigation', 'kpi-row', 'evidence-activity',
                  'severity-distribution', 'environment-status',
-                 'attack-matrix', 'recent-results'];
+                 'recent-results'];
   const nodes = order.map(id => container.querySelector(`[data-testid="${id}"]`));
   nodes.forEach(n => expect(n).not.toBeNull());
   for (let i = 0; i < nodes.length - 1; i += 1) {
@@ -105,11 +104,21 @@ test('A: the Active Investigation card shows observable fields only and Resume n
   // never pre-submission correctness; never a graded Submit control
   expect(within(card).queryByText(/correct/i)).toBeNull();
   expect(screen.queryByRole('button', { name: /^Submit/ })).toBeNull();
-  fireEvent.click(within(card).getByRole('button', { name: 'Resume investigation' }));
-  expect(onSelectIncident).toHaveBeenCalledWith('INC-2000');
+  // owner layout pass 2 (2026-10-12): the stage line is gone entirely; in
+  // its place the View incidents link -- bottom-right, View-endpoints style
+  expect(within(card).queryByText('Ready to Submit')).toBeNull();
+  expect(within(card).queryByText(/Detections to Triage/)).toBeNull();
+  const viewIncidents = within(card).getByRole('button', { name: 'View incidents' });
+  expect(viewIncidents.parentElement.className).toMatch(/justify-end/);
+  expect(viewIncidents.className).toMatch(/text-\[#16436b\]/);
+  fireEvent.click(viewIncidents);
   expect(onNavigate).toHaveBeenCalledWith('incidents');
-  // the second active incident rides as a compact row
-  expect(within(card).getByText('INC-1000')).toBeInTheDocument();
+  expect(onSelectIncident).not.toHaveBeenCalled();     // plural link: no selection
+  // the Resume button stays removed; row navigation still works via the
+  // other-active compact rows
+  expect(within(card).queryByRole('button', { name: 'Resume investigation' })).toBeNull();
+  fireEvent.click(within(card).getByText('INC-1000').closest('button'));
+  expect(onSelectIncident).toHaveBeenCalledWith('INC-1000');
 });
 
 test('VS: progress is folded INTO Active Investigation (accessible bar, no separate card)', async () => {
@@ -124,7 +133,10 @@ test('VS: progress is folded INTO Active Investigation (accessible bar, no separ
   expect(bar).toHaveAttribute('aria-label', 'Detections Reviewed: 3 of 3');
   expect(within(card).queryByText('Detections Reviewed: 3 of 3')).toBeNull();
   expect(within(card).queryByText('Classification: False Positive')).toBeNull();
+  // owner layout pass 2 (2026-10-12): the stage line is removed entirely
+  // (even when Ready); the View incidents link stands in its place
   expect(within(card).queryByText('Ready to Submit')).toBeNull();
+  expect(within(card).getByRole('button', { name: 'View incidents' })).toBeInTheDocument();
   // the fragmenting card is gone
   expect(screen.queryByTestId('investigation-progress')).toBeNull();
   expect(screen.queryByText('Investigation Progress')).toBeNull();
@@ -160,23 +172,22 @@ test('VS: all-zero severity shows the honest empty state, never empty bars', asy
   expect(card.querySelectorAll('[style*="width"]')).toHaveLength(0);
 });
 
-test('VS: environment status shows managed count, indicators, real availability, and real platform breakdown', async () => {
+test('VS: environment status is ONE state-first line plus View endpoints', async () => {
   const onNavigate = jest.fn();
   render(<IncidentDashboard gameMode="hardcore" onNavigate={onNavigate} />);
   const card = await screen.findByTestId('environment-status');
-  await waitFor(() => expect(within(card).getByText('3')).toBeInTheDocument());
-  expect(card.textContent).toContain('managed hosts');
-  expect(within(card).getByText('2')).toBeInTheDocument();       // online
-  expect(within(card).getByText('1')).toBeInTheDocument();       // offline
-  // availability = online / managed, exact and visible + sr equivalent
-  expect(within(card).getByText('67%')).toBeInTheDocument();
-  expect(card.textContent).toContain('2 of 3 managed hosts online (67% availability).');
-  // platform breakdown from REAL fields only
-  expect(card.textContent).toContain('Windows Server 1');
-  expect(card.textContent).toContain('Windows Workstation 2');
+  // owner UI pass (2026-10-12): the four restatements of the same fact
+  // collapse to a status dot + "N/M Hosts Online" (2 of 3 online here)
+  await waitFor(() => expect(within(card).getByText('2/3 Hosts Online')).toBeInTheDocument());
+  expect(card.textContent).not.toMatch(/managed hosts|Availability|%/);
+  expect(card.textContent).not.toMatch(/Windows Server|Windows Workstation/);
+  expect(within(card).queryByText(/Offline/)).toBeNull();
   // no invented history or uptime claims
   expect(card.textContent).not.toMatch(/uptime|trend|last (week|month)|history/i);
-  fireEvent.click(within(card).getByRole('button', { name: 'View endpoints' }));
+  // owner layout pass 2 (2026-10-12): the link sits bottom-right
+  const viewEndpoints = within(card).getByRole('button', { name: 'View endpoints' });
+  expect(viewEndpoints.parentElement.className).toMatch(/justify-end/);
+  fireEvent.click(viewEndpoints);
   expect(onNavigate).toHaveBeenCalledWith('endpoints');
 });
 
@@ -197,7 +208,8 @@ test('C: KPI tiles carry real session values only (no trends, deltas, or sparkli
   await waitFor(() => expect(within(row).getByText('5')).toBeInTheDocument());   // 2 promoted + 3 dismissed
   expect(within(row).getByText('Detections Reviewed')).toBeInTheDocument();
   expect(within(row).getByText('2')).toBeInTheDocument();                        // successes only
-  expect(within(row).getByText('Response Actions Executed')).toBeInTheDocument();
+  // owner UI pass (2026-10-12): shortened from "Response Actions Executed"
+  expect(within(row).getByText('Response Actions')).toBeInTheDocument();
   expect(within(row).getByText('Incidents Completed')).toBeInTheDocument();
   expect(within(row).getByText('Latest Incident Grade')).toBeInTheDocument();
   expect(within(row).getByText('B')).toBeInTheDocument();
@@ -230,21 +242,24 @@ test('empty states are honest before any activity', async () => {
   expect(screen.getByText(/No incidents submitted yet this session/)).toBeInTheDocument();
 });
 
-test('the ATT&CK Matrix carries no session/player overlay; grading is fetched ONLY for submitted ids', async () => {
-  render(<IncidentDashboard gameMode="hardcore" />);
-  const radar = await screen.findByTestId('attack-matrix');
-  // catalog-coverage only: no tabs, no player-performance vocabulary
-  expect(within(radar).queryByText('This session')).toBeNull();
-  expect(within(radar).queryByText('Catalog coverage')).toBeNull();
-  expect(radar.textContent).not.toMatch(/Incident Grade|submitted/i);
-  // the frozen records feed Recent Results alone; grading/triage endpoints
-  // were touched ONLY for the submitted id (active ids never graded)
+test('the ATT&CK matrix is gone entirely; grading fetched ONLY for submitted ids (score view alone)', async () => {
+  render(<IncidentDashboard gameMode="hardcore" activeIncidentId="INC-2000" />);
+  // owner layout pass (2026-10-12): the Session ATT&CK Coverage card and
+  // its grid are removed from the dashboard
+  await screen.findByTestId('active-investigation');
+  expect(screen.queryByTestId('attack-matrix')).toBeNull();
+  expect(screen.queryByText('Session ATT&CK Coverage')).toBeNull();
+  // the frozen records feed Recent Results alone; grading endpoints were
+  // touched ONLY for the submitted id (active ids never graded); the
+  // triage-review and per-submitted scope fetches are retired with the card
   await waitFor(() => expect(screen.getByText('Malware')).toBeInTheDocument());
   const graded = apiFetch.mock.calls
     .map(([p]) => String(p))
     .filter(p => p.includes('/score') || p.includes('/triage-review'));
   expect(graded.length).toBeGreaterThan(0);
   graded.forEach(p => expect(p).toContain('INC-3000'));
+  expect(graded.some(p => p.includes('/triage-review'))).toBe(false);
+  expect(apiFetch.mock.calls.some(([p]) => String(p) === '/api/incidents/INC-3000/scope')).toBe(false);
 });
 
 test('VH: Session Performance is a KPI tile, distinct from the per-incident grade', async () => {
@@ -280,14 +295,45 @@ test('severity reads the observable scope + feed; grouped-alerts is never called
   expect(apiFetch.mock.calls.some(([p]) => p === '/api/grouped-alerts')).toBe(false);
 });
 
-test('the mode badge rides the identity row; the queue-count line is retired (owner UI pass)', async () => {
+test('the mode is plain muted text on the card title row; the pill and queue-count line are retired', async () => {
   render(<IncidentDashboard gameMode="hardcore" activeIncidentId="INC-2000" />);
   const card = await screen.findByTestId('active-investigation');
-  // compact badge beside identity, once the incident list lands
-  await waitFor(() => expect(within(card).getByText('Hardcore')).toBeInTheDocument());
+  // owner layout pass (2026-10-12): no mode pill -- the mode rides the
+  // TITLE ROW as plain muted text, styled like the Evidence Activity
+  // events-observed count
+  const mode = within(card).getByText('Hardcore');
+  expect(mode.getAttribute('class')).toMatch(/text-muted/);
+  expect(mode.parentElement).toBe(within(card).getByText('Active Investigation').parentElement);
+  expect(within(card).queryByTestId('mode-badge')).toBeNull();
+  // the canonical identity row (inline follow-up 2026-10-12): [INC id]
+  // [Severity] then the TITLE inline, same as the Incidents detail header;
+  // still no mode pill
+  await waitFor(() => expect(within(card).getByTestId('incident-pill')).toBeInTheDocument());
+  const row = within(card).getByTestId('incident-pill');
+  const kids = [...row.children];
+  expect(kids.slice(0, 2).map(el => el.getAttribute('data-testid')))
+    .toEqual(['incident-id-badge', 'severity-badge']);
+  expect(kids[2].textContent).toBe('Ready Incident');   // the title, inline
   // owner UI pass (2026-10-12): the VH queue-count line went with the
   // other detail lines; the queue denominator lives in the KPI strip
   expect(within(card).queryByText(/of 10 Resolved/)).toBeNull();
+});
+
+test('no stage line in any state: open detections render no "to Triage" copy (owner layout pass 2)', async () => {
+  apiFetch.mockImplementation((path) => Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve(path === '/api/incidents'
+      ? { queue_length: 10, resolved_count: 0, completed: [], stats: { severity_breakdown: {} },
+          active: [{ incident_id: 'INC-4000', title: 'Open Work', severity: 'High', state: 'in_progress',
+                     sealed: true, ready: false, open_detections: 3, triage: { total: 5, triaged: 2 } }] }
+      : routeJson(path)),
+  }));
+  render(<IncidentDashboard gameMode="hardcore" />);
+  const card = await screen.findByTestId('active-investigation');
+  await waitFor(() => expect(within(card).getByText('Open Work')).toBeInTheDocument());
+  expect(within(card).queryByText(/Detections to Triage/)).toBeNull();
+  expect(within(card).queryByText('Ready to Submit')).toBeNull();
+  expect(within(card).getByRole('button', { name: 'View incidents' })).toBeInTheDocument();
 });
 
 test('VH: Guided carries no queue denominator anywhere', async () => {

@@ -1,14 +1,15 @@
 /**
- * Stage 6 playtest fix 7: switching incidents never flashes the previous
- * incident's related hosts/accounts (an analyst could act against the wrong
- * host). The detail panel now reads the ONE shared scope state
- * (useIncidentScope, the same machinery behind Detections / Endpoints /
- * Response): data drops the moment the incident changes (the loading line
- * renders instead), and a late response for the OLD incident is discarded,
- * never rendered.
+ * Stage 6 playtest fix 7, re-targeted by the owner declutter (2026-10-12):
+ * the detail panel no longer DISPLAYS related hosts/accounts (the block is
+ * removed), so the never-act-against-the-wrong-host guarantee now lives at
+ * the one remaining scope consumer -- the Investigate in SIEM descent. The
+ * panel still reads the ONE shared scope state (useIncidentScope): data
+ * drops the moment the incident changes and a late response for the OLD
+ * incident is discarded, so the descent can never carry a previous
+ * incident's hosts.
  */
 import React from 'react';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import Incidents from '../components/Incidents';
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
@@ -34,49 +35,49 @@ const Host = (props) => {
 
 beforeEach(() => { apiFetch.mockReset(); });
 
-test('switching incidents shows the loading line, then the new scope; never the old hosts', async () => {
-  let resolveB;
+test('the panel renders NO related hosts/accounts/loading display (owner declutter)', async () => {
   apiFetch.mockImplementation((path) => {
     if (path === '/api/incidents') return ok(LIST);
     if (path === '/api/incidents/INC-A/scope') return ok(scopeBody('INC-A', ['HOST-A'], ['ACME\\usera']));
-    if (path === '/api/incidents/INC-B/scope') return new Promise((resolve) => { resolveB = resolve; });
     return ok({});
   });
-  const view = render(<Host gameMode="soc_queue" activeIncidentId="INC-A" />);
-  await screen.findByText('HOST-A');
-
-  // switch to B while B's scope is still in flight
-  await act(async () => {
-    view.rerender(<Host gameMode="soc_queue" activeIncidentId="INC-B" />);
-  });
-  expect(screen.queryByText('HOST-A')).toBeNull(); // the reported flash
-  expect(screen.getByText('Loading incident scope')).toBeInTheDocument();
-
-  await act(async () => {
-    resolveB({ ok: true, status: 200, json: () => Promise.resolve(scopeBody('INC-B', ['HOST-B'], [])) });
-  });
-  expect(screen.getByText('HOST-B')).toBeInTheDocument();
+  render(<Host gameMode="soc_queue" activeIncidentId="INC-A" onEvidenceDescent={() => {}} />);
+  // the descent entry appears once the scope loads...
+  await screen.findByRole('button', { name: 'Investigate in SIEM' });
+  // ...but no scope text ever displays
   expect(screen.queryByText('HOST-A')).toBeNull();
+  expect(screen.queryByText(/Related Hosts:/)).toBeNull();
+  expect(screen.queryByText(/Related Accounts:/)).toBeNull();
+  expect(screen.queryByText('Loading incident scope')).toBeNull();
 });
 
-test('a late response for the previous incident is discarded, never rendered', async () => {
+test('a late scope response for the previous incident never reaches the descent payload', async () => {
   let resolveA;
+  const onEvidenceDescent = jest.fn();
   apiFetch.mockImplementation((path) => {
     if (path === '/api/incidents') return ok(LIST);
     if (path === '/api/incidents/INC-A/scope') return new Promise((resolve) => { resolveA = resolve; });
     if (path === '/api/incidents/INC-B/scope') return ok(scopeBody('INC-B', ['HOST-B'], []));
     return ok({});
   });
-  const view = render(<Host gameMode="soc_queue" activeIncidentId="INC-A" />);
-  await screen.findByText('Loading incident scope');
+  const view = render(<Host gameMode="soc_queue" activeIncidentId="INC-A"
+    onEvidenceDescent={onEvidenceDescent} />);
+  await screen.findAllByText('Alpha');   // row + detail header
+  // A's scope is still in flight: no descent entry yet (no stale target)
+  expect(screen.queryByRole('button', { name: 'Investigate in SIEM' })).toBeNull();
+
   await act(async () => {
-    view.rerender(<Host gameMode="soc_queue" activeIncidentId="INC-B" />);
+    view.rerender(<Host gameMode="soc_queue" activeIncidentId="INC-B"
+      onEvidenceDescent={onEvidenceDescent} />);
   });
-  await screen.findByText('HOST-B');
-  // A's slow response lands AFTER B rendered: it must be dropped
+  const btn = await screen.findByRole('button', { name: 'Investigate in SIEM' });
+  // A's slow response lands AFTER B is current: it must be dropped
   await act(async () => {
     resolveA({ ok: true, status: 200, json: () => Promise.resolve(scopeBody('INC-A', ['HOST-A'], [])) });
   });
-  expect(screen.queryByText('HOST-A')).toBeNull();
-  expect(screen.getByText('HOST-B')).toBeInTheDocument();
+  fireEvent.click(btn);
+  expect(onEvidenceDescent).toHaveBeenCalledTimes(1);
+  expect(onEvidenceDescent).toHaveBeenCalledWith({
+    hosts: ['HOST-B'], account: null, scopeIncidentId: 'INC-B',
+  });
 });

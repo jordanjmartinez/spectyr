@@ -57,7 +57,7 @@ const OUTCOME_CHIP = {
 };
 const OUTCOME_LABEL = { success: 'Success', no_op: 'No effect', failed_precondition: 'Failed' };
 const OutcomeChip = ({ outcome }) => (
-  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${OUTCOME_CHIP[outcome] || 'border-[#d0d7de] text-muted'}`}>
+  <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-medium border ${OUTCOME_CHIP[outcome] || 'border-[#d0d7de] text-muted'}`}>
     {OUTCOME_LABEL[outcome] || outcome}
   </span>
 );

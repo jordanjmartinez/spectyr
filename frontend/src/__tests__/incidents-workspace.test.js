@@ -1,9 +1,10 @@
 /**
- * Stage 3.9B (IA amendment): the Incidents operational workspace. Verifies the
- * Active/Ready/Completed views + search, stable incident rows, the selected-
- * incident detail (briefing + phase strip incl. the A2 pre-seal line + related
- * hosts/accounts), and that the graded Submit/Resume/Review controls live here.
- * Both neutral readiness messages are reachable; no POST fires on render.
+ * Stage 3.9B (IA amendment), reshaped by the owner queue pass (2026-10-12):
+ * the Incidents operational workspace. The left panel is the SESSION QUEUE
+ * (header + fraction + every scenario slot in queue order; the view toggle
+ * and search are retired); the detail panel is the decluttered working
+ * surface (title-only header, link row, verdict card, sticky Submit
+ * footer). No POST fires on render.
  */
 import React from 'react';
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
@@ -45,36 +46,136 @@ const Host = (props) => {
   return <Incidents chosen={chosen} setChosen={setChosen} {...props} />;
 };
 
-test('renders the workspace: Active/Ready/Completed views + search + rows', async () => {
-  render(<Incidents gameMode="training" />);
-  expect(await screen.findByText(/Active 3/)).toBeInTheDocument();
-  // A3.4: Ready means SUBMISSION-ready; a server-ready card with no
-  // classification selected does not count.
-  expect(screen.getByText(/Ready 0/)).toBeInTheDocument();
-  expect(screen.getByText(/Completed 2/)).toBeInTheDocument();
-  expect(screen.getByPlaceholderText('Search incidents...')).toBeInTheDocument();
-  expect(screen.getByText('INC-2000')).toBeInTheDocument();   // a row
+test('the left panel is the SESSION QUEUE: header, fraction, every slot in queue order', async () => {
+  render(<Incidents gameMode="soc_queue" />);
+  const queue = await screen.findByTestId('incident-queue');
+  // the queue header matches the detail title's panel-heading treatment
+  expect(within(queue).getByText('Incident Queue').className)
+    .toMatch(/text-base font-semibold/);
+  expect(await within(queue).findByText('2 of 10')).toBeInTheDocument();   // 1 resolved -> working slot 2
+  // the view toggle and search are retired
+  expect(screen.queryByText(/Active 3/)).toBeNull();
+  expect(screen.queryByText(/Ready 0/)).toBeNull();
+  expect(screen.queryByPlaceholderText('Search incidents...')).toBeNull();
+  // queue order: completed (submission order), in-flight (drip order),
+  // then the undripped slots as muted non-clickable placeholders
+  const rows = [...queue.querySelector('.divide-y').children];
+  expect(rows).toHaveLength(10);
+  expect(rows[0].textContent).toContain('INC-3000');
+  expect(rows[1].textContent).toContain('INC-3001');
+  expect(rows[2].textContent).toContain('INC-1000');
+  expect(rows[3].textContent).toContain('INC-2000');
+  expect(rows[4].textContent).toContain('INC-4000');
+  expect(rows[5].textContent).toBe('Scenario 6');
+  expect(rows[9].textContent).toBe('Scenario 10');
+  expect(rows[5].tagName).toBe('DIV');                     // not clickable
+  // completed row: muted with a grade chip
+  expect(rows[0].querySelector('.font-semibold').textContent).toBe('B');
+  expect(rows[0].querySelector('.opacity-60')).not.toBeNull();
+  // the working row: tinted, left accent bar, to-review count, progress bar
+  expect(rows[3].className).toMatch(/bg-\[#16436b\]\/5/);
+  expect(rows[3].querySelector('.w-\\[3px\\]')).not.toBeNull();
+  expect(rows[3].textContent).toContain('2 to Review');
+  expect(rows[3].querySelector('.bg-\\[\\#eef1f4\\]')).not.toBeNull();   // the triage progress track
+  // the ready row: normal (no accent bar), readiness chip only
+  expect(rows[4].className).not.toMatch(/bg-\[#16436b\]\/5/);
+  expect(rows[4].textContent).toContain('Submit Pending');
+  // the pre-seal row: in-flight treatment, Loading chip, no bar yet
+  expect(rows[2].textContent).toContain('Loading');
+  expect(rows[2].querySelector('.bg-\\[\\#eef1f4\\]')).toBeNull();      // no progress track pre-seal
 });
 
-test('selecting a ready incident shows briefing + the gated Submit control (graded control home)', async () => {
-  render(<Incidents gameMode="training" activeIncidentId="INC-4000" />);
+test('the selected queue row carries its own highlight, independent of state styling', async () => {
+  render(<Incidents gameMode="soc_queue" activeIncidentId="INC-2000" />);
+  await screen.findByText('brief B');
+  const row = screen.getAllByText('INC-2000')[0].closest('button');
+  expect(row.className).toMatch(/ring-2 ring-inset/);
+});
+
+test('selecting a ready incident shows briefing + the always-enabled Submit in the sticky footer', async () => {
+  const { container } = render(<Host gameMode="training" activeIncidentId="INC-4000" />);
   expect(await screen.findByText('brief D')).toBeInTheDocument();          // detail-only content
-  expect(screen.getByText('Detections Reviewed: 3 of 3')).toBeInTheDocument();
-  // A3.4 (F4b): Submit renders once triage is complete but stays disabled
-  // until a classification is selected; the observable line names the step.
-  expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled();
-  expect(screen.getByText('Select a classification to submit.')).toBeInTheDocument();
+  // owner declutter (2026-10-12): the status checklist left the panel
+  expect(screen.queryByTestId('incident-checklist')).toBeNull();
+  expect(screen.queryByText('Detections Reviewed: 3 of 3')).toBeNull();
+  // owner panel pass (2026-10-12): no duplicate header pills -- the detail
+  // header is TITLE ONLY (pills live on the list row); no Clear selection
+  expect(screen.queryByRole('button', { name: 'Clear selected incident' })).toBeNull();
+  const header = screen.getByText('brief D').parentElement;   // the title+description block
+  expect(header.querySelector('[data-testid="incident-id-badge"]')).toBeNull();
+  expect(header.querySelector('[data-testid="severity-badge"]')).toBeNull();
+  // owner refinement (2026-10-12): group labels at the card-title token
+  // (the incident title stays the one hero); the Required tags are gone
+  expect(container.querySelector('#verdict-group-label').getAttribute('class')).toContain('t-subsection');
+  expect(container.querySelector('#category-group-label').getAttribute('class')).toContain('t-subsection');
+  expect(screen.queryByText('Required')).toBeNull();
+  expect(screen.queryByText('Not required')).toBeNull();
+  // Submit stays ENABLED; an incomplete click shows the inline group error
+  // and never opens the confirmation
+  const submit = screen.getByRole('button', { name: 'Submit' });
+  expect(submit).not.toBeDisabled();
+  fireEvent.click(submit);
+  expect(screen.getByRole('alert').textContent).toBe('Select a classification to submit.');
+  expect(screen.queryByText(/Filing as/)).toBeNull();
+  // owner footer refinement (2026-10-13): the Verdict/Category checklist
+  // items are gone; the triaged incident shows the checked detections item
+  expect(screen.getByText('Detections Triaged')).toBeInTheDocument();
+  expect(screen.queryByText('Verdict')).toBeNull();
 });
 
-test('a pre-seal incident shows the A2 telemetry-loading line', async () => {
+test('compact icon cards: leading outline icon, trailing check slot, four-column category grid', async () => {
+  render(<Host gameMode="soc_queue" activeIncidentId="INC-4000" />);
+  await screen.findByText('brief D');
+  const ws = screen.getByTestId('workspace-classification');
+  const radios = within(ws).getAllByRole('radio');
+  expect(radios).toHaveLength(10);                       // 2 verdicts + 8 categories
+  for (const r of radios) {
+    expect(r.querySelector('svg')).not.toBeNull();       // leading neutral outline icon
+    expect([...r.children].pop().className).toMatch(/ml-auto/);  // reserved trailing check slot
+    expect(r.className).toMatch(/min-h-\[48px\]/);
+  }
+  // verdict pair: compact content-width cards in a wrapping row (no grid)
+  const groups = within(ws).getAllByRole('radiogroup');
+  expect(groups[0].className).toMatch(/flex flex-wrap/);
+  // categories: the compact four-column grid (two below md)
+  expect(groups[1].className).toMatch(/md:grid-cols-4/);
+  // selecting fills the TRAILING slot only; the label and lead icon stand
+  fireEvent.click(within(ws).getByText('True Positive'));
+  const tp = within(ws).getAllByRole('radio').find((r) => r.textContent === 'True Positive');
+  expect(tp.getAttribute('aria-checked')).toBe('true');
+  expect([...tp.children].pop().querySelector('svg')).not.toBeNull();
+});
+
+test('a pre-seal incident renders the decluttered panel: no strip, no loading line, no verdict card, no footer', async () => {
   render(<Incidents gameMode="training" activeIncidentId="INC-1000" />);
   await screen.findByText('brief A');   // detail loaded
-  expect(screen.getAllByText('Incident telemetry is still loading.').length).toBeGreaterThanOrEqual(1);
+  // owner declutter (2026-10-12): the A2 loading line went with the strip
+  expect(screen.queryByText('Incident telemetry is still loading.')).toBeNull();
+  expect(screen.queryByTestId('incident-checklist')).toBeNull();
+  expect(screen.queryByTestId('workspace-classification')).toBeNull();
+  expect(screen.queryByTestId('submit-footer')).toBeNull();
+  expect(screen.getByRole('button', { name: 'Triage Detections' })).toBeInTheDocument();
 });
 
-test('an open (not-ready) incident shows the observable readiness message', async () => {
+test('an open (not-ready) incident shows the action row with NO remaining-count text (owner declutter)', async () => {
   render(<Incidents gameMode="training" activeIncidentId="INC-2000" />);
-  expect(await screen.findByText(/2 detections still need Promote or Dismiss/)).toBeInTheDocument();
+  await screen.findByText('brief B');
+  // owner refinement (2026-10-12): the row is plain "View X"-pattern text
+  // links (navigation to a scoped workspace), not outline buttons; they hug
+  // the panel's right side (2026-10-13)
+  const triage = screen.getByRole('button', { name: 'Triage Detections' });
+  expect(triage.className).toMatch(/text-\[#16436b\]/);
+  expect(triage.className).not.toMatch(/border|rounded-md/);
+  expect(triage.parentElement.className).toMatch(/justify-end/);
+  // owner footer refinement (2026-10-13): the one persistent footer item is
+  // the out-of-panel requirement, detections triage
+  expect(screen.getByText('Detections: 2 to Triage')).toBeInTheDocument();
+  expect(screen.queryByText('Detections Triaged')).toBeNull();
+  expect(screen.queryByText(/still need Promote or Dismiss/)).toBeNull();
+  // the Related Hosts / Accounts display is gone too
+  expect(screen.queryByText(/Related Hosts:/)).toBeNull();
+  expect(screen.queryByText(/Related Accounts:/)).toBeNull();
+  expect(screen.queryByText('Loading incident scope')).toBeNull();
 });
 
 test('a submitted incident renders the Case Closed summary with the Review What You Learned path', async () => {
@@ -119,38 +220,40 @@ test('issues no state-changing (POST) call on render', async () => {
 
 // --- the ratified A1-B.3.2 workspace selector (C1) + F4b gating (A3.4) ----
 
-test('A1-B.3.2 (C1): the workspace selector drives the checklist Classification line before Submit', async () => {
+test('A1-B.3.2 (C1): the workspace selector is pure local input (no request, no checklist line)', async () => {
   render(<Host gameMode="soc_queue" activeIncidentId="INC-2000" />);
   await screen.findByText('brief B');
-  expect(screen.getByText('Classification: Not Selected')).toBeInTheDocument();
+  // owner declutter (2026-10-12): the checklist Classification line is gone
+  expect(screen.queryByText('Classification: Not Selected')).toBeNull();
   const ws = screen.getByTestId('workspace-classification');
   fireEvent.click(within(ws).getByText('False Positive'));
-  expect(screen.getByText('Classification: False Positive')).toBeInTheDocument();
-  expect(screen.queryByText('Classification: Not Selected')).toBeNull();
+  expect(screen.queryByText('Classification: False Positive')).toBeNull();
   // local input only: no state-changing call fired
   const posts = apiFetch.mock.calls.filter(([, o]) => o && o.method && o.method !== 'GET');
   expect(posts).toHaveLength(0);
 });
 
-test('C1 (F4a): the workspace threat path reveals the inline category step and completes the line', async () => {
-  render(<Host gameMode="soc_queue" activeIncidentId="INC-2000" />);
-  await screen.findByText('brief B');
+test('C1 (F4a): the threat path -- an incomplete Submit shows the Category group error; completing it proceeds', async () => {
+  render(<Host gameMode="soc_queue" activeIncidentId="INC-4000" />);
+  await screen.findByText('brief D');
   const ws = screen.getByTestId('workspace-classification');
   fireEvent.click(within(ws).getByText('True Positive'));
-  // a threat verdict without a category is not yet a valid classification
-  expect(screen.getByText('Classification: Not Selected')).toBeInTheDocument();
+  // a threat verdict without a category is not yet a valid classification:
+  // Submit stays enabled but lands on the Category inline error
+  fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+  expect(screen.getByRole('alert').textContent).toBe('Select a category to submit.');
+  expect(screen.queryByText(/Filing as/)).toBeNull();
+  // picking the category clears the error; Submit now opens the confirmation
   fireEvent.click(within(ws).getByText('Malware'));
-  expect(screen.getByText('Classification: Malware')).toBeInTheDocument();
+  expect(screen.queryByRole('alert')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+  expect(await screen.findByText(/Filing as/)).toBeInTheDocument();
 });
 
 test('A3.4 (F4b): Submit opens the bare confirmation from the workspace selection; no data-entry step', async () => {
   render(<Host gameMode="training" activeIncidentId="INC-4000" />);
   await screen.findByText('brief D');
-  const checklist = () => within(screen.getByTestId('incident-checklist'));
-  expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled();
-  expect(checklist().getByText('Submit Pending')).toBeInTheDocument();
   fireEvent.click(within(screen.getByTestId('workspace-classification')).getByText('False Positive'));
-  expect(checklist().getByText('Ready to Submit')).toBeInTheDocument();
   const submit = screen.getByRole('button', { name: 'Submit' });
   expect(submit).not.toBeDisabled();
   fireEvent.click(submit);
@@ -160,17 +263,16 @@ test('A3.4 (F4b): Submit opens the bare confirmation from the workspace selectio
   expect(screen.queryByTestId('classification-modal')).toBeNull();
 });
 
-test('A3.4 (A3-OD-3): every Ready surface derives from the one state (view count, list chip, checklist)', async () => {
+test('A3.4 (A3-OD-3): the queue row chip derives Ready from the one shared state', async () => {
   render(<Host gameMode="soc_queue" activeIncidentId="INC-4000" />);
   await screen.findByText('brief D');
-  expect(screen.getByText(/Ready 0/)).toBeInTheDocument();
-  // the id renders in the list row AND the detail header; [0] is the row
+  // the id renders ONLY on the queue row now (the detail header is title-only)
   const row = screen.getAllByText('INC-4000')[0].closest('button');
   expect(row.textContent.endsWith('Submit Pending')).toBe(true);
   fireEvent.click(within(screen.getByTestId('workspace-classification')).getByText('False Positive'));
-  expect(screen.getByText(/Ready 1/)).toBeInTheDocument();
   expect(row.textContent.endsWith('Ready')).toBe(true);
-  expect(within(screen.getByTestId('incident-checklist')).getByText('Ready to Submit')).toBeInTheDocument();
+  // (the view-count and checklist Ready surfaces are retired -- owner queue
+  // pass 2026-10-12; the row chip and the footer checklist remain)
 });
 
 test('C1 (F4a): no workspace selector before the roster seals', async () => {
@@ -202,7 +304,9 @@ test('the workspace submits the selected verdict AND category verbatim', async (
   const ws = screen.getByTestId('workspace-classification');
   fireEvent.click(within(ws).getByText('True Positive'));
   fireEvent.click(within(ws).getByText('Defense Evasion'));
-  expect(screen.getByText('Classification: Defense Evasion')).toBeInTheDocument();
+  // (the checklist Classification display is gone -- owner declutter; the
+  // enabled Submit is the observable completion signal)
+  expect(screen.getByRole('button', { name: 'Submit' })).not.toBeDisabled();
   fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
   await screen.findByText(/Filing as/);
   fireEvent.click(screen.getByRole('button', { name: 'Submit Incident' }));

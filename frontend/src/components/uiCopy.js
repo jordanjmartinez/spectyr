@@ -220,9 +220,15 @@ export const CALL_WRONG = 'Wrong';
 // === Amendment 3 cycle commit A3.1: the ratified A3-R.1 finals and the ===
 // === standing drafted finals, landed ahead of their consumers (R7). ======
 
-// F4b (A3-4.2): the observable line beside a disabled Submit when
-// classification is the only step left.
+// F4b (A3-4.2), re-targeted by the owner Incidents-panel pass (2026-10-12):
+// Submit stays ENABLED; these are the inline group errors shown when an
+// incomplete Submit scrolls to the first missing group.
 export const CLASSIFY_TO_SUBMIT = 'Select a classification to submit.';
+export const SELECT_CATEGORY = 'Select a category to submit.';
+// Owner footer refinement (2026-10-13): the ONE footer readiness item is
+// the requirement NOT visible in the panel -- detections triage.
+export const detectionsQueueItem = (n) => `Detections: ${n} to Triage`;
+export const DETECTIONS_TRIAGED = 'Detections Triaged';
 
 // F7 (A3-5, ruled + standing finals): simple search as a projection over
 // canonical LCQL. The mode toggle labels name the mode you switch TO.

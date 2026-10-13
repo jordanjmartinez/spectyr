@@ -1093,7 +1093,11 @@ def test_frontend_attack_catalog_mirror(_use=None):
     endpoint. This pin keeps the mirror equal to the corpus by
     construction: pinned v19.1 tactics, canonical technique ids/names,
     per-technique scenario counts from the answer keys, the
-    corpus-recorded tactic per technique, a strict key whitelist, and no
+    corpus-recorded tactic per technique, a strict key whitelist (DELIBERATELY
+    extended 2026-10-12 with a per-technique `playable` boolean -- the owner
+    matrix ruling renders squares for the PLAYABLE catalog's techniques only,
+    the W6 guided-catalog `playable` precedent; flags are booleans, so no
+    scenario label or answer-key linkage rides them), and no
     scenario label anywhere (the mirror must never identify an incident).
     Detection-tag-only techniques (PINNED_DETECTION_TECHNIQUES) are
     deliberately excluded: resemblance tags are not scenario coverage."""
@@ -1110,7 +1114,7 @@ def test_frontend_attack_catalog_mirror(_use=None):
                                   "technique_names"}, mirror.keys()
     assert mirror["attack_version"] == "Enterprise ATT&CK v19.1 (pinned)"
     for t in mirror["techniques"]:
-        assert set(t.keys()) == {"id", "name", "tactic", "scenarios"}, t.keys()
+        assert set(t.keys()) == {"id", "name", "tactic", "scenarios", "playable"}, t.keys()
 
     # V6-R provenance: the radar denominators must come from the EXACT
     # pinned dataset this repository records -- same tag, same sha256.
@@ -1168,6 +1172,20 @@ def test_frontend_attack_catalog_mirror(_use=None):
     for t in mirror["techniques"]:
         assert t["scenarios"] == counts.get(t["id"], 0), (
             f"{t['id']}: mirror says {t['scenarios']}, corpus says {counts.get(t['id'], 0)}")
+
+    # Owner matrix ruling (2026-10-12): the per-technique `playable` flag ==
+    # "some PLAYABLE_SCENARIOS answer key carries this id". The dashboard
+    # grid renders squares for playable techniques only, so every square is
+    # reachable in a session; the full corpus mirror stays intact behind it.
+    from app import PLAYABLE_SCENARIOS
+    playable_ids = set()
+    for label in PLAYABLE_SCENARIOS:
+        playable_ids.update(catalog[label]["answer_key"].get("techniques") or [])
+    assert playable_ids, "the playable catalog must carry at least one technique"
+    for t in mirror["techniques"]:
+        assert isinstance(t["playable"], bool), t
+        assert t["playable"] == (t["id"] in playable_ids), (
+            f"{t['id']}: mirror playable={t['playable']}, derived={t['id'] in playable_ids}")
 
     # the recorded tactic: the review pair is authoritative; detection
     # mitre tags for the same id must agree with the mirror too

@@ -58,7 +58,7 @@ const HintPanel = ({ gameMode, surface }) => {
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="px-3 py-1.5 text-xs rounded-full border border-[#d0d7de] bg-white text-muted shadow-sm hover:bg-[#eef1f4]"
+        className="px-2.5 py-1 text-[11px] rounded-full border border-[#d0d7de] bg-white text-muted shadow-sm hover:bg-[#eef1f4]"
       >
         Need a hint?
       </button>

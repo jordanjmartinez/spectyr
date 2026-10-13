@@ -52,7 +52,7 @@ const Section = ({ title, entries, emptyLine }) => (
 const AchievementChips = ({ items }) => (
   <div className="flex flex-wrap gap-1.5" data-testid="achievements">
     {items.map(a => (
-      <span key={a.key} className="inline-flex items-baseline gap-1 px-2 py-0.5 rounded-full text-xs bg-[#eef1f4] text-[#1a2332] border border-[#d0d7de]">
+      <span key={a.key} className="inline-flex items-baseline gap-1 px-1.5 py-0.5 rounded-full text-[11px] bg-[#eef1f4] text-[#1a2332] border border-[#d0d7de]">
         <span className="font-medium">{a.label}</span>
         {a.subtitle && <span className="text-muted">{a.subtitle}</span>}
       </span>

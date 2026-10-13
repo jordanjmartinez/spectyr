@@ -7,15 +7,16 @@ import {
   responseActionsTaken, READY_TO_SUBMIT, toReview, completedStrip,
   SUBMITTED_GRADE_LOCKED, CLASSIFICATION_NOT_SELECTED,
   classificationSelected, CONSIDER_PROMPT, SUBMIT_PENDING,
-  caseClosed, REVIEW_WHAT_YOU_LEARNED, CLASSIFY_TO_SUBMIT,
+  caseClosed, REVIEW_WHAT_YOU_LEARNED, CLASSIFY_TO_SUBMIT, SELECT_CATEGORY,
+  detectionsQueueItem, DETECTIONS_TRIAGED,
 } from './uiCopy';
+import { CheckIcon } from './RadioCardGroup';
 import { submissionReady, validClassification } from './submissionReady';
 import { toastReady } from './uiToasts';
 import useIncidentScope from './useIncidentScope';
 import { deriveAchievements } from './achievements';
 import {
-  gradeColor, CARD_STYLE, PageIntro, SegmentedToggle, IncidentIdBadge, SeverityBadge,
-  ToolbarSearch,
+  gradeColor, CARD_STYLE, IncidentIdBadge, SeverityBadge,
 } from './ui';
 
 // Stage 3.9B: the Incidents operational workspace ("what do I need to work?").
@@ -40,6 +41,10 @@ const fmtTime = (iso) => { try { return new Date(iso).toLocaleTimeString([], { h
 // and the player's own selection vary. The consider-prompt is the ONE static
 // prompt, byte-identical for every incident, rendered in Guided only
 // (ruled B-OD-5); it never carries a target count.
+// OWNER DECLUTTER (2026-10-12): the strip no longer renders in the detail
+// panel (the panel keeps description, Classification, Investigate in SIEM,
+// Triage detections). The component stays exported with its leak-rule
+// guards pending a final presentation ruling.
 export const PhaseStrip = ({ sealed, triage, related, ready, classification,
                              showPrompt }) => {
   if (!sealed) return <p className="text-xs text-muted italic">{TELEMETRY_LOADING}</p>;
@@ -69,6 +74,28 @@ export const PhaseStrip = ({ sealed, triage, related, ready, classification,
   );
 };
 
+// Owner panel refinement (2026-10-12, superseding the eyebrow+tag form):
+// the group label at the app's standard card-title size and weight
+// (t-subsection: semibold, dark) -- the incident title stays the panel's
+// one hero; the Required/Not-required tags are removed (the footer's
+// readiness checklist already shows what's owed).
+const GroupLabel = ({ id, children }) => (
+  <p id={id} className="t-subsection">{children}</p>
+);
+
+// The sticky-footer readiness item (Verdict / Category) -- neutral ink, no
+// red or green in classification.
+const ReadyItem = ({ done, label }) => (
+  <span className="inline-flex items-center gap-1.5 text-xs">
+    <span aria-hidden="true"
+      className={`w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0 ${
+        done ? 'bg-[#101218] text-white' : 'border border-[#8b949e]'}`}>
+      {done && <CheckIcon className="w-2.5 h-2.5" />}
+    </span>
+    <span className={done ? 'text-[#1a2332] font-medium' : 'text-muted'}>{label}</span>
+  </span>
+);
+
 const Incidents = ({
   isVisible, resetTrigger, onHardcoreFailure, onReset, gameMode = 'training',
   activeIncidentId, onSelectIncident, onNavigate, setGroupedAlertCount, onPracticeAnother,
@@ -84,8 +111,6 @@ const Incidents = ({
   chosen = {}, setChosen,
 }) => {
   const [data, setData] = useState({ active: [], completed: [], queue_length: 0, resolved_count: 0 });
-  const [view, setView] = useState('active');    // 'active' | 'ready' | 'completed'
-  const [search, setSearch] = useState('');
 
   const [pendingSubmit, setPendingSubmit] = useState(null);  // {..., action: 'submit'}
   // Stage 6 playtest fix: a reset destroys the run, so every piece of
@@ -100,27 +125,41 @@ const Incidents = ({
     setPracticeWarn(false);
     setStripInfo(null);
     setNotice('');
-    setView('active');
+    setFormError(null);
   }, [resetTrigger]);
+  // the inline error belongs to one incident's form; switching cases clears it
+  useEffect(() => { setFormError(null); }, [activeIncidentId]);
   const verdictOptionId = (v) =>
     v === 'threat' ? 'true_positive' : v === 'false_positive' ? 'false_positive' : null;
-  // Workspace classification handlers: local input only, no request; a
-  // threat verdict completes when its category is picked.
+  // Workspace classification handlers: local input only, no request. Owner
+  // panel pass (2026-10-12): the two groups are ORDER-INDEPENDENT -- a
+  // category picked before the verdict is kept (never implies a verdict);
+  // False Positive clears any picked category (the group disables); the FP
+  // pseudo-category never survives a switch to True Positive (its
+  // categoryId is null).
   const setWorkspaceVerdict = (incidentId, id) => {
     setChosen?.(c => {
       const prev = c[incidentId] || {};
       if (id === 'false_positive') {
         return { ...c, [incidentId]: { verdict: 'false_positive', category: 'False Positive', categoryId: null } };
       }
-      const keep = prev.verdict === 'threat';
       return { ...c, [incidentId]: { verdict: 'threat',
-        category: keep ? prev.category || null : null,
-        categoryId: keep ? prev.categoryId || null : null } };
+        category: prev.categoryId ? prev.category || null : null,
+        categoryId: prev.categoryId || null } };
     });
   };
   const setWorkspaceCategory = (incidentId, cid, clabel) => {
-    setChosen?.(c => ({ ...c, [incidentId]: { verdict: 'threat', category: clabel, categoryId: cid } }));
+    setChosen?.(c => {
+      const prev = c[incidentId] || {};
+      return { ...c, [incidentId]: { verdict: prev.verdict || null, category: clabel, categoryId: cid } };
+    });
   };
+  // The incomplete-Submit inline error: 'verdict' | 'category' | null. Any
+  // selection clears it; Submit re-derives it and scrolls to the first
+  // missing group.
+  const [formError, setFormError] = useState(null);
+  const verdictGroupRef = useRef(null);
+  const categoryGroupRef = useRef(null);
   const [submitBusy, setSubmitBusy] = useState(false);
   const [practiceWarn, setPracticeWarn] = useState(false);   // Practice Another reset warning
   const [notice, setNotice] = useState('');
@@ -195,12 +234,15 @@ const Incidents = ({
   }, [selectedId, selectedState]);
 
   const all = [...data.active.map(c => ({ ...c })), ...data.completed.map(c => ({ ...c }))];
-  const q = search.trim().toLowerCase();
-  // A3.4: the Ready view means submission-ready (the ONE derivation).
-  const byView = (c) => view === 'completed' ? c.state === 'submitted'
-    : view === 'ready' ? (c.state === 'in_progress' && submissionReady(c, chosen))
-    : c.state === 'in_progress';
-  const rows = all.filter(c => byView(c) && (!q || (c.title || '').toLowerCase().includes(q) || (c.incident_id || '').toLowerCase().includes(q)));
+  // Owner queue pass (2026-10-12): the list panel is the SESSION QUEUE --
+  // all slots in queue order (completed in submission order, then the
+  // in-flight incidents in drip order, then the undripped slots as muted
+  // "Scenario N" placeholders; their identity is not yet observable).
+  const queuePlaced = [
+    ...[...data.completed].sort((a, b) => String(a.submitted_at || '').localeCompare(String(b.submitted_at || ''))),
+    ...data.active,
+  ];
+  const upcomingCount = Math.max(0, (data.queue_length || 0) - queuePlaced.length);
   const selected = all.find(c => c.incident_id === selectedId) || null;
 
   useEffect(() => {
@@ -212,11 +254,6 @@ const Incidents = ({
       : null);
   }, [activeIncidentId, data, onActiveIncidentSummary]);
 
-  const counts = {
-    active: data.active.length,
-    ready: data.active.filter(c => c.state === 'in_progress' && submissionReady(c, chosen)).length,
-    completed: data.completed.length,
-  };
 
   // A3.4 (F4b): Submit is FINAL submission -- the classification comes
   // from the workspace selection (never a data-entry step); the click
@@ -230,6 +267,26 @@ const Incidents = ({
     if (!validClassification(sel)) { flash(CLASSIFY_TO_SUBMIT); return; }
     setPendingSubmit({ incident_id: selected.incident_id, title: selected.title,
       action: 'submit', verdict: sel.verdict, category: sel.category });
+  };
+
+  // Owner panel pass (2026-10-12): Submit stays ENABLED. An incomplete
+  // click scrolls to the FIRST missing group and shows its inline error;
+  // a complete one falls through to the unchanged beginSubmit gate
+  // (seal/readiness flashes + the bare confirmation).
+  const trySubmit = () => {
+    const sel = chosen[selected?.incident_id] || null;
+    if (!sel?.verdict) {
+      setFormError('verdict');
+      verdictGroupRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    if (sel.verdict === 'threat' && !sel.category) {
+      setFormError('category');
+      categoryGroupRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    setFormError(null);
+    beginSubmit();
   };
 
   // Visual pass V1: the pre-submission Check Answer workflow is REMOVED.
@@ -275,47 +332,84 @@ const Incidents = ({
 
   return (
     <div>
-      {/* VA1: functional subtitle + page controls. The incident context
-          is NOT repeated here -- this page's own detail pane already
-          names the selected incident (one context per page). */}
-      <PageIntro
-        right={(
-          <>
-            <SegmentedToggle
-              ariaLabel="Incident view"
-              value={view}
-              onChange={setView}
-              options={[['active', `Active ${counts.active}`], ['ready', `Ready ${counts.ready}`], ['completed', `Completed ${counts.completed}`]]}
-            />
-            <ToolbarSearch value={search} onChange={setSearch} placeholder="Search incidents..." />
-          </>
-        )}
-      />
-
+      {/* Owner queue pass (2026-10-12): the Active/Ready/Completed view
+          toggle and the search are retired -- the queue IS the whole
+          session (five slots), so one list shows every state. */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        {/* Incident rows (stable) */}
-        <div className="lg:col-span-2 rounded-xl divide-y divide-[#eef1f4]" style={CARD_STYLE}>
-          {rows.length === 0 ? (
-            /* Owner empty-state convention (2026-10-12): one muted line,
-               top-left at the panel's content origin -- app-wide. */
-            <p className="p-4 text-sm text-muted">No incidents in this view.</p>
-          ) : rows.map(c => (
-            <button key={c.incident_id} onClick={() => onSelectIncident?.(c.incident_id)}
-              className={`w-full text-left p-3 flex items-center justify-between gap-2 ${c.incident_id === selectedId ? 'bg-[#16436b]/5' : 'hover:bg-[#f6f8fa]'}`}>
-              <span className="min-w-0 flex items-center gap-1.5">
-                <IncidentIdBadge id={c.incident_id} />
-                <SeverityBadge severity={c.severity} />
-                <span className="text-sm text-[#1a2332] truncate">{c.title}</span>
+        {/* The SESSION QUEUE (owner queue pass 2026-10-12): header with the
+            session fraction, then every scenario slot in queue order.
+            Completed rows mute with a grade chip; in-flight rows get the
+            tinted background + left accent bar with pills, title, the
+            to-review count, and a triage progress bar; Ready rows are
+            normal; undripped slots are muted placeholders. The SELECTED
+            row carries its own inset-ring highlight, independent of
+            state styling. */}
+        <div className="lg:col-span-2 rounded-xl" style={CARD_STYLE} data-testid="incident-queue">
+          <div className="px-4 pt-4 pb-2 flex items-baseline justify-between gap-3">
+            {/* owner refinement (2026-10-13): the queue header and the
+                detail panel's incident title are BOTH panel-level headings
+                of one workspace -- identical size and weight */}
+            <p className="text-base font-semibold text-[#1a2332]">Incident Queue</p>
+            {(data.queue_length || 0) > 0 && (
+              <span className="text-sm text-muted shrink-0">
+                {Math.min((data.resolved_count || 0) + 1, data.queue_length)} of {data.queue_length}
               </span>
-              <span className="text-[11px] shrink-0 whitespace-nowrap" style={{ color: c.state === 'submitted' ? gradeColor(c.incident_grade?.grade) : '#8b949e' }}>
-                {c.state === 'submitted' ? (c.incident_grade?.grade || '-')
-                  : !c.sealed ? 'Loading'
-                  : submissionReady(c, chosen) ? 'Ready'
-                  : c.ready ? SUBMIT_PENDING
-                  : toReview(c.open_detections)}
-              </span>
-            </button>
-          ))}
+            )}
+          </div>
+          <div className="divide-y divide-[#eef1f4] border-t border-[#eef1f4]">
+            {queuePlaced.length === 0 && upcomingCount === 0 ? (
+              /* Owner empty-state convention (2026-10-12): one muted line,
+                 top-left at the panel's content origin -- app-wide. */
+              <p className="p-4 text-sm text-muted">No incidents in this session.</p>
+            ) : (
+              <>
+                {queuePlaced.map(c => {
+                  const done = c.state === 'submitted';
+                  const working = !done && !(c.sealed && c.ready);   // in flight, triage open
+                  const isSel = c.incident_id === selectedId;
+                  const t = c.triage || { total: 0, triaged: 0 };
+                  return (
+                    <button key={c.incident_id} onClick={() => onSelectIncident?.(c.incident_id)}
+                      className={`relative w-full text-left p-3 space-y-1.5 ${working ? 'bg-[#16436b]/5' : ''} ${
+                        isSel ? 'ring-2 ring-inset ring-[#16436b]/50' : 'hover:bg-[#f6f8fa]'}`}>
+                      {working && <span aria-hidden="true" className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#16436b]" />}
+                      <span className={`flex items-center justify-between gap-2 ${done ? 'opacity-60' : ''}`}>
+                        <span className="min-w-0 flex items-center gap-1.5">
+                          <IncidentIdBadge id={c.incident_id} />
+                          <SeverityBadge severity={c.severity} />
+                          <span className="text-sm text-[#1a2332] truncate">{c.title}</span>
+                        </span>
+                        {done ? (
+                          <span className="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-[#eef1f4] shrink-0"
+                            style={{ color: gradeColor(c.incident_grade?.grade) }}>
+                            {c.incident_grade?.grade || '-'}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-[#8b949e] shrink-0 whitespace-nowrap">
+                            {!c.sealed ? 'Loading'
+                              : submissionReady(c, chosen) ? 'Ready'
+                              : c.ready ? SUBMIT_PENDING
+                              : toReview(c.open_detections)}
+                          </span>
+                        )}
+                      </span>
+                      {working && c.sealed && (
+                        <span className="block h-1.5 rounded-full bg-[#eef1f4] overflow-hidden" aria-hidden="true">
+                          <span className="block h-full rounded-full bg-[#16436b]"
+                            style={{ width: `${t.total ? (t.triaged / t.total) * 100 : 0}%` }} />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+                {Array.from({ length: upcomingCount }, (_, i) => (
+                  <div key={`upcoming-${i}`} className="p-3 text-sm text-muted opacity-60">
+                    Scenario {queuePlaced.length + i + 1}
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
         </div>
 
         {/* Selected incident detail (the workspace) */}
@@ -324,11 +418,12 @@ const Incidents = ({
             <p className="text-sm text-muted">Select an incident to work it.</p>
           ) : (
             <div className="space-y-4">
-              <div className="flex items-start justify-between gap-3">
+                {/* Owner panel pass (2026-10-12): TITLE ONLY -- the INC and
+                    severity pills live on the list row (no duplicate header
+                    pills), and the Clear selection control is removed (the
+                    case changes by list selection alone). */}
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <IncidentIdBadge id={selected.incident_id} />
-                    <SeverityBadge severity={selected.severity} />
                     <span className="text-base font-semibold text-[#1a2332]">{selected.title}</span>
                     {selected.state === 'submitted' && selected.assisted && (
                       <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#eef1f4] text-muted border border-[#d0d7de]">Assisted</span>
@@ -336,92 +431,87 @@ const Incidents = ({
                   </div>
                   {selected.briefing && <p className="mt-1 text-sm text-muted break-words">{selected.briefing}</p>}
                 </div>
-                {/* The ONE explicit case exit (Amendment 1 Delta A): the case
-                    changes only by selection in the list or this control.
-                    Presentation only; deselecting mutates nothing. */}
-                <button
-                  type="button"
-                  onClick={() => onSelectIncident?.(null)}
-                  aria-label="Clear selected incident"
-                  className="shrink-0 text-xs px-2 py-1 rounded-md border border-[#d0d7de] text-muted hover:bg-[#eef1f4]"
-                >
-                  Clear selection
-                </button>
-              </div>
 
-              <div className="pt-2 border-t border-[#eef1f4]">
-                {/* 2.3: the active strip renders ONLY for in_progress; a
-                    submitted incident renders the completed vocabulary --
-                    the 0-of-0 contradiction is structurally impossible. */}
-                {selected.state === 'submitted' ? (
+                {/* Owner panel refinement (2026-10-12): ONE row of plain
+                    text links under the description, the "View X" pattern --
+                    these NAVIGATE to a scoped workspace, they do not act on
+                    the incident. Investigate stays scope-gated (the forId
+                    guard means it can never carry a previous incident's
+                    hosts); Triage renders while the incident is open. */}
+                {((scope.data && onEvidenceDescent) || selected.state === 'in_progress') && (
+                  /* owner refinement (2026-10-13): the links hug the
+                     panel's right side */
+                  <div className="flex items-center justify-end gap-4 flex-wrap">
+                    {scope.data && onEvidenceDescent && (
+                      <button
+                        type="button"
+                        onClick={() => onEvidenceDescent({
+                          hosts: scope.data.hostList,
+                          account: null,
+                          scopeIncidentId: selected.incident_id,
+                        })}
+                        className="text-xs font-medium text-[#16436b] hover:underline"
+                      >
+                        Investigate in SIEM
+                      </button>
+                    )}
+                    {selected.state === 'in_progress' && (
+                      <button
+                        type="button"
+                        onClick={() => { onSelectIncident?.(selected.incident_id); onNavigate?.('detections'); }}
+                        className="text-xs font-medium text-[#16436b] hover:underline"
+                      >
+                        Triage Detections
+                      </button>
+                    )}
+                  </div>
+                )}
+
+              {/* Owner declutter (2026-10-12): the status checklist no
+                  longer renders here (in_progress incidents show no strip);
+                  a SUBMITTED incident keeps the completed vocabulary (2.3:
+                  the 0-of-0 contradiction stays structurally impossible). */}
+              {selected.state === 'submitted' && (
+                <div className="pt-2 border-t border-[#eef1f4]">
                   <p className="text-xs text-muted">
                     {stripInfo?.id === selected.incident_id
                       ? completedStrip(stripInfo.total)
                       : SUBMITTED_GRADE_LOCKED}
                   </p>
-                ) : (
-                  <PhaseStrip sealed={selected.sealed}
-                    triage={selected.triage} related={selected.related_actions}
-                    ready={submissionReady(selected, chosen)}
-                    classification={chosen[selected.incident_id]?.category || null}
-                    showPrompt={gameMode === 'guided'} />
-                )}
-              </div>
-
-              {/* C1 checkpoint fix (F4a): the ratified A1-B.3.2 workspace
-                  selector -- the checklist Classification line's specified
-                  local-input source. Purely local state, no request; the
-                  submit modal flow is unchanged and arrives pre-filled from
-                  this choice. Identical for every incident (leak rule). */}
-              {selected.state !== 'submitted' && selected.sealed && (
-                <div className="pt-3 border-t border-[#eef1f4] space-y-2" data-testid="workspace-classification">
-                  <p className="t-overline">Classification</p>
-                  <ClassificationSelector
-                    selected={verdictOptionId(chosen[selected.incident_id]?.verdict)}
-                    onSelect={(id) => setWorkspaceVerdict(selected.incident_id, id)} />
-                  {chosen[selected.incident_id]?.verdict === 'threat' && (
-                    <CategorySelector
-                      selected={chosen[selected.incident_id]?.categoryId || null}
-                      onSelect={(cid, clabel) => setWorkspaceCategory(selected.incident_id, cid, clabel)} />
-                  )}
                 </div>
               )}
 
-              {/* Related hosts / accounts (observable scope). Stage 6
-                  playtest fix 7: the block renders ONLY the current
-                  incident's loaded scope -- while a switch is in flight it
-                  shows the loading line, never the previous incident's
-                  hosts (an analyst could act against the wrong host). */}
-              {scope.rowPolicy === 'loading' ? (
-                <p className="text-xs text-muted">Loading incident scope</p>
-              ) : scope.data && (scope.data.hostList.length || scope.data.accounts.length) ? (
-                <div className="text-xs text-muted space-y-1">
-                  {scope.data.hostList.length ? <p><span className="text-muted">Related Hosts:</span> <span className="log-mono">{scope.data.hostList.join(', ')}</span></p> : null}
-                  {scope.data.accounts.length ? <p><span className="text-muted">Related Accounts:</span> <span className="log-mono">{scope.data.accounts.join(', ')}</span></p> : null}
-                </div>
-              ) : null}
-
-              {/* "Investigate in SIEM" (III.0 item 5 rename of the P7.2
-                  entry; Section 16 descent-sets-scope). Prepares and opens
-                  the existing SIEM search from ONLY the observable
-                  participant scope; the SIEM shell generates the query.
-                  Evidence stays reviewable after submission. */}
-              {/* The hook guarantees scope.data belongs to the CURRENT
-                  incident (forId guard), replacing the old render-side
-                  incident_id check. */}
-              {scope.data && onEvidenceDescent && (
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => onEvidenceDescent({
-                      hosts: scope.data.hostList,
-                      account: null,
-                      scopeIncidentId: selected.incident_id,
-                    })}
-                    className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#16436b] hover:bg-[#eef1f4]"
-                  >
-                    Investigate in SIEM
-                  </button>
+              {/* The verdict card (owner panel pass 2026-10-12, built on the
+                  ratified A1-B.3.2 local-input source -- purely local state,
+                  no request; the submit confirmation arrives pre-filled from
+                  this choice; identical for every incident, the leak rule).
+                  Both groups ALWAYS render, nothing preselected, order-
+                  independent; Category disables under False Positive. The
+                  selected treatment is identical for every option: no red or
+                  green in classification. */}
+              {selected.state !== 'submitted' && selected.sealed && (
+                <div className="pt-3 border-t border-[#eef1f4] space-y-4" data-testid="workspace-classification">
+                  <div ref={verdictGroupRef} className="space-y-2">
+                    <GroupLabel id="verdict-group-label">Classification</GroupLabel>
+                    <ClassificationSelector
+                      labelledBy="verdict-group-label"
+                      selected={verdictOptionId(chosen[selected.incident_id]?.verdict)}
+                      onSelect={(id) => { setWorkspaceVerdict(selected.incident_id, id); setFormError(null); }} />
+                    {formError === 'verdict' && (
+                      <p className="text-xs font-medium" style={{ color: '#b45858' }} role="alert">{CLASSIFY_TO_SUBMIT}</p>
+                    )}
+                  </div>
+                  <div ref={categoryGroupRef} className="space-y-2">
+                    <GroupLabel id="category-group-label">Category</GroupLabel>
+                    <CategorySelector
+                      labelledBy="category-group-label"
+                      disabled={chosen[selected.incident_id]?.verdict === 'false_positive'}
+                      selected={chosen[selected.incident_id]?.categoryId || null}
+                      onSelect={(cid, clabel) => { setWorkspaceCategory(selected.incident_id, cid, clabel); setFormError(null); }} />
+                    {formError === 'category' && (
+                      <p className="text-xs font-medium" style={{ color: '#b45858' }} role="alert">{SELECT_CATEGORY}</p>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -430,15 +520,15 @@ const Incidents = ({
                   grade + achievements) with the "Review what you learned"
                   path into the Metrics Learning Review -- teaching content
                   itself never renders in this workspace (one venue). */}
-              <div className="pt-3 border-t border-[#eef1f4]">
-                {selected.state === 'submitted' ? (
+              {selected.state === 'submitted' ? (
+                <div className="pt-3 border-t border-[#eef1f4]">
                   <div className="space-y-3" data-testid="case-closed-summary">
                     <p className="text-sm font-semibold text-[#1a2332]">{caseClosed(selected.incident_id)}</p>
                     {stripInfo?.id === selected.incident_id && stripInfo.view && (
                       <>
                         <div className="flex flex-wrap gap-1.5">
                           {deriveAchievements(stripInfo.view).map(a => (
-                            <span key={a.key} className="inline-flex items-baseline gap-1 px-2 py-0.5 rounded-full text-xs bg-[#eef1f4] text-[#1a2332] border border-[#d0d7de]">
+                            <span key={a.key} className="inline-flex items-baseline gap-1 px-1.5 py-0.5 rounded-full text-[11px] bg-[#eef1f4] text-[#1a2332] border border-[#d0d7de]">
                               <span className="font-medium">{a.label}</span>
                               {a.subtitle && <span className="text-muted">{a.subtitle}</span>}
                             </span>
@@ -460,33 +550,34 @@ const Incidents = ({
                       )}
                     </div>
                   </div>
-                ) : (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {selected.sealed && selected.ready ? (
-                      <>
-                        {/* A3.4 (F4b): Submit gates on the ONE derived
-                            readiness (server observable AND a valid
-                            workspace classification); the observable line
-                            names the remaining step. */}
-                        <button onClick={beginSubmit}
-                          disabled={!submissionReady(selected, chosen)}
-                          className="px-3 py-1.5 text-sm rounded-md bg-[#101218] text-white hover:bg-[#1e2330] disabled:opacity-50">Submit</button>
-                        {!validClassification(chosen[selected.incident_id]) && (
-                          <span className="text-xs text-muted">{CLASSIFY_TO_SUBMIT}</span>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <button onClick={() => { onSelectIncident?.(selected.incident_id); onNavigate?.('detections'); }}
-                          className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#1a2332] hover:bg-[#eef1f4]">Triage detections</button>
-                        <span className="text-xs text-muted">
-                          {!selected.sealed ? TELEMETRY_LOADING : detectionsRemaining(selected.open_detections ?? 0)}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
+                </div>
+              ) : selected.sealed && (
+                /* Owner panel pass (2026-10-12): the STICKY FOOTER -- the
+                   readiness checklist (Verdict, Category) and Submit, the
+                   panel's ONLY primary button. Submit stays ENABLED; an
+                   incomplete click scrolls to the first missing group with
+                   an inline error (trySubmit); the unchanged beginSubmit +
+                   server gates stay the authoritative backstop. */
+                <div
+                  data-testid="submit-footer"
+                  className="sticky bottom-0 -mx-4 sm:-mx-5 -mb-4 sm:-mb-5 px-4 sm:px-5 py-3 bg-white border-t border-[#e2e6ea] rounded-b-xl flex items-center justify-between gap-3 flex-wrap"
+                >
+                  {/* Owner footer refinement (2026-10-13): the Verdict and
+                      Category items are removed (the selected cards above
+                      already show that state); the ONE persistent item is
+                      the requirement NOT visible in this panel --
+                      detections triage. */}
+                  <ReadyItem
+                    done={!!selected.ready}
+                    label={selected.ready
+                      ? DETECTIONS_TRIAGED
+                      : detectionsQueueItem(selected.open_detections ?? 0)} />
+                  <button type="button" onClick={trySubmit}
+                    className="px-4 py-2 text-sm font-medium rounded-md bg-[#101218] text-white hover:bg-[#1e2330]">
+                    Submit
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -534,7 +625,7 @@ const Incidents = ({
             </div>
             <div className="mt-3 flex flex-wrap gap-1.5">
               {deriveAchievements(review.view).map(a => (
-                <span key={a.key} className="inline-flex items-baseline gap-1 px-2 py-0.5 rounded-full text-xs bg-[#eef1f4] text-[#1a2332] border border-[#d0d7de]">
+                <span key={a.key} className="inline-flex items-baseline gap-1 px-1.5 py-0.5 rounded-full text-[11px] bg-[#eef1f4] text-[#1a2332] border border-[#d0d7de]">
                   <span className="font-medium">{a.label}</span>
                   {a.subtitle && <span className="text-muted">{a.subtitle}</span>}
                 </span>

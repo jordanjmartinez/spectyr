@@ -119,9 +119,11 @@ test('VD5: technical identifiers wear the token on every workspace; chrome and p
   // spot contract: each workspace's technical renders reach log-mono
   // (the Dashboard's technical values are incident ids, which the VD8
   // identity ruling moves into the Inter badge system, so it is
-  // deliberately absent here)
+  // deliberately absent here; Incidents.jsx left the list with the owner
+  // declutter 2026-10-12 -- its only mono values were the removed Related
+  // Hosts/Accounts identifiers)
   for (const f of ['Detections.jsx', 'DetectionDetail.jsx', 'Endpoints.jsx',
-                   'EndpointDetail.jsx', 'Response.jsx', 'Incidents.jsx',
+                   'EndpointDetail.jsx', 'Response.jsx',
                    'SiemTable.jsx', 'SiemCards.jsx',
                    'EventInspector.jsx', 'Siem.jsx', 'GameTimer.jsx']) {
     expect([f, /log-mono/.test(comp(f))]).toEqual([f, true]);
@@ -129,10 +131,8 @@ test('VD5: technical identifiers wear the token on every workspace; chrome and p
   // ATT&CK ids in the teaching surfaces are mono
   expect(comp('LearningReview.jsx')).toMatch(/log-mono[^>]*>\{triage\.mitre\.id\}/);
   expect(comp('TriageFeedback.jsx')).toMatch(/log-mono[^>]*>\{review\.mitre\.id\}/);
-  // related hosts/accounts identifiers are mono in the incident detail
-  // (fix 7 moved the panel onto the shared useIncidentScope state; the
-  // identifiers still wear the token)
-  expect(comp('Incidents.jsx')).toMatch(/log-mono">\{scope\.data\.hostList\.join/);
+  // (the Related Hosts/Accounts display left the incident detail panel in
+  // the owner declutter 2026-10-12 -- no identifier pin remains there)
   // navigation, buttons, and headings never wear the token (Inter chrome)
   const dash = fs.readFileSync(path.join(__dirname, '..', 'pages', 'Dashboard.jsx'), 'utf8');
   const navBlock = dash.match(/<nav[\s\S]*?<\/nav>/)[0];
@@ -152,13 +152,15 @@ test('ruled section labels are Title Case (owner capitalization pass); technical
   expect(dash).toContain('Severity Distribution');
   expect(dash).toContain('Environment Status');
   expect(dash).toContain('Recent Results');
-  const matrix = fs.readFileSync(path.join(__dirname, '..', 'components', 'AttackMatrix.jsx'), 'utf8');
-  expect(matrix).toContain('ATT&amp;CK Matrix');   // owner matrix redesign card title
+  // (the Session ATT&CK Coverage card was removed entirely by the owner
+  // layout pass 2026-10-12 -- no matrix title to pin)
   const scores = fs.readFileSync(path.join(__dirname, '..', 'components', 'ScoreSections.jsx'), 'utf8');
   expect(scores).toContain('Score Summary');
   // technical identifiers are never humanized; incident ids render
-  // verbatim through the shared Inter badge (VD8 identity ruling), and
-  // technique ids stay mono elsewhere (see the VD5 spot contract)
-  expect(dash).toMatch(/IncidentIdBadge id=\{focus\.incident_id\}/);
+  // verbatim through the shared Inter badge system (VD8 identity ruling) --
+  // the focus card via the canonical IncidentIdentityRow (inline follow-up
+  // 2026-10-12), the compact rows via the badge directly; technique ids
+  // stay mono elsewhere (see the VD5 spot contract)
+  expect(dash).toMatch(/incidentId=\{focus\.incident_id\}/);
   expect(dash).toMatch(/IncidentIdBadge id=\{c\.incident_id\}/);
 });

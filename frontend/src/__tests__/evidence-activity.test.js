@@ -1,74 +1,71 @@
 /**
- * VB1 (amendment section 2) + owner simplification (2026-10-12,
- * superseding the VD7/VE4 rolling-density composition): Evidence Activity
- * as a PLAIN EVENTS-PER-MINUTE BAR CHART over the ACTIVE incident's
- * observable event timestamps. Exact per-minute counts (gaps
- * zero-filled), the busiest minute as the single accent peak,
- * frozen-snapshot honesty (later evidence is announced, never merged
- * automatically), truthful loading/empty states with the zeroed plane,
- * and a complete textual equivalent. The "Rolling density..." caption is
- * retired. Volume only -- never suspiciousness, correctness, or
- * answer-key data.
+ * VB1 (amendment section 2) + owner simplification (2026-10-12, superseding
+ * the events-per-minute bars, which themselves superseded the VD7/VE4
+ * rolling-density composition): Evidence Activity as EVIDENCE COMPOSITION --
+ * event counts grouped by the serialized source_type, rendered as simple
+ * count bars. The time-volume chart, the "Peak" line, the time axis, and
+ * the density caption are retired (scripted events on a session wall-clock
+ * axis carry no signal). Frozen-snapshot honesty (later evidence is
+ * announced, never merged automatically), truthful loading/empty states
+ * with the zeroed plane, and visible-text rows (the chart is its own
+ * textual equivalent). Volume only -- never suspiciousness, correctness,
+ * or answer-key data.
  */
 import React from 'react';
 import fs from 'fs';
 import path from 'path';
-import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import EvidenceActivity, { NO_INCIDENT, NO_EVENTS } from '../components/EvidenceActivity';
-import { minuteBuckets, minuteLabel } from '../components/evidenceDensity';
+import { sourceComposition } from '../components/evidenceComposition';
 import IncidentDashboard from '../components/IncidentDashboard';
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
 const { apiFetch } = require('../api');
 
-const at = (isoMinute, seconds = 0) => `2026-07-26T${isoMinute}:${String(seconds).padStart(2, '0')}Z`;
-const rows = (...stamps) => stamps.map((t, i) => ({ id: `e${i}`, timestamp: t }));
+const evt = (src, i) => ({
+  id: `e-${src}-${i}`, timestamp: '2026-07-26T19:45:00Z', source_type: src,
+});
 
-// the worked example: 6 events -- 2 in 19:45, 3 in 19:46, none in 19:47,
-// 1 in 19:48 -> four buckets, peak 19:46 with 3
-const SIX = rows(at('19:45', 5), at('19:45', 40), at('19:46', 1), at('19:46', 2),
-                 at('19:46', 3), at('19:48', 0));
+// the worked example: 6 events -- 3 Sysmon, 2 Windows Security, 1 DNS
+const SIX = [
+  evt('Sysmon', 1), evt('Windows Security', 1), evt('Sysmon', 2),
+  evt('DNS', 1), evt('Sysmon', 3), evt('Windows Security', 2),
+];
 
-// ---- the per-minute model ---------------------------------------------------
+// ---- the composition model --------------------------------------------------
 
-test('per-minute counts are EXACT over real events; gaps are zero-filled, nothing fabricated', () => {
-  const m = minuteBuckets(SIX);
+test('counts group EXACTLY by source_type, ordered by count then label', () => {
+  const m = sourceComposition(SIX);
   expect(m.total).toBe(6);
-  expect(m.buckets).toHaveLength(4);                       // 19:45 .. 19:48 inclusive
-  expect(m.buckets.map((b) => b.count)).toEqual([2, 3, 0, 1]);
-  // bucket starts are consecutive whole minutes
-  for (let i = 1; i < m.buckets.length; i += 1) {
-    expect(m.buckets[i].t - m.buckets[i - 1].t).toBe(60000);
-  }
-  expect(m.buckets[0].t % 60000).toBe(0);
-  // the peak is the busiest minute
-  expect(m.peak.count).toBe(3);
-  expect(m.peak.index).toBe(1);
-  expect(m.peak.label).toBe(minuteLabel(m.buckets[1].t));
-  // identical rows give byte-identical models (frozen-snapshot stability)
-  expect(minuteBuckets(SIX)).toEqual(m);
-});
-
-test('peak ties resolve to the EARLIEST minute (deterministic)', () => {
-  const m = minuteBuckets(rows(
-    at('10:00', 0), at('10:00', 1), at('10:02', 0), at('10:02', 1),
-  ));
-  expect(m.buckets.map((b) => b.count)).toEqual([2, 0, 2]);
-  expect(m.peak.index).toBe(0);
-});
-
-test('malformed or missing timestamps are ignored, never invented', () => {
-  const m = minuteBuckets([
-    { id: 'a', timestamp: at('08:00') },
-    { id: 'b' },
-    { id: 'c', timestamp: 'not-a-time' },
-    { id: 'd', timestamp: null },
+  expect(m.groups).toEqual([
+    { label: 'Sysmon', count: 3 },
+    { label: 'Windows Security', count: 2 },
+    { label: 'DNS', count: 1 },
   ]);
-  expect(m.total).toBe(1);
-  expect(m.buckets).toHaveLength(1);
-  expect(m.buckets[0].count).toBe(1);
-  expect(minuteBuckets([]).total).toBe(0);
-  expect(minuteBuckets(null).buckets).toEqual([]);
+  expect(m.max).toBe(3);
+  // identical rows give byte-identical models (frozen-snapshot stability)
+  expect(sourceComposition(SIX)).toEqual(m);
+});
+
+test('count ties order alphabetically (deterministic)', () => {
+  const m = sourceComposition([evt('Proxy', 1), evt('DNS', 1), evt('Firewall', 1)]);
+  expect(m.groups.map((g) => g.label)).toEqual(['DNS', 'Firewall', 'Proxy']);
+});
+
+test('rows without a source land in Other; nothing is invented or dropped', () => {
+  const m = sourceComposition([
+    evt('Sysmon', 1),
+    { id: 'b', timestamp: '2026-07-26T19:45:00Z' },
+    { id: 'c', timestamp: '2026-07-26T19:45:00Z', source_type: '   ' },
+    null,
+  ]);
+  expect(m.total).toBe(3);
+  expect(m.groups).toEqual([
+    { label: 'Other', count: 2 },
+    { label: 'Sysmon', count: 1 },
+  ]);
+  expect(sourceComposition([]).total).toBe(0);
+  expect(sourceComposition(null).groups).toEqual([]);
 });
 
 // ---- the card ---------------------------------------------------------------
@@ -79,62 +76,54 @@ const SNAP = {
   rows: SIX,
 };
 
-test('renders the factual summary, the peak, and the accessible per-minute equivalent', () => {
+test('renders the factual summary and one labeled count row per source', () => {
   render(<EvidenceActivity incidentId="INC-8340" snapshot={SNAP} />);
   expect(screen.getByText('Evidence Activity')).toBeInTheDocument();
   // owner UI pass (2026-10-12): card subtitles are stripped
   expect(screen.queryByText('Event volume during this investigation')).toBeNull();
-  expect(screen.getByText('6 Events Observed')).toBeInTheDocument();
-  // the peak chip names the busiest minute and its exact count
-  expect(screen.getByText(/Peak: \d\d:\d\d · 3 Events/)).toBeInTheDocument();
-  // the textual equivalent: one row per minute, the peak marked, the
-  // snapshot boundary named (accessible PROSE stays sentence case)
-  const table = screen.getByRole('table');
-  expect(within(table).getAllByRole('row').length).toBe(4 + 1);
-  const caption = table.querySelector('caption').textContent;
-  expect(caption).toMatch(/6 events observed/);
-  expect(caption).toMatch(/events per minute/);
-  expect(caption).toMatch(/Peak \d\d:\d\d with 3 events/);
-  expect(caption).toMatch(/sequence 42/);
+  // owner tweak (2026-10-12): the summary rides the TITLE ROW, muted --
+  // not its own line
+  const summary = screen.getByText('6 Events Observed');
+  expect(summary.getAttribute('class')).toMatch(/text-muted/);
+  expect(summary.parentElement).toBe(screen.getByText('Evidence Activity').parentElement);
+  // visible rows: label and exact count, count-descending order
+  const groups = screen.getAllByTestId('evidence-group');
+  expect(groups).toHaveLength(3);
+  expect(groups.map((g) => g.textContent)).toEqual([
+    'Sysmon3', 'Windows Security2', 'DNS1',
+  ]);
+  // the snapshot boundary stays named for screen readers
+  expect(document.body.textContent).toMatch(/Snapshot boundary at sequence 42/);
 });
 
-test('the chart is plain per-minute bars: exact heights, one accent peak, no density furniture', () => {
+test('bars are proportional to exact counts; the time-volume furniture is gone', () => {
   const { container } = render(<EvidenceActivity incidentId="INC-8340" snapshot={SNAP} />);
-  const m = minuteBuckets(SNAP.rows);
-  // one tooltip column per minute bucket
-  const columns = screen.getByTestId('evidence-bars').children;
-  expect(columns).toHaveLength(m.buckets.length);
-  [...columns].forEach((col, i) => {
-    expect(col.getAttribute('title'))
-      .toBe(`${m.buckets[i].label} · ${m.buckets[i].count} event${m.buckets[i].count === 1 ? '' : 's'}`);
+  const bars = screen.getAllByTestId('evidence-group-bar');
+  expect(bars).toHaveLength(3);
+  expect(bars[0].getAttribute('style')).toContain('width: 100%');
+  expect(bars[1].getAttribute('style')).toContain(`width: ${(2 / 3) * 100}%`);
+  expect(bars[2].getAttribute('style')).toContain(`width: ${(1 / 3) * 100}%`);
+  // owner tweak (2026-10-12): every track caps at a fixed max width (the
+  // Severity Distribution proportions), so the count sits right after the
+  // bar instead of the bar stretching the full card width
+  bars.forEach((b) => expect(b.parentElement.getAttribute('class')).toContain('max-w-[10rem]'));
+  // owner unification (2026-10-12): the Severity Distribution anatomy --
+  // text-sm rows, h-2 track, navy fill via the shared BarRow
+  bars.forEach((b) => {
+    expect(b.parentElement.getAttribute('class')).toContain('h-2');
+    expect(b.getAttribute('style')).toContain('background:');
   });
-  // bars render only for nonzero minutes; exactly one wears the accent
-  expect(screen.getAllByTestId('evidence-bar')).toHaveLength(2);
-  const peak = screen.getByTestId('evidence-bar-peak');
-  expect(peak.getAttribute('style')).toContain('height: 100%');
-  // heights are proportional to exact counts
-  const first = screen.getAllByTestId('evidence-bar')[0];
-  expect(first.getAttribute('style')).toContain(`height: ${(2 / 3) * 100}%`);
-  // the retired density furniture is structurally gone
+  screen.getAllByTestId('evidence-group').forEach((row) => {
+    expect(row.getAttribute('class')).toContain('text-sm');
+  });
+  // the retired chart, peak line, axis, and caption are structurally gone
   expect(container.querySelector('svg')).toBeNull();
-  expect(screen.queryByTestId('evidence-tick')).toBeNull();
-  expect(screen.queryByTestId('evidence-peak-marker')).toBeNull();
-  expect(screen.queryByTestId('evidence-peak-column')).toBeNull();
+  expect(screen.queryByTestId('evidence-bars')).toBeNull();
+  expect(screen.queryByTestId('evidence-bar')).toBeNull();
+  expect(screen.queryByTestId('evidence-bar-peak')).toBeNull();
+  expect(container.textContent).not.toMatch(/Peak[: ]/);
   expect(container.textContent).not.toMatch(/Rolling density|preceding \d+s|Ticks mark/);
-  // the compact ruled height band stays
-  const plane = screen.getByTestId('evidence-bars').parentElement;
-  expect(plane.className).toMatch(/min-h-\[180px\]/);
-  expect(plane.className).toMatch(/max-h-\[220px\]/);
-});
-
-test('the axis carries the first and last minute in normal flow', () => {
-  const { container } = render(<EvidenceActivity incidentId="INC-8340" snapshot={SNAP} />);
-  const m = minuteBuckets(SNAP.rows);
-  const axisRow = [...container.querySelectorAll('div')]
-    .find((el) => el.className.includes('justify-between') && el.className.includes('text-[10px]')
-      && !el.className.includes('opacity-60'));
-  const axis = [...axisRow.children].map((el) => el.textContent);
-  expect(axis).toEqual([m.buckets[0].label, m.buckets[m.buckets.length - 1].label]);
+  expect(container.textContent).not.toMatch(/\d\d:\d\d/);   // no wall-clock axis
   expect(container.innerHTML).not.toMatch(/truncate|text-ellipsis/);
 });
 
@@ -149,28 +138,54 @@ test('later evidence is announced but never merged until the player loads it', a
     <EvidenceActivity incidentId="INC-8340" snapshot={SNAP} newCount={5} onLoadNewEvents={onLoad} />,
   );
   expect(screen.getByTestId('evidence-new-count').textContent).toBe('5 New Events Available');
-  // the frozen chart still shows only the snapshot's six events
+  // the frozen card still shows only the snapshot's six events
   expect(screen.getByText('6 Events Observed')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Load New Events' }));
   expect(onLoad).toHaveBeenCalledTimes(1);
   // an atomic replacement swaps the whole model at once
-  const bigger = { ...SNAP, count: 8, rows: [...SNAP.rows, ...rows(at('19:49'), at('19:49', 30))] };
+  const bigger = { ...SNAP, count: 8, rows: [...SNAP.rows, evt('DNS', 2), evt('DNS', 3)] };
   rerender(<EvidenceActivity incidentId="INC-8340" snapshot={bigger} newCount={0} />);
   expect(screen.getByText('8 Events Observed')).toBeInTheDocument();
   expect(screen.queryByTestId('evidence-new-count')).toBeNull();
 });
 
-test('honest loading and empty states; no false zero-event chart', () => {
+test('honest loading and empty states; no false zero-event rows', () => {
   const a = render(<EvidenceActivity incidentId={null} />);
   expect(screen.getByText(NO_INCIDENT)).toBeInTheDocument();
   expect(screen.getByTestId('evidence-empty-plane')).toBeInTheDocument();
+  expect(screen.queryByTestId('evidence-group')).toBeNull();
+  // the zeroed plane keeps the SAME capped-track geometry as the data state
+  expect(screen.getByTestId('evidence-empty-plane')
+    .querySelectorAll('.max-w-\\[10rem\\]')).toHaveLength(3);
   a.unmount();
   const b = render(<EvidenceActivity incidentId="INC-1" loading snapshot={null} />);
   expect(screen.getByText('Incident telemetry is still loading.')).toBeInTheDocument();
   expect(screen.queryByText(/events observed/i)).toBeNull();   // never a false zero
+  expect(document.body.textContent).not.toMatch(/(^|[^-])0([^-]|$)/);
   b.unmount();
   render(<EvidenceActivity incidentId="INC-1" snapshot={{ count: 0, rows: [], identity: { cutoff_seq: 1 } }} />);
   expect(screen.getByText(NO_EVENTS)).toBeInTheDocument();
+});
+
+// ---- the shared bar-list anatomy ---------------------------------------------
+
+test('ONE shared bar-list component across Evidence Activity and Severity Distribution', () => {
+  const ev = fs.readFileSync(path.join(__dirname, '..', 'components', 'EvidenceActivity.jsx'), 'utf8');
+  const dash = fs.readFileSync(path.join(__dirname, '..', 'components', 'IncidentDashboard.jsx'), 'utf8');
+  const ui = fs.readFileSync(path.join(__dirname, '..', 'components', 'ui.jsx'), 'utf8');
+  // both cards render rows through the shared BarList/BarRow (ui.jsx);
+  // identical label font, bar height, track, count typography, and row
+  // spacing by construction -- only the fill color is passed per card
+  for (const src of [ev, dash]) {
+    expect(src).toMatch(/<BarRow\b/);
+    expect(src).toMatch(/<BarList>/);
+  }
+  // the one track definition lives in ui.jsx; evidence keeps no local copy
+  // (the zeroed empty plane mirrors the geometry but renders no data bar)
+  const TRACK = 'max-w-[10rem] h-2 rounded-full bg-[#eef1f4] overflow-hidden';
+  expect(ui).toContain(TRACK);
+  expect(ev).not.toContain(TRACK);
+  expect(dash).not.toContain(TRACK);
 });
 
 // ---- isolation + leak safety ------------------------------------------------

@@ -32,11 +32,11 @@ test('all three badge types share the ONE dimension contract (height, radius, ty
   // the contract itself carries the ruled metrics
   expect(BADGE_BASE).toMatch(/inline-flex items-center/);   // vertically centered content
   expect(BADGE_BASE).toMatch(/rounded-full/);               // identical radius
-  expect(BADGE_BASE).toMatch(/text-xs/);                    // 12px
+  expect(BADGE_BASE).toMatch(/text-\[11px\]/);              // 11px (owner sizing pass 2026-10-12)
   expect(BADGE_BASE).toMatch(/font-medium/);                // weight 500
   expect(BADGE_BASE).toMatch(/leading-4/);                  // identical line-height
   expect(BADGE_BASE).toMatch(/py-0\.5/);                    // identical vertical padding
-  expect(BADGE_BASE).toMatch(/min-h-\[22px\]/);             // the ruled ~22-24px height
+  expect(BADGE_BASE).toMatch(/min-h-\[20px\]/);             // ~20px (owner sizing pass: slightly smaller)
   render(
     <>
       <IncidentIdBadge id="INC-1598" />
@@ -53,15 +53,16 @@ test('all three badge types share the ONE dimension contract (height, radius, ty
   }
 });
 
-test('IncidentIdBadge: Inter by ruling -- neutral surface, dark readable ink, no mono, no severity color', () => {
+test('IncidentIdBadge: Inter identity pill in the Spectr navy (owner card pass 2026-10-12)', () => {
+  // supersedes the neutral-ink ruling: the identity pill wears the Spectr
+  // navy fill with white ink -- still Inter, still never a severity color
   render(<IncidentIdBadge id="INC-1598" />);
   const b = screen.getByTestId('incident-id-badge');
   expect(b.textContent).toBe('INC-1598');
   expect(b.className).not.toMatch(/log-mono|font-mono/);         // Inter, not JetBrains Mono
-  expect(b.className).toMatch(/bg-\[#eef1f4\]/);                 // neutral background
-  expect(b.className).toMatch(/border-\[#d0d7de\]/);             // neutral border
-  expect(b.className).toMatch(/text-\[#1a2332\]/);               // dark readable text
-  expect(b.className).not.toMatch(/red|orange|amber|emerald|green|#16436b/);
+  expect(b.className).toMatch(/bg-\[#16436b\]/);                 // the Spectr navy fill
+  expect(b.className).toMatch(/text-white/);
+  expect(b.className).not.toMatch(/red|orange|amber|emerald|green/);
 });
 
 test('SeverityBadge: the approved Detections treatment, case-insensitive, never color alone', () => {
@@ -81,15 +82,24 @@ test('SeverityBadge: the approved Detections treatment, case-insensitive, never 
   }
 });
 
-test('ModeBadge: Guided and Hardcore share the identical badge, never a smaller tag', () => {
+test('ModeBadge: identical metrics, per-mode fill -- Guided/SOC Queue neutral light, Hardcore black', () => {
+  // owner card pass (2026-10-12), superseding the byte-identical-treatment
+  // pin: only the FILL differs per mode; the badge metrics stay shared
+  const stripFill = (c) => c.replace(/bg-\[[^\]]+\]|text-white|text-muted/g, '').replace(/\s+/g, ' ').trim();
   const { rerender } = render(<ModeBadge mode="guided" />);
   const el = () => screen.getByTestId('mode-badge');
   expect(el().textContent).toBe('Guided');
-  const guidedClasses = el().className;
+  expect(el().className).toMatch(/bg-\[#eef1f4\]/);              // neutral light pill
+  const guidedMetrics = stripFill(el().className);
   rerender(<ModeBadge mode="hardcore" />);
   expect(el().textContent).toBe('Hardcore');
-  expect(el().className).toBe(guidedClasses);                    // byte-identical treatment
-  expect(guidedClasses).not.toMatch(/text-\[1?0px\]|text-\[11px\]/);  // no shrunken tag type
+  expect(el().className).toMatch(/bg-\[#101218\]/);              // the black pill
+  expect(el().className).toMatch(/text-white/);
+  expect(stripFill(el().className)).toBe(guidedMetrics);         // same metrics, fill only
+  expect(el().className).not.toMatch(/text-\[1?0px\]/);  // no shrunken tag type (11px IS the pill standard now)
+  rerender(<ModeBadge mode="analyst" />);
+  expect(el().textContent).toBe('SOC Queue');
+  expect(el().className).toMatch(/bg-\[#eef1f4\]/);              // SOC Queue stays neutral
 });
 
 // ---- the canonical composition and order ------------------------------------
@@ -183,14 +193,22 @@ test('Active Investigation: canonical structure with the shared badges, content 
   mockDashboard();
   await act(async () => { render(<IncidentDashboard gameMode="guided" />); });
   const card = await screen.findByTestId('active-investigation');
-  // the canonical metadata row [INC] [Severity] [Mode], wrapping
-  const row = within(card).getByTestId('incident-id-badge').parentElement;
-  expect([...row.children].map((el) => el.getAttribute('data-testid')))
-    .toEqual(['incident-id-badge', 'severity-badge', 'mode-badge']);
+  // the canonical identity row (inline follow-up 2026-10-12): the ONE
+  // IncidentIdentityRow composition, same as the Incidents detail header --
+  // [INC] [Severity] then the title INLINE; the mode stays plain muted
+  // text on the card TITLE row (no mode pill)
+  const row = within(card).getByTestId('incident-pill');
+  const kids = [...row.children];
+  expect(kids.slice(0, 2).map((el) => el.getAttribute('data-testid')))
+    .toEqual(['incident-id-badge', 'severity-badge']);
+  expect(kids[2].textContent).toBe(CARD_INCIDENT.title);
   expect(row.className).toMatch(/flex-wrap/);
   expect(within(card).getByTestId('incident-id-badge').textContent).toBe('INC-1598');
   expect(within(card).getByTestId('severity-badge').textContent).toBe('Critical');
-  expect(within(card).getByTestId('mode-badge').textContent).toBe('Guided');
+  expect(within(card).queryByTestId('mode-badge')).toBeNull();
+  const mode = within(card).getByText('Guided');
+  expect(mode.getAttribute('class')).toMatch(/text-muted/);
+  expect(mode.parentElement).toBe(within(card).getByText('Active Investigation').parentElement);
   // the long title renders in full -- no truncation, no compressed type
   const title = within(card).getByText(CARD_INCIDENT.title);
   expect(title.className).not.toMatch(/truncate|text-\[1?0px\]/);
@@ -203,5 +221,6 @@ test('Active Investigation: canonical structure with the shared badges, content 
   expect(within(card).queryByText('Detections Reviewed: 2 of 4')).toBeNull();
   expect(within(card).queryByText('Classification: Not Selected')).toBeNull();
   expect(within(card).queryByText('Response Actions Taken: 1')).toBeNull();
-  expect(within(card).getByRole('button', { name: 'Resume investigation' })).toBeInTheDocument();
+  // owner layout pass (2026-10-12): the Resume button is removed
+  expect(within(card).queryByRole('button', { name: 'Resume investigation' })).toBeNull();
 });

@@ -6,10 +6,9 @@ import {
 } from './uiCopy';
 import { submissionReady } from './submissionReady';
 import {
-  severityDot, gradeColor, CARD_STYLE, IncidentIdBadge, SeverityBadge, ModeBadge,
+  severityDot, gradeColor, CARD_STYLE, IncidentIdBadge, SeverityBadge,
+  IncidentIdentityRow, BarList, BarRow,
 } from './ui';
-import { platformFor, PLATFORM_LABELS, DEVICE_LABELS } from './icons';
-import AttackMatrix from './AttackMatrix';
 import EvidenceActivity from './EvidenceActivity';
 import { descentSessionAll } from './lcqlPivots';
 
@@ -21,18 +20,17 @@ import { descentSessionAll } from './lcqlPivots';
 //
 // Anatomy (desktop): the session band, then a supporting column (Active
 // Investigation + Investigation Progress + Severity + Environment)
-// beside the main region (KPI stat tiles, the ATT&CK Coverage Matrix,
-// Recent results). Narrow screens stack: band, Active Investigation,
-// Progress, Severity, Environment, then the main region -- the
-// supporting column completes before the main region begins.
+// beside the main region (KPI stat tiles, Evidence Activity, Recent
+// results). Narrow screens stack: band, Active Investigation, Progress,
+// Severity, Environment, then the main region -- the supporting column
+// completes before the main region begins.
 //
 // DATA TRUTH (V11): every value is an existing observable or a
-// post-submission disclosure. The per-incident grades/categories and the
-// session-view matrix states come from each SUBMITTED incident's served
-// score view + triage review (fetched once per submitted id); active
-// incidents contribute a count only. No trends, deltas, or sparklines
-// exist because no historical series exists. Nothing here reveals
-// pre-submission correctness.
+// post-submission disclosure. The per-incident grades/categories come
+// from each SUBMITTED incident's served score view (fetched once per
+// submitted id); active incidents contribute a count only. No trends,
+// deltas, or sparklines exist because no historical series exists.
+// Nothing here reveals pre-submission correctness.
 // ============================================================================
 
 const Metric = ({ label, value, accent, sub }) => (
@@ -73,10 +71,9 @@ const IncidentDashboard = ({
   // token-bound new-count and only enters on an explicit Load.
   const [evidence, setEvidence] = useState({ forId: null, snapshot: null, loading: false });
   const [evidenceNew, setEvidenceNew] = useState(0);
-  // Post-submission records: incident_id -> {grading, techId, rosterIds}.
-  // Fetched ONCE per submitted id (score view + disclosed triage review +
-  // the frozen sealed roster ids for the ATT&CK profile); never requested
-  // for active incidents (the temporal rule).
+  // Post-submission records: incident_id -> {grading}. Fetched ONCE per
+  // submitted id (score view); never requested for active incidents (the
+  // temporal rule).
   const [records, setRecords] = useState({});
   const fetchedRef = useRef(new Set());
 
@@ -118,26 +115,14 @@ const IncidentDashboard = ({
     }
     ids.filter(id => !fetchedRef.current.has(id)).forEach(id => {
       fetchedRef.current.add(id);
-      Promise.all([
-        apiFetch(`/api/incidents/${id}/score`).then(r => (r.ok ? r.json() : null)).catch(() => null),
-        apiFetch(`/api/incidents/${id}/triage-review`).then(r => (r.ok ? r.json() : null)).catch(() => null),
-        apiFetch(`/api/incidents/${id}/scope`).then(r => (r.ok ? r.json() : null)).catch(() => null),
-      ]).then(([score, triage, scope]) => {
-        if (score?.state === 'submitted') {
-          setRecords(prev => ({
-            ...prev,
-            [id]: {
-              grading: score.grading,
-              techId: triage?.mitre?.id || null,
-              // the sealed roster is immutable post-submission (roster
-              // finality), so one read IS the frozen mapping source
-              rosterIds: new Set(scope?.detection_ids || []),
-            },
-          }));
-        } else {
-          fetchedRef.current.delete(id);   // not served yet; retry on a later poll
-        }
-      });
+      apiFetch(`/api/incidents/${id}/score`).then(r => (r.ok ? r.json() : null)).catch(() => null)
+        .then(score => {
+          if (score?.state === 'submitted') {
+            setRecords(prev => ({ ...prev, [id]: { grading: score.grading } }));
+          } else {
+            fetchedRef.current.delete(id);   // not served yet; retry on a later poll
+          }
+        });
     });
   }, [completedKey]);
 
@@ -223,16 +208,10 @@ const IncidentDashboard = ({
 
 
   // Environment status (VS owner correction): current observable state
-  // only -- no uptime claims, no history. Platform breakdown from the
-  // REAL serialized fields via the one shared mapping.
+  // only -- no uptime claims, no history. Owner UI pass (2026-10-12): the
+  // availability percentage and the platform breakdown are retired with
+  // the lines that rendered them; the endpoint page owns the breakdown.
   const managed = (env || []).length;
-  const availabilityPct = managed ? Math.round((online / managed) * 100) : 0;
-  const platformGroups = {};
-  for (const r of env || []) {
-    const ident = platformFor(r);
-    const label = `${PLATFORM_LABELS[ident.platformKey]} ${DEVICE_LABELS[ident.deviceKind]}`;
-    platformGroups[label] = (platformGroups[label] || 0) + 1;
-  }
 
   const readinessChip = (c) => (!c.sealed ? 'Loading'
     : submissionReady(c, chosen) ? 'Ready'
@@ -243,21 +222,6 @@ const IncidentDashboard = ({
   const completedSorted = [...(data.completed || [])]
     .sort((a, b) => String(b.submitted_at || '').localeCompare(String(a.submitted_at || '')));
   const latest = completedSorted[0] || null;
-
-  // Owner matrix redesign (2026-10-12), SUPERSEDING the VD3 submission
-  // lock: the ATT&CK Matrix renders the full corpus grid at all times and
-  // highlights the CURRENT investigation's observable technique tags (the
-  // focus incident's scope detections' sanitized mitre ids -- each already
-  // visible on the Detections surface in every mode). With no active
-  // focus, the latest submitted incident's frozen roster highlights. The
-  // answer key never feeds this card in any state.
-  const matrixIncidentId = focus ? focusId : (latest?.incident_id || null);
-  const tagRows = (ids) => feed
-    .filter(d => ids.has(d.id) && d.mitre && d.mitre.id)
-    .map(d => ({ id: d.mitre.id, tactic: d.mitre.tactic, name: d.mitre.name }));
-  const matrixMappings = focus
-    ? (focusScope.forId === focusId && focusScope.ids ? tagRows(focusScope.ids) : [])
-    : (latest && records[latest.incident_id] ? tagRows(records[latest.incident_id].rosterIds) : []);
 
   const triage = focus?.triage || { total: 0, triaged: 0 };
 
@@ -270,31 +234,49 @@ const IncidentDashboard = ({
           AppHeader avatar menu. */}
       {/* VB1 (amendment section 1): ONE grid whose DOM order IS the ruled
           narrow stack (Active investigation, KPI, Evidence activity,
-          Severity, Environment, ATT&CK profile, Recent results) and whose
-          desktop placement is explicit -- supporting column on the left,
-          Evidence activity as the large centre visualization, the ATT&CK
-          profile as the smaller near-square card on its right (tops
-          aligned), Recent results across the wider centre region. Screen
-          reader order and visual order agree at every width. */}
-      <div className="grid grid-cols-1 xl:grid-cols-[19rem_minmax(0,1fr)_minmax(280px,30%)] gap-4 items-stretch">
+          Severity, Environment, Recent results) and whose desktop
+          placement is explicit -- supporting column on the left, Evidence
+          activity beside the Active Investigation (equal-height row),
+          Recent results across the right region beneath. Screen reader
+          order and visual order agree at every width.
+          Owner layout pass (2026-10-12): the Session ATT&CK Coverage card
+          is REMOVED entirely.
+          Owner layout pass 4 (same day, superseding pass 3's column
+          widths): THREE EQUAL columns on the working row --
+          [Active Investigation | Recent Results | Evidence Activity],
+          same card size. Active and Evidence share the row-2 height
+          (Evidence is h-full, so it never resizes with its own content);
+          Recent Results is the ONE card that stretches, spanning down
+          beside Severity/Environment. At xl the visual column order
+          differs from DOM order for Evidence vs Recent; the ruled NARROW
+          stack (Active, KPI, Evidence, Severity, Environment, Recent) is
+          unchanged. */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-stretch">
           {/* A. Active Investigation (observable fields only; Resume navigates) */}
           <div className="rounded-xl p-4 xl:col-start-1 xl:row-start-2" style={CARD_STYLE} data-testid="active-investigation">
-            <WidgetLabel>Active Investigation</WidgetLabel>
+            {/* Owner layout pass (2026-10-12): the mode pill is retired --
+                the mode rides the TITLE ROW as plain muted text, styled
+                like the Evidence Activity events-observed count. */}
+            <div className="flex items-baseline justify-between gap-3 mb-2">
+              <p className="t-subsection">Active Investigation</p>
+              <span className="text-sm text-muted shrink-0">{MODE_LABEL[gameMode] || gameMode}</span>
+            </div>
             {!focus ? (
               <p className="text-sm text-muted">No active investigations.</p>
             ) : (
               <div className="space-y-2">
-                {/* VD2 + VD8 (identity correction): the canonical wrapping
-                    metadata row of shared badges -- [INC id] [Severity]
-                    [Mode] -- then the title on its own line. Wraps
-                    cleanly, the card grows naturally, nothing clips or
-                    compresses to force one line. */}
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <IncidentIdBadge id={focus.incident_id} />
-                  <SeverityBadge severity={focus.severity} />
-                  <ModeBadge mode={gameMode} />
-                </div>
-                <p className="text-sm font-medium text-[#1a2332]">{focus.title}</p>
+                {/* Owner card pass (2026-10-12, inline follow-up): the ONE
+                    canonical identity composition, same as the Incidents
+                    detail header -- [INC id] [Severity] then the title
+                    INLINE on the same wrapping row (no mode pill; the mode
+                    is plain text on the card title row). The progress bar
+                    sits under it. */}
+                <IncidentIdentityRow
+                  incidentId={focus.incident_id}
+                  severity={focus.severity}
+                  title={focus.title}
+                  titleClass="text-sm font-medium text-[#1a2332]"
+                />
                 {/* VS: Investigation Progress folded in here -- the bar and
                     its exact textual equivalent live with the incident's
                     facts, not in a separate fragmenting card. */}
@@ -313,21 +295,20 @@ const IncidentDashboard = ({
                     />
                   </div>
                 )}
-                {/* Owner UI pass (2026-10-12): the detail lines are
-                    removed -- Detections Reviewed, Classification,
-                    Response Actions Taken, and the readiness chip are
-                    redundant with the KPI strip above (and the workspace
-                    owns them); the VH queue-count line goes with them.
-                    The card keeps identity + title + Resume. The progress
-                    bar stays as the one glanceable visual; its accessible
-                    label still carries the exact reviewed count. */}
-                <button
-                  type="button"
-                  onClick={() => openInIncidents(focus.incident_id)}
-                  className="mt-1 px-3 py-1.5 text-xs font-medium rounded-md bg-[#101218] text-white hover:bg-[#1e2330]"
-                >
-                  Resume investigation
-                </button>
+                {/* Owner layout pass 2 (2026-10-12): the stage line is
+                    removed entirely; in its place the View incidents link
+                    (bottom-right, same treatment as View endpoints). The
+                    Resume button and the other detail lines stay removed
+                    (the Incidents workspace owns the work itself). */}
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => onNavigate?.('incidents')}
+                    className="text-xs font-medium text-[#16436b] hover:underline"
+                  >
+                    View incidents
+                  </button>
+                </div>
                 {otherActive.length > 0 && (
                   <div className="pt-2 border-t border-[#eef1f4] space-y-1">
                     {otherActive.map(c => (
@@ -351,7 +332,7 @@ const IncidentDashboard = ({
               observables only -- no trends, deltas, or sparklines. */}
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 xl:col-start-1 xl:col-span-3 xl:row-start-1" data-testid="kpi-row">
             <Metric label="Detections Reviewed" value={(detCounts.promoted ?? 0) + (detCounts.dismissed ?? 0)} />
-            <Metric label="Response Actions Executed" value={actionSuccesses} />
+            <Metric label="Response Actions" value={actionSuccesses} />
             <Metric label="Incidents Completed" value={data.completed.length} />
             {/* Owner UI pass (2026-10-12): the grade tiles drop their sub
                 lines -- title + value only, uniform with the other KPI
@@ -370,10 +351,11 @@ const IncidentDashboard = ({
             />
           </div>
 
-          {/* B. Evidence activity -- the PRIMARY visualization, centre.
-              Stretches to the row height so the chart fills its card
-              instead of floating in whitespace beside the radar. */}
-          <div className="xl:col-start-2 xl:row-start-2 min-w-0 h-full">
+          {/* B. Evidence activity -- third card of the side-by-side
+              working row (owner layout pass 4, 2026-10-12): SAME card
+              size as Active Investigation -- h-full to the shared row
+              height, never resizing with its own content. */}
+          <div className="xl:col-start-3 xl:row-start-2 min-w-0 h-full">
             <EvidenceActivity
               incidentId={focusId}
               snapshot={evidence.forId === focusId ? evidence.snapshot : null}
@@ -395,20 +377,14 @@ const IncidentDashboard = ({
             {sevMax === 0 ? (
               <p className="text-sm text-muted">No detections observed yet.</p>
             ) : (
-              <div className="space-y-1.5">
+              /* owner unification (2026-10-12): the shared BarRow anatomy,
+                 severity keeping its color scale as the fill */
+              <BarList>
                 {sevRows.map(r => (
-                  <div key={r.key} className="flex items-center gap-2 text-sm">
-                    <span className="w-16 shrink-0 text-muted">{r.label}</span>
-                    <span className="flex-1 h-2 rounded-full bg-[#eef1f4] overflow-hidden" aria-hidden="true">
-                      <span
-                        className="block h-full rounded-full"
-                        style={{ width: `${sevMax ? Math.round((r.count / sevMax) * 100) : 0}%`, background: severityDot(r.key) }}
-                      />
-                    </span>
-                    <span className="w-6 shrink-0 text-right font-medium text-[#1a2332] tabular-nums">{r.count}</span>
-                  </div>
+                  <BarRow key={r.key} label={r.label} count={r.count} max={sevMax}
+                    fill={severityDot(r.key)} labelWidth="w-16" />
                 ))}
-              </div>
+              </BarList>
             )}
           </div>
 
@@ -419,58 +395,40 @@ const IncidentDashboard = ({
             {managed === 0 ? (
               <p className="text-sm text-muted">No managed hosts available.</p>
             ) : (
+              /* Owner UI pass (2026-10-12): ONE state-first line. The four
+                 restatements of the same fact (managed count,
+                 Online/Offline pair, Availability bar + percent, and the
+                 platform breakdown) collapse to a status dot plus
+                 "N/M Hosts Online"; the dot carries the state, the numbers
+                 carry the detail, and the endpoint page owns the
+                 breakdown. */
               <div className="space-y-2">
-                <p className="t-kpi">{managed}<span className="ml-1.5 text-sm font-normal text-muted">managed host{managed === 1 ? '' : 's'}</span></p>
-                <p className="text-sm text-muted flex items-center gap-1.5">
-                  <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full" style={{ background: '#6fa868' }} />
-                  <span><span className="font-medium text-[#1a2332]">{online}</span> Online</span>
-                  <span className="text-[#d0d7de]">·</span>
-                  <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full" style={{ background: '#b45858' }} />
-                  <span><span className="font-medium text-[#1a2332]">{offline}</span> Offline</span>
+                <p className="text-sm flex items-center gap-2">
+                  <span
+                    aria-hidden="true"
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ background: offline === 0 ? '#6fa868' : '#c08a3e' }}
+                  />
+                  <span className="font-medium text-[#1a2332]">{online}/{managed} Hosts Online</span>
                 </p>
-                <div>
-                  <p className="text-xs text-muted mb-1">Availability</p>
-                  <div className="flex items-center gap-2">
-                    <span className="flex-1 h-1.5 rounded-full bg-[#eef1f4] overflow-hidden" aria-hidden="true">
-                      <span className="block h-full rounded-full bg-[#6fa868]" style={{ width: `${availabilityPct}%` }} />
-                    </span>
-                    <span className="text-xs font-medium text-[#1a2332]">{availabilityPct}%</span>
-                  </div>
-                  <p className="sr-only">{online} of {managed} managed hosts online ({availabilityPct}% availability).</p>
+                {/* Owner layout pass 2 (2026-10-12): bottom-right */}
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => onNavigate?.('endpoints')}
+                    className="text-xs font-medium text-[#16436b] hover:underline"
+                  >
+                    View endpoints
+                  </button>
                 </div>
-                {Object.keys(platformGroups).length > 0 && (
-                  <p className="text-xs text-muted">
-                    {Object.entries(platformGroups).map(([label, n], i) => (
-                      <span key={label}>{i > 0 && <span className="text-[#d0d7de]"> · </span>}{label} {n}</span>
-                    ))}
-                  </p>
-                )}
-                <button
-                  type="button"
-                  onClick={() => onNavigate?.('endpoints')}
-                  className="text-xs font-medium text-[#16436b] hover:underline"
-                >
-                  View endpoints
-                </button>
               </div>
             )}
-          </div>
-
-          {/* D. The ATT&CK Matrix (owner redesign 2026-10-12, superseding
-              the VA3/VD3 radar + its lock): the SECONDARY card on the
-              right, top-aligned with Evidence Activity. Full grid always;
-              highlights from observable tags only. */}
-          <div className="xl:col-start-3 xl:row-start-2 min-w-0">
-            <AttackMatrix
-              incidentId={matrixIncidentId}
-              mappings={matrixMappings}
-            />
           </div>
 
           {/* E. Recent results -- submitted incidents this session, newest
               first; grades/categories are the frozen post-submission
               record. Rows navigate to the incident. */}
-          <div className="rounded-xl min-w-0 xl:col-start-2 xl:col-span-2 xl:row-start-3 xl:row-span-2" style={CARD_STYLE} data-testid="recent-results">
+          <div className="rounded-xl min-w-0 xl:col-start-2 xl:row-start-2 xl:row-span-3" style={CARD_STYLE} data-testid="recent-results">
             {/* Owner UI pass (2026-10-12): title + content only, no card
                 subtitle (matching Environment status). */}
             <div className="px-4 pt-4 pb-2">

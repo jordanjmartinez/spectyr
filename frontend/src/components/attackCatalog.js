@@ -83,7 +83,6 @@ export const techniquesByTactic = () => {
   }
   return map;
 };
-
 // V6-R (owner correction): the radar's per-tactic coverage rows.
 // Numerator and denominator share ONE counting rule (the mirror's
 // `counting` note): parent techniques only, so T1110.001 + T1110.003
