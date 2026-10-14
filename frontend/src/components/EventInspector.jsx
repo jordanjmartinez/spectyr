@@ -279,15 +279,16 @@ const EventInspector = ({ event, onEntityAction, onHostPivot }) => {
         />
       ))}
 
-      {/* Playtest micro-fix (2026-10-13): the All Fields disclosure is a
-          ROW with the same geometry as the Key Facts rows (no boxed
-          full-bleed button); the opened section separates from it with a
-          hairline before Identity. */}
+      {/* Playtest correction (owner 2026-10-13): All Fields is a COMPACT
+          content-width disclosure button -- the facet rail's More Filters
+          box styling -- left-aligned directly under the last Key Facts
+          row. Only the toggle is compact; the expanded field sections
+          below stay full width, separated by a hairline before Identity. */}
       <button
         type="button"
         onClick={() => setAllFieldsOpen((o) => !o)}
         aria-expanded={allFieldsOpen}
-        className="mt-1 w-full flex items-center justify-between gap-2 py-2 text-xs font-medium text-[#1a2332] hover:bg-[#f6f8fa]"
+        className="mt-3 self-start inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md border border-[#d0d7de] bg-white text-[#1a2332] hover:bg-[#eef1f4]"
       >
         <span>{ALL_FIELDS_TOGGLE}</span>
         <span className="text-muted font-normal">{allFieldsOpen ? 'Hide' : 'Show'}</span>

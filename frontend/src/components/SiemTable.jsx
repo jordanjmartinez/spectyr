@@ -137,16 +137,20 @@ const SiemTable = ({ alerts, resetTrigger, selectedId, onSelect }) => {
         </div>
       </div>
 
+      {/* SIEM layout fix (owner 2026-10-13): the results panel sizes to its
+          CONTENT -- no page-sized minHeight reserving a void below a short
+          row set -- and the table hugs the panel's top edge (no padding
+          band above the header; overflow-hidden keeps the rounded corners). */}
       <div
-        className="p-3 sm:p-6 rounded-xl flex-1 flex flex-col"
+        className="rounded-xl overflow-hidden"
         style={{ background: '#ffffff', border: '1px solid #e2e6ea', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
       >
         {sorted.length === 0 ? (
           /* Owner empty-state convention (2026-10-12): one muted line,
              top-left; no icon, no centering. */
-          <p className="text-sm text-muted">No events match the current filters.</p>
+          <p className="p-4 text-sm text-muted">No events match the current filters.</p>
         ) : (
-          <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper" style={{ minHeight: `${(alertsPerPage * 49) + 48}px` }}>
+          <div className="overflow-x-auto overflow-y-hidden mobile-scroll-wrapper">
             <table className="w-full min-w-[900px] sm:min-w-[1000px] log-text text-left text-[#1a2332] border-separate border-spacing-0">
               <thead className="data-thead">
                 <tr className="text-xs sm:text-sm tracking-wider">
