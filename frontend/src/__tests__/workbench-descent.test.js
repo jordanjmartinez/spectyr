@@ -76,7 +76,7 @@ const queryCalls = () =>
     .map(decodeURIComponent);
 
 const renderSiem = (props = {}) => {
-  const utils = render(<Siem initialQueryMode="advanced" resetTrigger={0} onHostPivot={() => {}} {...props} />);
+  const utils = render(<Siem resetTrigger={0} onHostPivot={() => {}} {...props} />);
   return utils;
 };
 
@@ -89,10 +89,11 @@ test('a single-host entry with no incident context runs all | H | * | * Session-
     });
   });
   expect(queryCalls().pop()).toBe('/api/events/query?q=all | ACME-WS10 | * | *&scope=session');
-  // no case: the All activity state; the prepared search is identified by
-  // the readable expression in the bar plus the initial-evidence label
+  // no case: the All activity state; the prepared search adopts into the
+  // one Computer chip plus the initial-evidence label (no LCQL bar exists)
   expect(screen.queryByText('All activity')).toBeNull();   // VA1: retired case line; context is the shell pill
-  expect(screen.getByLabelText('LCQL query')).toHaveValue('all | ACME-WS10 | * | *');
+  expect(screen.queryByLabelText('LCQL query')).toBeNull();
+  expect(screen.getByTestId('filter-chips').textContent).toContain('Computer: ACME-WS10');
   expect(screen.getByTestId('results-label').textContent).toBe(INITIAL_EVIDENCE);
   // no separate Timeline concept: no banner, no breadcrumb, no back link
   expect(screen.queryByTestId('descent-banner')).toBeNull();
@@ -294,10 +295,9 @@ test('an identity entry runs the uniform two-field OR Session-wide without an in
   expect(queryCalls().pop())
     .toBe(`/api/events/query?q=${IDENTITY_OR_QUERY}&scope=session`);
   expect(screen.queryByText('All activity')).toBeNull();   // VA1: retired case line; context is the shell pill
-  // the prepared search is identified by its readable expression in the bar
-  expect(screen.getByLabelText('LCQL query'))
-    .toHaveValue(IDENTITY_OR_QUERY);
-  // an entry starts a FRESH query: no OR-fallback notice at entry time
+  // the prepared search adopts into the one Account chip
+  expect(screen.getByTestId('filter-chips').textContent).toContain('Account: ACME\\dlee');
+  // an entry starts a FRESH query: no notice at entry time
   expect(screen.queryByTestId('query-notice')).toBeNull();
 });
 
@@ -315,13 +315,13 @@ test('an identity entry under a player-selected incident context RETAINS that sc
   // zero rows is the honest case-scoped outcome when the account's events
   // lack participant hostnames; leaving the case on Incidents is the
   // designed path out (III.0 item 2: no SIEM-level session escape exists)
-  expect(screen.getByText('0 events match')).toBeInTheDocument();
+  expect(screen.getByText('No events match the current filters.')).toBeInTheDocument();
   expect(screen.queryByTestId('search-all')).toBeNull();
   // no silent scope broadening: nothing executed across all evidence
   expect(queryCalls().some((c) => c.endsWith('&scope=session'))).toBe(false);
 });
 
-test('a refinement from the identity-entry OR results mints a fresh standalone query with the exact approved notice', async () => {
+test('a refinement from the identity-entry OR results REFINES WITHIN the adopted account filter (owner simplification: the identity OR adopts as an Account chip)', async () => {
   queryResponses.push(ok(snapWith(ROWS_UNORDERED, IDENTITY_OR_QUERY)));
   await act(async () => {
     renderSiem({
@@ -329,18 +329,28 @@ test('a refinement from the identity-entry OR results mints a fresh standalone q
     });
   });
   expect(screen.queryByTestId('query-notice')).toBeNull();   // fresh at entry
+  // the uniform two-field OR adopts as the one Account chip
+  expect(screen.getByTestId('filter-chips').textContent).toContain('Account: ACME\\dlee');
   fireEvent.click(within(screen.getByTestId('workbench-results')).getByText('first event'));
-  queryResponses.push(ok(snapWith(ROWS_UNORDERED, 'all | * | * | hostname == "ACME-WS10"')));
+  fireEvent.click(screen.getAllByLabelText('Actions for hostname')[0]);
   await act(async () => {
-    fireEvent.click(screen.getByLabelText('Filter hostname equals'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Filter to Just This' }));
   });
-  expect(queryCalls().pop())
-    .toBe('/api/events/query?q=all | * | * | hostname == "ACME-WS10"&scope=session');
+  // the account context is KEPT: the hostname filter distributes across the
+  // identity pair through the one chokepoint
+  expect(queryCalls().pop()).toBe(
+    '/api/events/query?q=all | * | * | '
+    + 'user_account == "ACME\\\\dlee" and hostname == "ACME-WS10"'
+    + ' or UserPrincipalName == "ACME\\\\dlee" and hostname == "ACME-WS10"'
+    + '&scope=session');
   expect(screen.getByTestId('query-notice'))
-    .toHaveTextContent('Started a new query; the previous one mixed or-conditions.');
+    .toHaveTextContent('Filter added: hostname == "ACME-WS10"');
+  // never the old fresh-query fallback: the account filter was not dropped
+  expect(screen.getByTestId('filter-chips').textContent).toContain('Account: ACME\\dlee');
+  expect(screen.getByTestId('filter-chips').textContent).toContain('Computer: ACME-WS10');
 });
 
-test('a hand-broadened query from an entry view stays in the case evidence pool', async () => {
+test('a broadened search from an entry view stays in the case evidence pool', async () => {
   queryResponses.push(ok(snapWith(ROWS_UNORDERED, 'all | ACME-WS10 | * | *', 'INC-9368')));
   await act(async () => {
     renderSiem({
@@ -349,11 +359,12 @@ test('a hand-broadened query from an entry view stays in the case evidence pool'
     });
   });
   expect(screen.getByTestId('results-label').textContent).toBe(INITIAL_INCIDENT_EVIDENCE);
-  // broaden the QUERY by hand and run: the evidence universe is unchanged
-  // (III.0 item 2) and the label becomes an executed player search
-  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
+  // broaden by removing the adopted Computer chip: the evidence universe is
+  // unchanged (III.0 item 2) and the label becomes an executed search
   queryResponses.push(ok(snapWith(ROWS_UNORDERED, 'all | * | * | *', 'INC-9368')));
-  await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Run Query/ })); });
+  await act(async () => {
+    fireEvent.click(screen.getByLabelText('Remove filter: Computer: ACME-WS10'));
+  });
   expect(queryCalls().pop()).toBe('/api/events/query?q=all | * | * | *&scope=INC-9368');
   expect(screen.getByTestId('results-label').textContent).not.toBe(INITIAL_INCIDENT_EVIDENCE);
   expect(screen.queryByText(/Investigating INC-/)).toBeNull();   // VA1: retired case line; context is the shell pill
@@ -368,7 +379,7 @@ test('re-entering with a new seq re-executes the same prepared search', async ()
   const before = queryCalls().length;
   await act(async () => {
     utils.rerender(
-      <Siem initialQueryMode="advanced" resetTrigger={0} onHostPivot={() => {}}
+      <Siem resetTrigger={0} onHostPivot={() => {}}
             descentRequest={{ ...props.descentRequest, seq: 2 }} />
     );
   });

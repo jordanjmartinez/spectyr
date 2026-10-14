@@ -42,7 +42,7 @@ export const hintsAllowed = (gameMode) => HINT_MODES.includes(gameMode);
 // scenario. Static, identical every session.
 const L1_MECHANICS = [
   'Review a detection: open Detections, read it, then Promote a real threat or Dismiss a false alarm. Reopen sends it back for review.',
-  'Run a query: in SIEM the bar reads Time | Source | Event type | Filters. Run Query executes it; the pinned line above the results names what you are investigating.',
+  'Search events: in SIEM pick a Timeframe, show events, then narrow them with the filter groups beside the results or type a search like computer = ACME-WS28.',
   'Respond: containment and remediation run from the Response tab. Detections is for triage; Endpoints is for investigation.',
   'Submit: once every detection in the incident is reviewed, choose a classification and Submit locks in your call and grades the incident.',
 ];

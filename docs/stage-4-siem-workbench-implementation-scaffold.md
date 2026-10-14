@@ -1427,3 +1427,19 @@ every section above stands unchanged.
 **Stage 4 status:** product implementation and certification have
 passed review. Merge remains pending the final docs-only correction
 review.
+
+---
+
+## Append-only amendment (2026-10-13, owner SIEM simplification pass)
+
+The `/api/events/query` hard cap recorded in the endpoint table above
+(300 characters, "re-validated against measured descent needs") is
+raised to **2000 characters**. Reason: the owner-directed SIEM
+simplification replaces the dropdown/simple-search controls with ONE
+facet filter system whose multi-select groups compile into the
+grammar's native OR-of-ANDs (LCQL still has no grouping; the deferral
+in contract Section 19 stands), and the distributed form can
+legitimately exceed a descent-sized cap. The cap remains a hard abuse
+guard; the new value is pinned in `backend/test_query_read.py`. No
+other endpoint, serialized field, or grammar change rides this
+amendment.

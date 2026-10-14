@@ -98,12 +98,14 @@ test('P7 descent, pivot, and refinement issue reads only', async () => {
 
   // entity pivot from the case evidence (stays in the case's pool)
   fireEvent.click(within(screen.getByTestId('workbench-results')).getByText('no-mutation fixture event'));
+  fireEvent.click(screen.getAllByLabelText('Actions for hostname')[0]);
   await act(async () => {
-    fireEvent.click(screen.getByLabelText('Pivot hostname'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Pivot: See Everything About This' }));
   });
-  // and a refinement from the inspector
+  // and a refinement from the inspector's entity menu
+  fireEvent.click(screen.getAllByLabelText('Actions for hostname')[0]);
   await act(async () => {
-    fireEvent.click(screen.getByLabelText('Filter hostname equals'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Filter This Out' }));
   });
 
   expect(mutatingCalls()).toHaveLength(0);   // the investigation surface is read-only

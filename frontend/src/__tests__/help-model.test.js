@@ -149,14 +149,15 @@ test('6.2: Promote, Dismiss, and Reopen carry their tooltip lines (all modes: th
   }
 });
 
-test('6.2: the three ruled query controls carry the ruled finals in the inspector (no surrounding control)', () => {
+test('6.2: the three ruled query tooltips ride the entity menu verbs (owner simplification: one menu, no surrounding control)', () => {
   const event = {
     id: 'e1', event_seq: 1, timestamp: '2026-03-17T04:00:01+00:00',
     event_type: 'ProcessCreate', source_type: 'Sysmon', severity: 'high',
     hostname: 'ACME-WS12', message: 'proc', key_value_pairs: {},
   };
-  render(<EventInspector event={event} onFilter={() => {}} onPivot={() => {}}
+  render(<EventInspector event={event} onEntityAction={() => {}}
     onHostPivot={() => {}} />);
+  fireEvent.click(screen.getByLabelText('Actions for hostname'));
   expect(document.querySelectorAll(`[title="${TOOLTIP_EQ}"]`).length).toBeGreaterThan(0);
   expect(document.querySelectorAll(`[title="${TOOLTIP_NEQ}"]`).length).toBeGreaterThan(0);
   const pivots = Array.from(document.querySelectorAll('[title]'))

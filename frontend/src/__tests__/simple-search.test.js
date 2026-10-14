@@ -1,24 +1,25 @@
 /**
- * Amendment 3 F7 (A3.5): simple search as a projection over canonical
- * LCQL (ratified A3-OD-1 strings, A3-OD-4 default).
- * - Simple is the DEFAULT mode: the bar holds ONLY the FILTERS expression
- *   (ruled placeholder), the Timeframe picker and the Source / Event type
- *   selects own the other tokens, and Run compiles the four-part
- *   canonical through the generator chokepoint.
- * - The controls are value-driven: every server-canonical query
- *   re-projects (a hostname sensor from a pivot renders as its own
- *   option), so mode stability holds by construction.
- * - An empty FILTERS field compiles to `*` (the legitimate match-all);
- *   "No query entered." is advanced-only.
- * - One toggle to Advanced LCQL shows the identical canonical text; mode
- *   toggling never loses or rewrites query text.
+ * Owner follow-up pass (2026-10-13): the ONE simple search box, replacing
+ * the Advanced LCQL toggle (which replaced the A3 F7 projection earlier
+ * the same day). This suite proves:
+ * - there is no mode toggle and no LCQL bar; Timeframe + the search box
+ *   are the whole typed surface;
+ * - the three accepted shapes (field = value with friendly aliases, field
+ *   contains text, plain free text) all become filter chips and execute
+ *   through the chokepoint;
+ * - parsed chips MERGE with the existing facet state (search and facets
+ *   are one filter system);
+ * - unknown fields get the friendly error inline, and nothing executes;
+ * - the Timeframe `all` token reads Incident Window with a case pinned
+ *   and All Time otherwise, and a timeframe change reruns current filters;
+ * - the search box works as the FIRST action too (no snapshot needed).
  */
 import React from 'react';
 import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import Siem from '../components/Siem';
 import {
-  SIMPLE_PLACEHOLDER, SIMPLE_TOGGLE, ADVANCED_TOGGLE,
-  NO_QUERY_ENTERED,
+  INCIDENT_WINDOW_LABEL, ALL_TIME_LABEL, SHOW_EVENTS,
+  searchUnknownField, SEARCH_IP_CONTAINS,
 } from '../components/uiCopy';
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
@@ -28,143 +29,135 @@ const ok = (body) => Promise.resolve({ ok: true, status: 200, json: () => Promis
 const EVENT = {
   id: 'ss-1', event_seq: 9, timestamp: '2026-03-17T05:10:00+00:00',
   event_type: 'ProcessCreate', source_type: 'Sysmon', severity: 'high',
-  hostname: 'ACME-WS12', message: 'simple fixture event', key_value_pairs: {},
+  hostname: 'ACME-WS12', message: 'filters fixture event', key_value_pairs: {},
 };
-const snapWithQ = (canonical) => ({
+const snapWithQ = (canonical, scope = 'session') => ({
   token: 'tok.one',
   identity: {
-    canonical_query: canonical, scope: 'session', resolved_scope_hosts: [],
+    canonical_query: canonical, scope, resolved_scope_hosts: [],
     resolved_range: { start: '2026-03-17T03:41:00+00:00', end: '2026-03-17T05:20:00+00:00' },
     cutoff_seq: 9,
   },
   count: 1, rows: [EVENT],
 });
 
-let queryResponses;
 beforeEach(() => {
-  queryResponses = [];
   apiFetch.mockReset();
   apiFetch.mockImplementation((p) => {
-    if (p === '/api/endpoints') return ok({ org: {}, endpoints: [] });
     if (p.startsWith('/api/events/query/new-count')) return ok({ new_count: 0, pool_growth: 0 });
     if (p.startsWith('/api/events/query')) {
-      return queryResponses.length ? queryResponses.shift()
-        : ok(snapWithQ('1h | * | * | *'));
+      const m = decodeURIComponent(p).match(/\?q=(.+)&scope=(.+)$/);
+      return ok(snapWithQ(m[1], m[2]));
+    }
+    if (p.match(/^\/api\/incidents\/[^/]+\/scope$/)) {
+      return ok({ incident_id: p.split('/')[3], sealed: true, hosts: [], accounts: [], detection_ids: [] });
     }
     return ok({});
   });
 });
 
-const renderSimple = () => render(<Siem resetTrigger={0} onHostPivot={() => {}} />);
+const renderDefault = (props = {}) =>
+  render(<Siem resetTrigger={0} onHostPivot={() => {}} {...props} />);
 const queryCalls = () =>
   apiFetch.mock.calls.map((c) => c[0]).filter((p) => p.startsWith('/api/events/query?'))
     .map(decodeURIComponent);
+const search = async (text) => {
+  fireEvent.change(screen.getByLabelText('Search events'), { target: { value: text } });
+  await act(async () => {
+    fireEvent.keyDown(screen.getByLabelText('Search events'), { key: 'Enter' });
+  });
+};
 
-test('A3-OD-4: Simple search is the default; the ruled placeholder renders; Advanced is one toggle away', () => {
-  renderSimple();
-  const bar = screen.getByLabelText('Filters');
-  expect(bar.getAttribute('placeholder')).toBe(SIMPLE_PLACEHOLDER);
-  // owner SIEM declutter (2026-10-12): the helper sentence is deleted;
-  // the placeholder carries the hint
-  expect(screen.queryByText('Enter a filter expression. Timeframe, source, and event type are controlled above.')).toBeNull();
-  expect(screen.getByTestId('query-mode-toggle').textContent).toBe(ADVANCED_TOGGLE);
-  expect(screen.getByLabelText('Source')).toBeInTheDocument();
-  expect(screen.getByLabelText('Event Type')).toBeInTheDocument();
+test('no mode toggle, no LCQL bar, no dropdowns: Timeframe + the one search box', () => {
+  renderDefault();
+  expect(screen.queryByTestId('query-mode-toggle')).toBeNull();
+  expect(screen.queryByLabelText('LCQL query')).toBeNull();
+  expect(screen.queryByLabelText('Source')).toBeNull();
+  expect(screen.queryByLabelText('Event Type')).toBeNull();
+  expect(screen.getByLabelText('Timeframe')).toBeInTheDocument();
+  expect(screen.getByLabelText('Search events')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Search' })).toBeInTheDocument();
 });
 
-test('an untouched simple state runs the compiled default (empty FILTERS is match-all; never "No query entered.")', async () => {
-  renderSimple();
-  const runBtn = screen.getByRole('button', { name: /Run Query/ });
-  expect(runBtn).not.toBeDisabled();
-  await act(async () => { fireEvent.click(runBtn); });
-  expect(queryCalls().pop()).toBe('/api/events/query?q=1h | * | * | *&scope=session');
-  expect(screen.queryByText(NO_QUERY_ENTERED)).toBeNull();
+test('a search is a valid FIRST action: no snapshot needed', async () => {
+  renderDefault();
+  await search('computer = ACME-WS12');
+  expect(queryCalls().pop())
+    .toBe('/api/events/query?q=1h | * | * | hostname == "ACME-WS12"&scope=session');
+  expect(screen.getByTestId('filter-chips').textContent).toContain('Computer: ACME-WS12');
 });
 
-test('the controls compile through the chokepoint: filters text + picker + selects land in the four-part query', async () => {
-  queryResponses.push(ok(snapWithQ('24h | Sysmon | ProcessCreate | source_ip == "10.0.1.32"')));
-  renderSimple();
-  fireEvent.change(screen.getByLabelText('Filters'), { target: { value: 'source_ip == "10.0.1.32"' } });
-  fireEvent.change(screen.getByLabelText('Timeframe'), { target: { value: '24h' } });
-  fireEvent.change(screen.getByLabelText('Source'), { target: { value: 'Sysmon' } });
-  await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Run Query/ })); });
+test('field contains text and ip = value both land as their chip shapes', async () => {
+  renderDefault();
+  await search('user contains khan');
+  expect(queryCalls().pop())
+    .toBe('/api/events/query?q=1h | * | * | user_account contains "khan"&scope=session');
+  await search('ip = 10.0.1.5');
+  // the entity pair ANDs with the existing contains chip on every arm
   expect(queryCalls().pop()).toBe(
-    '/api/events/query?q=24h | Sysmon | * | source_ip == "10.0.1.32"&scope=session');
+    '/api/events/query?q=1h | * | * | '
+    + 'source_ip == "10.0.1.5" and user_account contains "khan"'
+    + ' or destination_ip == "10.0.1.5" and user_account contains "khan"'
+    + '&scope=session');
+  const chips = screen.getByTestId('filter-chips').textContent;
+  expect(chips).toContain('User Account contains "khan"');
+  expect(chips).toContain('IP: 10.0.1.5');
 });
 
-test('mode toggling never loses text: Advanced shows the identical canonical; Simple re-projects it', async () => {
-  queryResponses.push(ok(snapWithQ('1h | Sysmon | * | source_ip == "10.0.1.32"')));
-  renderSimple();
-  fireEvent.change(screen.getByLabelText('Filters'), { target: { value: 'source_ip == "10.0.1.32"' } });
-  fireEvent.change(screen.getByLabelText('Source'), { target: { value: 'Sysmon' } });
-  await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Run Query/ })); });
-  fireEvent.click(screen.getByTestId('query-mode-toggle'));
-  const advBar = screen.getByLabelText('LCQL query');
-  expect(advBar).toHaveValue('1h | Sysmon | * | source_ip == "10.0.1.32"');
-  expect(screen.getByTestId('query-mode-toggle').textContent).toBe(SIMPLE_TOGGLE);
-  fireEvent.click(screen.getByTestId('query-mode-toggle'));
-  expect(screen.getByLabelText('Filters')).toHaveValue('source_ip == "10.0.1.32"');
-  expect(screen.getByLabelText('Source')).toHaveValue('Sysmon');
+test('search merges with facet selections: one filter system', async () => {
+  renderDefault();
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: SHOW_EVENTS }));
+  });
+  await act(async () => {
+    fireEvent.click(within(screen.getByTestId('facet-group-severity')).getByLabelText('Severity: high'));
+  });
+  await search('computer = ACME-WS12');
+  expect(queryCalls().pop()).toBe(
+    '/api/events/query?q=1h | * | * | severity == "high" and hostname == "ACME-WS12"&scope=session');
+  // a duplicate search adds nothing and reruns the same compiled query
+  await search('severity = high');
+  expect(queryCalls().pop()).toBe(
+    '/api/events/query?q=1h | * | * | severity == "high" and hostname == "ACME-WS12"&scope=session');
+  expect(screen.getAllByLabelText(/Remove filter:/)).toHaveLength(2);
 });
 
-test('a pivot canonical re-projects: the hostname sensor renders as its own Source option (mode stability)', async () => {
-  renderSimple();
-  await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Run Query/ })); });
-  fireEvent.click(within(screen.getByTestId('workbench-results')).getByText('simple fixture event'));
-  queryResponses.push(ok(snapWithQ('1h | ACME-WS12 | * | *')));
-  await act(async () => { fireEvent.click(screen.getByLabelText('Pivot hostname')); });
-  expect(queryCalls().pop()).toBe('/api/events/query?q=1h | ACME-WS12 | * | *&scope=session');
-  // the executed canonical projects back into the simple controls
-  expect(screen.getByLabelText('Source')).toHaveValue('ACME-WS12');
-  expect(screen.getByLabelText('Filters')).toHaveValue('');
-});
-
-test('a hand-authored advanced text that does not split into four sections cannot project: the toggle disables', async () => {
-  renderSimple();
-  fireEvent.click(screen.getByTestId('query-mode-toggle'));   // to Advanced
-  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'not a query' } });
-  expect(screen.getByTestId('query-mode-toggle')).toBeDisabled();
-  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
-  expect(screen.getByTestId('query-mode-toggle')).not.toBeDisabled();
-});
-
-test('the simple help examples are edit-only FILTERS snippets', () => {
-  renderSimple();
-  fireEvent.click(screen.getByText('source_ip == "10.0.1.32"'));
-  expect(screen.getByLabelText('Filters')).toHaveValue('source_ip == "10.0.1.32"');
-  expect(queryCalls()).toEqual([]);   // nothing ran
-});
-
-test('A3.6: a FILTERS parse error renders the ruled form naming the Filters section with the field-relative position', async () => {
-  renderSimple();
-  // the compiled string is `1h | * | * | source_ip == ` (trailing op, invalid);
-  // the server errors INSIDE the FILTERS section
-  const compiled = '1h | * | * | source_ip ==';
-  queryResponses.push(Promise.resolve({ ok: false, status: 400,
-    json: () => Promise.resolve({ error: { position: compiled.length, reason: 'expected a value' } }) }));
-  fireEvent.change(screen.getByLabelText('Filters'), { target: { value: 'source_ip ==' } });
-  await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Run Query/ })); });
-  expect(screen.getByText('This search was not run.')).toBeInTheDocument();
-  expect(screen.getByText('The Filters section could not be read.')).toBeInTheDocument();
-  // the detail position remaps into the FIELD: 25 minus the 13-char
-  // offset of the FILTERS tail = 12 (the end of "source_ip ==")
-  expect(screen.getByText(/position 12 in Filters/)).toBeInTheDocument();
-});
-
-test('A3.6: Restore Last Working Query is request-free in simple mode and re-projects the canonical', async () => {
-  queryResponses.push(ok(snapWithQ('1h | Sysmon | * | source_ip == "10.0.1.32"')));
-  renderSimple();
-  fireEvent.change(screen.getByLabelText('Filters'), { target: { value: 'source_ip == "10.0.1.32"' } });
-  fireEvent.change(screen.getByLabelText('Source'), { target: { value: 'Sysmon' } });
-  await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Run Query/ })); });
-  // break the field, fail a run, restore
-  queryResponses.push(Promise.resolve({ ok: false, status: 400,
-    json: () => Promise.resolve({ error: { position: 12, reason: 'nope' } }) }));
-  fireEvent.change(screen.getByLabelText('Filters'), { target: { value: 'broken ==' } });
-  await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Run Query/ })); });
+test('unknown fields and ip-contains get friendly inline errors; nothing executes', async () => {
+  renderDefault();
   const before = queryCalls().length;
-  fireEvent.click(screen.getByRole('button', { name: 'Restore Last Working Query' }));
+  await search('computr = ACME-WS28');
+  expect(screen.getByTestId('search-error').textContent).toBe(searchUnknownField('computr'));
+  await search('ip contains 10.0.');
+  expect(screen.getByTestId('search-error').textContent).toBe(SEARCH_IP_CONTAINS);
   expect(queryCalls().length).toBe(before);
-  expect(screen.getByLabelText('Filters')).toHaveValue('source_ip == "10.0.1.32"');
-  expect(screen.getByLabelText('Source')).toHaveValue('Sysmon');
+});
+
+test('the Timeframe all token reads All Time without a case and Incident Window with one', async () => {
+  const noCase = renderDefault();
+  const options = () => Array.from(screen.getByLabelText('Timeframe').options)
+    .map((o) => [o.value, o.textContent]);
+  expect(options()).toContainEqual(['all', ALL_TIME_LABEL]);
+  noCase.unmount();
+
+  await act(async () => {
+    renderDefault({ activeIncidentId: 'INC-77' });
+  });
+  expect(options()).toContainEqual(['all', INCIDENT_WINDOW_LABEL]);
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: SHOW_EVENTS }));
+  });
+  await act(async () => {
+    fireEvent.change(screen.getByLabelText('Timeframe'), { target: { value: 'all' } });
+  });
+  expect(queryCalls().pop()).toBe('/api/events/query?q=all | * | * | *&scope=INC-77');
+});
+
+test('a timeframe change with a snapshot reruns the current filters immediately', async () => {
+  renderDefault();
+  await search('severity = high');
+  await act(async () => {
+    fireEvent.change(screen.getByLabelText('Timeframe'), { target: { value: '4h' } });
+  });
+  expect(queryCalls().pop())
+    .toBe('/api/events/query?q=4h | * | * | severity == "high"&scope=session');
 });

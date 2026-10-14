@@ -391,11 +391,15 @@ Each scenario label should be unique across the whole catalog. If a category rep
 - Keyboard shortcuts: 1-6 to switch tabs
 - Chart-bearing views (Alerts/GroupedAlerts, Metrics/Analytics) gate their Recharts on an `isVisible` prop so hidden charts don't mount at 0 size and flood console width(0) warnings
 
-### SIEM Tab (Siem.jsx + SiemCards / SiemTable, Stage 1.5)
-- Renamed from Events; card view (default, `SiemCards`) + table view (`SiemTable`) toggle, both over the cached session pool (`siemUtils.js` shared logic)
-- Dropdown filters (Source/Platform/Event Type, values derived from the pool), free-text search, time presets anchored to the pool's latest timestamp (frozen scenario clock, never wall time)
+### SIEM Tab (Siem.jsx + SiemCards / SiemTable; one filter system since the owner simplification pass + follow-up, 2026-10-13)
+- Card view (default, `SiemCards`; no severity edge, no source dot) + table view (`SiemTable`) toggle over the frozen server snapshot (Stage 4 workbench; contract P8 — no client-side filtering, ever). No incident context line on the page (the shell header carries session context)
+- **ONE filter system, no LCQL bar**: the facet rail (`FacetRail.jsx`) carries six plain-language groups — Event, Severity, User Account, Computer, Source IP, Log Source — top-5 values by count, multi-select checkboxes, Show More, everything else behind More Filters; id/timestamp/message/logon_guid/key_length/channel/caller_process_id are deleted as filter groups. Applied filters render as removable chips above the results
+- **One simple search box** beside Timeframe: `field = value` (friendly aliases, e.g. `computer = ACME-WS28`), `field contains text`, or plain free text (searches the event message). Everything it parses becomes the same chips (`facetModel.parseSearchInput` + `mergeChips`); unknown fields get a friendly inline error. Advanced LCQL is retired entirely from the UI
+- The chip model (`facetModel.js`) compiles through the `lcqlPivots.facetQuery` chokepoint into OR-of-ANDs (LCQL still has no grouping) and executes immediately server-side; executed canonicals (incl. prepared descents) ADOPT back into chips (`adoptQuery`). Multi-select counts for a narrowed group come from an on-request sibling baseline fetch (Show More), never a poll. The server query cap is 2000 chars (raised from 300 for the distributed form; `test_query_read.py`, scaffold amendment 2026-10-13)
+- Timeframe stays on top; the `all` token is labelled **Incident Window** when a case is pinned (under the incident anchor, `all` IS the incident's evidence window), **All Time** otherwise
+- The snapshot meta line is trimmed to **Results for / Snapshot: N events / Scope** (no seq number, sim timestamp, or canonical dump); Load New Events keeps its token-bound count
+- Event inspector (`EventInspector.jsx`) is two tiers: **Key Facts** (~9 fields, values decoded via `fieldDecodes.js` — logon type 3 = Network, 0xC000006A = Incorrect Password, 4625 = Failed Logon) then **All Fields** as a full-width disclosure row directly under Key Facts (full Section 12 structure + sanitized raw JSON below); section headers render at `t-subsection`. Filter/pivot actions exist ONLY on entity fields (`facetModel.ENTITY_FIELDS`: user, source IP, workstation, host, destination, process name) through ONE menu: Filter to Just This / Filter This Out / Pivot: See Everything About This / Copy (+ Open in Endpoints on hosts); the per-field ==/!=/Pivot buttons are gone
 - Raw-log JSON view renders `sanitizeEvent` output only (whitelist); simulation-internal fields never leak
-- No query language (that is Stage 4 — see docs/stage4-query-grammar-notes.md)
 
 ### Dashboard Charts (GroupedAlerts.jsx, Stage 1.5)
 - Queue donut + Severity bars + ATT&CK Coverage radar (Source/Category bars removed)

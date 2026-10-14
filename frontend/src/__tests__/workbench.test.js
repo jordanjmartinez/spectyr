@@ -1,21 +1,22 @@
 /**
- * Stage 4 Phase 4.1: the SIEM Investigation Workbench shell.
+ * The SIEM shell (Stage 4 Phase 4 core, under the owner simplification
+ * pass + follow-up 2026-10-13: ONE filter system, one simple search box,
+ * no LCQL bar).
  *
- * Supersedes the retired siem.test.js live-feed cases in the same commit
- * that removes the code they tested (the 2s poll, dropdown filters,
- * field=value search, client time presets). Carries forward the two
- * display-sanitization guards (sanitizeEvent strip + expanded raw JSON).
- *
- * Core contract points: the shell submits LCQL text to the server and
- * renders the response, nothing more (P8: no client-side query execution);
- * parse errors render position + reason with the prior snapshot intact;
- * the placeholder is a canonical conforming example; the GD-5a
- * unquoted-value rules surface in the player-facing query help.
+ * Core contract points carried forward: the shell submits chokepoint-
+ * compiled LCQL to the server and renders the response, nothing more (P8:
+ * no client-side query execution); a failed run preserves the prior
+ * snapshot with the not-run + stale sentences; the shell never polls for
+ * rows; display sanitization (sanitizeEvent strip + raw JSON behind All
+ * Fields). New points: the search box's three accepted shapes become
+ * chips; unknown fields get a friendly error; the snapshot meta line is
+ * the trimmed Results for / Snapshot / Scope form.
  */
 import React from 'react';
 import { render, screen, fireEvent, act, within } from '@testing-library/react';
-import Siem, { QUERY_PLACEHOLDER, QUERY_HELP_EXAMPLES } from '../components/Siem';
+import Siem from '../components/Siem';
 import { sanitizeEvent } from '../components/siemUtils';
+import { SEARCH_NOT_RUN, STALE_RESULTS_NOTE, searchUnknownField } from '../components/uiCopy';
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
 const { apiFetch } = require('../api');
@@ -31,7 +32,7 @@ const ROW = {
 const SNAPSHOT = {
   token: 'tok.abc',
   identity: {
-    canonical_query: 'all | * | * | *',
+    canonical_query: '1h | * | * | *',
     scope: 'session',
     resolved_scope_hosts: [],
     resolved_range: { start: '2026-03-17T03:41:00+00:00', end: '2026-03-17T04:00:00+00:00' },
@@ -42,119 +43,128 @@ const SNAPSHOT = {
 };
 
 const ok = (body) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
-const bad = (status, body) => Promise.resolve({ ok: false, status, json: () => Promise.resolve(body) });
 
 let queryResponses;
 beforeEach(() => {
   queryResponses = [];
   apiFetch.mockImplementation((path) => {
-    if (path === '/api/endpoints') return ok({ org: { name: 'ACME Corp' }, endpoints: [] });
+    if (path.startsWith('/api/events/query/new-count')) return ok({ new_count: 0, pool_growth: 0 });
     if (path.startsWith('/api/events/query')) {
-      return queryResponses.length ? queryResponses.shift() : ok(SNAPSHOT);
+      if (queryResponses.length) return queryResponses.shift();
+      const q = decodeURIComponent(path).match(/\?q=(.+)&scope=/)[1];
+      return ok({ ...SNAPSHOT, identity: { ...SNAPSHOT.identity, canonical_query: q } });
     }
     return ok({});
   });
 });
 
-const renderShell = () => {
-  const utils = render(<Siem initialQueryMode="advanced" resetTrigger={0} onHostPivot={() => {}} />);
-  return utils;
-};
+const renderShell = () => render(<Siem resetTrigger={0} onHostPivot={() => {}} />);
 
-const run = async (text) => {
-  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: text } });
+const showEvents = async () => {
   await act(async () => {
-    fireEvent.click(screen.getByRole('button', { name: /Run Query/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show Events' }));
   });
 };
 
-// The field sidebar (P6.2) also renders top message VALUES, which can
-// duplicate a row's own message text; scope row-content queries to the
-// results pane specifically so they cannot match a sidebar button too.
-const results = () => within(screen.getByTestId('workbench-results'));
+const search = async (text) => {
+  fireEvent.change(screen.getByLabelText('Search events'), { target: { value: text } });
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+  });
+};
 
-test('empty state: example placeholder, two valid examples, GD-5a rules in the help copy', () => {
+const results = () => within(screen.getByTestId('workbench-results'));
+const queryCalls = () =>
+  apiFetch.mock.calls.map((c) => c[0]).filter((p) => p.startsWith('/api/events/query?'))
+    .map(decodeURIComponent);
+
+test('empty state: Show Events, the search box, and NO LCQL bar anywhere', () => {
   renderShell();
-  const bar = screen.getByLabelText('LCQL query');
-  expect(bar).toHaveAttribute('placeholder', QUERY_PLACEHOLDER);
-  // A2 (ruled): the placeholder is unmistakably an EXAMPLE -- the prefix is
-  // part of the text, and the remainder is a conforming four-segment query
-  expect(QUERY_PLACEHOLDER).toMatch(/^Example: \S+ \| .+ \| .+ \| .+$/);
-  expect(QUERY_PLACEHOLDER).not.toMatch(/\w+=\w/);   // never key=value drift
-  expect(screen.getByText('Run a query to begin.')).toBeInTheDocument();
-  for (const ex of QUERY_HELP_EXAMPLES) {
-    expect(screen.getByText(ex)).toBeInTheDocument();
-  }
-  // GD-5a player-facing help (contract post-lock amendment). Owner SIEM
-  // declutter (2026-10-12): the rules sit behind the Query Syntax
-  // disclosure -- content unchanged, one click away, hidden by default.
-  expect(document.body.textContent).not.toMatch(/must be quoted/);
-  fireEvent.click(screen.getByRole('button', { name: 'Query Syntax' }));
-  const help = document.body.textContent;
-  expect(help).toMatch(/must be quoted/);
-  expect(help).toMatch(/and, or, not, contains/);
-  expect(help).toMatch(/single quotes match exactly/i);
+  expect(screen.getByText('No events loaded yet.')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Show Events' })).toBeInTheDocument();
+  expect(screen.getByLabelText('Search events')).toBeInTheDocument();
+  expect(screen.queryByLabelText('LCQL query')).toBeNull();
+  expect(screen.queryByTestId('query-mode-toggle')).toBeNull();
+  expect(screen.queryByText(/LCQL has four segments/)).toBeNull();
 });
 
-test('Run Query submits the exact encoded text and renders the returned rows', async () => {
+test('Show Events submits the compiled match-all and renders the returned rows', async () => {
   renderShell();
-  const q = '1h | Sysmon | * | message contains "nmap"';
-  await run(q);
-  const call = apiFetch.mock.calls.map(c => c[0]).find(p => p.startsWith('/api/events/query'));
-  expect(call).toBe(`/api/events/query?q=${encodeURIComponent(q)}&scope=session`);
+  await showEvents();
+  expect(queryCalls().pop()).toBe('/api/events/query?q=1h | * | * | *&scope=session');
   expect(results().getByText(/nmap.exe launched/)).toBeInTheDocument();
-  expect(screen.getByText(/as of seq #7/)).toBeInTheDocument();
+});
+
+test('the search box: field = value compiles through the chokepoint and lands as a chip', async () => {
+  renderShell();
+  await showEvents();
+  await search('computer = ACME-WS12');
+  expect(queryCalls().pop())
+    .toBe('/api/events/query?q=1h | * | * | hostname == "ACME-WS12"&scope=session');
+  expect(screen.getByTestId('filter-chips').textContent).toContain('Computer: ACME-WS12');
+  expect(screen.getByLabelText('Search events')).toHaveValue('');   // cleared on success
+});
+
+test('the search box: plain free text searches the event message', async () => {
+  renderShell();
+  await showEvents();
+  await search('nmap launched');
+  expect(queryCalls().pop())
+    .toBe('/api/events/query?q=1h | * | * | message contains "nmap launched"&scope=session');
+  expect(screen.getByTestId('filter-chips').textContent)
+    .toContain('Message contains "nmap launched"');
+});
+
+test('an unknown field gets the friendly error and nothing runs', async () => {
+  renderShell();
+  await showEvents();
+  const before = queryCalls().length;
+  await search('computr = ACME-WS12');
+  expect(queryCalls().length).toBe(before);
+  expect(screen.getByTestId('search-error').textContent)
+    .toBe(searchUnknownField('computr'));
+  // typing again clears the error
+  fireEvent.change(screen.getByLabelText('Search events'), { target: { value: 'c' } });
+  expect(screen.queryByTestId('search-error')).toBeNull();
 });
 
 test('no client-side query execution: rows render exactly as served (P8)', async () => {
-  // The served row does not lexically match the query text at all; a client
+  // The served row does not lexically match the search at all; a client
   // that re-filtered would drop it. The shell must render it verbatim.
   renderShell();
-  await run('1h | DNS | QUERY | query contains "zzz-no-such"');
+  await showEvents();
+  queryResponses.push(ok(SNAPSHOT));
+  await search('zzz-no-such-string');
   expect(results().getByText(/nmap.exe launched/)).toBeInTheDocument();
 });
 
-test('parse error renders position + reason + suggestions; prior snapshot intact', async () => {
+test('a failed run preserves the prior snapshot with the not-run and stale sentences', async () => {
   renderShell();
-  await run('all | * | * | *');
+  await showEvents();
   expect(results().getByText(/nmap.exe launched/)).toBeInTheDocument();
-
-  queryResponses.push(bad(400, {
-    error: { position: 14, reason: 'unknown field \'commandline\'', suggestions: ['command_line'] },
-  }));
-  await run('all | * | * | commandline == "x"');
-  expect(screen.getByRole('alert').textContent).toMatch(/position 14/);
-  expect(screen.getByRole('alert').textContent).toMatch(/unknown field/);
-  expect(screen.getByRole('alert').textContent).toMatch(/command_line/);
-  // the prior snapshot is untouched
+  queryResponses.push(Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve(null) }));
+  await search('severity = high');
+  const alert = screen.getByRole('alert');
+  expect(alert.textContent).toContain(SEARCH_NOT_RUN);
+  expect(alert.textContent).toContain(STALE_RESULTS_NOTE);
   expect(results().getByText(/nmap.exe launched/)).toBeInTheDocument();
-  expect(screen.getByText(/as of seq #7/)).toBeInTheDocument();
 });
 
-test('no-results state echoes the canonical query', async () => {
-  queryResponses.push(ok({ ...SNAPSHOT, count: 0, rows: [],
-    identity: { ...SNAPSHOT.identity, canonical_query: '15m | Proxy | * | *' } }));
+test('the trimmed snapshot meta line: Results for / Snapshot / Scope, nothing more', async () => {
   renderShell();
-  await run('15m | proxy | * | *');
-  expect(screen.getByText('0 events match')).toBeInTheDocument();
-  // echoed in the no-results pane (and again in the snapshot status bar)
-  expect(screen.getAllByText('15m | Proxy | * | *').length).toBeGreaterThanOrEqual(2);
+  await showEvents();
+  const metaRow = screen.getByTestId('results-label').parentElement;
+  expect(screen.getByTestId('results-label').textContent).toBe('Results for: all events');
+  expect(metaRow.textContent).toContain('Snapshot: 1 events');
+  expect(metaRow.textContent).toContain('Scope: Session');
+  // the seq number, sim timestamp, and raw segment dump are gone
+  expect(metaRow.textContent).not.toMatch(/as of seq #/);
+  expect(metaRow.textContent).not.toMatch(/\d{2}:\d{2}:\d{2} sim/);
+  expect(metaRow.textContent).not.toContain('1h | * | * | *');
+  expect(metaRow.textContent).not.toContain('scope=');
 });
 
-test('loading state disables Run and makes the bar read-only until completion', async () => {
-  let resolveQuery;
-  queryResponses.push(new Promise(res => { resolveQuery = () => res({ ok: true, status: 200, json: () => Promise.resolve(SNAPSHOT) }); }));
-  renderShell();
-  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
-  fireEvent.click(screen.getByRole('button', { name: /Run Query/ }));
-  expect(screen.getByRole('button', { name: /Running/ })).toBeDisabled();
-  expect(screen.getByLabelText('LCQL query')).toHaveAttribute('readonly');
-  await act(async () => { resolveQuery(); });
-  expect(results().getByText(/nmap.exe launched/)).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /Run Query/ })).not.toBeDisabled();
-});
-
-test('the shell never polls: no event requests without an explicit Run', async () => {
+test('the shell never polls: no event requests without an explicit action', async () => {
   jest.useFakeTimers();
   renderShell();
   await act(async () => { jest.advanceTimersByTime(10000); });
@@ -178,10 +188,11 @@ test('sanitizeEvent strips every simulation-internal field (carried forward)', (
   expect(clean.key_value_pairs.process_id).toBe('8844');
 });
 
-test('expanding a card shows sanitized JSON only (carried forward)', async () => {
+test('the raw JSON behind All Fields is sanitized only (carried forward)', async () => {
   renderShell();
-  await run('all | * | * | *');
+  await showEvents();
   fireEvent.click(results().getByText(/nmap.exe launched/));
+  fireEvent.click(screen.getByRole('button', { name: /All Fields/ }));
   const pre = document.querySelector('pre');
   expect(pre).not.toBeNull();
   for (const k of ['label', 'category', 'scenario_id', 'storyline', 'alert_id']) {
@@ -192,7 +203,7 @@ test('expanding a card shows sanitized JSON only (carried forward)', async () =>
 
 test('table view toggle renders the frozen snapshot rows', async () => {
   renderShell();
-  await run('all | * | * | *');
+  await showEvents();
   fireEvent.click(screen.getByRole('button', { name: 'Table' }));
   expect(await screen.findByText('Src Type')).toBeInTheDocument();
   expect(screen.getAllByText(/nmap.exe launched/).length).toBeGreaterThan(0);

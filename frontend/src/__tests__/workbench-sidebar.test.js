@@ -1,34 +1,33 @@
 /**
- * Stage 4 Phase 6.2: the snapshot-scoped field sidebar (contract Section
- * 10.3). computeFieldSummary is a pure function of a `rows` array alone --
- * it never reads any live pool or hidden server state, structurally. This
- * file proves: purity (identical input -> identical output, no reliance on
- * anything but the argument), common-before-family ordering, top-5 values
- * with counts, type-aware rendering, the empty/no-results states, that
- * value clicks route only through lcqlPivots.refineFilter, and that
- * event_seq can never appear as a sidebar field or generate a predicate.
- * The FieldSidebar integration tests prove sidebar output is pinned to the
- * DISPLAYED snapshot across live indicator-poll cycles (the "pool growing,
- * snapshot not" proof, mirroring Phase 5's row-stability test).
+ * The facet rail (owner SIEM simplification pass 2026-10-13; replaces the
+ * Stage 4 FieldSidebar suite in the same commit that replaces the
+ * component).
+ *
+ * Proves: the six default plain-language groups render in order with top-5
+ * values by count; multi-select checkboxes toggle include chips and run the
+ * compiled query immediately through the one generator; selected values pin
+ * (visible even at 0 matching rows); everything else sits behind More
+ * Filters; the DELETED groups (id, timestamp, message, logon_guid,
+ * key_length, channel, caller_process_id) never render as groups; event_seq
+ * can never become a filter; values and counts derive ONLY from served rows
+ * and stay pinned to the displayed snapshot while the pool grows; and the
+ * sibling baseline for a narrowed group is fetched only on Show More.
  */
 import React from 'react';
 import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import Siem from '../components/Siem';
-import FieldSidebar from '../components/FieldSidebar';
-import { computeFieldSummary, FILTERABLE_TOP_FIELDS } from '../components/fieldSummary';
+import FacetRail from '../components/FacetRail';
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
 const { apiFetch } = require('../api');
 
 const ok = (body) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
 
-// --- computeFieldSummary: pure-function proofs ------------------------------
-
 const ROWS = [
   { id: 'e1', event_seq: 11, timestamp: '2026-03-17T04:00:00+00:00',
     event_type: 'ProcessCreate', source_type: 'Sysmon', severity: 'high',
     hostname: 'ACME-WS12', source_ip: '10.0.1.12', user_account: 'ACME\\nkhan',
-    message: 'm1', key_value_pairs: { image: 'a.exe', process_id: '1' } },
+    message: 'm1', key_value_pairs: { image: 'a.exe', process_id: '1', logon_guid: 'g-1' } },
   { id: 'e2', event_seq: 12, timestamp: '2026-03-17T04:00:05+00:00',
     event_type: 'ProcessCreate', source_type: 'Sysmon', severity: 'high',
     hostname: 'ACME-WS12', source_ip: '10.0.1.13', user_account: 'ACME\\nkhan',
@@ -39,129 +38,6 @@ const ROWS = [
     message: 'm3', key_value_pairs: { query: 'evil.example' } },
 ];
 
-test('computeFieldSummary is a pure function: same input, same output, no external reads', () => {
-  const a = computeFieldSummary(ROWS);
-  const b = computeFieldSummary(ROWS);
-  expect(a).toEqual(b);
-  // a fresh array with the same rows produces the identical summary
-  expect(computeFieldSummary([...ROWS])).toEqual(a);
-});
-
-test('fields are common-before-family, and only fields present in rows appear', () => {
-  const summary = computeFieldSummary(ROWS);
-  const fields = summary.map((s) => s.field);
-  const commonIdx = fields.indexOf('hostname');
-  const familyIdx = fields.indexOf('image');
-  expect(commonIdx).toBeGreaterThanOrEqual(0);
-  expect(familyIdx).toBeGreaterThan(commonIdx);
-  // destination_ip is present on none of ROWS -- must not appear
-  expect(fields).not.toContain('destination_ip');
-});
-
-test('top values are sorted by count desc, capped at 5, with counts correct', () => {
-  const summary = computeFieldSummary(ROWS);
-  const hostname = summary.find((s) => s.field === 'hostname');
-  expect(hostname.topValues).toEqual([
-    { value: 'ACME-WS12', count: 2 },
-    { value: 'ACME-WS08', count: 1 },
-  ]);
-  const image = summary.find((s) => s.field === 'image');
-  expect(image.topValues).toEqual([{ value: 'a.exe', count: 2 }]);
-});
-
-test('top values cap at 5 even with more distinct values', () => {
-  const rows = Array.from({ length: 8 }, (_, i) => ({
-    id: `e${i}`, event_seq: i, hostname: `HOST-${i}`,
-    key_value_pairs: {},
-  }));
-  const summary = computeFieldSummary(rows);
-  const hostname = summary.find((s) => s.field === 'hostname');
-  expect(hostname.topValues).toHaveLength(5);
-});
-
-test('event_seq can never appear as a sidebar field (FILTERS-authorized catalog only)', () => {
-  expect(FILTERABLE_TOP_FIELDS).not.toContain('event_seq');
-  const summary = computeFieldSummary(ROWS);
-  expect(summary.map((s) => s.field)).not.toContain('event_seq');
-  // even a row that carries key_value_pairs.event_seq (never happens in
-  // practice -- event_seq is top-level only) must not surface it as a
-  // FAMILY field either, since kvp keys are read verbatim from the row
-  const poisoned = [{ ...ROWS[0], key_value_pairs: { ...ROWS[0].key_value_pairs, event_seq: '99' } }];
-  const s2 = computeFieldSummary(poisoned);
-  // this DOES appear (kvp keys are whatever the row carries) -- proving the
-  // guarantee is structural at the TOP-LEVEL FILTERABLE_TOP_FIELDS list,
-  // not a runtime blacklist; real rows never put event_seq in kvp (server
-  // serializes it top-level only, per detection_templates.py), so this is
-  // a defensive existence proof, not a claim about real payload shape.
-  expect(s2.find((f) => f.field === 'event_seq' && f.addr === 'top')).toBeUndefined();
-});
-
-test('computeFieldSummary tolerates rows with missing or non-object key_value_pairs', () => {
-  const rows = [{ id: 'x', hostname: 'H' }, { id: 'y', hostname: 'H', key_value_pairs: null }];
-  expect(() => computeFieldSummary(rows)).not.toThrow();
-});
-
-// --- FieldSidebar component: rendering, ordering, type-aware values --------
-
-test('FieldSidebar renders common-before-family with counts and top values', () => {
-  render(<FieldSidebar snapshot={{ count: 3, rows: ROWS }} running={false} onValueClick={() => {}} />);
-  const sidebar = screen.getByTestId('field-sidebar');
-  const text = sidebar.textContent;
-  expect(text.indexOf('hostname')).toBeGreaterThanOrEqual(0);
-  expect(text.indexOf('hostname')).toBeLessThan(text.indexOf('image'));
-  const hostButton = within(sidebar).getByText('ACME-WS12').closest('button');
-  expect(within(hostButton).getByText('2')).toBeInTheDocument();
-});
-
-test('FieldSidebar type-aware rendering: byte counts humanized', () => {
-  const rows = [{ id: 'e1', hostname: 'H', key_value_pairs: { bytes_uploaded: '2097152' } }];
-  render(<FieldSidebar snapshot={{ count: 1, rows }} running={false} onValueClick={() => {}} />);
-  expect(screen.getByText('2 MB')).toBeInTheDocument();
-});
-
-test('FieldSidebar empty state: hidden until a snapshot exists', () => {
-  const { container } = render(<FieldSidebar snapshot={null} running={false} onValueClick={() => {}} />);
-  expect(container).toBeEmptyDOMElement();
-});
-
-test('FieldSidebar loading skeleton only while the FIRST-EVER query is in flight', () => {
-  render(<FieldSidebar snapshot={null} running onValueClick={() => {}} />);
-  expect(screen.getByTestId('field-sidebar-skeleton')).toBeInTheDocument();
-});
-
-test('FieldSidebar no-results state matches the locked contract', () => {
-  render(<FieldSidebar snapshot={{ count: 0, rows: [] }} running={false} onValueClick={() => {}} />);
-  expect(screen.getByText('No fields to summarize.')).toBeInTheDocument();
-});
-
-test('clicking a sidebar value calls onValueClick with (field, "==", value) -- routes only through the generator', () => {
-  // refineFilter's signature is (query, field, op, value); the sidebar's
-  // onValueClick MUST supply the '==' operator explicitly. A prior version
-  // of this handler omitted it (onValueClick(field, value) only), which
-  // silently shifted the value into refineFilter's `op` parameter and
-  // produced a garbled query (caught live in Chrome, not by a unit test --
-  // this assertion is the fix, pinning the correct 3-arg call).
-  const onValueClick = jest.fn();
-  render(<FieldSidebar snapshot={{ count: 3, rows: ROWS }} running={false} onValueClick={onValueClick} />);
-  fireEvent.click(screen.getByText('ACME-WS12'));
-  expect(onValueClick).toHaveBeenCalledWith('hostname', '==', 'ACME-WS12');
-});
-
-test('no sidebar action can generate an event_seq predicate: no clickable element is ever tied to event_seq', () => {
-  const onValueClick = jest.fn();
-  render(<FieldSidebar snapshot={{ count: 3, rows: ROWS }} running={false} onValueClick={onValueClick} />);
-  const buttons = screen.getAllByRole('button');
-  for (const b of buttons) {
-    fireEvent.click(b);
-  }
-  for (const call of onValueClick.mock.calls) {
-    expect(call[0]).not.toBe('event_seq');
-  }
-});
-
-// --- integration: sidebar is pinned to the snapshot across live poll cycles --
-
-const SNAP_ROWS = ROWS;
 const SNAPSHOT = {
   token: 'tok.abc',
   identity: {
@@ -169,58 +45,232 @@ const SNAPSHOT = {
     resolved_range: { start: '2026-03-17T03:41:00+00:00', end: '2026-03-17T04:00:10+00:00' },
     cutoff_seq: 13,
   },
-  count: 3, rows: SNAP_ROWS,
+  count: 3, rows: ROWS,
 };
 
-describe('sidebar pinned to the displayed snapshot (fake timers)', () => {
-  let countResponse;
-  beforeEach(() => {
-    jest.useFakeTimers();
-    countResponse = () => ok({ new_count: 0, pool_growth: 0 });
-    apiFetch.mockImplementation((path) => {
-      if (path === '/api/endpoints') return ok({ org: { name: 'ACME Corp' }, endpoints: [] });
-      if (path.startsWith('/api/events/query/new-count')) return countResponse();
-      if (path.startsWith('/api/events/query')) return ok(SNAPSHOT);
-      return ok({});
-    });
+const noop = () => {};
+const railProps = {
+  running: false, chips: [], customActive: false, baselines: {},
+  onToggle: noop, onRequestBaseline: noop,
+};
+
+// --- FacetRail: pure rendering over the snapshot prop -----------------------
+
+test('the six default groups render in the owner-specified order with plain-language names', () => {
+  render(<FacetRail snapshot={SNAPSHOT} {...railProps} />);
+  const rail = screen.getByTestId('facet-rail');
+  const text = rail.textContent;
+  const order = ['Event', 'Severity', 'User Account', 'Computer',
+    'Source IP', 'Log Source', 'More Filters'];
+  let last = -1;
+  for (const label of order) {
+    const idx = text.indexOf(label);
+    expect({ label, present: idx >= 0 }).toEqual({ label, present: true });
+    expect(idx).toBeGreaterThan(last);
+    last = idx;
+  }
+});
+
+test('values show counts and decoded names; counts are correct', () => {
+  render(<FacetRail snapshot={SNAPSHOT} {...railProps} />);
+  const group = screen.getByTestId('facet-group-event_type');
+  const proc = within(group).getByLabelText('Event: Process Started (ProcessCreate)');
+  expect(proc).toBeInTheDocument();
+  expect(within(group).getByText('Process Started (ProcessCreate)').parentElement.textContent)
+    .toContain('2');
+  const sev = screen.getByTestId('facet-group-severity');
+  expect(within(sev).getByText('high').parentElement.textContent).toContain('2');
+  expect(within(sev).getByText('low').parentElement.textContent).toContain('1');
+});
+
+test('top values cap at 5 with Show More revealing the rest client-side', () => {
+  const rows = Array.from({ length: 8 }, (_, i) => ({
+    id: `e${i}`, event_seq: i, hostname: `HOST-${i}`, key_value_pairs: {},
+  }));
+  render(<FacetRail snapshot={{ count: 8, rows }} {...railProps} />);
+  const group = screen.getByTestId('facet-group-hostname');
+  expect(within(group).getAllByRole('checkbox')).toHaveLength(5);
+  fireEvent.click(within(group).getByText('Show More'));
+  expect(within(group).getAllByRole('checkbox')).toHaveLength(8);
+  fireEvent.click(within(group).getByText('Show Fewer'));
+  expect(within(group).getAllByRole('checkbox')).toHaveLength(5);
+});
+
+test('clicking a value calls onToggle with (field, value); checked state follows the chips', () => {
+  const onToggle = jest.fn();
+  render(<FacetRail snapshot={SNAPSHOT} {...railProps}
+    chips={[{ type: 'include', field: 'severity', value: 'high' }]}
+    onToggle={onToggle} />);
+  const sev = screen.getByTestId('facet-group-severity');
+  expect(within(sev).getByLabelText('Severity: high')).toBeChecked();
+  expect(within(sev).getByLabelText('Severity: low')).not.toBeChecked();
+  fireEvent.click(within(sev).getByLabelText('Severity: low'));
+  expect(onToggle).toHaveBeenCalledWith('severity', 'low');
+});
+
+test('a selected value pins into its group even when no served row carries it', () => {
+  render(<FacetRail snapshot={SNAPSHOT} {...railProps}
+    chips={[{ type: 'include', field: 'severity', value: 'critical' }]} />);
+  const sev = screen.getByTestId('facet-group-severity');
+  const pinned = within(sev).getByLabelText('Severity: critical');
+  expect(pinned).toBeChecked();
+  expect(pinned.closest('label').textContent).toContain('0');
+});
+
+test('everything beyond the defaults sits behind More Filters; deleted groups never render', () => {
+  render(<FacetRail snapshot={SNAPSHOT} {...railProps} />);
+  // closed by default: no kvp group visible
+  expect(screen.queryByTestId('facet-group-image')).toBeNull();
+  const more = screen.getByRole('button', { name: /More Filters/ });
+  expect(more).toHaveAttribute('aria-expanded', 'false');
+  fireEvent.click(more);
+  expect(screen.getByTestId('facet-group-image')).toBeInTheDocument();
+  expect(screen.getByTestId('facet-group-query')).toBeInTheDocument();
+  // the DELETED filter groups are gone entirely, open or closed
+  for (const f of ['id', 'timestamp', 'message', 'logon_guid', 'key_length',
+    'channel', 'caller_process_id', 'event_seq']) {
+    expect(screen.queryByTestId(`facet-group-${f}`)).toBeNull();
+  }
+});
+
+test('no rail interaction can ever produce an event_seq filter (structural: no group exists)', () => {
+  const onToggle = jest.fn();
+  const poisoned = [{ ...ROWS[0], key_value_pairs: { ...ROWS[0].key_value_pairs, event_seq: '99' } }];
+  render(<FacetRail snapshot={{ count: 1, rows: poisoned }} {...railProps} onToggle={onToggle} />);
+  fireEvent.click(screen.getByRole('button', { name: /More Filters/ }));
+  expect(screen.queryByTestId('facet-group-event_seq')).toBeNull();
+  for (const box of screen.getAllByRole('checkbox')) fireEvent.click(box);
+  for (const call of onToggle.mock.calls) expect(call[0]).not.toBe('event_seq');
+});
+
+test('rail states: hidden with no snapshot, skeleton while the first query runs', () => {
+  const { container, rerender } = render(
+    <FacetRail snapshot={null} {...railProps} />);
+  expect(container).toBeEmptyDOMElement();
+  rerender(<FacetRail snapshot={null} {...railProps} running />);
+  expect(screen.getByTestId('facet-rail-skeleton')).toBeInTheDocument();
+});
+
+test('0-match results keep the rail usable: selected values stay visible to back out of', () => {
+  render(<FacetRail snapshot={{ count: 0, rows: [] }} {...railProps}
+    chips={[{ type: 'include', field: 'severity', value: 'critical' }]} />);
+  expect(screen.getByLabelText('Severity: critical')).toBeChecked();
+  expect(screen.getAllByText('No values in these results.').length).toBeGreaterThan(0);
+});
+
+// --- integration through the shell -------------------------------------------
+
+const snapWith = (canonical, rows = ROWS) => ({
+  token: 'tok.one',
+  identity: {
+    canonical_query: canonical, scope: 'session', resolved_scope_hosts: [],
+    resolved_range: { start: '2026-03-17T03:41:00+00:00', end: '2026-03-17T04:00:10+00:00' },
+    cutoff_seq: 13,
+  },
+  count: rows.length, rows,
+});
+
+let queryResponses;
+let countResponse;
+const mockRoutes = () => {
+  queryResponses = [];
+  countResponse = () => ok({ new_count: 0, pool_growth: 0 });
+  apiFetch.mockReset();
+  apiFetch.mockImplementation((path) => {
+    if (path.startsWith('/api/events/query/new-count')) return countResponse();
+    if (path.startsWith('/api/events/query')) {
+      if (queryResponses.length) return queryResponses.shift();
+      const q = decodeURIComponent(path).match(/\?q=(.+)&scope=/)[1];
+      return ok(snapWith(q));
+    }
+    return ok({});
   });
-  afterEach(() => { jest.useRealTimers(); });
+};
 
-  test('clicking a sidebar value executes a well-formed refined query end-to-end (catches signature-mismatch regressions)', async () => {
-    render(<Siem initialQueryMode="advanced" resetTrigger={0} onHostPivot={() => {}} />);
-    fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /Run Query/ }));
-    });
-    const sidebar = screen.getByTestId('field-sidebar');
-    await act(async () => {
-      fireEvent.click(within(sidebar).getByText('ACME-WS12'));
-    });
-    const calls = apiFetch.mock.calls.map((c) => c[0]).filter((p) => p.startsWith('/api/events/query?'));
-    const last = decodeURIComponent(calls[calls.length - 1]);
-    expect(last).toBe('/api/events/query?q=all | * | * | hostname == "ACME-WS12"&scope=session');
-    expect(last).not.toContain('undefined');
+const queryCalls = () =>
+  apiFetch.mock.calls.map((c) => c[0]).filter((p) => p.startsWith('/api/events/query?'))
+    .map(decodeURIComponent);
+
+const showEvents = async () => {
+  render(<Siem resetTrigger={0} onHostPivot={() => {}} />);
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Show Events' }));
   });
+};
 
-  test('sidebar values and counts remain unchanged while the underlying pool grows but the snapshot does not', async () => {
-    render(<Siem initialQueryMode="advanced" resetTrigger={0} onHostPivot={() => {}} />);
-    fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /Run Query/ }));
-    });
-    const before = screen.getByTestId('field-sidebar').innerHTML;
+test('a facet click compiles through the generator and executes immediately end-to-end', async () => {
+  mockRoutes();
+  await showEvents();
+  expect(queryCalls().pop()).toBe('/api/events/query?q=1h | * | * | *&scope=session');
+  const sev = screen.getByTestId('facet-group-severity');
+  await act(async () => {
+    fireEvent.click(within(sev).getByLabelText('Severity: high'));
+  });
+  expect(queryCalls().pop())
+    .toBe('/api/events/query?q=1h | * | * | severity == "high"&scope=session');
+  // the applied filter renders as a removable chip above the results
+  expect(screen.getByTestId('filter-chips').textContent).toContain('Severity: high');
+});
 
-    // the pool "grows" (represented by the new-count poll ticking up, the
-    // only live signal the app has of pool growth) across several cycles
+test('multi-select within a group: the second value ORs with the first', async () => {
+  mockRoutes();
+  await showEvents();
+  const sev = screen.getByTestId('facet-group-severity');
+  await act(async () => {
+    fireEvent.click(within(sev).getByLabelText('Severity: high'));
+  });
+  // the narrowed group keeps its selected value pinned; Show More fetches
+  // the sibling baseline (the same search without this group's selections)
+  await act(async () => {
+    fireEvent.click(within(screen.getByTestId('facet-group-severity')).getByText('Show More'));
+  });
+  const baselineCall = queryCalls().pop();
+  expect(baselineCall).toBe('/api/events/query?q=1h | * | * | *&scope=session');
+  // the baseline restores the full value list; selecting low now ORs
+  await act(async () => {
+    fireEvent.click(within(screen.getByTestId('facet-group-severity')).getByLabelText('Severity: low'));
+  });
+  expect(queryCalls().pop()).toBe(
+    '/api/events/query?q=1h | * | * | severity == "high" or severity == "low"&scope=session');
+});
+
+test('removing a chip recompiles and reruns; removing the last chip returns to match-all', async () => {
+  mockRoutes();
+  await showEvents();
+  await act(async () => {
+    fireEvent.click(within(screen.getByTestId('facet-group-severity')).getByLabelText('Severity: high'));
+  });
+  await act(async () => {
+    fireEvent.click(screen.getByLabelText('Remove filter: Severity: high'));
+  });
+  expect(queryCalls().pop()).toBe('/api/events/query?q=1h | * | * | *&scope=session');
+  expect(screen.queryByTestId('filter-chips')).toBeNull();
+});
+
+test('rail values and counts stay pinned to the displayed snapshot while the pool grows', async () => {
+  mockRoutes();
+  jest.useFakeTimers();
+  try {
+    await showEvents();
+    const before = screen.getByTestId('facet-rail').innerHTML;
     countResponse = () => ok({ new_count: 7, pool_growth: 12 });
     await act(async () => { jest.advanceTimersByTime(3000); });
     await act(async () => {});
     await act(async () => { jest.advanceTimersByTime(3000); });
     await act(async () => {});
-    await act(async () => { jest.advanceTimersByTime(3000); });
-    await act(async () => {});
-
     expect(screen.getByTestId('new-events-indicator')).toHaveTextContent('7 New');
-    expect(screen.getByTestId('field-sidebar').innerHTML).toBe(before);
+    expect(screen.getByTestId('facet-rail').innerHTML).toBe(before);
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test('no sibling baseline is fetched without a Show More on a narrowed group', async () => {
+  mockRoutes();
+  await showEvents();
+  await act(async () => {
+    fireEvent.click(within(screen.getByTestId('facet-group-severity')).getByLabelText('Severity: high'));
   });
+  // exactly two query reads so far: the initial run + the facet run
+  expect(queryCalls()).toHaveLength(2);
 });

@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { sevColor, sourceColor } from './siemUtils';
 
 // SIEM card view: event cards color-coded by source family. Presentational
 // only; renders the frozen snapshot rows. Selection is CONTROLLED by the
@@ -67,12 +66,15 @@ const SiemCards = ({ alerts, resetTrigger, selectedId, onSelect }) => {
           const source = alert.source_type || alert.detected_by || 'Unknown';
           const isOpen = alert.id === selectedId;
           return (
+            // Owner follow-up pass (2026-10-13): no severity edge, no
+            // source dot -- the facet rail and the detail view carry
+            // those dimensions as text.
             <div
               key={alert.id}
               className={`bg-white rounded-xl border overflow-hidden flex flex-col ${
                 isOpen ? 'border-[#16436b] ring-1 ring-[#16436b]' : 'border-[#e2e6ea]'
               }`}
-              style={{ borderLeft: `3px solid ${sevColor(alert.severity)}`, boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+              style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
             >
               <button
                 type="button"
@@ -85,8 +87,7 @@ const SiemCards = ({ alerts, resetTrigger, selectedId, onSelect }) => {
                   </span>
                   <span className="ml-auto log-mono text-xs text-muted whitespace-nowrap">{timeOf(alert.timestamp)}</span>
                 </div>
-                <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted">
-                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: sourceColor(source) }} aria-hidden="true" />
+                <div className="mt-1.5 text-xs text-muted">
                   {source}
                 </div>
                 <dl className="mt-3 space-y-1 text-xs">

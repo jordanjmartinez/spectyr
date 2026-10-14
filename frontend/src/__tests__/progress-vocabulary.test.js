@@ -14,14 +14,18 @@ import {
   investigatingCase, ALL_ACTIVITY,
   followingClue, resultsFor, ALL_EVENTS_LABEL, INITIAL_INCIDENT_EVIDENCE,
   INITIAL_EVIDENCE, SELECTED_EVENT_HIDDEN, newEventsAvailable,
-  LOAD_NEW_EVENTS, EDITED_NOTE,
+  LOAD_NEW_EVENTS,
   STALE_RESULTS_NOTE, TELEMETRY_LOADING, detectionsReviewed,
   detectionsRemaining, PROMOTED_LABEL, DISMISSED_LABEL, REOPENED_LABEL,
   responseActionsTaken, READY_TO_SUBMIT, SUBMITTED_GRADE_LOCKED,
   completedStrip, toReview, filterAdded,
   excludedFilter, CLASSIFY_TO_SUBMIT,
-  SIMPLE_PLACEHOLDER, SIMPLE_TOGGLE, ADVANCED_TOGGLE,
-  SOURCE_LABEL, EVENT_TYPE_LABEL, ALL_SOURCES, ALL_EVENT_TYPES,
+  FILTERS_TOGGLE, MORE_FILTERS, SHOW_MORE_VALUES,
+  SHOW_FEWER_VALUES, NO_GROUP_VALUES,
+  TOO_MANY_FILTERS, SHOW_EVENTS, FILTERS_EMPTY_HINT, INCIDENT_WINDOW_LABEL,
+  ALL_TIME_LABEL, FILTER_TO_THIS, FILTER_OUT_THIS, PIVOT_SEE_ALL,
+  COPY_VALUE, OPEN_IN_ENDPOINTS, KEY_FACTS_LABEL, ALL_FIELDS_TOGGLE,
+  SEARCH_PLACEHOLDER, SEARCH_BUTTON, searchUnknownField, SEARCH_IP_CONTAINS,
 } from '../components/uiCopy';
 
 jest.mock('../api', () => ({ apiFetch: jest.fn() }));
@@ -55,20 +59,33 @@ test('the case-constant terms are the ratified A-OD-1 finals, byte-exact (the ex
   expect(ALL_ACTIVITY).toBe('All activity');
 });
 
-test('the Amendment 3 ratified finals are byte-exact (A3-R.1 + standing drafted finals; RETURN_SUBCOPY retired with the F2 mechanic, III.0 item 2)', () => {
+test('the owner SIEM simplification finals are byte-exact; the retired copy is gone from the module', () => {
   expect(CLASSIFY_TO_SUBMIT).toBe('Select a classification to submit.');
-  // owner SIEM declutter (2026-10-12): the placeholder is the one inline
-  // hint and the SIMPLE_HELP sentence is retired from the shared copy
-  expect(SIMPLE_PLACEHOLDER).toBe('Filter events...');
-  expect(require('fs').readFileSync(
-    require('path').join(__dirname, '..', 'components', 'uiCopy.js'), 'utf8'))
-    .not.toMatch(/SIMPLE_HELP =/);
-  expect(SIMPLE_TOGGLE).toBe('Simple Search');
-  expect(ADVANCED_TOGGLE).toBe('Advanced LCQL');
-  expect(SOURCE_LABEL).toBe('Source');
-  expect(EVENT_TYPE_LABEL).toBe('Event Type');
-  expect(ALL_SOURCES).toBe('All Sources');
-  expect(ALL_EVENT_TYPES).toBe('All Event Types');
+  // owner SIEM simplification (2026-10-13): the F7 simple-search copy and
+  // the Source / Event Type dropdown copy retired with the controls; the
+  // same-day follow-up retired the Advanced LCQL bar and its error
+  // apparatus (one simple search box remains)
+  const copy = require('fs').readFileSync(
+    require('path').join(__dirname, '..', 'components', 'uiCopy.js'), 'utf8');
+  for (const retired of ['SIMPLE_HELP =', 'SIMPLE_PLACEHOLDER =', 'SIMPLE_TOGGLE =',
+    'SOURCE_LABEL =', 'EVENT_TYPE_LABEL =', 'ALL_SOURCES =', 'ALL_EVENT_TYPES =',
+    'ADVANCED_TOGGLE =', 'CUSTOM_QUERY_CHIP =', 'FACET_RESET_NOTICE =',
+    'EDITED_NOTE =', 'NO_QUERY_ENTERED =', 'PRESERVED_RESULTS_LABEL =',
+    'RESTORE_LAST_QUERY =', 'STRUCTURE_LINE =', 'QUERY_SECTION_NAMES =']) {
+    expect(copy).not.toContain(retired);
+  }
+  expect(FILTERS_TOGGLE).toBe('Filters');
+  expect(MORE_FILTERS).toBe('More Filters');
+  expect(FILTER_TO_THIS).toBe('Filter to Just This');
+  expect(FILTER_OUT_THIS).toBe('Filter This Out');
+  expect(PIVOT_SEE_ALL).toBe('Pivot: See Everything About This');
+  expect(COPY_VALUE).toBe('Copy');
+  expect(KEY_FACTS_LABEL).toBe('Key Facts');
+  expect(ALL_FIELDS_TOGGLE).toBe('All Fields');
+  expect(INCIDENT_WINDOW_LABEL).toBe('Incident Window');
+  expect(SEARCH_BUTTON).toBe('Search');
+  expect(searchUnknownField('computr')).toContain('No filter field called "computr"');
+  expect(searchUnknownField('x')).toContain('Computer, User Account, Source IP');
 });
 
 test('the Section 8.2 clue-naming forms are byte-exact', () => {
@@ -103,7 +120,6 @@ const PRE_SUBMISSION_STRINGS = [
   // Final pass III.0 item 4: the new-events action
   ['newEventsAvailable', newEventsAvailable(3)],
   ['LOAD_NEW_EVENTS', LOAD_NEW_EVENTS],
-  ['EDITED_NOTE', EDITED_NOTE],
   ['STALE_RESULTS_NOTE', STALE_RESULTS_NOTE],
   ['TELEMETRY_LOADING', TELEMETRY_LOADING],
   ['detectionsReviewed', detectionsReviewed(1, 2)],
@@ -121,13 +137,30 @@ const PRE_SUBMISSION_STRINGS = [
   // Amendment 3 (A3.1) pre-submission additions; RETURN_SUBCOPY retired
   // with the expanded-search state (Final pass III.0 item 2)
   ['CLASSIFY_TO_SUBMIT', CLASSIFY_TO_SUBMIT],
-  ['SIMPLE_PLACEHOLDER', SIMPLE_PLACEHOLDER],
-  ['SIMPLE_TOGGLE', SIMPLE_TOGGLE],
-  ['ADVANCED_TOGGLE', ADVANCED_TOGGLE],
-  ['SOURCE_LABEL', SOURCE_LABEL],
-  ['EVENT_TYPE_LABEL', EVENT_TYPE_LABEL],
-  ['ALL_SOURCES', ALL_SOURCES],
-  ['ALL_EVENT_TYPES', ALL_EVENT_TYPES],
+  // Owner SIEM simplification pass + follow-up (2026-10-13): the ONE
+  // filter system's vocabulary (dropdowns, the F7 projection, Advanced
+  // LCQL, and the Custom Query chip all retired)
+  ['FILTERS_TOGGLE', FILTERS_TOGGLE],
+  ['MORE_FILTERS', MORE_FILTERS],
+  ['SHOW_MORE_VALUES', SHOW_MORE_VALUES],
+  ['SHOW_FEWER_VALUES', SHOW_FEWER_VALUES],
+  ['NO_GROUP_VALUES', NO_GROUP_VALUES],
+  ['SEARCH_PLACEHOLDER', SEARCH_PLACEHOLDER],
+  ['SEARCH_BUTTON', SEARCH_BUTTON],
+  ['searchUnknownField', searchUnknownField('computr')],
+  ['SEARCH_IP_CONTAINS', SEARCH_IP_CONTAINS],
+  ['TOO_MANY_FILTERS', TOO_MANY_FILTERS],
+  ['SHOW_EVENTS', SHOW_EVENTS],
+  ['FILTERS_EMPTY_HINT', FILTERS_EMPTY_HINT],
+  ['INCIDENT_WINDOW_LABEL', INCIDENT_WINDOW_LABEL],
+  ['ALL_TIME_LABEL', ALL_TIME_LABEL],
+  ['FILTER_TO_THIS', FILTER_TO_THIS],
+  ['FILTER_OUT_THIS', FILTER_OUT_THIS],
+  ['PIVOT_SEE_ALL', PIVOT_SEE_ALL],
+  ['COPY_VALUE', COPY_VALUE],
+  ['OPEN_IN_ENDPOINTS', OPEN_IN_ENDPOINTS],
+  ['KEY_FACTS_LABEL', KEY_FACTS_LABEL],
+  ['ALL_FIELDS_TOGGLE', ALL_FIELDS_TOGGLE],
 ];
 
 test('no pre-submission canonical string carries the forbidden class', () => {

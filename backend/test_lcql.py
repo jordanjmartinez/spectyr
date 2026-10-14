@@ -440,6 +440,39 @@ def test_documented_pivot_and_descent_forms_parse():
     assert p.value == "C:\\Users\\Public\\winupdate.exe"
 
 
+# The facet-compile forms (owner SIEM simplification pass, 2026-10-13):
+# the frontend's ONE filter system compiles multi-select facet groups into
+# the grammar's native OR-of-ANDs through lcqlPivots.facetQuery. These are
+# the exact shapes the frontend's facet-model suite pins as its compile
+# output -- one corpus, two sides. Every form must parse under the real
+# catalog and be byte-canonical.
+_FACET_COMPILE_FIXTURES = [
+    "1h | * | * | *",
+    '1h | * | * | event_type == "4625" or event_type == "4624"',
+    '24h | * | * | event_type == "4625" and severity == "high"'
+    ' or event_type == "4624" and severity == "high"',
+    '1h | * | * | severity == "high" and hostname != "ACME-WS10"'
+    ' and image contains "powershell"'
+    ' or severity == "medium" and hostname != "ACME-WS10"'
+    ' and image contains "powershell"',
+    '1h | * | * | user_account == "ACME\\\\o hara"',
+    '1h | * | * | severity == "high" and source_ip == "10.0.1.5"'
+    ' or severity == "high" and destination_ip == "10.0.1.5"',
+    '4h | * | * | severity != "low" and command_line contains "enc"'
+    ' and url not contains "cdn"',
+    '1h | * | * | source_type == "Sysmon" and event_type == "ProcessCreate"',
+]
+
+
+def test_facet_compile_forms_parse_and_are_byte_canonical():
+    for q in _FACET_COMPILE_FIXTURES:
+        parsed = _q(q)
+        assert canonical(parsed) == q, \
+            f"facet form must be byte-canonical: {q!r} -> {canonical(parsed)!r}"
+        # the facet system never touches SENSOR/EVENT_TYPE segments
+        assert parsed.sensor == "*" and parsed.event_type == "*"
+
+
 def test_sidebar_conjunction_append_composes():
     base = '1h | * | ProcessCreate | image contains "winupdate"'
     appended = base + ' and hostname == "ACME-WS10"'

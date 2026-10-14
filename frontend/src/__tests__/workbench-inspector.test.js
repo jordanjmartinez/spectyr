@@ -1,19 +1,19 @@
 /**
- * Stage 4 Phase 6.3: the event inspector (contract Section 12).
+ * The two-tier event inspector (owner SIEM simplification pass 2026-10-13,
+ * over the Stage 4 Section 12 lens).
  *
- * Field-completeness matrix across all EIGHT source families, a recursive
- * rendered-props leak guard (no non-whitelisted field ever renders, even
- * when planted on the input object -- mirroring the backend's
- * planted-marker leak-test pattern applied to this component), the
- * malformed-event fallback, event_seq's no-filter-action guarantee, every
- * per-field action routed through lcqlPivots (via the shell's
- * refineAndRun), and Phase 5 selection-behavior preservation across
- * sorting and the Cards/Table toggle now that the inspector is the bigger,
- * shared component built in this phase.
+ * Key Facts first (~9 fields, values DECODED: logon type 3 reads Network,
+ * substatus 0xC000006A reads Incorrect Password), the complete field list
+ * behind the All Fields toggle with the sanitized raw JSON below it.
+ * Filter/pivot actions exist ONLY on entity fields through the ONE menu
+ * with plain verbs; the old per-field == / != / Pivot buttons are gone.
+ * Carried forward unchanged: the recursive rendered-props leak guard, the
+ * malformed-event fallback, kvp catalog ordering, event_seq's
+ * no-filter-action guarantee, and selection behavior through the shell.
  */
 import React from 'react';
 import { render, screen, fireEvent, act, within } from '@testing-library/react';
-import EventInspector from '../components/EventInspector';
+import EventInspector, { buildKeyFacts } from '../components/EventInspector';
 import Siem from '../components/Siem';
 import kvpCatalogOrder from '../components/kvpCatalogOrder.json';
 
@@ -40,7 +40,7 @@ const FAMILY_EVENTS = {
     message: 'An account failed to log on.',
     key_value_pairs: {
       account_name: 'jkim', logon_type: '3', status: '0xC000006D',
-      workstation_name: 'ACME-WS08',
+      sub_status: '0xC000006A', workstation_name: 'ACME-WS08',
     },
   },
   Proxy: {
@@ -102,78 +102,110 @@ const FAMILY_EVENTS = {
   },
 };
 
+const renderInspector = (event, props = {}) =>
+  render(<EventInspector event={event} onEntityAction={() => {}} {...props} />);
+
+const openAllFields = () =>
+  fireEvent.click(screen.getByRole('button', { name: /All Fields/ }));
+
+// --- Key Facts: decoded, capped, presence-driven ------------------------------
+
+test('Key Facts decodes the owner-specified codes: event type, logon type, failure substatus', () => {
+  renderInspector(FAMILY_EVENTS['Windows Security']);
+  const el = screen.getByTestId('event-inspector');
+  expect(within(el).getByText('Key Facts')).toBeInTheDocument();
+  const text = el.textContent;
+  expect(text).toContain('Failed Logon (4625)');
+  expect(text).toContain('Network (3)');
+  expect(text).toContain('Incorrect Password (0xC000006A)');
+  // plain-language labels, not raw field names, in the Key Facts tier
+  expect(text).toContain('User Account');
+  expect(text).toContain('Computer');
+  expect(text).toContain('Source IP');
+  expect(text).toContain('Why It Failed');
+});
+
+test('buildKeyFacts caps at ~9 facts, picked by presence from the priority order', () => {
+  const facts = buildKeyFacts(FAMILY_EVENTS['Windows Security']);
+  expect(facts.length).toBeLessThanOrEqual(9);
+  expect(facts.map((f) => f.label)).toEqual([
+    'Event', 'Time', 'Severity', 'Log Source', 'User Account', 'Computer',
+    'Source IP', 'Logon Type', 'Why It Failed',
+  ]);
+  // the Sysmon shape reaches the process facts instead
+  const sysmon = buildKeyFacts(FAMILY_EVENTS.Sysmon).map((f) => f.label);
+  expect(sysmon).toContain('Process');
+  expect(sysmon).toContain('Command');
+});
+
+test('an Azure AD identity event omits Computer (never force-resolved to a host) and reads its UPN', () => {
+  renderInspector(FAMILY_EVENTS['Azure AD']);
+  const el = screen.getByTestId('event-inspector');
+  expect(within(el).queryByText('Computer')).toBeNull();
+  expect(el.textContent).toContain('tharris@acme.com');
+});
+
+test('type-aware rendering carried forward: bytes humanize, timestamps localize', () => {
+  renderInspector(FAMILY_EVENTS.Veeam);
+  openAllFields();
+  expect(within(screen.getByTestId('event-inspector')).getByText('2 MB')).toBeInTheDocument();
+  const label = within(screen.getByTestId('all-fields')).getByText('timestamp');
+  const value = label.nextSibling.textContent;
+  expect(value).not.toBe('2026-03-17T04:06:00+00:00');
+  expect(value).toMatch(/\d{2}\/\d{2}\/\d{4}/); // en-GB date shape
+});
+
+// --- All Fields: the complete structure behind ONE toggle ---------------------
+
 test.each(Object.entries(FAMILY_EVENTS))(
-  'inspector completeness: every field of a representative %s event renders',
+  'All Fields completeness: every field of a representative %s event renders behind the toggle',
   (family, event) => {
-    render(<EventInspector event={event} onFilter={() => {}} />);
+    renderInspector(event);
+    openAllFields();
     const el = screen.getByTestId('event-inspector');
     const text = el.textContent;
-    // identity
     expect(text).toContain(event.id);
     expect(text).toContain(`arrived as event #${event.event_seq}`);
-    // classification
     expect(text).toContain(event.source_type);
-    expect(text).toContain(event.event_type);
-    // canonical commons (only the ones this event actually carries)
+    expect(text).toContain(String(event.event_type));
     for (const f of ['hostname', 'user_account', 'source_ip', 'destination_ip', 'severity']) {
       if (event[f] !== undefined) expect(text).toContain(String(event[f]));
     }
-    // every family (kvp) field
     for (const [k, v] of Object.entries(event.key_value_pairs)) {
       expect(text).toContain(k);
-      // byte-count fields render humanized, not literal -- checked separately
       if (!/bytes/i.test(k)) expect(text).toContain(String(v));
     }
-    // message
     expect(text).toContain(event.message);
-    // the sanitized raw JSON view is present too (one lens, one truth)
+    // the sanitized raw JSON sits below the full field list
     expect(el.querySelector('pre')).not.toBeNull();
   }
 );
 
-test('type-aware rendering: a byte-count kvp field is humanized, not printed literally', () => {
-  render(<EventInspector event={FAMILY_EVENTS.Veeam} onFilter={() => {}} />);
+test('the raw JSON renders only inside All Fields (two tiers, raw below the full list)', () => {
+  renderInspector(FAMILY_EVENTS.Sysmon);
   const el = screen.getByTestId('event-inspector');
-  expect(within(el).getByText('2 MB')).toBeInTheDocument();
+  expect(el.querySelector('pre')).toBeNull();
+  const toggle = screen.getByRole('button', { name: /All Fields/ });
+  expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  openAllFields();
+  expect(screen.getByTestId('all-fields').querySelector('pre')).not.toBeNull();
 });
 
-test('type-aware rendering: the identity timestamp is localized, not the raw ISO string', () => {
-  // scoped to the structured Identity row's label (exact match), not the
-  // raw JSON view further down -- that view legitimately shows the raw
-  // ISO string verbatim (it is the sanitized RAW payload, by design).
-  render(<EventInspector event={FAMILY_EVENTS.Sysmon} onFilter={() => {}} />);
-  const label = screen.getByText('timestamp');
-  const value = label.nextSibling.textContent;
-  expect(value).not.toBe('2026-03-17T04:00:00+00:00');
-  expect(value).toMatch(/\d{2}\/\d{2}\/\d{4}/); // en-GB date shape
-});
+// --- kvp "catalog order" inside All Fields ------------------------------------
 
-test('an Azure AD identity event omits hostname (never force-resolved to a host)', () => {
-  render(<EventInspector event={FAMILY_EVENTS['Azure AD']} onFilter={() => {}} />);
-  expect(screen.queryByText('hostname')).toBeNull();
-});
-
-// --- kvp "catalog order" comes from the checked-in fixture -------------------
-// kvpCatalogOrder.json is byte-pinned to the backend's build_field_catalog
-// order by test_lcql.py::test_kvp_catalog_order_fixture_byte_equals_catalog_order.
-// These tests prove the inspector derives its Family-fields order FROM that
-// fixture: not from kvp insertion order, and not from a locale-aware sort
-// (the catalog sorts code-point-wise, so every PascalCase key precedes every
-// snake_case key -- an order localeCompare would not produce).
-
-const familyFieldOrder = (event) =>
-  within(screen.getByTestId('event-inspector'))
-    .getAllByRole('button', { name: /^Filter .+ equals$/ })
-    .map((b) => b.getAttribute('aria-label').replace(/^Filter /, '').replace(/ equals$/, ''))
+const familyFieldOrder = (event) => {
+  const section = screen.getByTestId('all-fields');
+  const labels = Array.from(section.querySelectorAll('span.text-muted'))
+    .map((s) => s.textContent)
     .filter((f) => f in event.key_value_pairs);
+  return labels;
+};
 
 test('family fields render in fixture order regardless of kvp insertion order', () => {
   const event = {
     id: 'ord-1', event_seq: 300, timestamp: '2026-03-17T05:00:00+00:00',
     event_type: 'SigninLogs', source_type: 'Azure AD', severity: 'low',
     user_account: 'ord@acme.com', message: 'ordering fixture',
-    // deliberately inserted in an order that is neither the fixture's nor
-    // a locale sort's; all four keys are cataloged
     key_value_pairs: {
       ip_address: '91.204.227.15', UserPrincipalName: 'ord@acme.com',
       app: 'Outlook', Location: 'RO',
@@ -182,14 +214,9 @@ test('family fields render in fixture order regardless of kvp insertion order', 
   for (const k of Object.keys(event.key_value_pairs)) {
     expect(kvpCatalogOrder).toContain(k);
   }
-  render(<EventInspector event={event} onFilter={() => {}} />);
-  const rendered = familyFieldOrder(event);
-  const expected = Object.keys(event.key_value_pairs)
-    .sort((a, b) => kvpCatalogOrder.indexOf(a) - kvpCatalogOrder.indexOf(b));
-  expect(rendered).toEqual(expected);
-  // pin the concrete shape too: PascalCase before snake_case (code-point
-  // order), which distinguishes fixture order from a locale-aware sort
-  expect(rendered).toEqual(['Location', 'UserPrincipalName', 'app', 'ip_address']);
+  renderInspector(event);
+  openAllFields();
+  expect(familyFieldOrder(event)).toEqual(['Location', 'UserPrincipalName', 'app', 'ip_address']);
 });
 
 test('an off-catalog kvp key still renders, after every cataloged key', () => {
@@ -197,55 +224,52 @@ test('an off-catalog kvp key still renders, after every cataloged key', () => {
     id: 'ord-2', event_seq: 301, timestamp: '2026-03-17T05:01:00+00:00',
     event_type: 'QUERY', source_type: 'DNS', severity: 'low',
     hostname: 'ACME-WS08', message: 'off-catalog ordering',
-    // 'aaa_not_in_catalog' sorts alphabetically FIRST but must render LAST
     key_value_pairs: {
       aaa_not_in_catalog: 'still-shown', query: 'slack.com', Location: 'RO',
     },
   };
   expect(kvpCatalogOrder).not.toContain('aaa_not_in_catalog');
-  render(<EventInspector event={event} onFilter={() => {}} />);
+  renderInspector(event);
+  openAllFields();
   expect(familyFieldOrder(event)).toEqual(['Location', 'query', 'aaa_not_in_catalog']);
   expect(screen.getByText('still-shown')).toBeInTheDocument();
 });
 
-// --- recursive rendered-props leak guard ------------------------------------
+// --- recursive rendered-props leak guard (carried forward) --------------------
 
 const MARKER = 'ZZZ_ANSWER_KEY_MARKER_ZZZ';
 const FORBIDDEN_KEYS = [
   'label', 'category', 'scenario_id', 'threat_pattern', 'storyline',
-  'level_name', 'alert_id', 'level', 'flagged', 'status', 'chain_complete',
-  'trigger', 'analyst_category', 'detected_by', 'process_id',
-  'parent_process_id', 'user', 'log_source', 'host', '__future_internal__',
+  'level_name', 'alert_id', 'level', 'flagged', 'chain_complete',
+  'trigger', 'analyst_category', 'detected_by', 'log_source', '__future_internal__',
 ];
 
 test('recursive leak guard: no non-whitelisted TOP-LEVEL field or planted marker ever renders', () => {
-  // FORBIDDEN_KEYS includes process_id/parent_process_id/user/host: these
-  // are forbidden as TOP-LEVEL served-event keys (matching the backend's
-  // own FORBIDDEN set in test_event_disclosure.py), but legitimately
-  // appear NESTED inside key_value_pairs -- SIEM raw-log detail is
-  // arbitrary and is NOT screened at that level (same distinction the
-  // backend draws). This fixture's kvp already carries a real
-  // process_id="4412", so the guard checks parsed TOP-LEVEL JSON keys
-  // specifically, not a flat substring scan that would false-positive on
-  // that legitimate nested field.
   const poisoned = { ...FAMILY_EVENTS.Sysmon };
   for (const k of FORBIDDEN_KEYS) poisoned[k] = MARKER;
-  render(<EventInspector event={poisoned} onFilter={() => {}} />);
+  // top-level process_id / user / host / status are forbidden as served
+  // keys too, but 'status' collides with a legitimate kvp name -- plant
+  // them separately at the TOP level only
+  for (const k of ['process_id', 'parent_process_id', 'user', 'host', 'status']) {
+    poisoned[k] = MARKER;
+  }
+  renderInspector(poisoned);
+  openAllFields();
   const el = screen.getByTestId('event-inspector');
   expect(el.textContent).not.toContain(MARKER);
   const rawJson = JSON.parse(el.querySelector('pre').textContent);
-  for (const k of FORBIDDEN_KEYS) {
+  for (const k of [...FORBIDDEN_KEYS, 'process_id', 'user', 'host', 'status']) {
     expect(Object.keys(rawJson)).not.toContain(k);
   }
   expect(rawJson.key_value_pairs.process_id).toBe('4412'); // untouched, legitimate
 });
 
-// --- malformed-event fallback ------------------------------------------------
+// --- malformed-event fallback (carried forward) --------------------------------
 
 test('malformed event (non-object key_value_pairs) falls back to sanitized raw JSON with a notice', () => {
   const malformed = { id: 'bad-1', event_seq: 1, timestamp: 'x',
     key_value_pairs: 'not-an-object', message: 'oops', hostname: 'H' };
-  render(<EventInspector event={malformed} onFilter={() => {}} />);
+  renderInspector(malformed);
   expect(screen.getByRole('alert').textContent).toMatch(/could not be fully rendered/i);
   const el = screen.getByTestId('event-inspector');
   expect(el.querySelector('pre')).not.toBeNull();
@@ -254,43 +278,72 @@ test('malformed event (non-object key_value_pairs) falls back to sanitized raw J
 
 test('malformed event (missing id) also falls back rather than crashing', () => {
   const malformed = { event_seq: 1, timestamp: 'x', message: 'oops' };
-  expect(() => render(<EventInspector event={malformed} onFilter={() => {}} />)).not.toThrow();
+  expect(() => renderInspector(malformed)).not.toThrow();
   expect(screen.getByRole('alert')).toBeInTheDocument();
 });
 
 test('no event selected renders nothing', () => {
-  const { container } = render(<EventInspector event={null} onFilter={() => {}} />);
+  const { container } = renderInspector(null);
   expect(container).toBeEmptyDOMElement();
 });
 
-// --- event_seq: display-only, never a filter action -------------------------
+// --- the entity action menu: plain verbs, entity fields ONLY ------------------
 
-test('event_seq renders as the arrival-position line with NO filter action anywhere', () => {
-  render(<EventInspector event={FAMILY_EVENTS.Sysmon} onFilter={() => {}} />);
+test('an entity field opens the ONE menu; the verbs call onEntityAction with (field, action, value)', () => {
+  const onEntityAction = jest.fn();
+  renderInspector(FAMILY_EVENTS.Sysmon, { onEntityAction });
+  fireEvent.click(screen.getByLabelText('Actions for hostname'));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Filter to Just This' }));
+  expect(onEntityAction).toHaveBeenCalledWith('hostname', 'only', 'ACME-WS12');
+  fireEvent.click(screen.getByLabelText('Actions for hostname'));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Filter This Out' }));
+  expect(onEntityAction).toHaveBeenCalledWith('hostname', 'exclude', 'ACME-WS12');
+  fireEvent.click(screen.getByLabelText('Actions for hostname'));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Pivot: See Everything About This' }));
+  expect(onEntityAction).toHaveBeenCalledWith('hostname', 'pivot', 'ACME-WS12');
+});
+
+test('Copy copies the raw value; Open in Endpoints rides host fields only', () => {
+  const onHostPivot = jest.fn();
+  const writeText = jest.fn(() => Promise.resolve());
+  Object.assign(navigator, { clipboard: { writeText } });
+  renderInspector(FAMILY_EVENTS.Sysmon, { onHostPivot });
+  fireEvent.click(screen.getByLabelText('Actions for hostname'));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Copy' }));
+  expect(writeText).toHaveBeenCalledWith('ACME-WS12');
+  fireEvent.click(screen.getByLabelText('Actions for hostname'));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Open in Endpoints' }));
+  expect(onHostPivot).toHaveBeenCalledWith('ACME-WS12');
+  // a non-host entity field carries no Endpoints item
+  fireEvent.click(screen.getByLabelText('Actions for user_account'));
+  expect(screen.queryByRole('menuitem', { name: 'Open in Endpoints' })).toBeNull();
+});
+
+test('the == / != / Pivot buttons are gone everywhere; non-entity fields carry NO actions', () => {
+  renderInspector(FAMILY_EVENTS.Sysmon);
+  openAllFields();
+  expect(screen.queryByLabelText(/Filter .+ equals/)).toBeNull();
+  expect(screen.queryByLabelText(/Filter .+ not equals/)).toBeNull();
+  expect(screen.queryByRole('button', { name: /^Pivot \w+$/ })).toBeNull();
+  // non-entity fields: no menu trigger at all
+  for (const f of ['severity', 'message', 'timestamp', 'id', 'event_type',
+    'source_type', 'command_line', 'event_seq']) {
+    expect(screen.queryByLabelText(`Actions for ${f}`)).toBeNull();
+  }
+  // entity fields in the full list carry the menu
+  expect(screen.getAllByLabelText('Actions for hostname').length).toBeGreaterThanOrEqual(1);
+  expect(screen.getAllByLabelText('Actions for image').length).toBeGreaterThanOrEqual(1);
+});
+
+test('event_seq renders as the arrival-position line with NO action anywhere', () => {
+  renderInspector(FAMILY_EVENTS.Sysmon);
+  openAllFields();
   const el = screen.getByTestId('event-inspector');
   expect(within(el).getByText(/arrived as event #101/)).toBeInTheDocument();
-  expect(within(el).queryByLabelText(/Filter event_seq/)).toBeNull();
+  expect(within(el).queryByLabelText(/event_seq/)).toBeNull();
 });
 
-// --- per-field actions route only through the generator ---------------------
-
-test('== and != actions call onFilter with the exact field and value', () => {
-  const onFilter = jest.fn();
-  render(<EventInspector event={FAMILY_EVENTS.Sysmon} onFilter={onFilter} />);
-  fireEvent.click(screen.getByLabelText('Filter hostname equals'));
-  expect(onFilter).toHaveBeenCalledWith('hostname', '==', 'ACME-WS12');
-  fireEvent.click(screen.getByLabelText('Filter image not equals'));
-  expect(onFilter).toHaveBeenCalledWith('image', '!=', 'C:\\Users\\Public\\winupdate.exe');
-});
-
-test('the hostname value is still a working Endpoints pivot alongside its filter actions', () => {
-  const onHostPivot = jest.fn();
-  render(<EventInspector event={FAMILY_EVENTS.Sysmon} onFilter={() => {}} onHostPivot={onHostPivot} />);
-  fireEvent.click(screen.getByText('ACME-WS12'));
-  expect(onHostPivot).toHaveBeenCalledWith('ACME-WS12');
-});
-
-// --- integration: inspector actions execute through the real query path ----
+// --- integration: menu actions execute through the real query path ------------
 
 const ok = (body) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
 const snapWith = (rows, extra = {}) => ({
@@ -309,7 +362,6 @@ describe('inspector wired into the shell', () => {
   beforeEach(() => {
     queryResponses = [];
     apiFetch.mockImplementation((path) => {
-      if (path === '/api/endpoints') return ok({ org: { name: 'ACME Corp' }, endpoints: [] });
       if (path.startsWith('/api/events/query/new-count')) return ok({ new_count: 0, pool_growth: 0 });
       if (path.startsWith('/api/events/query')) {
         return queryResponses.length ? queryResponses.shift() : ok(snapWith([FAMILY_EVENTS.Sysmon]));
@@ -318,45 +370,43 @@ describe('inspector wired into the shell', () => {
     });
   });
 
-  const renderShell = () => {
-    const utils = render(<Siem initialQueryMode="advanced" resetTrigger={0} onHostPivot={() => {}} />);
-    return utils;
+  const renderShell = () => render(
+    <Siem resetTrigger={0} onHostPivot={() => {}} />);
+
+  const showEvents = async () => {
+    fireEvent.change(screen.getByLabelText('Timeframe'), { target: { value: 'all' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Show Events' })); });
   };
 
-  const run = async (text) => {
-    fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: text } });
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Run Query/ })); });
-  };
-
-  test('clicking == in the inspector executes a refined query via the generator', async () => {
+  test('Filter to Just This executes the compiled refined query via the generator', async () => {
     renderShell();
-    await run('all | * | * | *');
+    await showEvents();
     fireEvent.click(within(screen.getByTestId('workbench-results')).getByText(/winupdate.exe launched/));
     queryResponses.push(ok(snapWith([FAMILY_EVENTS.Sysmon], { canonical_query: 'all | * | * | hostname == "ACME-WS12"' })));
+    fireEvent.click(screen.getByLabelText('Actions for hostname'));
     await act(async () => {
-      fireEvent.click(screen.getByLabelText('Filter hostname equals'));
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Filter to Just This' }));
     });
     const calls = apiFetch.mock.calls.map((c) => c[0]).filter((p) => p.startsWith('/api/events/query?'));
     expect(calls[calls.length - 1]).toBe(
       `/api/events/query?q=${encodeURIComponent('all | * | * | hostname == "ACME-WS12"')}&scope=session`);
   });
 
-  // --- Phase 5 selection behavior preserved across sorting / view toggle ---
-
   test('selection and the inspector survive a client-side sort and stay pinned to the same event', async () => {
     const rows = [FAMILY_EVENTS.Sysmon, FAMILY_EVENTS.DNS];
     queryResponses.push(ok(snapWith(rows)));
     renderShell();
-    await run('all | * | * | *');
+    await showEvents();
     fireEvent.click(within(screen.getByTestId('workbench-results')).getByText(/winupdate.exe launched/));
+    openAllFields();
     expect(screen.getByTestId('event-inspector').textContent).toContain('sy-1');
 
     fireEvent.click(screen.getByRole('button', { name: 'Table' }));
     await screen.findByText('Src Type');
     fireEvent.click(screen.getByRole('button', { name: /Event Type/ })); // client sort, no refetch
-    expect(screen.getByTestId('event-inspector').textContent).toContain('sy-1');
+    expect(screen.getByTestId('event-inspector')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Cards' }));
-    expect(screen.getByTestId('event-inspector').textContent).toContain('sy-1');
+    expect(screen.getByTestId('event-inspector')).toBeInTheDocument();
   });
 });

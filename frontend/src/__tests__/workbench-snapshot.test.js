@@ -56,14 +56,13 @@ beforeEach(() => {
 });
 
 const renderShell = () => {
-  const utils = render(<Siem initialQueryMode="advanced" resetTrigger={0} onHostPivot={() => {}} />);
+  const utils = render(<Siem resetTrigger={0} onHostPivot={() => {}} />);
   return utils;
 };
 
-const run = async (text) => {
-  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: text } });
+const showEvents = async () => {
   await act(async () => {
-    fireEvent.click(screen.getByRole('button', { name: /Run Query/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show Events' }));
   });
 };
 
@@ -75,17 +74,17 @@ const results = () => within(screen.getByTestId('workbench-results'));
 
 test('rows and order are byte-stable across unrelated re-renders', async () => {
   renderShell();
-  await run('all | * | * | *');
+  await showEvents();
   const before = resultsHtml();
   // unrelated interactions that re-render the shell but must not touch rows
-  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'draft edit' } });
-  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'another draft' } });
+  fireEvent.change(screen.getByLabelText('Search events'), { target: { value: 'draft edit' } });
+  fireEvent.change(screen.getByLabelText('Search events'), { target: { value: 'another draft' } });
   expect(resultsHtml()).toBe(before);
 });
 
 test('atomic replacement: prior rows fully visible while a run is pending, then swap whole', async () => {
   renderShell();
-  await run('all | * | * | *');
+  await showEvents();
   expect(results().getByText(/alpha event one/)).toBeInTheDocument();
   expect(results().getByText(/bravo event two/)).toBeInTheDocument();
 
@@ -93,8 +92,8 @@ test('atomic replacement: prior rows fully visible while a run is pending, then 
   queryResponses.push(new Promise((res) => {
     resolveNext = () => res({ ok: true, status: 200, json: () => Promise.resolve(snap([R3], { token: 'tok.two' })) });
   }));
-  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
-  fireEvent.click(screen.getByRole('button', { name: /Run Query|Running/ }));
+  fireEvent.change(screen.getByLabelText('Search events'), { target: { value: 'severity = high' } });
+  fireEvent.keyDown(screen.getByLabelText('Search events'), { key: 'Enter' });
   // pending: the prior snapshot is untouched and complete
   expect(results().getByText(/alpha event one/)).toBeInTheDocument();
   expect(results().getByText(/bravo event two/)).toBeInTheDocument();
@@ -108,7 +107,7 @@ test('atomic replacement: prior rows fully visible while a run is pending, then 
 
 test('selection is shared across the Cards/Table view toggle', async () => {
   renderShell();
-  await run('all | * | * | *');
+  await showEvents();
   fireEvent.click(results().getByText(/alpha event one/));
   fireEvent.click(screen.getByRole('button', { name: 'Table' }));
   expect(await screen.findByText('Src Type')).toBeInTheDocument();
@@ -138,12 +137,12 @@ describe('Load New Events (fake timers)', () => {
     await tickPoll();
   };
 
-  test('Load New Events re-executes the executed identity, never the edited bar text', async () => {
+  test('Load New Events re-executes the executed identity, never any draft search text', async () => {
     renderShell();
-    await run('all | * | * | *');
+    await showEvents();
     await arrangeCount();
-    fireEvent.change(screen.getByLabelText('LCQL query'), {
-      target: { value: 'this is not even lcql' } });
+    fireEvent.change(screen.getByLabelText('Search events'), {
+      target: { value: 'severity = high' } });   // a draft, never submitted
     queryResponses.push(ok(snap([R2, R1], { token: 'tok.two', cutoff: 9 })));
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Load New Events' }));
@@ -152,12 +151,13 @@ describe('Load New Events (fake timers)', () => {
       .filter(p => p.startsWith('/api/events/query?'));
     expect(calls[calls.length - 1]).toBe(
       `/api/events/query?q=${encodeURIComponent('all | * | * | *')}&scope=session`);
-    expect(screen.getByText(/as of seq #9/)).toBeInTheDocument();
+    // the landed load resets the indicator truthfully
+    expect(screen.queryByTestId('new-events-indicator')).toBeNull();
   });
 
   test('the action exists ONLY beside a nonzero count; loading resets both truthfully; no generic Refresh label', async () => {
     renderShell();
-    await run('all | * | * | *');
+    await showEvents();
     // zero new events: no load control and no generic Refresh anywhere
     expect(screen.queryByTestId('load-new-events')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Refresh' })).toBeNull();
@@ -171,28 +171,28 @@ describe('Load New Events (fake timers)', () => {
     });
     expect(screen.queryByTestId('new-events-indicator')).toBeNull();
     expect(screen.queryByTestId('load-new-events')).toBeNull();
-    expect(screen.getByText(/as of seq #12/)).toBeInTheDocument();
+    expect(screen.getAllByText('3 events').length).toBeGreaterThan(0);
   });
 
   test('selection persists across Load New Events when the inspected id survives', async () => {
     renderShell();
-    await run('all | * | * | *');
+    await showEvents();
     fireEvent.click(results().getByText(/alpha event one/));
-    expect(document.querySelector('pre')).not.toBeNull();   // inspector open
+    expect(screen.getByTestId('event-inspector')).toBeInTheDocument();   // inspector open
     await arrangeCount();
     queryResponses.push(ok(snap([R3, R2, R1], { token: 'tok.two' })));
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Load New Events' }));
     });
-    expect(document.querySelector('pre')).not.toBeNull();   // still open on e1
+    expect(screen.getByTestId('event-inspector')).toBeInTheDocument();   // still open on e1
     expect(screen.queryByText(SELECTED_EVENT_HIDDEN)).toBeNull();
   });
 
   test('a hidden inspected event keeps its selection with the ruled notice and reopens when results include it again (III.0 item 3)', async () => {
     renderShell();
-    await run('all | * | * | *');
+    await showEvents();
     fireEvent.click(results().getByText(/alpha event one/));
-    expect(document.querySelector('pre')).not.toBeNull();
+    expect(screen.getByTestId('event-inspector')).toBeInTheDocument();
     await arrangeCount();
     queryResponses.push(ok(snap([R3], { token: 'tok.two' })));
     await act(async () => {
@@ -201,7 +201,7 @@ describe('Load New Events (fake timers)', () => {
     // the pane cannot render a hidden event, but the selection is NOT
     // silently dropped and no filter is altered on the player's behalf:
     // the ruled notice explains the state
-    expect(document.querySelector('pre')).toBeNull();
+    expect(screen.queryByTestId('event-inspector')).toBeNull();
     expect(screen.getByText(SELECTED_EVENT_HIDDEN)).toBeInTheDocument();
     // a later result set that includes the event again reopens the SAME
     // selection without a new click
@@ -210,7 +210,7 @@ describe('Load New Events (fake timers)', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Load New Events' }));
     });
-    expect(document.querySelector('pre')).not.toBeNull();
+    expect(screen.getByTestId('event-inspector')).toBeInTheDocument();
     expect(screen.queryByText(SELECTED_EVENT_HIDDEN)).toBeNull();
     // and selecting another event clears the notice path directly
     await arrangeCount();
@@ -230,7 +230,7 @@ describe('indicator (fake timers)', () => {
 
   test('rows stay byte-stable across multiple poll cycles while the count climbs', async () => {
     renderShell();
-    await run('all | * | * | *');
+    await showEvents();
     const before = resultsHtml();
     let n = 0;
     countResponse = () => { n += 1; return ok({ new_count: n * 2, pool_growth: n * 3 }); };
@@ -245,37 +245,20 @@ describe('indicator (fake timers)', () => {
 
   test('zero state: the indicator is hidden at count 0', async () => {
     renderShell();
-    await run('all | * | * | *');
+    await showEvents();
     countResponse = () => ok({ new_count: 0, pool_growth: 0 });
     await tickPoll();
     expect(screen.queryByTestId('new-events-indicator')).toBeNull();
     expect(screen.queryByTestId('pool-growth')).toBeNull();
   });
 
-  test('de-emphasized when the bar differs from the executed canonical query', async () => {
-    renderShell();
-    await run('all | * | * | *');
-    countResponse = () => ok({ new_count: 4, pool_growth: 4 });
-    await tickPoll();
-    const badge = screen.getByTestId('new-events-indicator');
-    expect(badge.className).not.toMatch(/opacity-50/);
-    expect(badge.textContent).toBe('4 New Events Available');
-    // the bar was synced to the canonical text on run; an edit diverges it
-    fireEvent.change(screen.getByLabelText('LCQL query'),
-      { target: { value: 'all | * | * | * draft' } });
-    const stale = screen.getByTestId('new-events-indicator');
-    expect(stale.className).toMatch(/opacity-50/);
-    expect(stale.textContent).toBe('4 New Events Available (last run)');
-  });
-
-  // (The Expanded-search scope-divergence case retired with the state
-  // itself, Final pass III.0 item 2: a pivot or run can no longer flip the
-  // executed scope away from the displayed snapshot's. The text-divergence
-  // de-emphasis above remains the honest edited-bar behavior.)
+  // (The edited-bar de-emphasis case retired with the LCQL bar itself,
+  // owner follow-up 2026-10-13: a draft in the search box never resembles
+  // the executed query, so the indicator always describes the last run.)
 
   test('the indicator resets after a deliberate Load New Events', async () => {
     renderShell();
-    await run('all | * | * | *');
+    await showEvents();
     countResponse = () => ok({ new_count: 5, pool_growth: 8 });
     await tickPoll();
     expect(screen.getByTestId('new-events-indicator').textContent)
@@ -285,13 +268,13 @@ describe('indicator (fake timers)', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Load New Events' }));
     });
     expect(screen.queryByTestId('new-events-indicator')).toBeNull();
-    expect(screen.getByText(/as of seq #12/)).toBeInTheDocument();
+    expect(screen.getAllByText('3 events').length).toBeGreaterThan(0);
   });
 
   test('the poll carries ONLY the token, bound to the executed snapshot', async () => {
     renderShell();
-    await run('all | * | * | *');
-    fireEvent.change(screen.getByLabelText('LCQL query'),
+    await showEvents();
+    fireEvent.change(screen.getByLabelText('Search events'),
       { target: { value: 'edited draft text' } });
     countResponse = () => ok({ new_count: 1, pool_growth: 1 });
     await tickPoll();
@@ -305,7 +288,7 @@ describe('indicator (fake timers)', () => {
 
   test('the poll halts neutrally on token invalidation', async () => {
     renderShell();
-    await run('all | * | * | *');
+    await showEvents();
     countResponse = () => ok({ new_count: 3, pool_growth: 3 });
     await tickPoll();
     expect(screen.getByTestId('new-events-indicator')).toBeInTheDocument();
@@ -323,7 +306,7 @@ describe('indicator (fake timers)', () => {
 
   test('client column sorting issues no network request and keeps the snapshot token', async () => {
     renderShell();
-    await run('all | * | * | *');
+    await showEvents();
     fireEvent.click(screen.getByRole('button', { name: 'Table' }));
     await screen.findByText('Src Type');
     const callsBefore = apiFetch.mock.calls.length;
@@ -331,7 +314,7 @@ describe('indicator (fake timers)', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Time/ }));
     fireEvent.click(screen.getByRole('button', { name: /Event Type/ }));
     expect(apiFetch.mock.calls.length).toBe(callsBefore);    // zero requests
-    expect(screen.getByText(/as of seq #2/)).toBeInTheDocument();  // same snapshot
+    expect(screen.getAllByText('2 events').length).toBeGreaterThan(0);  // same snapshot
     countResponse = () => ok({ new_count: 1, pool_growth: 1 });
     await tickPoll();
     // the poll still carries the ORIGINAL token after sorting

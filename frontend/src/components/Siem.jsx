@@ -2,59 +2,48 @@ import React, { useState, useEffect, useRef } from 'react';
 import { apiFetch } from '../api';
 import SiemTable from './SiemTable';
 import SiemCards from './SiemCards';
-import FieldSidebar from './FieldSidebar';
+import FacetRail from './FacetRail';
 import EventInspector from './EventInspector';
 import {
-  refineFilter, splitSegments, pivotHost, pivotAccount, pivotProcessImage,
-  pivotFile, pivotIp, pivotDomainProxy, pivotDomainDns, pivotEventType,
-  pivotSensorFamily, descentHost, descentSessionAll, descentAccount,
-  OR_FALLBACK_NOTICE, sectionIndexAtPosition, listConjuncts, removeConjunct,
-  composeQuery, replaceTimeframe, rawFiltersOf, filtersOffsetOf,
-  SOURCE_FAMILIES,
+  descentHost, descentSessionAll, descentAccount, rawFiltersOf,
 } from './lcqlPivots';
-import { CARD_STYLE, PageIntro, SegmentedToggle } from './ui';
+import {
+  compileChips, adoptQuery, toggleInclude, describeChip,
+  entityChipFor, fieldValueCounts, parseSearchInput, mergeChips,
+} from './facetModel';
+import { CARD_STYLE, SegmentedToggle } from './ui';
 import {
   followingClue, resultsFor, ALL_EVENTS_LABEL, INITIAL_INCIDENT_EVIDENCE,
   INITIAL_EVIDENCE, SELECTED_EVENT_HIDDEN, newEventsAvailable,
-  LOAD_NEW_EVENTS,
-  EDITED_NOTE, STALE_RESULTS_NOTE, filterAdded, excludedFilter,
-  NO_QUERY_ENTERED, PRESERVED_RESULTS_LABEL, SEARCH_NOT_RUN,
-  QUERY_SECTION_NAMES, sectionCouldNotBeRead, STRUCTURE_LINE,
-  RESTORE_LAST_QUERY, SIMPLE_PLACEHOLDER, SIMPLE_TOGGLE,
-  ADVANCED_TOGGLE, SOURCE_LABEL, EVENT_TYPE_LABEL, ALL_SOURCES,
-  ALL_EVENT_TYPES,
+  LOAD_NEW_EVENTS, STALE_RESULTS_NOTE, filterAdded, excludedFilter,
+  SEARCH_NOT_RUN, FILTERS_TOGGLE, TOO_MANY_FILTERS, SHOW_EVENTS,
+  FILTERS_EMPTY_HINT, INCIDENT_WINDOW_LABEL, ALL_TIME_LABEL,
+  SEARCH_PLACEHOLDER, SEARCH_BUTTON, searchUnknownField, SEARCH_IP_CONTAINS,
 } from './uiCopy';
 
-// SIEM Investigation Workbench shell (Stage 4 Phase 4). Analyst-driven:
-// the shell submits LCQL text to the server's single query read and renders
-// the returned frozen snapshot exactly as served. No polling, no client-side
-// filtering, no client-side query execution of any kind (contract P8): rows
-// never insert, remove, or reorder until the analyst runs a query again.
-
-// The placeholder is unmistakably an EXAMPLE (Amendment 2, ruled): the
-// Example prefix is part of the placeholder text and the input styles
-// placeholder text in italic, so guidance never resembles a run query.
-export const QUERY_PLACEHOLDER =
-  'Example: 1h | Sysmon | ProcessCreate | command_line contains "powershell"';
-
-export const QUERY_HELP_EXAMPLES = [
-  'all | * | * | *',
-  '24h | Windows Security | 4625 | user_account == "spatel" and source_ip contains "10.0."',
-];
-
-// A3.5 (F7): the simple-mode edit-only examples are FILTERS expressions
-// (the pickers own the other tokens).
-export const SIMPLE_HELP_EXAMPLES = [
-  'source_ip == "10.0.1.32"',
-  'user_account == "spatel" and command_line contains "powershell"',
-];
+// SIEM Investigation Workbench shell (Stage 4 Phase 4; owner SIEM
+// simplification pass + follow-up, 2026-10-13). Analyst-driven: the shell
+// submits LCQL text to the server's single query read and renders the
+// returned frozen snapshot exactly as served. No polling, no client-side
+// filtering, no client-side query execution of any kind (contract P8):
+// rows never insert, remove, or reorder until a search runs again.
+//
+// ONE filter system: the facet rail (six plain-language groups + More
+// Filters), the entity action menu in the inspector, the removable chips
+// above the results, and ONE simple search box (field = value / field
+// contains text / plain free text -- everything it parses becomes the same
+// chips). There is no LCQL bar: every interaction compiles through the
+// facetModel / lcqlPivots chokepoint into canonical LCQL and executes
+// immediately server-side. Timeframe stays on top, with an Incident Window
+// preset when a case is pinned (under the incident anchor, `all` IS the
+// incident's evidence window).
 
 export const TF_TOKENS = ['15m', '1h', '4h', '12h', '24h', 'all'];
 
-// The TIMEFRAME control derives its value FROM the text (single source of
-// truth), so control and text can never disagree: the text's first segment
-// is the control's value when it is a known token, a neutral placeholder
-// otherwise, and the documented default (1h) only while the bar is empty.
+// Mirrors the server cap in app.py's query_events (raised with the facet
+// system: multi-select distributes into OR-of-ANDs, which needs room).
+const QUERY_MAX_LENGTH = 2000;
+
 const firstSegmentToken = (text) => {
   const idx = text.indexOf('|');
   const head = (idx === -1 ? text : text.slice(0, idx)).trim().toLowerCase();
@@ -62,38 +51,36 @@ const firstSegmentToken = (text) => {
 };
 
 const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
-                descentRequest, activeIncident = null,
-                initialQueryMode = 'simple' }) => {
-  const [org, setOrg] = useState({});
+                descentRequest }) => {
   const [view, setView] = useState('cards');
-  // Stage 6 playtest fix 9: below lg the results column stacks, and the
-  // ~60-group field panel buried the events under a full-width scroll. The
-  // panel collapses behind a disclosure there (default closed, so events
-  // render first); at lg+ it stays the always-visible side column. A value
-  // click closes the disclosure so the refined events are immediately
-  // visible (no-op at lg+, where the open flag is ignored).
-  const [fieldsOpen, setFieldsOpen] = useState(false);
-  // Owner SIEM declutter (2026-10-12): the GD-5a quoting rules sit behind
-  // this disclosure instead of printing on every empty state.
-  const [syntaxOpen, setSyntaxOpen] = useState(false);
-  // Amendment 3 F7 (ratified A3-OD-4): Simple search is the DEFAULT in
-  // every play mode; Advanced LCQL is one toggle away. Session-local
-  // memory only -- no localStorage, no server persistence (B-OD-4).
-  // Search semantics are identical across modes: simple mode compiles to
-  // the same canonical four-part query the advanced bar holds.
-  // (initialQueryMode exists for the pre-A3 test batteries, which author
-  // four-part LCQL directly; the product always mounts the default.)
-  const [queryMode, setQueryMode] = useState(initialQueryMode);
-  const [queryText, setQueryText] = useState('');
+  // Stage 6 playtest fix 9 (carried through this pass): below lg the
+  // results column stacks, so the facet rail sits behind a disclosure
+  // (default closed, events render first); at lg+ it is the always-visible
+  // side column. A facet click closes the disclosure.
+  const [railOpen, setRailOpen] = useState(false);
+  // The facet filter state: ONE timeframe token + the chip list. Every
+  // landed search keeps these truthful (facet runs carry their own state;
+  // prepared descents ADOPT their canonical into chips at landing).
+  const [tf, setTf] = useState('1h');
+  const [chips, setChips] = useState([]);
+  // Sibling baselines: for a group the player narrowed, the same search
+  // WITHOUT that group's own selections, fetched on request (Show More) so
+  // multi-select within a group stays possible. {field: [{value, count}]}
+  const [facetBaselines, setFacetBaselines] = useState({});
+  const baselineSeqRef = useRef(0);
+  // The one simple search box (owner follow-up): its text and its friendly
+  // parse error. Parsing produces chips; nothing executes until Enter.
+  const [searchText, setSearchText] = useState('');
+  const [searchError, setSearchError] = useState(null);
   const [snapshot, setSnapshot] = useState(null);   // {token, identity, count, rows}
-  // Final pass III.0 item 3 (search-state truth): the displayed snapshot's
-  // PROVENANCE. 'player' = the player authored the run (Run, refine, chip
-  // removal, pivot); 'prepared' = the shell executed a prepared entry query
-  // (evidence descent) the player never wrote -- labeled "Initial incident
-  // evidence", never "Results for:". Load new events re-executes the
-  // displayed identity, so it preserves the origin it loads.
-  const [snapshotOrigin, setSnapshotOrigin] = useState('player');
-  const [error, setError] = useState(null);         // {position, reason, suggestions?}
+  // Search-state truth (III.0 item 3): the displayed snapshot's PROVENANCE.
+  // 'facets' = compiled from the chip state (facets, chips, search box,
+  // menu); 'prepared' = the shell executed a prepared entry query (evidence
+  // descent) the player never wrote -- labeled "Initial incident evidence",
+  // never "Results for:". Load new events re-executes the displayed
+  // identity, so it preserves the origin it loads.
+  const [snapshotOrigin, setSnapshotOrigin] = useState('facets');
+  const [error, setError] = useState(null);         // {reason} (server failure)
   const [running, setRunning] = useState(false);
   // Scope state machine (contract Section 6, revised scope-error behavior):
   // {kind:'session'} | {kind:'incident', id, status:'loading'|'ready'|'error', sealed}
@@ -103,35 +90,20 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
   // survives).
   const [selectedId, setSelectedId] = useState(null);
   const [selectionNotice, setSelectionNotice] = useState(null);
-  // P6.1/6.2: the OR-fallback notice from a sidebar/inspector refinement
-  // (distinct lifecycle from selectionNotice -- set only when refineFilter
-  // reports `fresh`, cleared by any subsequent plain Run / load).
+  // The one query-notice line: refine / exclude / pivot announcements
+  // (cleared by any subsequent plain run / load).
   const [queryNotice, setQueryNotice] = useState(null);
   // P5.2: the new-events indicator (contract Section 8, R16 refresh-now).
-  // Token-bound: the poll carries ONLY the executed snapshot's token, so
-  // edited bar text structurally cannot influence the count. countHalted
-  // stops the poll neutrally after a token invalidation (reset/restart).
+  // Token-bound: the poll carries ONLY the executed snapshot's token.
+  // countHalted stops the poll neutrally after a token invalidation.
   const [newCount, setNewCount] = useState(0);
   const [poolGrowth, setPoolGrowth] = useState(0);
   const [countHalted, setCountHalted] = useState(false);
-  // Stage 5 Phase 1 (Amendment 1 Delta A), simplified by the Final pass
-  // (III.0 item 2): ONE evidence universe per case state. Scope kind
+  // ONE evidence universe per case state (Stage 5 / Final pass): scope kind
   // 'incident' anchors every search to the current case's complete
-  // observable evidence pool; 'session' is the no-case All activity
-  // fallback. The case itself is the activeIncidentId prop -- selected on
-  // Incidents, never changeable from here (ratified OD-15, structural).
-  // (Final pass III.0 item 5: the separate Timeline concept is retired.
-  // The evidence entry -- now "Investigate in SIEM" -- prepares and opens
-  // the existing SIEM search; the executed prepared search is identified
-  // by the readable filter expression in the bar/controls plus the
-  // "Initial incident evidence" state label. No origin banner, no
-  // breadcrumb, no special occurrence-ascending presentation.)
-  // Final pass III item 2: the Expanded-search state, its hold, the
-  // search-all action, the case-evidence chip, and the return action are
-  // REMOVED. With an active incident the SIEM always searches that
-  // incident's complete observable evidence pool; a Pivot changes the
-  // query, never the evidence universe (it announces its clue through
-  // the one notice line, like a refine).
+  // observable evidence pool; 'session' is the no-case fallback. The case
+  // itself is the activeIncidentId prop -- selected on Incidents, never
+  // changeable from here (ratified OD-15, structural).
   // Phase 4 commit 4.1 (OD-5 Option A): selection visibly connects to the
   // ONE shared inspector -- scroll-into-view (block nearest), a single
   // emphasis run, and focus moved to the container exactly once per
@@ -154,24 +126,26 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
     return () => clearTimeout(t);
   }, [selectedId]);
 
-  useEffect(() => {
-    apiFetch('/api/endpoints')
-      .then(res => res.json())
-      .then(data => setOrg(data.org || {}))
-      .catch(() => {});
-  }, [resetTrigger]);
+  const clearFacetState = () => {
+    setTf('1h');
+    setChips([]);
+    setFacetBaselines({});
+    setSearchText('');
+    setSearchError(null);
+    baselineSeqRef.current += 1;
+  };
 
   // Session reset clears every piece of workbench state (scaffold S6-S13).
   useEffect(() => {
-    setQueryText('');
     setSnapshot(null);
-    setSnapshotOrigin('player');
+    setSnapshotOrigin('facets');
     setError(null);
     setRunning(false);
     setScope({ kind: 'session' });
     setSelectedId(null);
     setSelectionNotice(null);
     setQueryNotice(null);
+    clearFacetState();
   }, [resetTrigger]);
 
   const loadIncidentScope = (id) => {
@@ -181,23 +155,22 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
       .then((sc) => setScope({ kind: 'incident', id, status: 'ready',
                                sealed: !!sc.sealed }))
       // Revised scope-error behavior (kept from M1/Stage 4): preserve the
-      // prior snapshot, disable Run; recovery is Retry only.
+      // prior snapshot, block new searches; recovery is Retry only.
       .catch(() => setScope({ kind: 'incident', id, status: 'error' }));
   };
 
   // Case-constant anchor (Amendment 1 Delta A, A1-A.2): the SIEM re-anchors
-  // atomically when the current case changes -- case evidence for a case,
-  // All activity for none. The prior snapshot belonged to the prior anchor
-  // and is dropped; nothing in this component can change the case itself
-  // (ratified OD-15, structural: case selection lives on Incidents alone).
+  // atomically when the current case changes. The prior snapshot belonged
+  // to the prior anchor and is dropped; nothing in this component can
+  // change the case itself (ratified OD-15, structural).
   useEffect(() => {
     setSnapshot(null);
-    setSnapshotOrigin('player');
+    setSnapshotOrigin('facets');
     setError(null);
-    setQueryText('');
     setQueryNotice(null);
     setSelectedId(null);
     setSelectionNotice(null);
+    clearFacetState();
     if (activeIncidentId) loadIncidentScope(activeIncidentId);
     else setScope({ kind: 'session' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -206,63 +179,35 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
   const scopeBlocked = scope.kind === 'incident' && scope.status !== 'ready';
   const scopeParam = scope.kind === 'incident' ? scope.id : 'session';
 
-  // --- Amendment 3 F7: the simple-search projection ----------------------
-  // The canonical four-part text (queryText) stays the ONE pending truth;
-  // simple mode PROJECTS it: the bar holds only the FILTERS expression,
-  // the Timeframe picker and the Source / Event type selects own the
-  // other tokens. Every control's value DERIVES from the text (the
-  // ratified Timeframe pattern generalized), so every server-canonical
-  // query is representable in simple mode by construction; edits
-  // recompose through the generator chokepoint (composeQuery).
-  const segs = splitSegments(queryText);
-  const simpleParts = segs.length === 4
-    ? { tf: segs[0], sensor: segs[1], et: segs[2] }
-    : { tf: '1h', sensor: '*', et: '*' };
-  const rawFilters = rawFiltersOf(queryText);
-  const simpleFiltersDisplay = rawFilters === null || rawFilters.trim() === '*'
-    ? '' : rawFilters;
-  const simpleProjectable = queryText.trim() === '' || segs.length === 4;
-  const composeFromControls = (over = {}) => composeQuery(
-    over.tf ?? simpleParts.tf,
-    over.sensor ?? simpleParts.sensor,
-    over.et ?? simpleParts.et,
-    over.filters ?? simpleFiltersDisplay,
-  );
-  const setSimplePart = (part, value) => {
-    setQueryText(composeFromControls({ [part]: value }));
-  };
-
-  const setTimeframe = (tok) => {
-    if (queryMode === 'simple') { setSimplePart('tf', tok); return; }
-    // Advanced: replace the first segment in place through the chokepoint
-    // (A3-5.3: the raw indexOf splice migrated to replaceTimeframe).
-    setQueryText((t) => replaceTimeframe(t, tok));
-  };
-  const tfValue = firstSegmentToken(queryText) ||
-    (queryText.trim() === '' ? '1h' : '');
-  // The two value-driven selects: static families / snapshot-derived event
-  // types, plus the CURRENT token whenever it is anything else (a hostname
-  // sensor from a pivot renders as its own option -- mode stability).
-  const sensorOptions = ['*', ...SOURCE_FAMILIES];
-  if (!sensorOptions.includes(simpleParts.sensor)) sensorOptions.push(simpleParts.sensor);
-  const snapshotEventTypes = snapshot
-    ? [...new Set(snapshot.rows.map((r) => r.event_type).filter(Boolean))].sort()
-    : [];
-  const eventTypeOptions = ['*', ...snapshotEventTypes];
-  if (!eventTypeOptions.includes(simpleParts.et)) eventTypeOptions.push(simpleParts.et);
-
   // Atomic replacement: the new snapshot object swaps in whole; a failed
   // run leaves the prior snapshot untouched. Selection survival (P5.1):
   // when the inspected id is present in the new rows, selection and the
-  // open inspector persist; otherwise the inspector closes with a one-line
-  // notice and nothing else is lost.
-  const applySnapshot = (body, origin) => {
+  // open inspector persist; otherwise the selection is retained with the
+  // ruled notice and the pane reopens when a later result set includes the
+  // event again.
+  const applySnapshot = (body, origin, facetState) => {
     setSnapshot(body);
     setSnapshotOrigin(origin);
     setError(null);
-    // The bar shows the executed snapshot's canonical text (contract S6
-    // Active state) -- clicks and runs teach the canonical form.
-    setQueryText(body.identity.canonical_query);
+    // The chip state follows every landed search: a facet-compiled run
+    // carries its own state; a prepared descent ADOPTS the executed
+    // canonical into chips (every prepared form is adoptable by
+    // construction; the fallback is defensive).
+    baselineSeqRef.current += 1;
+    setFacetBaselines({});
+    if (facetState) {
+      setTf(facetState.tf);
+      setChips(facetState.chips);
+    } else {
+      const adopted = adoptQuery(body.identity.canonical_query);
+      if (adopted) {
+        setTf(adopted.tf);
+        setChips(adopted.chips);
+      } else {
+        setTf(firstSegmentToken(body.identity.canonical_query) || '1h');
+        setChips([]);
+      }
+    }
     // A new snapshot means a new cutoff and token: the indicator resets.
     setNewCount(0);
     setPoolGrowth(0);
@@ -283,67 +228,138 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
     });
   };
 
-  // `noticeAfter`: the clue/OR-fallback text to show once THIS run lands
-  // (null clears any stale notice from an earlier refinement -- plain
-  // Run / Load new events always pass none). `origin` is the snapshot provenance
-  // (III.0 item 3): 'player' unless the caller executed a prepared query.
-  const execute = (q, scopeValue, noticeAfter = null, origin = 'player') => {
+  // `noticeAfter`: the clue text to show once THIS run lands (null clears
+  // any stale notice from an earlier refinement). `origin` is the snapshot
+  // provenance; `facetState` is the {tf, chips} a facet-compiled run
+  // carries.
+  const execute = (q, scopeValue, noticeAfter = null, origin = 'facets', facetState = null) => {
     if (running) return;
     setRunning(true);
     apiFetch(`/api/events/query?q=${encodeURIComponent(q)}&scope=${encodeURIComponent(scopeValue)}`)
       .then(async (res) => {
         const body = await res.json().catch(() => null);
         if (res.ok && body) {
-          applySnapshot(body, origin);
+          applySnapshot(body, origin, facetState);
           setQueryNotice(noticeAfter);
         } else if (body && body.error && typeof body.error === 'object') {
-          // A2 3.2: the submitted text rides the error so the broken
-          // SECTION can be named client-side from the parser position.
-          setError({ ...body.error, submitted: q });
+          setError({ reason: body.error.reason });
         } else {
-          setError({ position: 0, reason: 'The query could not be executed.', submitted: q });
+          setError({ reason: 'The query could not be executed.' });
         }
       })
-      .catch(() => setError({ position: 0, reason: 'The query could not be executed.', submitted: q }))
+      .catch(() => setError({ reason: 'The query could not be executed.' }))
       .finally(() => setRunning(false));
   };
 
-  const runQuery = () => {
-    // A2 3.2 (ruled): in ADVANCED mode Run disables ONLY on a truly empty
-    // bar -- an empty query is guidance territory, never an error; a
-    // malformed non-empty query RUNS and receives a section-named teaching
-    // error. In SIMPLE mode (A3-5.3) a fully-empty state does not exist:
-    // the controls always hold tokens and an empty FILTERS field compiles
-    // to `*`, the legitimate match-all.
+  // --- the ONE filter system: every interaction compiles and runs ----------
+
+  const runFacets = (tfTok, nextChips, notice = null) => {
     if (running || scopeBlocked) return;
-    if (queryMode === 'simple') {
-      execute(queryText.trim() === '' ? composeFromControls() : queryText, scopeParam);
+    const query = compileChips(tfTok, nextChips);
+    if (query.length > QUERY_MAX_LENGTH) {
+      setQueryNotice(TOO_MANY_FILTERS);
       return;
     }
-    if (queryText.trim() === '') return;
-    execute(queryText, scopeParam);
+    execute(query, scopeParam, notice, 'facets', { tf: tfTok, chips: nextChips });
   };
 
-  // A2 3.2 (ruled): Restore last working query -- the canonical snapshot
-  // query is already held client-side; restoring is an edit (no request)
-  // and instantly truthful (the displayed results ARE that query's).
-  const restoreLastWorking = () => {
+  const toggleFacetValue = (field, value) => {
+    if (running || scopeBlocked || !snapshot) return;
+    setRailOpen(false);
+    runFacets(tf, toggleInclude(chips, field, value));
+  };
+
+  const removeChipAt = (index) => {
+    if (running || scopeBlocked) return;
+    runFacets(tf, chips.filter((_, i) => i !== index));
+  };
+
+  // The inspector's entity menu (Filter to Just This / Filter This Out /
+  // Pivot). Every action lands in the chip state and executes immediately.
+  const handleEntityAction = (field, action, value) => {
+    if (running || scopeBlocked || !snapshot) return;
+    if (action === 'only') {
+      const next = [
+        ...chips.filter((c) => !(c.type === 'include' && c.field === field)),
+        { type: 'include', field, value },
+      ];
+      runFacets(tf, next, filterAdded(field, value));
+      return;
+    }
+    if (action === 'exclude') {
+      const next = chips
+        .filter((c) => !(c.type === 'include' && c.field === field && c.value === value))
+        .concat([{ type: 'exclude', field, value }]);
+      runFacets(tf, next, excludedFilter(field, value));
+      return;
+    }
+    if (action === 'pivot') {
+      const chip = entityChipFor(field, value);
+      if (!chip) return;
+      // a pivot is fresh-by-design: it follows the clue inside the CURRENT
+      // evidence pool with a clean filter state
+      runFacets(tf, [chip], followingClue(field, value));
+    }
+  };
+
+  // The one simple search box: parse to chips, merge, run. A friendly
+  // error renders inline for unknown fields; nothing executes on error.
+  const submitSearch = () => {
+    if (running || scopeBlocked) return;
+    const parsed = parseSearchInput(searchText);
+    if (parsed.error) {
+      setSearchError(parsed.error.kind === 'ip_contains'
+        ? SEARCH_IP_CONTAINS
+        : searchUnknownField(parsed.error.name));
+      return;
+    }
+    if (parsed.chips.length === 0) return;
+    setSearchError(null);
+    setSearchText('');
+    runFacets(tf, mergeChips(chips, parsed.chips));
+  };
+
+  // Sibling baseline for ONE narrowed group, fetched only when the player
+  // asks for more values (Show More): the same search without that group's
+  // own selections, executed server-side under the executed scope.
+  const requestBaseline = (field) => {
     if (!snapshot) return;
-    setQueryText(snapshot.identity.canonical_query);
-    setError(null);
+    const rest = chips.filter((c) => !(c.type === 'include' && c.field === field));
+    if (!chips.some((c) => c.type === 'include' && c.field === field)) return;
+    const query = compileChips(tf, rest);
+    const seq = baselineSeqRef.current;
+    apiFetch(`/api/events/query?q=${encodeURIComponent(query)}&scope=${encodeURIComponent(snapshot.identity.scope)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body) => {
+        if (!body || !Array.isArray(body.rows)) return;
+        if (baselineSeqRef.current !== seq) return;   // a newer search landed
+        setFacetBaselines((prev) => ({
+          ...prev, [field]: fieldValueCounts(body.rows, field),
+        }));
+      })
+      .catch(() => {});
   };
 
-  // Load new events (III.0 item 4; replaces the generic Refresh):
-  // re-executes the DISPLAYED snapshot's definition (its canonical query
-  // and executed scope), never the editable bar text (contract S7). The
-  // action renders ONLY beside a nonzero authoritative new-count, so the
-  // snapshot is stable until deliberately invoked; a landed load resets
-  // the count truthfully (applySnapshot). Loading what is displayed
-  // preserves its provenance label (loaded initial evidence is still
-  // initial evidence, III.0 item 3).
+  // --- timeframe (kept on top) ----------------------------------------------
+
+  const setTimeframe = (tok) => {
+    setTf(tok);
+    if (snapshot) runFacets(tok, chips);
+  };
+  // The Incident Window preset: with a case pinned, every search already
+  // runs inside that incident's complete observable evidence pool, so the
+  // `all` token IS the incident's window; the label says so honestly.
+  const allTokenLabel = activeIncidentId ? INCIDENT_WINDOW_LABEL : ALL_TIME_LABEL;
+
+  // Load new events (III.0 item 4): re-executes the DISPLAYED snapshot's
+  // definition (its canonical query and executed scope). The action renders
+  // ONLY beside a nonzero authoritative new-count; a landed load resets the
+  // count truthfully (applySnapshot) and preserves provenance + chips.
   const loadNewEvents = () => {
     if (!snapshot || running) return;
-    execute(snapshot.identity.canonical_query, snapshot.identity.scope, null, snapshotOrigin);
+    const facetState = snapshotOrigin === 'facets' ? { tf, chips } : null;
+    execute(snapshot.identity.canonical_query, snapshot.identity.scope, null,
+            snapshotOrigin, facetState);
   };
 
   const selectRow = (id) => {
@@ -351,86 +367,24 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
     setSelectionNotice(null);
   };
 
-  // A2 3.3 (ratified: chips ship remove-only): removing a chip regenerates
-  // through the generator's remove/join form and RERUNS under the current
-  // scope (execute-immediately, the same A2-OD-2 ruling as refines).
-  const queryInputRef = useRef(null);
-  const removeChip = (index) => {
-    if (!snapshot || running || scopeBlocked) return;
-    const query = removeConjunct(snapshot.identity.canonical_query, index);
-    setQueryText(query);
-    execute(query, scopeParam);
-  };
-
-  // Sidebar value clicks and inspector ==/!= actions ROUTE ONLY through the
-  // approved generator (lcqlPivots.refineFilter); the resulting query is
-  // executed immediately as a new snapshot. Phase 3 (8.2/8.3): every refine
-  // announces itself with the canonical clue form, and the OR fresh-query
-  // sentence FOLDS INTO that one announcement (one notice, never two).
-  const refineAndRun = (field, op, value) => {
-    if (!snapshot || running || scopeBlocked) return;
-    const { query, fresh } = refineFilter(snapshot.identity.canonical_query, field, op, value);
-    const clueLine = op === '!=' ? excludedFilter(field, value) : filterAdded(field, value);
-    setQueryText(query);
-    execute(query, scopeParam, fresh ? `${clueLine} ${OR_FALLBACK_NOTICE}` : clueLine);
-  };
-
-  // P7.1 entity pivots (contract Sections 13/14; Final pass III.0 item 2):
-  // every pivot mints its documented query from the EXECUTED snapshot's
-  // TIMEFRAME token through the one generator and executes it in the
-  // CURRENT evidence pool (the case's observable evidence with a case
-  // pinned, all activity without).
-  const PIVOT_FORMS = {
-    host: pivotHost, account: pivotAccount, process: pivotProcessImage,
-    file: pivotFile, ip: pivotIp, domain_proxy: pivotDomainProxy,
-    domain_dns: pivotDomainDns, event_type: pivotEventType,
-    sensor: pivotSensorFamily,
-  };
-  const pivotAndRun = (kind, value, field) => {
-    if (!snapshot || running || scopeBlocked) return;
-    const tf = splitSegments(snapshot.identity.canonical_query)[0];
-    const query = PIVOT_FORMS[kind](tf, value);
-    // Final pass item 2: a Pivot changes the QUERY inside the current
-    // evidence pool (the incident's complete observable evidence with a
-    // case, all activity without) -- it never changes the evidence
-    // universe. It announces the followed clue through the one notice
-    // line (the same channel refines use).
-    setQueryText(query);
-    execute(query, scopeParam, field ? followingClue(field, value) : null);
-  };
-
-  // Surrounding events removed (Amendment 3 F3): the control ran an
-  // unbounded `all | H | * | *` with the timeframe silently widened and
-  // overlapped the host pivot and ordinary search; the honest bounded
-  // version is deferred engine work. Evidence descent and descentHost()
-  // are untouched.
-
   // P7.2/P7.4 "Investigate in SIEM" entry (contract Sections 13/16; R17
-  // uniform control; renamed by III.0 item 5): the entry prepares and
-  // opens the existing SIEM search, explicitly establishing scope and
-  // anchoring to the OBSERVABLE ENTITY. An account-entity detection
-  // prepares the account form (user_account == "A" or UserPrincipalName
-  // == "A"); one participant host prepares that host's search
-  // (all | H | * | *); several -- or none known yet -- prepare the
-  // whole-pool query (all | * | * | *) under the incident's participant
-  // scope. Scope follows ONE rule for every anchor kind: the
-  // player-selected incident context when the entry carries one,
-  // Session-wide otherwise -- identity entries are deliberately NOT
-  // special-cased, so an incident-scoped account search may honestly show
-  // zero rows when the account's events lack participant hostnames;
-  // leaving the case on Incidents is the designed path out (III.0 item 2:
-  // no SIEM-level scope control exists). The request carries ONLY
-  // observable data from the origin surface; the query is generated HERE
-  // through the one generator, lands as a 'prepared' snapshot (III.0
-  // item 3), and displays exactly like any executed search (item 5: no
-  // separate Timeline presentation).
+  // uniform control): the entry prepares and opens the existing SIEM
+  // search, explicitly establishing scope and anchoring to the OBSERVABLE
+  // ENTITY. An account-entity detection prepares the account form
+  // (user_account == "A" or UserPrincipalName == "A"); one participant
+  // host prepares that host's search; several -- or none known yet --
+  // prepare the whole-pool query under the incident's participant scope.
+  // Scope follows ONE rule for every anchor kind: the player-selected
+  // incident context when the entry carries one, Session-wide otherwise.
+  // The request carries ONLY observable data from the origin surface; the
+  // query is generated HERE through the one generator, lands as a
+  // 'prepared' snapshot, and its chips adopt at landing like every search.
   useEffect(() => {
     if (!descentRequest) return;
     const { hosts, account, scopeIncidentId } = descentRequest;
     const host = !account && hosts && hosts.length === 1 ? hosts[0] : null;
     const query = account ? descentAccount(account)
       : host ? descentHost(host) : descentSessionAll();
-    setQueryText(query);
     if (scopeIncidentId) {
       setScope({ kind: 'incident', id: scopeIncidentId, status: 'loading' });
       apiFetch(`/api/incidents/${scopeIncidentId}/scope`)
@@ -476,44 +430,29 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
     return () => { cancelled = true; clearInterval(interval); };
   }, [snapshot, countHalted]);
 
-  // De-emphasis (contract Section 8): the indicator describes the LAST RUN;
-  // when the bar or scope control differs from the executed identity, it
-  // dims and says so rather than implying it tracks the edited text.
-  const indicatorStale = !!snapshot
-    && (queryText !== snapshot.identity.canonical_query
-        || scopeParam !== snapshot.identity.scope);
-
-  const simTime = (iso) => {
-    const t = Date.parse(iso || '');
-    return Number.isNaN(t)
-      ? ''
-      : new Date(t).toLocaleTimeString('en-GB', { hour12: false });
-  };
-
-  // (III.0 item 5: no separate Timeline presentation -- a prepared entry's
-  // rows display exactly as served, like any executed search; the Table
-  // view's own column sorting remains the ordering control.)
-
-  // Stage 6 playtest fix 9: the ONE fields column, shared by the 0-events
+  // Stage 6 playtest fix 9: the ONE filter column, shared by the 0-events
   // and results layouts. Below lg it sits behind the disclosure (default
   // closed so events render first); at lg+ the disclosure is hidden and
-  // the panel is always visible, exactly as before.
-  const fieldsColumn = (
+  // the rail is always visible.
+  const railColumn = (
     <div className="w-full lg:w-56 shrink-0">
       <button
         type="button"
-        onClick={() => setFieldsOpen((o) => !o)}
-        aria-expanded={fieldsOpen}
+        onClick={() => setRailOpen((o) => !o)}
+        aria-expanded={railOpen}
         className="lg:hidden w-full flex items-center justify-between px-3 py-2 text-sm rounded-md border border-[#d0d7de] bg-white text-muted hover:bg-[#eef1f4]"
       >
-        <span>Fields</span>
-        <span className="text-xs text-muted">{fieldsOpen ? 'Hide' : 'Show'}</span>
+        <span>{FILTERS_TOGGLE}</span>
+        <span className="text-xs text-muted">{railOpen ? 'Hide' : 'Show'}</span>
       </button>
-      <div className={`${fieldsOpen ? 'mt-2' : 'hidden'} lg:mt-0 lg:block`}>
-        <FieldSidebar
+      <div className={`${railOpen ? 'mt-2' : 'hidden'} lg:mt-0 lg:block`}>
+        <FacetRail
           snapshot={snapshot}
           running={running}
-          onValueClick={(f, op, v) => { setFieldsOpen(false); refineAndRun(f, op, v); }}
+          chips={chips}
+          baselines={facetBaselines}
+          onToggle={toggleFacetValue}
+          onRequestBaseline={requestBaseline}
         />
       </div>
     </div>
@@ -521,83 +460,52 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
 
   return (
     <div>
-      {/* VA1: functional subtitle + the ONE incident pill; the large
-          identity card is gone and the Cards/Table control moves down to
-          the results area. Query controls, truthful state copy, and the
-          evidence surfaces are untouched. */}
-      <PageIntro incident={activeIncident} />
-
-      {/* Case-constant context + TIMEFRAME + query bar (Final pass III.0
-          item 2): ONE pinned case line, one evidence universe. The old
-          scope select, the case-evidence chip, the search-all action, and
-          the expanded-search block are all gone; scope loading surfaces
-          beside the line and the error keeps its Retry block below. No
-          control here can change the case (OD-15). */}
+      {/* Owner follow-up pass (2026-10-13): no incident context line here
+          (the shell header carries the session context); Timeframe + the
+          one search box are the whole top bar. No control here can change
+          the case (OD-15). */}
       <div className="mb-3 flex flex-col gap-2">
         {activeIncidentId && scope.kind === 'incident' && scope.status === 'loading' && (
           <span className="text-xs text-muted">Loading incident scope</span>
         )}
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          {/* A3.5 (F7): the simple-mode Source / Event type selects own
-              their tokens; value-driven (the current token always renders,
-              a hostname sensor included), edits recompose through the
-              chokepoint. Advanced mode hides them (the bar holds all). */}
-          {queryMode === 'simple' && (
-            <label className="flex items-center gap-1.5 text-muted ml-auto">
-              {SOURCE_LABEL}
-              <select
-                value={simpleParts.sensor}
-                onChange={(e) => setSimplePart('sensor', e.target.value)}
-                aria-label={SOURCE_LABEL}
-                className="px-2.5 py-1.5 rounded-md border border-[#d0d7de] bg-white text-[#1a2332] max-w-[11rem]"
-              >
-                {sensorOptions.map((s) => (
-                  <option key={s} value={s}>{s === '*' ? ALL_SOURCES : s}</option>
-                ))}
-              </select>
-            </label>
-          )}
-          {queryMode === 'simple' && (
-            <label className="flex items-center gap-1.5 text-muted">
-              {EVENT_TYPE_LABEL}
-              <select
-                value={simpleParts.et}
-                onChange={(e) => setSimplePart('et', e.target.value)}
-                aria-label={EVENT_TYPE_LABEL}
-                className="px-2.5 py-1.5 rounded-md border border-[#d0d7de] bg-white text-[#1a2332] max-w-[11rem]"
-              >
-                {eventTypeOptions.map((t) => (
-                  <option key={t} value={t}>{t === '*' ? ALL_EVENT_TYPES : t}</option>
-                ))}
-              </select>
-            </label>
-          )}
-          <label className={`flex items-center gap-1.5 text-muted ${queryMode === 'simple' ? '' : 'ml-auto'}`}>
+          <label className="flex items-center gap-1.5 text-muted">
             Timeframe
             <select
-              value={tfValue}
+              value={tf}
               onChange={(e) => setTimeframe(e.target.value)}
               aria-label="Timeframe"
               className="px-2.5 py-1.5 rounded-md border border-[#d0d7de] bg-white text-[#1a2332]"
             >
-              {tfValue === '' && <option value="">custom</option>}
-              {TF_TOKENS.map((t) => <option key={t} value={t}>{t}</option>)}
+              {TF_TOKENS.map((t) => (
+                <option key={t} value={t}>{t === 'all' ? allTokenLabel : t}</option>
+              ))}
             </select>
           </label>
-          {/* A3.5 (F7): one toggle between the modes; a hand-authored
-              advanced text that does not split into four sections cannot
-              project, so the toggle disables with the structure line. */}
+          <input
+            type="text"
+            value={searchText}
+            onChange={(e) => { setSearchText(e.target.value); setSearchError(null); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') submitSearch(); }}
+            placeholder={SEARCH_PLACEHOLDER}
+            maxLength={300}
+            aria-label="Search events"
+            className="flex-1 min-w-[12rem] px-3 py-1.5 rounded-md bg-white border border-[#e2e6ea] text-[#1a2332] placeholder-[#8b949e] focus:border-[#8b949e] focus:outline-none transition-colors"
+          />
           <button
             type="button"
-            data-testid="query-mode-toggle"
-            onClick={() => setQueryMode((m) => (m === 'simple' ? 'advanced' : 'simple'))}
-            disabled={queryMode === 'advanced' && !simpleProjectable}
-            title={queryMode === 'advanced' && !simpleProjectable ? STRUCTURE_LINE : undefined}
-            className="px-2 py-1 rounded-md border border-[#d0d7de] text-muted hover:bg-[#eef1f4] disabled:opacity-50"
+            onClick={submitSearch}
+            disabled={running || scopeBlocked || searchText.trim() === ''}
+            className="px-3 py-1.5 text-xs font-medium rounded-md bg-[#101218] text-white disabled:opacity-50"
           >
-            {queryMode === 'simple' ? ADVANCED_TOGGLE : SIMPLE_TOGGLE}
+            {SEARCH_BUTTON}
           </button>
         </div>
+        {searchError && (
+          <div role="alert" data-testid="search-error" className="px-3 py-1.5 rounded-md border border-[#e2e6ea] bg-[#faf6f0] text-xs text-[#1a2332]">
+            {searchError}
+          </div>
+        )}
 
         {scope.kind === 'incident' && scope.status === 'error' && (
           <div className="px-3 py-2 rounded-md border border-[#e2e6ea] bg-[#faf6f0] text-xs text-[#1a2332]" role="alert">
@@ -617,170 +525,51 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
           </div>
         )}
 
-        <div className="flex gap-2">
-          {/* A3.5 (F7): one input, two projections. Simple mode holds ONLY
-              the FILTERS expression (edits recompose the canonical text
-              through the chokepoint); Advanced holds the four-part form. */}
-          <input
-            type="text"
-            ref={queryInputRef}
-            placeholder={queryMode === 'simple' ? SIMPLE_PLACEHOLDER : QUERY_PLACEHOLDER}
-            value={queryMode === 'simple' ? simpleFiltersDisplay : queryText}
-            onChange={(e) => (queryMode === 'simple'
-              ? setSimplePart('filters', e.target.value)
-              : setQueryText(e.target.value))}
-            onKeyDown={(e) => { if (e.key === 'Enter') runQuery(); }}
-            readOnly={running}
-            maxLength={300}
-            aria-label={queryMode === 'simple' ? 'Filters' : 'LCQL query'}
-            className="log-mono flex-1 pl-4 pr-4 py-2 rounded-md bg-white border border-[#e2e6ea] text-[#1a2332] text-sm placeholder-[#8b949e] placeholder:italic focus:border-[#8b949e] focus:outline-none transition-colors"
-          />
-          <button
-            type="button"
-            onClick={runQuery}
-            disabled={running || scopeBlocked
-              || (queryMode === 'advanced' && queryText.trim() === '')}
-            title={queryMode === 'advanced' && queryText.trim() === ''
-              ? NO_QUERY_ENTERED : 'Run the query in the bar.'}
-            className="px-4 py-2 text-xs font-medium rounded-md bg-[#101218] text-white disabled:opacity-50"
-          >
-            {running ? 'Running' : 'Run Query'}
-          </button>
-        </div>
-
         {error && (
-          // A2 3.2 (ruled canonical error form, three lines): the search was
-          // not run; the broken SECTION in plain language (structure line
-          // when the text does not split into four sections); the locked
-          // 11.3 stale-results statement exactly when prior results are
-          // preserved. The parser reason + suggestions stay as the
-          // technical detail; Restore is the one-click recovery.
+          // Parse errors are structurally impossible now (every executed
+          // query comes from the chokepoint), so this is the server-failure
+          // surface: the not-run sentence, the reason, and the stale line
+          // exactly when prior results are preserved.
           <div className="px-3 py-2 rounded-md border border-[#e2e6ea] bg-[#faf6f0] text-xs text-[#1a2332]" role="alert">
             <span className="font-medium">{SEARCH_NOT_RUN}</span>{' '}
-            <span>
-              {(() => {
-                const idx = sectionIndexAtPosition(error.submitted || '', error.position || 0);
-                return idx === null ? STRUCTURE_LINE
-                  : sectionCouldNotBeRead(QUERY_SECTION_NAMES[idx]);
-              })()}
-            </span>
-            <span className="block mt-1 text-muted">
-              {error.reason}{' '}
-              <span className="text-muted">
-                {(() => {
-                  // A3.6 (F7, the projection boundary): in simple mode a
-                  // position inside the FILTERS section remaps to the
-                  // FIELD the player actually typed in; positions before
-                  // it are compiler territory (corpus-guarded defects) and
-                  // keep the whole-query offset.
-                  const idx = sectionIndexAtPosition(error.submitted || '', error.position || 0);
-                  const off = filtersOffsetOf(error.submitted || '');
-                  if (queryMode === 'simple' && idx === 3 && off !== null
-                      && (error.position || 0) >= off) {
-                    return <>(position {error.position - off} in Filters)</>;
-                  }
-                  return <>(position {error.position})</>;
-                })()}
-              </span>
-              {error.suggestions && error.suggestions.length > 0 && (
-                <> Did you mean: {error.suggestions.join(', ')}?</>
-              )}
-            </span>
+            <span className="text-muted">{error.reason}</span>
             {snapshot && (
               <span className="block mt-1 text-muted">{STALE_RESULTS_NOTE}</span>
             )}
-            {snapshot && (
-              <button
-                type="button"
-                onClick={restoreLastWorking}
-                className="mt-1.5 px-2 py-0.5 rounded border border-[#d0d7de] bg-white text-[#1a2332]"
-              >
-                {RESTORE_LAST_QUERY}
-              </button>
-            )}
-          </div>
-        )}
-        {queryMode === 'advanced' && snapshot && !error && queryText.trim() === '' && (
-          // A2 3.2 (advanced only; simple mode has no empty state, A3-5.3):
-          // the truly-empty bar is guidance, not an error; the preserved
-          // results stay labeled.
-          <div role="status" data-testid="empty-note" className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-muted flex items-center gap-2">
-            <span>{NO_QUERY_ENTERED} {PRESERVED_RESULTS_LABEL}</span>
-            <button
-              type="button"
-              onClick={restoreLastWorking}
-              className="px-2 py-0.5 rounded border border-[#d0d7de] bg-white text-[#1a2332]"
-            >
-              {RESTORE_LAST_QUERY}
-            </button>
-          </div>
-        )}
-        {snapshot && !error && queryText.trim() !== '' && queryText !== snapshot.identity.canonical_query && (
-          // 11.3 edited-query honesty: the bar no longer matches the
-          // executed snapshot; the results below belong to the last run.
-          <div role="status" data-testid="edited-note" className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-muted flex items-center gap-2">
-            <span>{EDITED_NOTE}</span>
-            <button
-              type="button"
-              onClick={restoreLastWorking}
-              className="px-2 py-0.5 rounded border border-[#d0d7de] bg-white text-[#1a2332]"
-            >
-              {RESTORE_LAST_QUERY}
-            </button>
           </div>
         )}
 
-        {snapshot && (() => {
-          // A2 3.3 chips: a READ projection of the EXECUTED canonical
-          // FILTERS. The binding boundary (ruled): Custom filters renders
-          // for ANY top-level OR (never for conjunction-only), and chips
-          // never render a projection unequal to the canonical query.
-          const conjuncts = listConjuncts(snapshot.identity.canonical_query);
-          if (conjuncts === null) {
-            return (
-              <div data-testid="filter-chips" className="flex flex-wrap items-center gap-1.5 text-xs">
-                <button
-                  type="button"
-                  data-testid="custom-filters-chip"
-                  onClick={() => queryInputRef.current?.focus()}
-                  title={splitSegments(snapshot.identity.canonical_query)[3] || ''}
-                  className="inline-flex items-center px-2 py-1 rounded-full border border-[#d0d7de] bg-[#eef1f4] text-muted hover:bg-white"
-                >
-                  Custom filters
-                </button>
-              </div>
-            );
-          }
-          if (conjuncts.length === 0) return null;
-          return (
-            <div data-testid="filter-chips" className="flex flex-wrap items-center gap-1.5 text-xs">
-              {conjuncts.map((c, i) => (
+        {/* Applied filters as removable chips above the results. The chips
+            ARE the filter state: removing one recompiles and reruns. */}
+        {snapshot && chips.length > 0 && (
+          <div data-testid="filter-chips" className="flex flex-wrap items-center gap-1.5 text-xs">
+            {chips.map((c, i) => {
+              const label = describeChip(c);
+              return (
                 <span
-                  key={`${i}-${c}`}
+                  key={`${i}-${label}`}
                   className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-[#d0d7de] bg-white text-[#1a2332]"
                 >
-                  <span className="log-mono">{c}</span>
+                  <span>{label}</span>
                   <button
                     type="button"
-                    aria-label={`Remove filter: ${c.split(' ')[0]}`}
-                    onClick={() => removeChip(i)}
+                    aria-label={`Remove filter: ${label}`}
+                    onClick={() => removeChipAt(i)}
                     disabled={running || scopeBlocked}
                     className="text-muted hover:text-[#1a2332] disabled:opacity-50"
                   >
                     x
                   </button>
                 </span>
-              ))}
-            </div>
-          );
-        })()}
+              );
+            })}
+          </div>
+        )}
 
         {snapshot && (() => {
-          // III.0 item 3: the search-state label is primary. Evidence the
-          // player did not author is never labeled a player query; an
-          // executed search is identified by its READABLE filter
-          // expression, the canonical staying beside it as the technical
-          // disclosure.
+          // Owner follow-up pass (2026-10-13): the trimmed snapshot meta
+          // line -- the search-state label, the count, and the scope. The
+          // seq number, sim timestamp, and raw canonical dump are gone.
           const filters = rawFiltersOf(snapshot.identity.canonical_query);
           const readable = filters === null || filters.trim() === '*'
             ? ALL_EVENTS_LABEL : filters.trim();
@@ -788,22 +577,21 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
             ? (snapshot.identity.scope === 'session'
               ? INITIAL_EVIDENCE : INITIAL_INCIDENT_EVIDENCE)
             : resultsFor(readable);
+          const scopeLabel = snapshot.identity.scope === 'session'
+            ? 'Session' : snapshot.identity.scope;
           return (
           <div className="px-3 py-1.5 rounded-md bg-[#eef1f4] text-xs text-muted flex flex-wrap items-center gap-x-3 gap-y-1">
             <span data-testid="results-label" className="font-medium text-[#1a2332]">{stateLabel}</span>
             <span>
               Snapshot: <span className="font-medium text-[#1a2332]">{snapshot.count} events</span>
             </span>
-            <span>as of seq #{snapshot.identity.cutoff_seq}</span>
-            <span>{simTime(snapshot.identity.resolved_range.end)} sim</span>
-            <span className="log-mono">{snapshot.identity.canonical_query}</span>
-            <span className="log-mono text-muted">scope={snapshot.identity.scope}</span>
+            <span>Scope: {scopeLabel}</span>
             {newCount > 0 && (
               <span
                 data-testid="new-events-indicator"
-                className={`px-2 py-0.5 rounded-full text-white bg-[#16436b] font-medium ${indicatorStale ? 'opacity-50' : ''}`}
+                className="px-2 py-0.5 rounded-full text-white bg-[#16436b] font-medium"
               >
-                {newEventsAvailable(newCount)}{indicatorStale ? ' (last run)' : ''}
+                {newEventsAvailable(newCount)}
               </span>
             )}
             {poolGrowth > 0 && (
@@ -844,62 +632,29 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
           className="p-6 rounded-xl py-12"
           style={CARD_STYLE}
         >
-          <p className="text-sm font-medium text-[#1a2332] mb-1">Run a query to begin.</p>
-          {/* A3.5 (F7) + owner SIEM declutter (2026-10-12): the simple-mode
-              helper sentence is deleted (the placeholder carries the hint);
-              advanced keeps the four-segment teaching line. Example
-              buttons stay edit-only. */}
-          {queryMode === 'advanced' && (
-            <p className="text-xs text-muted mb-3">
-              LCQL has four segments: TIMEFRAME | SENSOR | EVENT TYPE | FILTERS. Try one of these:
-            </p>
-          )}
-          <div className="flex flex-col gap-1.5 mb-4">
-            {(queryMode === 'simple' ? SIMPLE_HELP_EXAMPLES : QUERY_HELP_EXAMPLES).map((ex) => (
-              <button
-                key={ex}
-                type="button"
-                onClick={() => (queryMode === 'simple'
-                  ? setSimplePart('filters', ex)
-                  : setQueryText(ex))}
-                className="log-mono text-left text-xs px-3 py-1.5 rounded-md border border-[#d0d7de] bg-[#f6f8fa] text-[#1a2332] hover:bg-[#eef1f4]"
-              >
-                {ex}
-              </button>
-            ))}
-          </div>
-          {/* Owner SIEM declutter (2026-10-12): the quoting rules live
-              behind this disclosure; the GD-5a content is unchanged. */}
+          <p className="text-sm font-medium text-[#1a2332] mb-1">No events loaded yet.</p>
+          <p className="text-xs text-muted mb-3">{FILTERS_EMPTY_HINT}</p>
           <button
             type="button"
-            onClick={() => setSyntaxOpen((o) => !o)}
-            aria-expanded={syntaxOpen}
-            className="text-xs font-medium text-muted hover:text-[#1a2332] underline decoration-dotted underline-offset-2"
+            onClick={() => runFacets(tf, chips)}
+            disabled={running || scopeBlocked}
+            className="px-4 py-2 text-xs font-medium rounded-md bg-[#101218] text-white disabled:opacity-50"
           >
-            Query Syntax
+            {running ? 'Running' : SHOW_EVENTS}
           </button>
-          {syntaxOpen && (
-            <p className="text-xs text-muted mt-2">
-              Values containing spaces or any of{' '}
-              <span className="log-mono">&quot; &#39; = ! | *</span> must be quoted, and the bare
-              words and, or, not, contains must be quoted to match literally. Double-quoted and
-              unquoted values match case-insensitively; single quotes match exactly.
-            </p>
-          )}
         </div>
       ) : snapshot.count === 0 ? (
         <div className="flex flex-col lg:flex-row gap-4">
-          {fieldsColumn}
+          {railColumn}
           {/* Owner empty-state convention (2026-10-12): top-left at the
               panel's content origin; no vertical centering. */}
           <div className="flex-1 min-w-0 p-4 rounded-xl" style={CARD_STYLE}>
-            <p className="text-sm text-[#1a2332] mb-1">0 events match</p>
-            <p className="text-xs text-muted log-mono">{snapshot.identity.canonical_query}</p>
+            <p className="text-sm text-[#1a2332]">No events match the current filters.</p>
           </div>
         </div>
       ) : (
         <div className="flex flex-col lg:flex-row gap-4">
-          {fieldsColumn}
+          {railColumn}
           <div data-testid="workbench-results" className="flex-1 min-w-0">
             {/* VA1: the Cards/Table control belongs with the RESULTS, not
                 the page identity area. */}
@@ -927,9 +682,8 @@ const Siem = ({ resetTrigger, onHostPivot, activeIncidentId,
             >
               <EventInspector
                 event={snapshot.rows.find((r) => r.id === selectedId) || null}
-                onFilter={refineAndRun}
+                onEntityAction={handleEntityAction}
                 onHostPivot={onHostPivot}
-                onPivot={pivotAndRun}
               />
             </div>
           </div>

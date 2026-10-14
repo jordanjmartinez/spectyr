@@ -121,11 +121,14 @@ test('VD5: technical identifiers wear the token on every workspace; chrome and p
   // identity ruling moves into the Inter badge system, so it is
   // deliberately absent here; Incidents.jsx left the list with the owner
   // declutter 2026-10-12 -- its only mono values were the removed Related
-  // Hosts/Accounts identifiers)
+  // Hosts/Accounts identifiers; Siem.jsx left with the owner follow-up
+  // 2026-10-13 -- the trimmed meta line dropped the canonical dump, so the
+  // shell's technical values now all render inside SiemCards/SiemTable/
+  // EventInspector/FacetRail)
   for (const f of ['Detections.jsx', 'DetectionDetail.jsx', 'Endpoints.jsx',
                    'EndpointDetail.jsx', 'Response.jsx',
                    'SiemTable.jsx', 'SiemCards.jsx',
-                   'EventInspector.jsx', 'Siem.jsx', 'GameTimer.jsx']) {
+                   'EventInspector.jsx', 'GameTimer.jsx']) {
     expect([f, /log-mono/.test(comp(f))]).toEqual([f, true]);
   }
   // ATT&CK ids in the teaching surfaces are mono

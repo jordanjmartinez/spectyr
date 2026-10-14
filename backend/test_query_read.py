@@ -89,10 +89,16 @@ def test_parse_error_shape_and_cap():
         assert set(err) <= {"position", "reason", "suggestions"}
         assert isinstance(err["position"], int) and "segments" in err["reason"]
 
-        r2 = _q(client, sid, "all | * | * | *" + " " * 300)
+        # Cap raised 300 -> 2000 with the owner SIEM simplification pass
+        # (2026-10-13): facet multi-select compiles to OR-of-ANDs, which
+        # needs room beyond the old descent-sized cap.
+        r2 = _q(client, sid, "all | * | * | *" + " " * 2000)
         assert r2.status_code == 400
         e2 = r2.get_json()["error"]
-        assert e2["position"] == 300 and "300 character cap" in e2["reason"]
+        assert e2["position"] == 2000 and "2000 character cap" in e2["reason"]
+        # at the boundary the query still parses (the cap is strictly >)
+        r3 = _q(client, sid, "all | * | * | *" + " " * (2000 - 15))
+        assert r3.status_code == 200
     finally:
         _stop(sid, s)
 

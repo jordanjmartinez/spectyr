@@ -55,12 +55,11 @@ beforeEach(() => {
 });
 
 const renderShell = () => {
-  const utils = render(<Siem initialQueryMode="advanced" resetTrigger={0} onHostPivot={() => {}} />);
+  const utils = render(<Siem resetTrigger={0} onHostPivot={() => {}} />);
   return utils;
 };
 const run = async () => {
-  fireEvent.change(screen.getByLabelText('LCQL query'), { target: { value: 'all | * | * | *' } });
-  await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Run Query/ })); });
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Show Events' })); });
 };
 const results = () => within(screen.getByTestId('workbench-results'));
 const scrollCalls = () => window.HTMLElement.prototype.scrollIntoView.mock.calls;

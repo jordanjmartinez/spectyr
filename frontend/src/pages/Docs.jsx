@@ -248,32 +248,30 @@ const Docs = () => {
                 in SIEM on an incident or detection opens the workbench with that evidence already
                 searched.
               </p>
-              <p>Queries are written in LCQL, four segments joined by pipes:</p>
+              <p>
+                Filtering is one system. Pick a Timeframe, show events, then narrow them with the
+                filter groups beside the results: Event, Severity, User Account,
+                Computer, Source IP, and Log Source, with everything else behind More Filters.
+                Groups are multi-select; applied filters appear as removable chips above the
+                results.
+              </p>
+              <p>The search box accepts three shapes:</p>
               <div className="overflow-x-auto">
                 <p className="log-mono text-sm text-[#e6edf3] bg-white/[0.04] border border-white/10 rounded-lg px-4 py-3 w-max min-w-full">
-                  TIMEFRAME | SENSOR | EVENT TYPE | FILTERS
+                  computer = ACME-WS28&nbsp;&nbsp;·&nbsp;&nbsp;user contains khan&nbsp;&nbsp;·&nbsp;&nbsp;any plain text
                 </p>
               </div>
               <p>
-                Run Query executes the bar as a frozen snapshot: results never move until you run
-                again. When new matching telemetry arrives, a count appears with a Load new events
-                action that brings the snapshot up to date.
+                Everything the box parses becomes the same filter chips; plain text searches the
+                event message. Every search executes as a frozen snapshot: results never move
+                until you search again. When new matching telemetry arrives, a count appears with
+                a Load new events action that brings the snapshot up to date.
               </p>
               <p>
-                Sidebar values and per-field inspector actions refine the executed query. Entity
-                pivots (host, account, IP, domain, process, file, event type, sensor) follow the
-                clue across the evidence you are searching.
-              </p>
-              <p>
-                Simple search accepts a single filter expression. Advanced LCQL accepts the
-                complete four-part query.
-              </p>
-              <p>
-                Quoting rules for filter values: values containing spaces or any of{' '}
-                <span className="log-mono text-[#e6edf3]">&quot; &#39; = ! | *</span> must be
-                quoted, and the bare words and, or, not, contains must be quoted to match
-                literally. Double-quoted and unquoted values match case-insensitively; single
-                quotes match exactly.
+                Selecting an event opens its Key Facts, with codes decoded in place and the full
+                field list behind All Fields. Entity values (user, source IP, workstation,
+                computer, destination, process) carry one action menu: Filter to Just This,
+                Filter This Out, Pivot: See Everything About This, and Copy.
               </p>
             </Section>
 

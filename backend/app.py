@@ -2887,9 +2887,14 @@ def query_events():
     s = g.session
     q_text = request.args.get("q", "")
     scope = request.args.get("scope") or "session"
-    if len(q_text) > 300:
-        return jsonify({"error": {"position": 300,
-                                  "reason": "query exceeds the 300 character cap"}}), 400
+    # Cap raised 300 -> 2000 with the owner SIEM simplification pass
+    # (2026-10-13, flagged enabling change): the facet filter system
+    # compiles multi-select groups into OR-of-ANDs (LCQL has no grouping),
+    # and the distributed form can legitimately exceed the old descent-
+    # sized cap. Still a hard abuse guard, re-pinned in test_query_read.py.
+    if len(q_text) > 2000:
+        return jsonify({"error": {"position": 2000,
+                                  "reason": "query exceeds the 2000 character cap"}}), 400
 
     scope_hosts = None
     resolved_scope_hosts = []

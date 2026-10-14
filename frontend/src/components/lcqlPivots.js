@@ -344,6 +344,33 @@ export function pivotSensorFamily(tf, family) {
   return `${tf} | ${family} | * | *`;
 }
 
+// --- the facet-compile form (owner SIEM simplification, 2026-10-13) --------
+// The ONE filter system compiles through this chokepoint. LCQL has no
+// grouping (GD-3 defers parentheses), so AND-of-ORs -- multi-select facet
+// groups ANDed together -- distributes into the grammar's native OR of
+// ANDs: one AND-arm per combination of one alternative from every include
+// group, with every universal conjunct (an exclude or a contains) appended
+// to every arm. `groups` is an array of non-empty arrays of {field, value}
+// `==` alternatives; `conjuncts` is an array of {field, op, value} with op
+// in {'!=', 'contains', 'not contains'}. SENSOR and EVENT_TYPE stay `*`:
+// those dimensions are ordinary FILTERS fields in the facet system.
+export function facetQuery(tf, groups, conjuncts = []) {
+  const pred = (field, op, value) => `${field} ${op} ${quoteValue(value)}`;
+  const extras = conjuncts.map((c) => pred(c.field, c.op, c.value));
+  let arms = [[]];
+  for (const group of groups) {
+    const next = [];
+    for (const arm of arms) {
+      for (const alt of group) next.push([...arm, pred(alt.field, '==', alt.value)]);
+    }
+    arms = next;
+  }
+  const texts = arms
+    .map((arm) => [...arm, ...extras].join(' and '))
+    .filter((t) => t !== '');
+  return `${tf} | * | * | ${texts.length === 0 ? '*' : texts.join(' or ')}`;
+}
+
 // --- prepared-entry forms (contract Section 13; UI wiring is Phase 7;
 // the entry action is "Investigate in SIEM" since III.0 item 5) ----------
 // Pure string generation only, per the Phase 6 boundary clarification: the

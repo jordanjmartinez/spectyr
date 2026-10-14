@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { sevColor } from './siemUtils';
 
 // SIEM table view: presentational. Receives the frozen snapshot rows from
 // Siem.jsx; owns pagination and client-only column sorting (contract
@@ -170,16 +169,16 @@ const SiemTable = ({ alerts, resetTrigger, selectedId, onSelect }) => {
                       aria-selected={alert.id === selectedId}
                       // OD-5 Option A (Phase 4): the strong selected treatment
                       // equivalent to the cards' ring -- background + an inset
-                      // accent ring; the severity left border stays untouched
-                      // (color never the sole signal: the dot indicator pairs
-                      // with it).
+                      // accent ring. Playtest micro-fix (2026-10-13): the
+                      // severity left border is removed (severity reads as
+                      // text in its own column, matching the de-colored cards).
                       className={`hover:bg-[#f6f8fa] transition-colors cursor-pointer border-b border-[#e2e6ea]/50 ${
                         alert.id === selectedId
                           ? 'bg-[#eef1f4] shadow-[inset_0_0_0_1px_#16436b66]' : ''
                       }`}
                       onClick={() => toggleRow(alert.id)}
                     >
-                      <td className="px-2 sm:px-4 py-4 border-l-[3px]" style={{ borderLeftColor: sevColor(alert.severity) }}>
+                      <td className="px-2 sm:px-4 py-4">
                         {/* the misleading rotating chevron is replaced by a
                             selection affordance that promises no inline
                             expansion: an open dot that fills when selected */}

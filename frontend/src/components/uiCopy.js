@@ -44,8 +44,7 @@ export const resultsFor = (readable) => `Results for: ${readable}`;
 export const ALL_EVENTS_LABEL = 'all events';
 export const INITIAL_INCIDENT_EVIDENCE = 'Initial Incident Evidence';
 export const INITIAL_EVIDENCE = 'Initial Evidence';
-export const EDITED_NOTE =
-  'Search edited but not run. Showing results from the previous search.';
+// (EDITED_NOTE retired with the editable bar, owner follow-up 2026-10-13.)
 export const STALE_RESULTS_NOTE =
   'Showing results from the previous successful search.';
 export const SELECTED_EVENT_HIDDEN =
@@ -132,10 +131,10 @@ export const CONSIDER_PROMPT =
   'Consider whether containment or remediation is needed.';
 export const SUBMIT_PENDING = 'Submit Pending';
 
-// === Merged Phase 3/4 commit 3.2: query clarity (Amendment 2, A2-R.1) ======
-// The ruled canonical finals: the four permanent tooltip sentences, the
-// three-line error form (line 3 is the locked 11.3 string, reused
-// verbatim), the empty-run guidance, and Restore.
+// === Merged Phase 3/4 commit 3.2: query clarity (Amendment 2, A2-R.1),
+// trimmed by the owner follow-up pass (2026-10-13): the LCQL bar and its
+// error apparatus retired with Advanced mode; the tooltip finals and the
+// not-run / stale sentences live on.
 export const TOOLTIP_EQ = 'Show only events matching this value.';
 export const TOOLTIP_NEQ = 'Exclude events matching this value.';
 // Final pass III.0 item 2 (flagged consequential change to an A2 final): a
@@ -143,14 +142,7 @@ export const TOOLTIP_NEQ = 'Exclude events matching this value.';
 // all available evidence" became untrue; the verb sentence follows the
 // truth (the pivot searches the evidence pool you are already in).
 export const TOOLTIP_PIVOT = 'Follow this clue across the evidence you are searching.';
-export const NO_QUERY_ENTERED = 'No query entered.';
-export const PRESERVED_RESULTS_LABEL = 'Results below are from the last run.';
 export const SEARCH_NOT_RUN = 'This search was not run.';
-export const QUERY_SECTION_NAMES = ['Time', 'Source', 'Event Type', 'Filters'];
-export const sectionCouldNotBeRead = (section) =>
-  `The ${section} section could not be read.`;
-export const STRUCTURE_LINE = 'The query needs four sections separated by |.';
-export const RESTORE_LAST_QUERY = 'Restore Last Working Query';
 
 // (The reversible-surrounding-events block copy was removed with the
 // control by Amendment 3 F3; the F2 model B hold-and-restore mechanic that
@@ -230,18 +222,46 @@ export const SELECT_CATEGORY = 'Select a category to submit.';
 export const detectionsQueueItem = (n) => `Detections: ${n} to Triage`;
 export const DETECTIONS_TRIAGED = 'Detections Triaged';
 
-// F7 (A3-5, ruled + standing finals): simple search as a projection over
-// canonical LCQL. The mode toggle labels name the mode you switch TO.
-// Owner SIEM declutter (2026-10-12): the placeholder is the one inline
-// hint ("Filter events...") and the SIMPLE_HELP sentence is retired (the
-// quoting rules moved behind the Query Syntax disclosure in the shell).
-export const SIMPLE_PLACEHOLDER = 'Filter events...';
-export const SIMPLE_TOGGLE = 'Simple Search';
-export const ADVANCED_TOGGLE = 'Advanced LCQL';
-export const SOURCE_LABEL = 'Source';
-export const EVENT_TYPE_LABEL = 'Event Type';
-export const ALL_SOURCES = 'All Sources';
-export const ALL_EVENT_TYPES = 'All Event Types';
+// Owner SIEM simplification pass (2026-10-13): ONE filter system. The F7
+// simple-search projection (its placeholder, the Source / Event Type
+// selects and their copy) is retired -- those dimensions are facet groups
+// now. The follow-up pass the same day retired Advanced LCQL entirely:
+// the one simple search box below is the only typed entry, and everything
+// it parses becomes filter chips.
+export const FILTERS_TOGGLE = 'Filters';
+
+// --- the facet rail (the ONE filter system) --------------------------------
+export const MORE_FILTERS = 'More Filters';
+export const SHOW_MORE_VALUES = 'Show More';
+export const SHOW_FEWER_VALUES = 'Show Fewer';
+export const NO_GROUP_VALUES = 'No values in these results.';
+export const TOO_MANY_FILTERS =
+  'Too many combined filters for one search. Remove a filter and try again.';
+export const SHOW_EVENTS = 'Show Events';
+export const FILTERS_EMPTY_HINT =
+  'Pick a timeframe and show events, then narrow them with the filters beside the results.';
+export const INCIDENT_WINDOW_LABEL = 'Incident Window';
+export const ALL_TIME_LABEL = 'All Time';
+
+// --- the one simple search box (owner follow-up pass, 2026-10-13) ----------
+export const SEARCH_PLACEHOLDER = 'Search events...';
+export const SEARCH_BUTTON = 'Search';
+export const searchUnknownField = (name) =>
+  `No filter field called "${name}". Try: Computer, User Account, Source IP, `
+  + 'Destination IP, Severity, Event, Log Source, Process, Command, File, or URL.';
+export const SEARCH_IP_CONTAINS =
+  'Use Source IP or Destination IP with contains.';
+
+// --- the entity action menu (inspector) -------------------------------------
+export const FILTER_TO_THIS = 'Filter to Just This';
+export const FILTER_OUT_THIS = 'Filter This Out';
+export const PIVOT_SEE_ALL = 'Pivot: See Everything About This';
+export const COPY_VALUE = 'Copy';
+export const OPEN_IN_ENDPOINTS = 'Open in Endpoints';
+
+// --- the two-tier inspector ---------------------------------------------------
+export const KEY_FACTS_LABEL = 'Key Facts';
+export const ALL_FIELDS_TOGGLE = 'All Fields';
 
 // === Final pass (Part III.0.1): the Response workspace ====================
 // The ruled state copy (never revealing whether inaction is correct) and
