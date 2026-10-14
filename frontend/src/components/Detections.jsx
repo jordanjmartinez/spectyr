@@ -4,6 +4,8 @@ import DetectionDetail from './DetectionDetail';
 import useIncidentScope from './useIncidentScope';
 import {
   OPEN_IN_RESPONSE, PROMOTED_LABEL, DISMISSED_LABEL,
+  PROMOTE_ACTION, DISMISS_ACTION, REOPEN_ACTION,
+  DETECTION_SEARCH_PLACEHOLDER,
 } from './uiCopy';
 import { TOOLTIPS } from './helpContent';
 import { toastDisposition } from './uiToasts';
@@ -15,17 +17,18 @@ import { SeverityBadge, PageIntro, ErrorState, SegmentedToggle, ToolbarSearch } 
 // Response workspace (the one action system): a promoted detection offers
 // only the neutral Open in Response navigation, which selects the
 // relevant target there and executes nothing.
+//
+// Decision-layer pass (owner 2026-10-13): the list is a reading surface.
+// The Type column, the per-row Promote/Dismiss buttons, and the Triage
+// column are gone; each row carries the rule name with its instance "why"
+// line beneath (server-composed from the sanitized triggering event), and
+// the decisions live behind ONE "..." menu with their full labels. Default
+// sort is severity, then time (newest first). The search states its scope.
 
 // VD2 (visual correction section 2): the severity badge this feed
 // established is now the ONE shared SeverityBadge in ui.jsx (identical
 // treatment on every player-facing severity display); this file simply
 // consumes it.
-
-export const RuleTypeChip = ({ type }) => (
-  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs border border-[#d0d7de] text-muted whitespace-nowrap">
-    {type === 'yara' ? 'YARA' : 'Sigma'}
-  </span>
-);
 
 // Stage 6 playtest fix 13: a reviewed detection's disposition renders as a
 // STATE chip (the same colors the old active buttons wore), never as one of
@@ -40,34 +43,83 @@ export const DispositionChip = ({ action, size = 'xs' }) => (
   </span>
 );
 
-const ActionButton = ({ onClick, active, activeClass, disabled, children, help }) => (
-  <button
-    type="button"
-    disabled={disabled}
-    onClick={(e) => { e.stopPropagation(); onClick(); }}
-    title={help}
-    data-help={help}
-    className={`${help ? 'help-tip ' : ''}px-2.5 py-1 text-xs font-medium rounded-md border transition disabled:opacity-50 disabled:cursor-default ${
-      active ? activeClass : 'bg-white text-muted border-[#d0d7de] hover:bg-[#eef1f4]'
-    }`}
-  >
-    {children}
-  </button>
-);
-
 const shortTime = (iso) =>
   iso ? new Date(iso).toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
 
+// Default sort: severity rank, then time (newest first) inside a rank.
+const SEVERITY_RANK = { critical: 0, high: 1, medium: 2, low: 3 };
+export const sortDetections = (rows) => [...rows].sort((a, b) => {
+  const ra = SEVERITY_RANK[(a.severity || '').toLowerCase()] ?? 9;
+  const rb = SEVERITY_RANK[(b.severity || '').toLowerCase()] ?? 9;
+  if (ra !== rb) return ra - rb;
+  const ta = Date.parse(a.time || '') || 0;
+  const tb = Date.parse(b.time || '') || 0;
+  return tb - ta;
+});
+
+// The ONE per-row actions menu (the EventInspector "..." idiom): full
+// labels, the ruled tooltip lines riding help-tip, and the same decision
+// shape as before -- an open row offers the two decisions; a reviewed row
+// offers Reopen (the one way back) and, when promoted, the neutral Open
+// in Response navigation.
+const RowMenu = ({ det, open, onToggle, onClose, onAct, onOpenResponse, responseTarget }) => {
+  const item = (label, onClick, { help, accent } = {}) => (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={(e) => { e.stopPropagation(); onClose(); onClick(); }}
+      title={help}
+      data-help={help}
+      className={`${help ? 'help-tip ' : ''}w-full text-left px-3 py-1.5 whitespace-nowrap hover:bg-[#eef1f4] ${accent ? 'text-[#16436b]' : 'text-[#1a2332]'}`}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <span className="relative inline-block">
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onToggle(); }}
+        aria-label={`Actions for ${det.rule_name}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="px-2 py-0.5 text-xs rounded border border-[#d0d7de] text-muted hover:bg-[#eef1f4]"
+      >
+        ...
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full mt-1 z-20 min-w-[12rem] rounded-md border border-[#d0d7de] bg-white shadow-md py-1 text-xs"
+        >
+          {det.player_action === 'open' ? (
+            <>
+              {item(PROMOTE_ACTION, () => onAct(det.id, 'promote'), { help: TOOLTIPS.promote })}
+              {item(DISMISS_ACTION, () => onAct(det.id, 'dismiss'), { help: TOOLTIPS.dismiss })}
+            </>
+          ) : (
+            item(REOPEN_ACTION, () => onAct(det.id, 'open'), { help: TOOLTIPS.reopen })
+          )}
+          {det.player_action === 'promoted' && onOpenResponse && responseTarget && (
+            item(OPEN_IN_RESPONSE, () => onOpenResponse(responseTarget), { accent: true })
+          )}
+        </div>
+      )}
+    </span>
+  );
+};
+
 const Detections = ({ isVisible, resetTrigger, onHostPivot,
                       activeIncidentId = null, onEvidenceDescent,
-                      onOpenResponse, activeIncident = null }) => {
+                      onOpenResponse }) => {
   const [feed, setFeed] = useState([]);
-  const [counts, setCounts] = useState({ open: 0, promoted: 0, dismissed: 0 });
+  const [, setCounts] = useState({ open: 0, promoted: 0, dismissed: 0 });
   const [selected, setSelected] = useState(null);
+  const [openMenu, setOpenMenu] = useState(null);
   // Owner list-page uniformity (2026-10-12): the shared toolbar pattern --
-  // disposition tabs with counts plus the search bar (rule, entity, type,
-  // severity). The passive count lines are retired; the tab counts carry
-  // the same truth over the SAME scoped rows.
+  // disposition tabs with counts plus the search bar. The passive count
+  // lines are retired; the tab counts carry the same truth over the SAME
+  // scoped rows.
   const [dispoView, setDispoView] = useState('open');  // 'open'|'promoted'|'dismissed'
   const [search, setSearch] = useState('');
   // Case-constant scope (Amendment 1 Delta A over the M1 foundation): ONE
@@ -108,8 +160,22 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
     setSelected(null);
     setDispoView('open');
     setSearch('');
+    setOpenMenu(null);
     fetchFeed();
   }, [resetTrigger, fetchFeed]);
+
+  // An open row menu closes on any outside click or Escape.
+  useEffect(() => {
+    if (!openMenu) return undefined;
+    const close = () => setOpenMenu(null);
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    document.addEventListener('click', close);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('click', close);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [openMenu]);
 
   // Stage 6 playtest fixes 14+15: one in-flight disposition per detection
   // (a rapid double-click can no longer double-submit and double-toast).
@@ -139,11 +205,9 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
         toastDisposition(view.player_action, remaining);
         // Stage 6 playtest fixes 14+15: apply the AUTHORITATIVE response to
         // the row and the counts in the same frame as the toast. The header
-        // ("Detections reviewed: X of N" / open-promoted-dismissed) no
-        // longer trails the toast by a refetch round-trip, and the
-        // just-clicked, still-hovered button unmounts immediately so its
-        // CSS tooltip line cannot linger beside the row as a doubled label.
-        // The refetch below still reconciles against the server.
+        // no longer trails the toast by a refetch round-trip, and the row
+        // leaves its tab immediately (the menu it carried unmounts with
+        // it). The refetch below still reconciles against the server.
         const before = feed.find(d => d.id === id)?.player_action;
         const after = view.player_action;
         if (before && before !== after) {
@@ -188,14 +252,15 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
     promoted: rows.filter(d => d.player_action === 'promoted').length,
     dismissed: rows.filter(d => d.player_action === 'dismissed').length,
   };
+  // The search scope is exactly what the placeholder says: rule, host,
+  // user, and the file/process names the why line carries.
   const q = search.trim().toLowerCase();
   const matchesSearch = (d) => !q
     || (d.rule_name || '').toLowerCase().includes(q)
     || (d.entity?.host || '').toLowerCase().includes(q)
     || (d.entity?.account || '').toLowerCase().includes(q)
-    || (d.rule_type === 'yara' ? 'yara' : 'sigma').includes(q)
-    || (d.severity || '').toLowerCase().includes(q);
-  const visibleRows = rows.filter(d => d.player_action === dispoView && matchesSearch(d));
+    || (d.why || '').toLowerCase().includes(q);
+  const visibleRows = sortDetections(rows.filter(d => d.player_action === dispoView && matchesSearch(d)));
 
   // III.0.1 item 5: the neutral navigation target for a promoted
   // detection -- the account entity when one is resolved, else the host.
@@ -205,12 +270,12 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
 
   return (
     <div>
-      {/* VA1: the functional subtitle + the ONE incident pill; the
-          retired All-activity bar and the identity card are gone. The
-          scope-failure notice stays as an inline alert (never a
-          full-width status bar) so scope truth is preserved. */}
+      {/* Detections uniformity pass (owner 2026-10-13): no incident
+          context line here (same removal as the SIEM; the shell header
+          carries session context). The PageIntro row keeps ONLY the page
+          controls. The scope-failure notice stays as an inline alert
+          (never a full-width status bar) so scope truth is preserved. */}
       <PageIntro
-        incident={activeIncident}
         right={(
           <>
             <SegmentedToggle
@@ -223,7 +288,7 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
                 ['dismissed', `Dismissed ${dispoCounts.dismissed}`],
               ]}
             />
-            <ToolbarSearch value={search} onChange={setSearch} placeholder="Search detections..." />
+            <ToolbarSearch value={search} onChange={setSearch} placeholder={DETECTION_SEARCH_PLACEHOLDER} />
           </>
         )}
       />
@@ -238,90 +303,67 @@ const Detections = ({ isVisible, resetTrigger, onHostPivot,
         </div>
       )}
 
-      {/* Owner list-page uniformity (2026-10-12): the passive count lines
-          are retired -- the toolbar tabs carry the same counts over the
-          same scoped rows (incl. the former scoped reviewed/remaining
-          line; the T1 remaining-count toast is untouched). */}
-      {(
-        <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="data-thead">
-              <tr>
-                <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">Severity</th>
-                <th className="px-3 sm:px-4 py-3 font-medium">Rule</th>
-                <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">Type</th>
-                <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">Entity</th>
-                <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">Time</th>
-                <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">Triage</th>
+      <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead className="data-thead">
+            <tr>
+              <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">Severity</th>
+              <th className="px-3 sm:px-4 py-3 font-medium">Rule</th>
+              <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">Entity</th>
+              <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">Time</th>
+              <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap"><span className="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {visibleRows.length === 0 && (
+              <tr><td colSpan={5} className="px-4 py-4 text-left text-muted">
+                {scope.rowPolicy === 'loading' ? 'Loading incident scope'
+                  : scope.rowPolicy === 'error' ? 'Incident scope could not be loaded.'
+                    : rows.length === 0 ? 'No detections yet. They fire as scenarios reach the queue.'
+                      : 'No detections in this view.'}
+              </td></tr>
+            )}
+            {visibleRows.map(d => (
+              <tr
+                key={d.id}
+                className="border-b border-[#eef1f4] last:border-b-0 hover:bg-[#f6f8fa] cursor-pointer align-top"
+                onClick={() => setSelected(d.id)}
+              >
+                <td className="px-3 sm:px-4 py-3"><SeverityBadge severity={d.severity} /></td>
+                <td className="px-3 sm:px-4 py-3">
+                  <button type="button" onClick={(e) => { e.stopPropagation(); setSelected(d.id); }} className="text-[#16436b] hover:underline text-left font-medium">
+                    {d.rule_name}
+                  </button>
+                  {d.player_action !== 'open' && (
+                    <span className="ml-2 align-middle"><DispositionChip action={d.player_action} /></span>
+                  )}
+                  {d.why && (
+                    <p className="mt-0.5 text-xs text-muted leading-snug break-words">{d.why}</p>
+                  )}
+                </td>
+                <td className="px-3 sm:px-4 py-3 log-mono whitespace-nowrap text-[#1a2332]">
+                  {d.entity?.host || d.entity?.account || '-'}
+                  {d.entity?.host && d.entity?.account && (
+                    <span className="block text-xs text-muted">{d.entity.account}</span>
+                  )}
+                </td>
+                <td className="px-3 sm:px-4 py-3 log-mono whitespace-nowrap text-muted">{shortTime(d.time)}</td>
+                <td className="px-3 sm:px-4 py-3 text-right">
+                  <RowMenu
+                    det={d}
+                    open={openMenu === d.id}
+                    onToggle={() => setOpenMenu(openMenu === d.id ? null : d.id)}
+                    onClose={() => setOpenMenu(null)}
+                    onAct={act}
+                    onOpenResponse={onOpenResponse}
+                    responseTarget={responseTargetFor(d)}
+                  />
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {visibleRows.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-4 text-left text-muted">
-                  {scope.rowPolicy === 'loading' ? 'Loading incident scope'
-                    : scope.rowPolicy === 'error' ? 'Incident scope could not be loaded.'
-                      : rows.length === 0 ? 'No detections yet. They fire as scenarios reach the queue.'
-                        : 'No detections in this view.'}
-                </td></tr>
-              )}
-              {visibleRows.map(d => (
-                <tr
-                  key={d.id}
-                  className="border-b border-[#eef1f4] last:border-b-0 hover:bg-[#f6f8fa] cursor-pointer"
-                  onClick={() => setSelected(d.id)}
-                >
-                  <td className="px-3 sm:px-4 py-3"><SeverityBadge severity={d.severity} /></td>
-                  <td className="px-3 sm:px-4 py-3">
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setSelected(d.id); }} className="text-[#16436b] hover:underline text-left">
-                      {d.rule_name}
-                    </button>
-                  </td>
-                  <td className="px-3 sm:px-4 py-3"><RuleTypeChip type={d.rule_type} /></td>
-                  <td className="px-3 sm:px-4 py-3 log-mono whitespace-nowrap text-[#1a2332]">
-                    {d.entity?.host || d.entity?.account || '-'}
-                    {d.entity?.host && d.entity?.account && (
-                      <span className="block text-xs text-muted">{d.entity.account}</span>
-                    )}
-                  </td>
-                  <td className="px-3 sm:px-4 py-3 log-mono whitespace-nowrap text-muted">{shortTime(d.time)}</td>
-                  <td className="px-3 sm:px-4 py-3">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {/* Stage 6 playtest fix 13: an open row offers the two
-                          decisions; a reviewed row reads STATE + the one way
-                          back, never "Promote Dismiss Reopen" side by side.
-                          Changing a reviewed call is deliberately two-step:
-                          Reopen, then decide again (the API is unchanged). */}
-                      {d.player_action === 'open' ? (
-                        <>
-                          <ActionButton onClick={() => act(d.id, 'promote')} active={false} help={TOOLTIPS.promote}>Promote</ActionButton>
-                          <ActionButton onClick={() => act(d.id, 'dismiss')} active={false} help={TOOLTIPS.dismiss}>Dismiss</ActionButton>
-                        </>
-                      ) : (
-                        <>
-                          <DispositionChip action={d.player_action} />
-                          <ActionButton onClick={() => act(d.id, 'open')} active={false} help={TOOLTIPS.reopen}>Reopen</ActionButton>
-                        </>
-                      )}
-                      {/* III.0.1 item 5: neutral navigation only -- selects
-                          the relevant target in Response, executes nothing,
-                          recommends nothing. */}
-                      {d.player_action === 'promoted' && onOpenResponse && responseTargetFor(d) && (
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); onOpenResponse(responseTargetFor(d)); }}
-                          className="px-2.5 py-1 text-xs font-medium rounded-md border border-[#16436b]/40 text-[#16436b] hover:bg-[#16436b]/5"
-                        >
-                          {OPEN_IN_RESPONSE}
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

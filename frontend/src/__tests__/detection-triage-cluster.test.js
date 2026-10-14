@@ -52,6 +52,12 @@ beforeEach(() => {
 });
 
 const rowOf = (rule) => screen.getByText(rule).closest('tr');
+// decision-layer pass (owner 2026-10-13): the decisions sit behind the
+// row's ONE "..." menu with their full labels; open it to read them
+const openMenu = (rule) => {
+  within(rowOf(rule)).getByRole('button', { name: `Actions for ${rule}` }).click();
+  return within(rowOf(rule));
+};
 
 test('feed rows: open offers the two decisions; reviewed shows the state chip + Reopen only', async () => {
   const { container } = render(<Detections isVisible resetTrigger={0} activeIncidentId={null} />);
@@ -59,9 +65,10 @@ test('feed rows: open offers the two decisions; reviewed shows the state chip + 
 
   // the uniform toolbar (owner list-page pass): reviewed rows live behind
   // their disposition tabs; the default Open tab shows only open rows
-  const open = within(rowOf('Rule Open'));
-  expect(open.getByRole('button', { name: 'Promote' })).toBeInTheDocument();
-  expect(open.getByRole('button', { name: 'Dismiss' })).toBeInTheDocument();
+  let open;
+  await act(async () => { open = openMenu('Rule Open'); });
+  expect(open.getByRole('menuitem', { name: 'Promote to Threat' })).toBeInTheDocument();
+  expect(open.getByRole('menuitem', { name: 'Dismiss as Benign' })).toBeInTheDocument();
   expect(open.queryByText('Reopen')).toBeNull();
   expect(container.textContent).not.toContain('Rule Promoted');
 
@@ -72,10 +79,11 @@ test('feed rows: open offers the two decisions; reviewed shows the state chip + 
     await act(async () => {
       screen.getByRole('button', { name: tab }).click();
     });
-    const row = within(rowOf(rule));
-    expect(row.queryByRole('button', { name: 'Promote' })).toBeNull();
-    expect(row.queryByRole('button', { name: 'Dismiss' })).toBeNull();
-    expect(row.getByRole('button', { name: 'Reopen' })).toBeInTheDocument();
+    let row;
+    await act(async () => { row = openMenu(rule); });
+    expect(row.queryByRole('menuitem', { name: 'Promote to Threat' })).toBeNull();
+    expect(row.queryByRole('menuitem', { name: 'Dismiss as Benign' })).toBeNull();
+    expect(row.getByRole('menuitem', { name: 'Reopen' })).toBeInTheDocument();
     const chipEl = row.getByText(chip);
     expect(chipEl.tagName).toBe('SPAN'); // state, not a control
   }
@@ -99,8 +107,9 @@ test('the row and header counts flip with the toast, before any refetch lands (f
   await screen.findByText('Rule Open');
   expect(screen.getByRole('button', { name: 'Open 1' })).toBeInTheDocument();
 
+  await act(async () => { openMenu('Rule Open'); });
   await act(async () => {
-    within(rowOf('Rule Open')).getByRole('button', { name: 'Dismiss' }).click();
+    within(rowOf('Rule Open')).getByRole('menuitem', { name: 'Dismiss as Benign' }).click();
   });
   // the refetch is still hanging: everything below is the same-frame
   // update. Under the uniform toolbar the dismissed row LEAVES the Open
@@ -113,9 +122,10 @@ test('the row and header counts flip with the toast, before any refetch lands (f
   await act(async () => {
     screen.getByRole('button', { name: 'Dismissed 2' }).click();
   });
-  const row = within(rowOf('Rule Open'));
-  expect(row.getByText('Dismissed').tagName).toBe('SPAN');
-  expect(row.getByRole('button', { name: 'Reopen' })).toBeInTheDocument();
+  expect(within(rowOf('Rule Open')).getByText('Dismissed').tagName).toBe('SPAN');
+  let row;
+  await act(async () => { row = openMenu('Rule Open'); });
+  expect(row.getByRole('menuitem', { name: 'Reopen' })).toBeInTheDocument();
 });
 
 test('a rapid double-click submits exactly one disposition', async () => {
@@ -131,8 +141,14 @@ test('a rapid double-click submits exactly one disposition', async () => {
   });
   render(<Detections isVisible resetTrigger={0} activeIncidentId={null} />);
   await screen.findByText('Rule Open');
-  const btn = within(rowOf('Rule Open')).getByRole('button', { name: 'Dismiss' });
-  await act(async () => { btn.click(); btn.click(); });
+  // two rapid menu-driven dismissals: the second re-opens the menu and
+  // clicks again while the first POST is still in flight
+  for (let i = 0; i < 2; i += 1) {
+    await act(async () => { openMenu('Rule Open'); });
+    await act(async () => {
+      within(rowOf('Rule Open')).getByRole('menuitem', { name: 'Dismiss as Benign' }).click();
+    });
+  }
   expect(postCalls).toBe(1);
 });
 
@@ -142,7 +158,7 @@ test('the detail card follows the same shape for a reviewed detection', async ()
   });
   await screen.findByText('Rule Promoted');
   expect(screen.queryByRole('button', { name: 'Promote to Threat' })).toBeNull();
-  expect(screen.queryByRole('button', { name: 'Dismiss' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Dismiss as Benign' })).toBeNull();
   expect(screen.getByRole('button', { name: 'Reopen' })).toBeInTheDocument();
   expect(screen.getByText('Promoted').tagName).toBe('SPAN');
 });

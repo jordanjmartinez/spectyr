@@ -85,8 +85,9 @@ test('the pill renders the incident context ONCE, with id, title, and severity',
   expect(container.textContent).not.toMatch(/All activity/);
 });
 
+// Detections left this list with the owner uniformity pass (2026-10-13):
+// like the SIEM, it renders NO incident context line (pinned below).
 test.each([
-  ['Detections', (p) => <Detections isVisible resetTrigger={0} onHostPivot={() => {}} {...p} />, RETIRED_SUBTITLES.detections],
   ['Endpoints', (p) => <Endpoints isVisible resetTrigger={0} pivotHost={null} {...p} />, RETIRED_SUBTITLES.endpoints],
   ['Response', (p) => <Response isVisible resetTrigger={0} {...p} />, RETIRED_SUBTITLES.response],
 ])('%s: exactly one pill with a case; the retired subtitle renders nowhere', async (name, mk, subtitle) => {
@@ -102,6 +103,17 @@ test.each([
   expect(screen.queryAllByTestId('incident-pill')).toHaveLength(0);
   expect(screen.queryByText(subtitle)).toBeNull();
   expect(noCase.container.textContent).not.toMatch(/All activity/);
+});
+
+test('Detections: NO incident context line even with a case (owner uniformity pass 2026-10-13, matching the SIEM); the toolbar stays', async () => {
+  render(<Detections isVisible resetTrigger={0} onHostPivot={() => {}}
+    activeIncidentId="INC-8340" />);
+  await new Promise((r) => setTimeout(r, 0));
+  expect(screen.queryAllByTestId('incident-pill')).toHaveLength(0);
+  expect(screen.queryByText(/Investigating INC-/)).toBeNull();
+  expect(screen.queryByText(RETIRED_SUBTITLES.detections)).toBeNull();
+  // the page controls kept their PageIntro row
+  expect(screen.getByPlaceholderText('Search rule, host, user, or file...')).toBeInTheDocument();
 });
 
 test('Response with no incident keeps its own truthful state', async () => {

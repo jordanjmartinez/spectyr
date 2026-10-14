@@ -27,6 +27,8 @@ behavior, same bar as noise_profiles.
 import datetime as _dt
 import hashlib
 
+import detection_guidance
+
 FLAGS = [
     "Benign detection templates (BENIGN_DETECTIONS) cover a minimal set of "
     "common benign_expected triggers: software updaters, backup agents, admin "
@@ -364,20 +366,30 @@ def sanitize_detection(instance, include_events=False):
     """Client-safe detection. Drops disposition and scenario linkage; runs
     triggering events through the field whitelist. `include_events` adds the
     sanitized triggering events for the detail view."""
+    events = [sanitize_event(e) for e in instance["triggering_events"]]
     out = {
         "id": instance["id"],
         "rule_name": instance["rule_name"],
         "rule_type": instance["rule_type"],
         "severity": instance["severity"],
-        "mitre": instance["mitre"],
+        # decision-layer pass (2026-10-13): the pinned technique name + plain
+        # gloss ride the authored {id, tactic}; derived from the id alone.
+        "mitre": detection_guidance.enrich_mitre(instance["mitre"]),
         "yara_rule_name": instance["yara_rule_name"],
         "description": instance["description"],
         "entity": instance["entity"],
         "time": instance["time"],
         "sha256": instance.get("sha256"),
         "player_action": instance["player_action"],
+        # the instance-specific "why this fired" line: a pure function of the
+        # SANITIZED first triggering event + the entity (never the disposition)
+        "why": detection_guidance.render_why(events[0] if events else None,
+                                             instance["entity"]),
     }
     if include_events:
-        out["triggering_events"] = [sanitize_event(e)
-                                    for e in instance["triggering_events"]]
+        out["triggering_events"] = events
+        # per-RULE teaching copy (harmless line + what-to-check list), keyed by
+        # the already-serialized rule_name; identical text for every instance
+        # of a rule, so it carries no verdict
+        out["guidance"] = detection_guidance.guidance_for(instance["rule_name"])
     return out

@@ -626,7 +626,7 @@ const Dashboard = () => {
         </div>
 
         <div className={view === "detections" ? "block" : "hidden"}>
-          <Detections isVisible={view === "detections"} resetTrigger={resetTrigger} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} onEvidenceDescent={handleEvidenceDescent} onOpenResponse={handleOpenResponse} activeIncident={activeIncident} />
+          <Detections isVisible={view === "detections"} resetTrigger={resetTrigger} onHostPivot={handleHostPivot} activeIncidentId={activeIncidentId} onEvidenceDescent={handleEvidenceDescent} onOpenResponse={handleOpenResponse} />
         </div>
 
         <div className={view === "endpoints" ? "block" : "hidden"}>

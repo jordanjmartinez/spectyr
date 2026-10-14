@@ -1,11 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../api';
 import { SeverityBadge } from './ui';
-import { RuleTypeChip, DispositionChip } from './Detections';
+import { DispositionChip } from './Detections';
+import {
+  PROMOTE_ACTION, PROMOTE_HELPER, DISMISS_ACTION, DISMISS_HELPER, REOPEN_ACTION,
+  DET_WHY_TITLE, DET_HARMLESS_LABEL, DET_RULE_TITLE, DET_METHOD_LABEL,
+  DET_METHOD_SIGMA, DET_METHOD_SIGMA_GLOSS, DET_METHOD_YARA, DET_METHOD_YARA_GLOSS,
+  DET_ID_LABEL, DET_ENTITY_TITLE, DET_TRIGGER_TITLE, DET_MITRE_TITLE, DET_CHECKS_TITLE,
+} from './uiCopy';
 
 // Detection detail (Stage 2), the Section 8 card anatomy: lineage as
 // first-class UI. Triggering Event card plus a stacked Parent Process card.
 // SHA256 is fictional and shown with a copy button, never a VirusTotal link.
+//
+// Decision-layer pass (owner 2026-10-13): the page reads top-down as a
+// decision. Header = severity + rule name + (timestamp, host, user); the
+// Sigma pill and the raw detection id left the header. A STICKY triage bar
+// carries the two decisions with one-line helpers (the bottom Triage card
+// is gone). Body order: Why This Fired (the server-composed instance line
+// + the rule's "when this can be harmless" line) -> What the Rule Detects
+// (description, glossed detection method, the copyable Detection ID small
+// and muted at its foot) -> Affected Entity -> Triggering Event (+ parent
+// lineage) -> MITRE ATT&CK (technique name first, tactic as context, one
+// plain gloss) -> What to Check (the rule's 3-5 step list). Every teaching
+// string is per-RULE or per-INSTANCE-observable; none carries a verdict.
 
 const basename = (p) => (p ? p.split('\\').pop().split('/').pop() : '');
 const dash = (v) => (v === null || v === undefined || v === '' ? '-' : v);
@@ -14,8 +32,15 @@ const SectionLabel = ({ children }) => (
   <p className="t-overline">{children}</p>
 );
 
-const Card = ({ children }) => (
-  <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-hidden">
+// Card headings render at the standard container-heading size
+// (t-subsection, the VA3 "ONE primary container heading" token). The header
+// card keeps its overline eyebrow; the rule name h2 is its heading.
+const CardTitle = ({ children }) => (
+  <p className="t-subsection">{children}</p>
+);
+
+const Card = ({ children, className = '' }) => (
+  <div className={`bg-white border border-[#e2e6ea] rounded-xl overflow-hidden ${className}`}>
     {children}
   </div>
 );
@@ -35,18 +60,23 @@ const KvRow = ({ label, children, mono }) => (
   </div>
 );
 
+const useCopy = () => {
+  const [copied, setCopied] = useState(false);
+  const copy = (value) => {
+    if (!value) return;
+    try { navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 1200); } catch (e) { /* clipboard unavailable */ }
+  };
+  return [copied, copy];
+};
+
 // The triggering-event-plus-parent card stack. Renders reduced KV rows when a
 // field is absent (e.g. non-process triggers like 1102 or DNS).
 const ProcessCard = ({ title, name, cmdline, path, pid, ppid, signer, sha256, user }) => {
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    if (!sha256) return;
-    try { navigator.clipboard.writeText(sha256); setCopied(true); setTimeout(() => setCopied(false), 1200); } catch (e) { /* clipboard unavailable */ }
-  };
+  const [copied, copy] = useCopy();
   return (
     <Card>
       <div className="p-5">
-        <SectionLabel>{title}</SectionLabel>
+        <CardTitle>{title}</CardTitle>
         <h3 className="mt-1 log-mono text-lg font-semibold text-[#1a2332] break-all">{name || '-'}</h3>
         {cmdline && (
           <pre className="mt-3 p-3 rounded-lg bg-[#f6f8fa] border border-[#eef1f4] text-xs log-mono text-[#1a2332] overflow-x-auto whitespace-pre-wrap break-all">{cmdline}</pre>
@@ -63,7 +93,7 @@ const ProcessCard = ({ title, name, cmdline, path, pid, ppid, signer, sha256, us
               <span className="inline-flex items-center gap-2">
                 <span className="log-mono text-xs break-all">{dash(sha256)}</span>
                 {sha256 && (
-                  <button type="button" onClick={copy} className="shrink-0 text-[#16436b] hover:underline text-xs" aria-label="Copy SHA256">
+                  <button type="button" onClick={() => copy(sha256)} className="shrink-0 text-[#16436b] hover:underline text-xs" aria-label="Copy SHA256">
                     {copied ? 'Copied' : 'Copy'}
                   </button>
                 )}
@@ -76,10 +106,15 @@ const ProcessCard = ({ title, name, cmdline, path, pid, ppid, signer, sha256, us
   );
 };
 
+// MITRE: "Technique Name (Txxxx)" first; the id alone when the pinned name
+// is absent (older payloads); the tactic as context; one plain gloss.
+export const mitreHeadline = (m) => (m?.name ? `${m.name} (${m.id})` : m?.id || '-');
+
 const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
                            onEvidenceDescent, descentScopeIncidentId }) => {
   const [det, setDet] = useState(null);
   const [notFound, setNotFound] = useState(false);
+  const [idCopied, copyId] = useCopy();
 
   const load = () => {
     apiFetch(`/api/detections/${encodeURIComponent(detId)}`)
@@ -117,21 +152,26 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
   const kvp = ev.key_value_pairs || {};
   const isProcess = !!kvp.image;
   const hasParent = !!kvp.parent_image;
+  const isYara = det.rule_type === 'yara';
+  const guidance = det.guidance || {};
+  const checks = Array.isArray(guidance.checks) ? guidance.checks : [];
+  const hostNode = det.entity?.host ? (
+    <button type="button" onClick={() => onHostPivot?.(det.entity.host)} className="text-[#16436b] hover:underline" title={`Open ${det.entity.host} in Endpoints`}>
+      {det.entity.host}
+    </button>
+  ) : null;
 
   return (
     <div className="space-y-4">
       <button type="button" onClick={onBack} className="text-sm text-[#16436b] hover:underline">&larr; All detections</button>
 
-      {/* Detection header */}
+      {/* Detection header: severity, rule name, the SIEM entry, then
+          timestamp / host / user. No rule-type pill, no raw id. */}
       <Card>
         <div className="p-5">
           <div className="flex flex-wrap items-center gap-2">
             <SectionLabel>Detection</SectionLabel>
             <SeverityBadge severity={det.severity} />
-            <RuleTypeChip type={det.rule_type} />
-            {det.yara_rule_name && (
-              <span className="log-mono text-xs text-muted">{det.yara_rule_name}</span>
-            )}
           </div>
           <h2 className="mt-2 text-xl sm:text-2xl font-semibold text-[#1a2332]">{det.rule_name}</h2>
           {/* "Investigate in SIEM" (III.0 item 5 rename of the P7.2/P7.4
@@ -152,7 +192,7 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
                   account: det.entity.host ? null : det.entity.account,
                   scopeIncidentId: descentScopeIncidentId || null,
                 })}
-                className="px-3 py-1.5 text-sm rounded-md border border-[#d0d7de] text-[#16436b] hover:bg-[#eef1f4]"
+                className="text-xs font-medium text-[#16436b] hover:underline"
               >
                 Investigate in SIEM
               </button>
@@ -161,43 +201,109 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
           <p className="mt-1 text-sm text-muted log-mono">
             {det.time ? det.time.slice(0, 19).replace('T', ' ') : '-'}
             {' '}&middot;{' '}
-            {det.entity?.host ? (
-              <button type="button" onClick={() => onHostPivot?.(det.entity.host)} className="text-[#16436b] hover:underline" title={`Open ${det.entity.host} in Endpoints`}>
-                {det.entity.host}
-              </button>
-            ) : det.entity?.account ? (
+            {hostNode || (det.entity?.account && !det.entity?.host ? (
               <span className="text-muted" title="Identity entity (no endpoint)">{det.entity.account}</span>
-            ) : '-'}
-            {' '}&middot;{' '}
-            <span className="text-muted">{det.id}</span>
+            ) : '-')}
+            {det.entity?.host && det.entity?.account && (
+              <>{' '}&middot;{' '}<span className="text-muted">{det.entity.account}</span></>
+            )}
           </p>
         </div>
       </Card>
 
-      {/* Rule description, left-accent blockquote */}
-      <div className="bg-white border border-[#e2e6ea] rounded-xl overflow-hidden">
-        <div className="p-5 border-l-[3px]" style={{ borderLeftColor: '#16436b' }}>
-          <SectionLabel>Rule</SectionLabel>
-          <p className="mt-1.5 text-sm text-[#1a2332] leading-relaxed">{det.description}</p>
-        </div>
-      </div>
-
-      {/* MITRE ATT&CK */}
-      {det.mitre && (
-        <Card>
-          <div className="p-5">
-            <SectionLabel>MITRE ATT&amp;CK</SectionLabel>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs border border-[#d0d7de] text-muted">{det.mitre.tactic}</span>
-              <span className="log-mono text-xs text-muted">{det.mitre.id}</span>
-            </div>
+      {/* The sticky triage bar: the two decisions with their helpers. Open
+          offers Promote to Threat / Dismiss as Benign; a reviewed detection
+          reads STATE + Reopen, the one way back (Stage 6 fix 13 shape). */}
+      <div className="sticky top-0 z-10" data-testid="triage-bar">
+        <Card className="shadow-sm">
+          <div className="p-4 flex flex-wrap items-stretch gap-3">
+            {det.player_action === 'open' ? (
+              <>
+                <div className="flex flex-col gap-1 min-w-[12rem]">
+                  <button
+                    type="button"
+                    onClick={() => doAction('promote')}
+                    className="px-3 py-1.5 text-sm font-medium rounded-md border transition bg-[#101218] text-white border-[#101218] hover:bg-[#1a2332]"
+                  >
+                    {PROMOTE_ACTION}
+                  </button>
+                  <span className="text-xs text-muted">{PROMOTE_HELPER}</span>
+                </div>
+                <div className="flex flex-col gap-1 min-w-[12rem]">
+                  <button
+                    type="button"
+                    onClick={() => doAction('dismiss')}
+                    className="px-3 py-1.5 text-sm font-medium rounded-md border transition bg-white text-[#1a2332] border-[#d0d7de] hover:bg-[#eef1f4]"
+                  >
+                    {DISMISS_ACTION}
+                  </button>
+                  <span className="text-xs text-muted">{DISMISS_HELPER}</span>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center gap-2">
+                <DispositionChip action={det.player_action} size="sm" />
+                <button type="button" onClick={() => doAction('open')} className="px-3 py-1.5 text-sm font-medium rounded-md border bg-white text-muted border-[#d0d7de] hover:bg-[#eef1f4] transition">
+                  {REOPEN_ACTION}
+                </button>
+              </div>
+            )}
           </div>
         </Card>
-      )}
+      </div>
 
-      {/* Triggering event, then parent process: lineage as first-class UI */}
+      {/* 1. Why this fired: the instance line + the rule's harmless line */}
+      <Card>
+        <div className="p-5">
+          <CardTitle>{DET_WHY_TITLE}</CardTitle>
+          <p className="mt-1.5 text-sm text-[#1a2332] leading-relaxed">{det.why || dash(det.why)}</p>
+          {guidance.harmless && (
+            <p className="mt-2 text-sm text-muted leading-relaxed">
+              <span className="font-medium text-[#1a2332]">{DET_HARMLESS_LABEL}:</span>{' '}{guidance.harmless}
+            </p>
+          )}
+        </div>
+      </Card>
+
+      {/* 2. What the rule detects: the authored description, the glossed
+          detection method, the Detection ID small and muted at the foot */}
+      <Card>
+        <div className="p-5">
+          <CardTitle>{DET_RULE_TITLE}</CardTitle>
+          <p className="mt-1.5 text-sm text-[#1a2332] leading-relaxed">{det.description}</p>
+          <p className="mt-2 text-sm text-muted">
+            <span className="font-medium text-[#1a2332]">{DET_METHOD_LABEL}:</span>{' '}
+            {isYara ? DET_METHOD_YARA : DET_METHOD_SIGMA}
+            <span className="text-muted">, {isYara ? DET_METHOD_YARA_GLOSS : DET_METHOD_SIGMA_GLOSS}</span>
+            {det.yara_rule_name && (
+              <>{' '}&middot;{' '}<span className="log-mono text-xs">{det.yara_rule_name}</span></>
+            )}
+          </p>
+          <p className="mt-3 pt-3 border-t border-[#eef1f4] text-xs text-muted">
+            {DET_ID_LABEL}{' '}
+            <span className="log-mono">{det.id}</span>
+            {' '}
+            <button type="button" onClick={() => copyId(det.id)} className="text-[#16436b] hover:underline" aria-label="Copy detection ID">
+              {idCopied ? 'Copied' : 'Copy'}
+            </button>
+          </p>
+        </div>
+      </Card>
+
+      {/* 3. Affected entity */}
+      <Card>
+        <div className="p-5">
+          <CardTitle>{DET_ENTITY_TITLE}</CardTitle>
+          <div className="mt-2">
+            <KvRow label="Host" mono>{hostNode || '-'}</KvRow>
+            <KvRow label="User" mono>{dash(det.entity?.account)}</KvRow>
+          </div>
+        </div>
+      </Card>
+
+      {/* 4. Triggering event, then parent process: lineage as first-class UI */}
       <ProcessCard
-        title="Triggering event"
+        title={DET_TRIGGER_TITLE}
         name={isProcess ? basename(kvp.image) : ev.event_type}
         cmdline={kvp.command_line}
         path={isProcess ? kvp.image : undefined}
@@ -209,7 +315,7 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
       {!isProcess && (
         <Card>
           <div className="p-5">
-            <SectionLabel>Triggering Event</SectionLabel>
+            <CardTitle>Event Details</CardTitle>
             <div className="mt-2">
               <KvRow label="Event type" mono>{dash(ev.event_type)}</KvRow>
               <KvRow label="Source" mono>{dash(ev.source_type)}</KvRow>
@@ -232,42 +338,34 @@ const DetectionDetail = ({ detId, onBack, onAction, onHostPivot,
         />
       )}
 
-      {/* Triage actions (reversible; no confirm needed) */}
-      <Card>
-        <div className="p-5 flex flex-wrap items-center gap-2">
-          <SectionLabel>Triage</SectionLabel>
-          {/* Stage 6 playtest fix 13: open offers the two decisions; a
-              reviewed detection reads STATE + the one way back, never the
-              contradictory three-verb cluster. */}
-          <div className="ml-auto flex items-center gap-2">
-            {det.player_action === 'open' ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => doAction('promote')}
-                  className="px-3 py-1.5 text-sm font-medium rounded-md border transition bg-white text-[#1a2332] border-[#d0d7de] hover:bg-[#eef1f4]"
-                >
-                  Promote to Threat
-                </button>
-                <button
-                  type="button"
-                  onClick={() => doAction('dismiss')}
-                  className="px-3 py-1.5 text-sm font-medium rounded-md border transition bg-white text-[#1a2332] border-[#d0d7de] hover:bg-[#eef1f4]"
-                >
-                  Dismiss
-                </button>
-              </>
-            ) : (
-              <>
-                <DispositionChip action={det.player_action} size="sm" />
-                <button type="button" onClick={() => doAction('open')} className="px-3 py-1.5 text-sm font-medium rounded-md border bg-white text-muted border-[#d0d7de] hover:bg-[#eef1f4] transition">
-                  Reopen
-                </button>
-              </>
+      {/* 5. MITRE ATT&CK: technique name first, tactic as context, gloss */}
+      {det.mitre && (
+        <Card>
+          <div className="p-5">
+            <CardTitle>{DET_MITRE_TITLE}</CardTitle>
+            <p className="mt-1.5 text-sm font-medium text-[#1a2332]">{mitreHeadline(det.mitre)}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted">Tactic</span>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs border border-[#d0d7de] text-muted">{det.mitre.tactic}</span>
+            </div>
+            {det.mitre.gloss && (
+              <p className="mt-2 text-sm text-muted leading-relaxed">{det.mitre.gloss}</p>
             )}
           </div>
-        </div>
-      </Card>
+        </Card>
+      )}
+
+      {/* 6. What to check: the rule's 3-5 step list */}
+      {checks.length > 0 && (
+        <Card>
+          <div className="p-5">
+            <CardTitle>{DET_CHECKS_TITLE}</CardTitle>
+            <ol className="mt-2 space-y-1.5 list-decimal pl-5 text-sm text-[#1a2332] leading-relaxed">
+              {checks.map((c, i) => <li key={i}>{c}</li>)}
+            </ol>
+          </div>
+        </Card>
+      )}
     </div>
   );
 };

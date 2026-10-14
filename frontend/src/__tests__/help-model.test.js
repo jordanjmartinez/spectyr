@@ -135,14 +135,19 @@ test('6.2: Promote, Dismiss, and Reopen carry their tooltip lines (all modes: th
   // Stage 6 playtest fix 13 amendment: an open row carries Promote +
   // Dismiss; a reviewed row carries a state chip + Reopen only (the
   // three-verb cluster is gone), so each tooltip rides exactly the
-  // controls that exist.
+  // controls that exist. Decision-layer pass (2026-10-13): those controls
+  // are the row's "..." menu items, so the menu is opened first.
+  fireEvent.click(screen.getByRole('button', { name: 'Actions for Rule Open' }));
   expect(byTitle(TOOLTIPS.promote).length).toBeGreaterThanOrEqual(1);
   expect(byTitle(TOOLTIPS.dismiss).length).toBeGreaterThanOrEqual(1);
   // the reopen control lives on reviewed rows -- the uniform toolbar's
   // Dismissed tab is where the triaged fixture renders
   fireEvent.click(screen.getByRole('button', { name: 'Dismissed 1' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Actions for Rule Done' }));
   expect(byTitle(TOOLTIPS.reopen).length).toBeGreaterThanOrEqual(1); // the triaged row
   // keyboard-reachable: the same line rides data-help on the help-tip class
+  fireEvent.click(screen.getByRole('button', { name: 'Open 1' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Actions for Rule Open' }));
   for (const el of byTitle(TOOLTIPS.promote)) {
     expect(el.getAttribute('data-help')).toBe(TOOLTIPS.promote);
     expect(el.className).toContain('help-tip');

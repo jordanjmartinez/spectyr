@@ -20,13 +20,19 @@ FIELD_TYPES = {
     "rule_name": lambda v: isinstance(v, str) and bool(v),
     "rule_type": lambda v: v in ("sigma_behavioral", "yara"),
     "severity": lambda v: v in ("critical", "high", "medium", "low"),
-    "mitre": lambda v: v is None or (isinstance(v, dict) and {"id", "tactic"} <= set(v)),
+    # decision-layer pass (2026-10-13): the serialized block gained the pinned
+    # technique name + gloss (derived from the id alone, identical for both kinds)
+    "mitre": lambda v: v is None or (isinstance(v, dict)
+                                     and set(v) == {"id", "tactic", "name", "gloss"}),
     "yara_rule_name": lambda v: v is None or isinstance(v, str),
     "description": lambda v: isinstance(v, str) and bool(v),
     "entity": lambda v: isinstance(v, dict) and set(v) == {"host", "account"},
     "time": lambda v: isinstance(v, str) and bool(v),
     "sha256": lambda v: v is None or bool(re.fullmatch(r"[0-9a-f]{64}", str(v))),
     "player_action": lambda v: v in ("open", "promoted", "dismissed"),
+    # decision-layer pass (2026-10-13): the instance "why" line, composed from
+    # the sanitized triggering event for authored and ambient alike
+    "why": lambda v: isinstance(v, str) and bool(v),
 }
 
 # Fields that would reveal authored-vs-ambient or the answer key: never present.

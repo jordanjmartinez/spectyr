@@ -76,6 +76,28 @@ export const detectionsRemaining = (n) =>
 export const PROMOTED_LABEL = 'Promoted';
 export const DISMISSED_LABEL = 'Dismissed';
 export const REOPENED_LABEL = 'Reopened (needs review again)';
+// Detections decision-layer pass (owner 2026-10-13): the two decisions carry
+// their FULL labels everywhere (the list row menu and the detail triage bar),
+// each with a one-line helper; the detail body section titles live here too.
+export const PROMOTE_ACTION = 'Promote to Threat';
+export const PROMOTE_HELPER = 'This is real attacker activity in this incident.';
+export const DISMISS_ACTION = 'Dismiss as Benign';
+export const DISMISS_HELPER = 'This is expected or harmless activity.';
+export const REOPEN_ACTION = 'Reopen';
+export const DETECTION_SEARCH_PLACEHOLDER = 'Search rule, host, user, or file...';
+export const DET_WHY_TITLE = 'Why This Fired';
+export const DET_HARMLESS_LABEL = 'When this can be harmless';
+export const DET_RULE_TITLE = 'What the Rule Detects';
+export const DET_METHOD_LABEL = 'Detection method';
+export const DET_METHOD_SIGMA = 'log pattern (Sigma)';
+export const DET_METHOD_SIGMA_GLOSS = 'a rule that matches a pattern in logged events';
+export const DET_METHOD_YARA = 'file signature (YARA)';
+export const DET_METHOD_YARA_GLOSS = 'a rule that matches byte patterns inside a file';
+export const DET_ID_LABEL = 'Detection ID';
+export const DET_ENTITY_TITLE = 'Affected Entity';
+export const DET_TRIGGER_TITLE = 'Triggering Event';
+export const DET_MITRE_TITLE = 'MITRE ATT&CK';
+export const DET_CHECKS_TITLE = 'What to Check';
 export const responseActionsTaken = (n) => `Response Actions Taken: ${n}`;
 export const READY_TO_SUBMIT = 'Ready to Submit';
 export const SUBMITTED_GRADE_LOCKED = 'Submitted. Grade locked.';
